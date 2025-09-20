@@ -1771,9 +1771,9 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "simplematch"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7935c9179595a9495aed0956d5167d094a7a53045ae15ae4e408884046dd970f"
+checksum = "d8449ffffce7c124d479d122a2d1a8e9bea4b5a0dd578aabbe722de623d6556e"
 
 [[package]]
 name = "siphasher"

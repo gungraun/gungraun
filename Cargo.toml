@@ -50,7 +50,7 @@ predicates = { version = "3" }
 pretty_assertions = "1.1"
 proc-macro-error2 = "2.0.1"
 proc-macro2 = "1.0.74"
-quote = "1.0.35"
+quote = "1.0.41"
 regex = { version = "1.11" }
 rstest = { version = ">=0.17, <0.27", default-features = false }
 rustc_version = { version = "0.4" }

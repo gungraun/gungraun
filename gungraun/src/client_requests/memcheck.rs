@@ -172,7 +172,7 @@ where
 ///
 /// See also [`create_block`]
 #[inline(always)]
-pub fn discard<T>(handle: BlockHandle) -> usize {
+pub fn discard(handle: BlockHandle) -> usize {
     do_client_request!(
         "memcheck::discard",
         0,

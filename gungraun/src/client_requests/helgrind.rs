@@ -183,7 +183,7 @@ pub fn annotate_rwlock_create(lock: *const ()) {
 pub fn annotate_rwlock_destroy(lock: *const ()) {
     do_client_request!(
         "helgrind::annotate_rwlock_destroy",
-        bindings::GR_HelgrindClientRequest::GR_HG_PTHREAD_RWLOCK_INIT_POST,
+        bindings::GR_HelgrindClientRequest::GR_HG_PTHREAD_RWLOCK_DESTROY_PRE,
         lock as usize,
         0,
         0,

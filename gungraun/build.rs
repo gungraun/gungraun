@@ -95,10 +95,6 @@ mod imp {
             builder.include(env);
         }
 
-        if target.os == "freebsd" {
-            builder.include("/usr/local/include");
-        }
-
         if let Ok(env) = std::env::var("GUNGRAUN_CROSS_TARGET") {
             let path = PathBuf::from("/valgrind/target/valgrind")
                 .join(env)
@@ -106,7 +102,7 @@ mod imp {
             builder.include(path);
         }
 
-        builder.include("valgrind/include");
+        builder.flag("-idiraftervalgrind/include")
 
         builder
             .debug(true)
@@ -128,13 +124,8 @@ mod imp {
             builder = builder.clang_arg(format!("-iquote{}", path.display()));
         }
 
-        if target.os == "freebsd" {
-            builder = builder.clang_arg("-iquote/usr/local/include");
-        }
-
         let bindings = builder
-            .clang_arg("-iquote/usr/include")
-            .clang_arg("-iquotevalgrind/include")
+            .clang_arg("-idiraftervalgrind/include")
             .header("valgrind/wrapper.h")
             .allowlist_var("GR_IS_PLATFORM_SUPPORTED_BY_VALGRIND")
             .allowlist_var("GR_VALGRIND_MAJOR")

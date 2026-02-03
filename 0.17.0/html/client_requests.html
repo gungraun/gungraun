@@ -287,7 +287,7 @@ library_benchmark_group!(name = my_group; benchmarks = bench_function);
 </span>main!(library_benchmark_groups = my_group);
 <span class="boring">}</span></code></pre></pre>
 <p>The default <a href="https://docs.rs/gungraun/0.17.0/gungraun/enum.EntryPoint.html"><code>EntryPoint</code></a> sets the <a href="https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options"><code>--toggle-collect</code></a> to the benchmark function (here <code>bench_function</code>) and
-<code>--collect-at-start=no</code>. So, <code>Callgrind</code> starts collecting the events when
+<code>--collect-atstart=no</code>. So, <code>Callgrind</code> starts collecting the events when
 entering the benchmark function, not the moment <code>start_instrumentation</code> is
 called. This behaviour can be remedied with <code>EntryPoint::None</code>:</p>
 <pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">extern crate gungraun;
@@ -317,7 +317,7 @@ pub mod my_lib {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::with_args(["--collect-at-start=no"])
+        .tool(Callgrind::with_args(["--collect-atstart=no"])
             .entry_point(EntryPoint::None)
         )
 )]
@@ -332,8 +332,8 @@ library_benchmark_group!(name = my_group; benchmarks = bench_function);
 </span>main!(library_benchmark_groups = my_group);
 <span class="boring">}</span></code></pre></pre>
 <p>As the standard toggle is now switched off and the option
-<code>--collect-at-start=no</code> is also omitted, you must specify
-<code>--collect-at-start=no</code> manually in
+<code>--collect-atstart=no</code> is also omitted, you must specify
+<code>--collect-atstart=no</code> manually in
 <code>LibraryBenchmarkConfig::raw_callgrind_args</code>.</p>
 <p>Please see the
 <a href="https://docs.rs/gungraun/0.17.0/gungraun/client_requests"><code>docs</code></a> for

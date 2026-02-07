@@ -1,4 +1,5 @@
 //! Module containing the parser for callgrind flamegraphs
+use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -6,25 +7,18 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Result};
 use log::debug;
 
-use super::hashmap_parser::{parse_callgrind_output, CallgrindMap, Id, SourcePath};
+use super::hashmap_parser::{CallgrindMap, HashMapParser, Id, SourcePath};
 use super::model::Metrics;
 use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::EventKind;
 use crate::runner::metrics::Metric;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct CallGraph {
-    /// caller → {callee → edge_metrics (inclusive cost of callee from this caller)}
-    edges: HashMap<Id, HashMap<Id, Metrics>>,
-    /// All Ids that appear as callees
-    callees: HashSet<Id>,
-}
-
 /// The `FlamegraphMap` based on a [`CallgrindMap`]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FlamegraphMap {
-    map: CallgrindMap,
-    call_graph: CallGraph,
+    callees: HashSet<Id>,
+    costs: CallgrindMap,
+    edges: HashMap<Id, HashMap<Id, Metrics>>,
 }
 
 /// The parser for flamegraphs
@@ -37,12 +31,12 @@ pub struct FlamegraphParser {
 impl FlamegraphMap {
     /// Return true if this map is empty
     pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
+        self.costs.is_empty()
     }
 
     /// Calculate the cache summary for each entry in the map in-place
     pub fn make_summary(&mut self) -> Result<()> {
-        let mut iter = self.map.map.values_mut().peekable();
+        let mut iter = self.costs.map.values_mut().peekable();
         if let Some(value) = iter.peek() {
             // If one cost can be summarized then all costs can be summarized.
             if value.metrics.can_summarize() {
@@ -60,28 +54,30 @@ impl FlamegraphMap {
 
     /// Sum this map with another map
     pub fn add(&mut self, other: &Self) {
-        for (other_id, other_value) in &other.map {
+        for (other_id, other_value) in &other.costs {
             // The performance of HashMap::entry is worse than the following method because we have
             // a heavy id which needs to be cloned, although it is already present in the map.
-            if let Some(value) = self.map.map.get_mut(other_id) {
+            if let Some(value) = self.costs.map.get_mut(other_id) {
                 value.metrics.add(&other_value.metrics);
             } else {
-                self.map.map.insert(other_id.clone(), other_value.clone());
+                self.costs.map.insert(other_id.clone(), other_value.clone());
             }
         }
 
-        for (caller, callee_map) in &other.call_graph.edges {
-            let entry = self.call_graph.edges.entry(caller.clone()).or_default();
-            for (callee, metrics) in callee_map {
-                entry
-                    .entry(callee.clone())
-                    .and_modify(|m| m.add(metrics))
-                    .or_insert_with(|| metrics.clone());
+        for (caller, callee_map) in &other.edges {
+            if let Some(entry) = self.edges.get_mut(caller) {
+                for (callee, metrics) in callee_map {
+                    if let Some(m) = entry.get_mut(callee) {
+                        m.add(metrics);
+                    } else {
+                        entry.insert(callee.clone(), metrics.clone());
+                    }
+                }
+            } else {
+                self.edges.insert(caller.clone(), callee_map.clone());
             }
         }
-        self.call_graph
-            .callees
-            .extend(other.call_graph.callees.iter().cloned());
+        self.callees.extend(other.callees.iter().cloned());
     }
 
     /// Convert to stacks string format for this `EventType`
@@ -90,25 +86,24 @@ impl FlamegraphMap {
     ///
     /// If the event type was not present in the stacks
     pub fn to_stack_format(&self, event_kind: &EventKind) -> Result<Vec<String>> {
-        if self.map.map.is_empty() {
+        if self.costs.map.is_empty() {
             return Ok(vec![]);
         }
 
-        let mut stacks: Vec<String> = vec![];
-
-        let roots: Vec<&Id> = if let Some(sentinel_key) = &self.map.sentinel_key {
+        let roots: Vec<&Id> = if let Some(sentinel_key) = &self.costs.sentinel_key {
             vec![sentinel_key]
         } else {
             let mut roots: Vec<&Id> = self
-                .map
+                .costs
                 .map
                 .keys()
-                .filter(|id| !self.call_graph.callees.contains(id))
+                .filter(|id| !self.callees.contains(id))
                 .collect();
             roots.sort_by_cached_key(|id| format_source(id));
             roots
         };
 
+        let mut stacks: Vec<String> = vec![];
         let mut visited = HashSet::new();
         for root in roots {
             self.dfs_emit(root, "", event_kind, None, &mut stacks, &mut visited)?;
@@ -130,6 +125,18 @@ impl FlamegraphMap {
             return Ok(());
         }
 
+        let inclusive = match edge_cost {
+            Some(cost) => cost,
+            None => self
+                .costs
+                .map
+                .get(node)
+                .and_then(|v| v.metrics.metric_by_kind(event_kind))
+                .ok_or_else(|| {
+                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
+                })?,
+        };
+
         let source = format_source(node);
         let current_stack = if parent_stack.is_empty() {
             source
@@ -137,32 +144,18 @@ impl FlamegraphMap {
             format!("{parent_stack};{source}")
         };
 
-        let inclusive = edge_cost.unwrap_or_else(|| {
-            self.map
-                .map
-                .get(node)
-                .and_then(|v| v.metrics.metric_by_kind(event_kind))
-                .unwrap_or(Metric::Int(0))
-        });
-
         let mut children: Vec<(&Id, Metric)> = self
-            .call_graph
             .edges
             .get(node)
             .map(|m| {
                 m.iter()
                     .filter_map(|(callee, edge_metrics)| {
-                        edge_metrics
-                            .metric_by_kind(event_kind)
-                            .map(|c| (callee, c))
+                        edge_metrics.metric_by_kind(event_kind).map(|c| (callee, c))
                     })
                     .collect()
             })
             .unwrap_or_default();
-        children.sort_by(|a, b| {
-            b.1.cmp(&a.1)
-                .then_with(|| format_source(a.0).cmp(&format_source(b.0)))
-        });
+        children.sort_by_cached_key(|(id, cost)| (Reverse(*cost), format_source(id)));
 
         let children_cost: Metric = children
             .iter()
@@ -207,25 +200,39 @@ impl CallgrindParser for FlamegraphParser {
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         debug!("Parsing flamegraph from file '{}'", path.display());
 
-        let mut call_graph = CallGraph::default();
+        let parser = HashMapParser {
+            project_root: self.project_root.clone(),
+            sentinel: self.sentinel.clone(),
+        };
 
-        let (props, map) = parse_callgrind_output(
-            path,
-            &self.project_root,
-            self.sentinel.as_ref(),
-            |caller_id, callee_id, metrics| {
-                call_graph
-                    .edges
-                    .entry(caller_id.clone())
-                    .or_default()
-                    .entry(callee_id.clone())
-                    .and_modify(|m| m.add(metrics))
-                    .or_insert_with(|| metrics.clone());
-                call_graph.callees.insert(callee_id.clone());
+        let mut callees = HashSet::new();
+        let mut edges: HashMap<Id, HashMap<Id, Metrics>> = HashMap::new();
+
+        let (props, map) = parser.parse_with_edges(path, |caller_id, callee_id, metrics| {
+            if let Some(callee_map) = edges.get_mut(caller_id) {
+                if let Some(m) = callee_map.get_mut(callee_id) {
+                    m.add(metrics);
+                } else {
+                    callee_map.insert(callee_id.clone(), metrics.clone());
+                }
+            } else {
+                let mut callee_map = HashMap::new();
+                callee_map.insert(callee_id.clone(), metrics.clone());
+                edges.insert(caller_id.clone(), callee_map);
+            }
+            if !callees.contains(callee_id) {
+                callees.insert(callee_id.clone());
+            }
+        })?;
+
+        Ok((
+            props,
+            FlamegraphMap {
+                callees,
+                edges,
+                costs: map,
             },
-        )?;
-
-        Ok((props, FlamegraphMap { map, call_graph }))
+        ))
     }
 }
 
@@ -234,9 +241,7 @@ fn format_source(id: &Id) -> String {
     if let Some(file) = &id.file {
         match file {
             SourcePath::Unknown => write!(source, "{}", id.func).unwrap(),
-            SourcePath::Rust(path)
-            | SourcePath::Relative(path)
-            | SourcePath::Absolute(path) => {
+            SourcePath::Rust(path) | SourcePath::Relative(path) | SourcePath::Absolute(path) => {
                 write!(source, "{}:{}", path.display(), id.func).unwrap();
             }
         }
@@ -247,9 +252,7 @@ fn format_source(id: &Id) -> String {
     if let Some(path) = &id.obj {
         match path {
             SourcePath::Unknown => {}
-            SourcePath::Rust(path)
-            | SourcePath::Relative(path)
-            | SourcePath::Absolute(path) => {
+            SourcePath::Rust(path) | SourcePath::Relative(path) | SourcePath::Absolute(path) => {
                 write!(source, " [{}]", path.display()).unwrap();
             }
         }

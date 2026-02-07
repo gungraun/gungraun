@@ -132,163 +132,161 @@ impl From<Id> for CurrentId {
     }
 }
 
+impl HashMapParser {
+    /// Parse a callgrind output file, building the standard [`CallgrindMap`] and invoking
+    /// `on_call_edge` for every caller→callee relationship encountered.
+    ///
+    /// `on_call_edge` receives `(caller_id, callee_id, inclusive_cost)`.
+    #[allow(clippy::too_many_lines)]
+    pub fn parse_with_edges(
+        &self,
+        path: &Path,
+        mut on_call_edge: impl FnMut(&Id, &Id, &Metrics),
+    ) -> Result<(CallgrindProperties, CallgrindMap)> {
+        let mut iter = BufReader::new(File::open(path)?)
+            .lines()
+            .map(Result::unwrap);
+        let config = parse_header(&mut iter)
+            .map_err(|error| Error::ParseError(path.to_owned(), error.to_string()))?;
+
+        let mut current_id = CurrentId::default();
+        let mut cfn_record = None;
+
+        let mut cfn_totals = HashMap::<Id, Value>::new();
+        let mut fn_totals = HashMap::<Id, Value>::new();
+
+        // FIXME: This should be a vec. The sentinel can match many functions. This is only ok,
+        // since we currently use the sentinel for the benchmark function exclusively. The benchmark
+        // function is very special in that it is called exactly once, is not recursive etc.
+        let mut sentinel_key = None;
+
+        // We start within the header
+        let mut is_header = true;
+        for line in iter {
+            let line = line.trim();
+
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+
+            // The first line which can be split around '=' is a non header line
+            let split = if is_header {
+                if let Some(split) = line.split_once('=') {
+                    is_header = false;
+                    Some(split)
+                } else {
+                    continue;
+                }
+            } else {
+                line.split_once('=')
+            };
+
+            match split {
+                Some(("ob", obj)) => {
+                    current_id.obj = Some(make_path(&self.project_root, obj));
+                }
+                Some(("fl", file)) => {
+                    current_id.file = Some(make_path(&self.project_root, file));
+                }
+                Some(("fn", func)) => {
+                    current_id.func = Some(func.to_owned());
+
+                    if self
+                        .sentinel
+                        .as_ref()
+                        .is_some_and(|sentinel| sentinel.matches(func))
+                    {
+                        trace!("Found sentinel: {func}");
+                        sentinel_key = Some(current_id.clone().try_into().expect("A valid id"));
+                    }
+                }
+                Some(("fi" | "fe", inline)) => {
+                    current_id.file = Some(make_path(&self.project_root, inline));
+                }
+                Some(("cob", cob)) => {
+                    let record = cfn_record.get_or_insert_with(CfnRecord::default);
+                    record.obj = Some(make_path(&self.project_root, cob));
+                }
+                Some(("cfi" | "cfl", inline)) => {
+                    let record = cfn_record.get_or_insert_with(CfnRecord::default);
+                    record.file = Some(make_path(&self.project_root, inline));
+                }
+                Some(("cfn", cfn)) => {
+                    let record = cfn_record.get_or_insert_with(CfnRecord::default);
+                    record.id = Some(Id {
+                        obj: record.obj.take().or_else(|| current_id.obj.clone()),
+                        func: cfn.to_owned(),
+                        file: record.file.take().or_else(|| current_id.file.clone()),
+                    });
+                }
+                Some(("calls", calls)) => {
+                    let record = cfn_record.as_mut().expect("Valid calls line");
+                    record.calls = calls
+                        .split_ascii_whitespace()
+                        .take(1)
+                        .map(|s| s.parse::<u64>().unwrap())
+                        .sum();
+                }
+                None if line.starts_with(|c: char| c.is_ascii_digit()) => {
+                    let mut metrics = config.metrics_prototype.clone();
+                    metrics.add_iter_str(
+                        line.split_whitespace()
+                            .skip(config.positions_prototype.len()),
+                    )?;
+
+                    if let Some(cfn_record) = cfn_record.take() {
+                        let callee_id = cfn_record.id.expect("cfn record id must be present");
+                        let caller_id: Id = current_id.clone().try_into().expect("A valid id");
+                        on_call_edge(&caller_id, &callee_id, &metrics);
+                        cfn_totals
+                            .entry(callee_id)
+                            .and_modify(|value| value.metrics.add(&metrics))
+                            .or_insert(Value {
+                                metrics: metrics.clone(),
+                            });
+                    }
+
+                    let id = current_id.try_into().expect("A valid id");
+                    match fn_totals.get_mut(&id) {
+                        Some(value) => value.metrics.add(&metrics),
+                        None => {
+                            fn_totals.insert(id.clone(), Value { metrics });
+                        }
+                    }
+                    current_id = id.into();
+                }
+                Some(("jump" | "jcnd" | "jfi" | "jfn", _)) => {
+                    // we ignore these
+                }
+                None if line.starts_with("totals:") || line.starts_with("summary:") => {
+                    // we ignore these
+                }
+                Some(_) | None => panic!("Malformed line: '{line}'"),
+            }
+        }
+
+        // Correct inclusive totals
+        for (key, value) in cfn_totals {
+            fn_totals.insert(key, value);
+        }
+
+        Ok((
+            config,
+            CallgrindMap {
+                map: fn_totals,
+                sentinel: self.sentinel.clone(),
+                sentinel_key,
+            },
+        ))
+    }
+}
+
 impl CallgrindParser for HashMapParser {
     type Output = CallgrindMap;
 
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
-        parse_callgrind_output(
-            path,
-            &self.project_root,
-            self.sentinel.as_ref(),
-            |_, _, _| {},
-        )
+        self.parse_with_edges(path, |_, _, _| {})
     }
-}
-
-/// Parse a callgrind output file, building the standard [`CallgrindMap`] and invoking
-/// `on_call_edge` for every caller→callee relationship encountered.
-///
-/// `on_call_edge` receives `(caller_id, callee_id, inclusive_cost)`.
-#[allow(clippy::too_many_lines)]
-pub fn parse_callgrind_output(
-    path: &Path,
-    project_root: &Path,
-    sentinel: Option<&Sentinel>,
-    mut on_call_edge: impl FnMut(&Id, &Id, &Metrics),
-) -> Result<(CallgrindProperties, CallgrindMap)> {
-    let mut iter = BufReader::new(File::open(path)?)
-        .lines()
-        .map(Result::unwrap);
-    let config = parse_header(&mut iter)
-        .map_err(|error| Error::ParseError(path.to_owned(), error.to_string()))?;
-
-    let mut current_id = CurrentId::default();
-    let mut cfn_record = None;
-
-    let mut cfn_totals = HashMap::<Id, Value>::new();
-    let mut fn_totals = HashMap::<Id, Value>::new();
-
-    // FIXME: This should be a vec. The sentinel can match many functions. This is only ok,
-    // since we currently use the sentinel for the benchmark function exclusively. The benchmark
-    // function is very special in that it is called exactly once, is not recursive etc.
-    let mut sentinel_key = None;
-
-    // We start within the header
-    let mut is_header = true;
-    for line in iter {
-        let line = line.trim();
-
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-
-        // The first line which can be split around '=' is a non header line
-        let split = if is_header {
-            if let Some(split) = line.split_once('=') {
-                is_header = false;
-                Some(split)
-            } else {
-                continue;
-            }
-        } else {
-            line.split_once('=')
-        };
-
-        match split {
-            Some(("ob", obj)) => {
-                current_id.obj = Some(make_path(project_root, obj));
-            }
-            Some(("fl", file)) => {
-                current_id.file = Some(make_path(project_root, file));
-            }
-            Some(("fn", func)) => {
-                current_id.func = Some(func.to_owned());
-
-                if sentinel.is_some_and(|sentinel| sentinel.matches(func)) {
-                    trace!("Found sentinel: {func}");
-                    sentinel_key = Some(current_id.clone().try_into().expect("A valid id"));
-                }
-            }
-            Some(("fi" | "fe", inline)) => {
-                current_id.file = Some(make_path(project_root, inline));
-            }
-            Some(("cob", cob)) => {
-                let record = cfn_record.get_or_insert_with(CfnRecord::default);
-                record.obj = Some(make_path(project_root, cob));
-            }
-            Some(("cfi" | "cfl", inline)) => {
-                let record = cfn_record.get_or_insert_with(CfnRecord::default);
-                record.file = Some(make_path(project_root, inline));
-            }
-            Some(("cfn", cfn)) => {
-                let record = cfn_record.get_or_insert_with(CfnRecord::default);
-                record.id = Some(Id {
-                    obj: record.obj.take().or_else(|| current_id.obj.clone()),
-                    func: cfn.to_owned(),
-                    file: record.file.take().or_else(|| current_id.file.clone()),
-                });
-            }
-            Some(("calls", calls)) => {
-                let record = cfn_record.as_mut().expect("Valid calls line");
-                record.calls = calls
-                    .split_ascii_whitespace()
-                    .take(1)
-                    .map(|s| s.parse::<u64>().unwrap())
-                    .sum();
-            }
-            None if line.starts_with(|c: char| c.is_ascii_digit()) => {
-                let mut metrics = config.metrics_prototype.clone();
-                metrics.add_iter_str(
-                    line.split_whitespace()
-                        .skip(config.positions_prototype.len()),
-                )?;
-
-                if let Some(cfn_record) = cfn_record.take() {
-                    let callee_id =
-                        cfn_record.id.expect("cfn record id must be present");
-                    let caller_id: Id =
-                        current_id.clone().try_into().expect("A valid id");
-                    on_call_edge(&caller_id, &callee_id, &metrics);
-                    cfn_totals
-                        .entry(callee_id)
-                        .and_modify(|value| value.metrics.add(&metrics))
-                        .or_insert(Value {
-                            metrics: metrics.clone(),
-                        });
-                }
-
-                let id = current_id.try_into().expect("A valid id");
-                match fn_totals.get_mut(&id) {
-                    Some(value) => value.metrics.add(&metrics),
-                    None => {
-                        fn_totals.insert(id.clone(), Value { metrics });
-                    }
-                }
-                current_id = id.into();
-            }
-            Some(("jump" | "jcnd" | "jfi" | "jfn", _)) => {
-                // we ignore these
-            }
-            None if line.starts_with("totals:") || line.starts_with("summary:") => {
-                // we ignore these
-            }
-            Some(_) | None => panic!("Malformed line: '{line}'"),
-        }
-    }
-
-    // Correct inclusive totals
-    for (key, value) in cfn_totals {
-        fn_totals.insert(key, value);
-    }
-
-    Ok((
-        config,
-        CallgrindMap {
-            map: fn_totals,
-            sentinel: sentinel.cloned(),
-            sentinel_key,
-        },
-    ))
 }
 
 impl TryFrom<CurrentId> for Id {

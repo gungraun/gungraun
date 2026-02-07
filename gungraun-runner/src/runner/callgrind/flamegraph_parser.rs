@@ -1,5 +1,4 @@
 //! Module containing the parser for callgrind flamegraphs
-use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -90,6 +89,12 @@ impl FlamegraphMap {
             return Ok(vec![]);
         }
 
+        for (_id, value) in &self.costs {
+            value.metrics.metric_by_kind(event_kind).ok_or_else(|| {
+                anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
+            })?;
+        }
+
         let roots: Vec<&Id> = if let Some(sentinel_key) = &self.costs.sentinel_key {
             vec![sentinel_key]
         } else {
@@ -99,14 +104,14 @@ impl FlamegraphMap {
                 .keys()
                 .filter(|id| !self.callees.contains(id))
                 .collect();
-            roots.sort_by_cached_key(|id| format_source(id));
+            roots.sort();
             roots
         };
 
         let mut stacks: Vec<String> = vec![];
         let mut visited = HashSet::new();
         for root in roots {
-            self.dfs_emit(root, "", event_kind, None, &mut stacks, &mut visited)?;
+            self.dfs_emit(root, "", event_kind, None, &mut stacks, &mut visited);
         }
 
         Ok(stacks)
@@ -114,30 +119,49 @@ impl FlamegraphMap {
 
     fn dfs_emit(
         &self,
-        node: &Id,
+        id: &Id,
         parent_stack: &str,
         event_kind: &EventKind,
         edge_cost: Option<Metric>,
         stacks: &mut Vec<String>,
         visited: &mut HashSet<Id>,
-    ) -> Result<()> {
-        if !visited.insert(node.clone()) {
-            return Ok(());
+    ) {
+        if !visited.insert(id.clone()) {
+            return;
         }
 
-        let inclusive = match edge_cost {
-            Some(cost) => cost,
-            None => self
-                .costs
+        let inclusive = edge_cost.unwrap_or_else(|| {
+            self.costs
                 .map
-                .get(node)
+                .get(id)
                 .and_then(|v| v.metrics.metric_by_kind(event_kind))
-                .ok_or_else(|| {
-                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
-                })?,
-        };
+                .unwrap_or(Metric::Int(0))
+        });
 
-        let source = format_source(node);
+        let mut source = String::new();
+        if let Some(file) = &id.file {
+            match file {
+                SourcePath::Unknown => write!(source, "{}", id.func).unwrap(),
+                SourcePath::Rust(path)
+                | SourcePath::Relative(path)
+                | SourcePath::Absolute(path) => {
+                    write!(source, "{}:{}", path.display(), id.func).unwrap();
+                }
+            }
+        } else {
+            write!(source, "{}", id.func).unwrap();
+        }
+        if let Some(path) = &id.obj {
+            match path {
+                SourcePath::Unknown => {}
+                SourcePath::Rust(path)
+                | SourcePath::Relative(path)
+                | SourcePath::Absolute(path) => {
+                    write!(source, " [{}]", path.display()).unwrap();
+                }
+            }
+        }
+
         let current_stack = if parent_stack.is_empty() {
             source
         } else {
@@ -146,7 +170,7 @@ impl FlamegraphMap {
 
         let mut children: Vec<(&Id, Metric)> = self
             .edges
-            .get(node)
+            .get(id)
             .map(|m| {
                 m.iter()
                     .filter_map(|(callee, edge_metrics)| {
@@ -155,15 +179,16 @@ impl FlamegraphMap {
                     .collect()
             })
             .unwrap_or_default();
-        children.sort_by_cached_key(|(id, cost)| (Reverse(*cost), format_source(id)));
+        children.sort_by(|(id_a, cost_a), (id_b, cost_b)| {
+            cost_b.cmp(cost_a).then_with(|| id_a.cmp(id_b))
+        });
 
         let children_cost: Metric = children
             .iter()
             .map(|(_, c)| *c)
             .fold(Metric::Int(0), |acc, c| acc + c);
-        let self_cost = inclusive - children_cost;
 
-        stacks.push(format!("{current_stack} {self_cost}"));
+        stacks.push(format!("{} {}", current_stack, inclusive - children_cost));
 
         for (child_id, child_edge_cost) in &children {
             self.dfs_emit(
@@ -173,11 +198,10 @@ impl FlamegraphMap {
                 Some(*child_edge_cost),
                 stacks,
                 visited,
-            )?;
+            );
         }
 
-        visited.remove(node);
-        Ok(())
+        visited.remove(id);
     }
 }
 
@@ -208,7 +232,7 @@ impl CallgrindParser for FlamegraphParser {
         let mut callees = HashSet::new();
         let mut edges: HashMap<Id, HashMap<Id, Metrics>> = HashMap::new();
 
-        let (props, map) = parser.parse_with_edges(path, |caller_id, callee_id, metrics| {
+        let (props, costs) = parser.parse_with_edges(path, |caller_id, callee_id, metrics| {
             if let Some(callee_map) = edges.get_mut(caller_id) {
                 if let Some(m) = callee_map.get_mut(callee_id) {
                     m.add(metrics);
@@ -229,34 +253,9 @@ impl CallgrindParser for FlamegraphParser {
             props,
             FlamegraphMap {
                 callees,
+                costs,
                 edges,
-                costs: map,
             },
         ))
     }
-}
-
-fn format_source(id: &Id) -> String {
-    let mut source = String::new();
-    if let Some(file) = &id.file {
-        match file {
-            SourcePath::Unknown => write!(source, "{}", id.func).unwrap(),
-            SourcePath::Rust(path) | SourcePath::Relative(path) | SourcePath::Absolute(path) => {
-                write!(source, "{}:{}", path.display(), id.func).unwrap();
-            }
-        }
-    } else {
-        write!(source, "{}", id.func).unwrap();
-    }
-
-    if let Some(path) = &id.obj {
-        match path {
-            SourcePath::Unknown => {}
-            SourcePath::Rust(path) | SourcePath::Relative(path) | SourcePath::Absolute(path) => {
-                write!(source, " [{}]", path.display()).unwrap();
-            }
-        }
-    }
-
-    source
 }

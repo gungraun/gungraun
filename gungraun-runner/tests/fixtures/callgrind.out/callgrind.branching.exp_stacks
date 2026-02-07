@@ -1,0 +1,5 @@
+src/main.rs:main 10
+src/main.rs:main;src/main.rs:func_b 20
+src/main.rs:main;src/main.rs:func_b;src/main.rs:func_d 30
+src/main.rs:main;src/main.rs:func_c 15
+src/main.rs:main;src/main.rs:func_c;src/main.rs:func_d 25

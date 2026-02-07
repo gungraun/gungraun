@@ -1,0 +1,50 @@
+# callgrind format
+version: 1
+creator: callgrind-3.21.0
+pid: 1000000
+cmd:  target/release/branching-test
+part: 1
+
+
+desc: I1 cache: 32768 B, 64 B, 8-way associative
+desc: D1 cache: 32768 B, 64 B, 8-way associative
+desc: LL cache: 8388608 B, 64 B, 16-way associative
+
+desc: Timerange: Basic block 0 - 1000
+desc: Trigger: Program termination
+
+positions: line
+events: Ir
+summary: 120
+
+fl=src/main.rs
+fn=main
+1 10
+cfl=src/main.rs
+cfn=func_b
+calls=1 10
+1 50
+cfl=src/main.rs
+cfn=func_c
+calls=1 20
+1 40
+
+fl=src/main.rs
+fn=func_b
+10 20
+cfl=src/main.rs
+cfn=func_d
+calls=1 30
+10 30
+
+fl=src/main.rs
+fn=func_c
+20 15
+cfl=src/main.rs
+cfn=func_d
+calls=1 30
+20 25
+
+fl=src/main.rs
+fn=func_d
+30 55

@@ -8,6 +8,7 @@ use crate::common::{get_project_root, Fixtures};
 #[rstest]
 #[case::when_entry_point("when_entry_point", Some(Sentinel::new("benchmark_tests_exit::main")))]
 #[case::no_entry_point("no_entry_point", None)]
+#[case::branching("branching", None)]
 fn test_flamegraph_parser(#[case] name: &str, #[case] sentinel: Option<Sentinel>) {
     use gungraun_runner::api::ValgrindTool;
     use gungraun_runner::runner::tool::path::ToolOutputPathKind;

@@ -1,0 +1,50 @@
+# callgrind format
+version: 1
+creator: callgrind-3.21.0
+pid: 1000000
+cmd:  target/release/recursive-test
+part: 1
+
+
+desc: I1 cache: 32768 B, 64 B, 8-way associative
+desc: D1 cache: 32768 B, 64 B, 8-way associative
+desc: LL cache: 8388608 B, 64 B, 16-way associative
+
+desc: Timerange: Basic block 0 - 1000
+desc: Trigger: Program termination
+
+positions: line
+events: Ir
+summary: 75
+
+fl=src/main.rs
+fn=main
+1 10
+cfl=src/main.rs
+cfn=rec_func
+calls=1 10
+1 50
+cfl=src/main.rs
+cfn=helper
+calls=1 30
+1 15
+
+fl=src/main.rs
+fn=rec_func
+10 20
+cfl=src/main.rs
+cfn=rec_func
+calls=2 10
+10 20
+cfl=src/main.rs
+cfn=leaf
+calls=3 20
+10 30
+
+fl=src/main.rs
+fn=leaf
+20 30
+
+fl=src/main.rs
+fn=helper
+30 15

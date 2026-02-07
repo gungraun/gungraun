@@ -185,6 +185,7 @@ impl FlamegraphMap {
 
         let children_cost: Metric = children
             .iter()
+            .filter(|(child_id, _)| !visited.contains(*child_id))
             .map(|(_, c)| *c)
             .fold(Metric::Int(0), |acc, c| acc + c);
 

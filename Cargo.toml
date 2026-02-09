@@ -23,7 +23,7 @@ version = "0.17.0"
 [workspace.dependencies]
 anyhow = { version = "1.0.46" }
 assert_cmd = { version = "2.0" }
-bincode = { version = "1" }
+bincode = { version = "3" }
 bindgen = { version = ">=0.69, <0.73" }
 cargo_metadata = { version = "0.19" }
 cc = { version = "1" }

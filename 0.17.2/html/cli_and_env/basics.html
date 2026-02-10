@@ -1,0 +1,914 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Basic usage and exit codes - Gungraun Guide</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../css/my.css">
+        <link rel="stylesheet" href="../css/dropdown.css">
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../getting_help.html"><strong aria-hidden="true">2.</strong> Getting Help</a></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="../installation/prerequisites.html"><strong aria-hidden="true">3.</strong> Prerequisites</a></li><li class="chapter-item expanded "><a href="../installation/gungraun.html"><strong aria-hidden="true">4.</strong> Gungraun</a></li><li class="chapter-item expanded affix "><li class="part-title">Benchmarks</li><li class="chapter-item expanded "><a href="../benchmarks/overview.html"><strong aria-hidden="true">5.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks.html"><strong aria-hidden="true">6.</strong> Library Benchmarks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/important.html"><strong aria-hidden="true">6.1.</strong> Important default behaviour</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/quickstart.html"><strong aria-hidden="true">6.2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/structure.html"><strong aria-hidden="true">6.3.</strong> Structure of a library benchmark</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/macros.html"><strong aria-hidden="true">6.4.</strong> The macros in more detail</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/setup_and_teardown.html"><strong aria-hidden="true">6.5.</strong> setup and teardown</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/multiple_benches.html"><strong aria-hidden="true">6.6.</strong> Specify multiple benches at once</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/generic.html"><strong aria-hidden="true">6.7.</strong> Generic benchmark functions</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/compare_by_id.html"><strong aria-hidden="true">6.8.</strong> Comparing benchmark functions</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/configuration.html"><strong aria-hidden="true">6.9.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/configuration/output_format.html"><strong aria-hidden="true">6.9.1.</strong> Output Format/Cache Misses</a></li></ol></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/custom_entry_point.html"><strong aria-hidden="true">6.10.</strong> Custom entry points</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/threads_and_subprocesses.html"><strong aria-hidden="true">6.11.</strong> Multi-threaded and multi-process applications</a></li><li class="chapter-item expanded "><a href="../benchmarks/library_benchmarks/examples.html"><strong aria-hidden="true">6.12.</strong> More Examples, please!</a></li></ol></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks.html"><strong aria-hidden="true">7.</strong> Binary Benchmarks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/important.html"><strong aria-hidden="true">7.1.</strong> Important default behaviour</a></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/quickstart.html"><strong aria-hidden="true">7.2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/differences.html"><strong aria-hidden="true">7.3.</strong> Differences to library benchmarks</a></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/stdin_and_pipe.html"><strong aria-hidden="true">7.4.</strong> The Command's stdin and simulating piped input</a></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/configuration.html"><strong aria-hidden="true">7.5.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/configuration/delay.html"><strong aria-hidden="true">7.5.1.</strong> Delay the Command</a></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/configuration/sandbox.html"><strong aria-hidden="true">7.5.2.</strong> Sandbox</a></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/configuration/exit_code.html"><strong aria-hidden="true">7.5.3.</strong> Configure the exit code of the Command</a></li></ol></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/low_level.html"><strong aria-hidden="true">7.6.</strong> Low-level api</a></li><li class="chapter-item expanded "><a href="../benchmarks/binary_benchmarks/examples.html"><strong aria-hidden="true">7.7.</strong> More examples needed?</a></li></ol></li><li class="chapter-item expanded "><a href="../regressions.html"><strong aria-hidden="true">8.</strong> Detecting Performance Regressions</a></li><li class="chapter-item expanded "><a href="../cachegrind.html"><strong aria-hidden="true">9.</strong> Cachegrind</a></li><li class="chapter-item expanded "><a href="../dhat.html"><strong aria-hidden="true">10.</strong> Heap profiling with DHAT</a></li><li class="chapter-item expanded "><a href="../tools.html"><strong aria-hidden="true">11.</strong> Other Valgrind Tools</a></li><li class="chapter-item expanded "><a href="../client_requests.html"><strong aria-hidden="true">12.</strong> Valgrind Client Requests</a></li><li class="chapter-item expanded "><a href="../flamegraphs.html"><strong aria-hidden="true">13.</strong> Callgrind Flamegraphs</a></li><li class="chapter-item expanded affix "><li class="part-title">Command-line and environment variables</li><li class="chapter-item expanded "><a href="../cli_and_env/basics.html" class="active"><strong aria-hidden="true">14.</strong> Basic usage and exit codes</a></li><li class="chapter-item expanded "><a href="../cli_and_env/baselines.html"><strong aria-hidden="true">15.</strong> Comparing with baselines</a></li><li class="chapter-item expanded "><a href="../cli_and_env/output.html"><strong aria-hidden="true">16.</strong> Controlling the output of Gungraun</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../cli_and_env/output/out_directory.html"><strong aria-hidden="true">16.1.</strong> Customize the output directory</a></li><li class="chapter-item expanded "><a href="../cli_and_env/output/machine_readable.html"><strong aria-hidden="true">16.2.</strong> Machine-readable output</a></li><li class="chapter-item expanded "><a href="../cli_and_env/output/terminal_output.html"><strong aria-hidden="true">16.3.</strong> Showing terminal output of benchmarks</a></li><li class="chapter-item expanded "><a href="../cli_and_env/output/color.html"><strong aria-hidden="true">16.4.</strong> Changing the color output</a></li><li class="chapter-item expanded "><a href="../cli_and_env/output/logging.html"><strong aria-hidden="true">16.5.</strong> Changing the logging output</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Migration</li><li class="chapter-item expanded "><a href="../migration/iai-callgrind-to-gungraun.html"><strong aria-hidden="true">17.</strong> Migrating from Iai-Callgrind to Gungraun</a></li><li class="chapter-item expanded affix "><li class="part-title">Troubleshooting</li><li class="chapter-item expanded "><a href="../troubleshooting/im-getting-the-error-sentinel-not-found.html"><strong aria-hidden="true">18.</strong> I'm getting the error Sentinel ... not found</a></li><li class="chapter-item expanded "><a href="../troubleshooting/running-cargo-bench-results-in-an-unrecognized-option-error.html"><strong aria-hidden="true">19.</strong> Running cargo bench results in an "Unrecognized Option" error</a></li><li class="chapter-item expanded affix "><li class="part-title">Comparison</li><li class="chapter-item expanded "><a href="../comparison/criterion.html"><strong aria-hidden="true">20.</strong> Criterion</a></li><li class="chapter-item expanded "><a href="../comparison/iai.html"><strong aria-hidden="true">21.</strong> Iai</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        <div class="dropdown">
+                          <button onclick="versionDropdown()" class="icon-button version-dropdown-button" type="button">Version</button>
+                          <div id="version-dropdown" class="version-dropdown-content">
+                            <a href="../../../latest/html/index.html">Latest</a>
+                            <hr class="sidbar-spacer">
+                            <script src="../../../versions.js"></script>
+                          </div>
+                        </div>
+                    </div>
+
+                    <h1 class="menu-title">Gungraun Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun/master/docs/src/cli_and_env/basics.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="basic-usage"><a class="header" href="#basic-usage">Basic usage</a></h1>
+<p>It's possible to pass arguments to Gungraun separated by <code>--</code> (<code>cargo bench -- ARGS</code>). If you're running into the error <code>Unrecognized Option</code>, see
+<a href="../troubleshooting/running-cargo-bench-results-in-an-unrecognized-option-error.html">Troubleshooting</a>.
+For a complete rundown of possible arguments, execute <code>cargo bench --bench &lt;benchmark&gt; -- --help</code>. Almost all command-line arguments have a corresponding
+environment variable. The environment variables which don't have a corresponding
+command-line argument are:</p>
+<ul>
+<li><code>GUNGRAUN_COLOR</code>: <a href="./output/color.html">Control the colored output of Gungraun</a> (Default
+is <code>auto</code>)</li>
+<li><code>GUNGRAUN_LOG</code>: <a href="./output/logging.html">Define the log level</a> (Default is <code>WARN</code>)</li>
+</ul>
+<h2 id="exit-codes"><a class="header" href="#exit-codes">Exit Codes</a></h2>
+<ul>
+<li><strong>0</strong>: Success</li>
+<li><strong>1</strong>: All other errors</li>
+<li><strong>2</strong>: Parsing command-line arguments failed</li>
+<li><strong>3</strong>: One or more regressions occurred</li>
+</ul>
+<h2 id="the-command-line-arguments"><a class="header" href="#the-command-line-arguments">The command-line arguments</a></h2>
+<p>For an update-to-date list run <code>cargo bench</code> with <code>--help</code> as described above.</p>
+<pre><code class="language-text">High-precision and consistent benchmarking framework/harness for Rust
+
+Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
+instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
+`false`
+
+Usage: cargo bench ... [FILTER] -- [OPTIONS]
+
+Arguments:
+  [FILTER]
+          If specified, only run benchmarks matching this wildcard pattern
+
+          The wildcard pattern can contain `*` to match any amount of characters, `?` to match a
+          single character and simple classes `[...]` like `[abc] `to match the characters `a` or `b`
+          or `c`. Character classes can contain ranges, so `[abc]` could be rewritten as `[a-c]` and
+          they can be negated with `[!...]` to not match the contained characters.
+
+          This pattern matches the whole module path of benchmarks. A list of all benchmarks with
+          their module path as recognized by this option can be obtained by running `--list`. The
+          general structure of the module path of a benchmark is:
+
+          `FILENAME::GROUP::FUNCTION::ID`
+
+          Examples:
+            * `*::my_benchmark_id` runs all benchmarks with the id `my_benchmark_id`
+            * `gungraun_benchmarks::*` runs all benchmarks in the file `gungraun_benchmarks`
+            * `my_file::some_group::*` runs all benchmarks in the file `my_file` and the group
+              `some_group`
+
+          [env: GUNGRAUN_FILTER=]
+
+Options:
+      --list[=&lt;LIST&gt;]
+          Print a list of all benchmarks. With this argument no benchmarks are executed.
+
+          The output format is intended to be the same as the output format of the libtest harness.
+          However, future changes of the output format by cargo might not be incorporated into
+          gungraun. As a consequence, it is not considered safe to rely on the output in scripts.
+
+          [env: GUNGRAUN_LIST=]
+          [default: false]
+          [possible values: true, false]
+
+      --default-tool &lt;DEFAULT_TOOL&gt;
+          The default tool used to run the benchmarks
+
+          The standard tool to run the benchmarks is callgrind but can be overridden with this
+          option. Any valgrind tool can be used:
+            * callgrind
+            * cachegrind
+            * dhat
+            * memcheck
+            * helgrind
+            * drd
+            * massif
+            * exp-bbv
+
+          This argument matches the tool case-insensitive. Note that using cachegrind with this
+          option to benchmark library functions needs adjustments to the benchmarking functions with
+          client-requests to measure the counts correctly. If you want to switch permanently to
+          cachegrind, it is usually better to activate the `cachegrind` feature of gungraun in
+          your Cargo.toml. However, setting a tool with this option overrides cachegrind set with the
+          gungraun feature. See the guide for all details.
+
+          [env: GUNGRAUN_DEFAULT_TOOL=]
+
+      --tools &lt;TOOLS&gt;...
+          A comma separated list of tools to run additionally to callgrind or another default tool
+
+          The tools specified here take precedence over the tools in the benchmarks. The valgrind
+          tools which are allowed here are the same as the ones listed in the documentation of
+          --default-tool.
+
+          Examples
+            * --tools dhat
+            * --tools memcheck,drd
+
+          [env: GUNGRAUN_TOOLS=]
+
+      --allow-aslr[=&lt;ALLOW_ASLR&gt;]
+          Allow ASLR (Address Space Layout Randomization)
+
+          If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
+          could noise up the callgrind cache simulation results a bit. Setting this option to true
+          runs all benchmarks with ASLR enabled.
+
+          See also
+          &lt;https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space&gt;
+
+          [env: GUNGRAUN_ALLOW_ASLR=]
+          [possible values: true, false]
+
+      --home &lt;HOME&gt;
+          Specify the home directory of gungraun benchmark output files
+
+          All output files are per default stored under the `$PROJECT_ROOT/target/gungraun`
+          directory. This option lets you customize this home directory, and it will be created if it
+          doesn't exist.
+
+          [env: GUNGRAUN_HOME=]
+
+      --separate-targets[=&lt;SEPARATE_TARGETS&gt;]
+          Separate gungraun benchmark output files by target
+
+          The default output path for files created by gungraun and valgrind during the benchmark is
+
+          `target/gungraun/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+
+          This can be problematic if you're running the benchmarks not only for a single target
+          because you end up comparing the benchmark runs with the wrong targets. Setting this option
+          changes the default output path to
+
+          `target/gungraun/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+
+          Although not as comfortable and strict, you could achieve a separation by target also with
+          baselines and a combination of `--save-baseline=$TARGET` and `--baseline=$TARGET` if you
+          prefer having all files of a single $BENCH in the same directory.
+
+          [env: GUNGRAUN_SEPARATE_TARGETS=]
+          [default: false]
+          [possible values: true, false]
+
+      --baseline[=&lt;BASELINE&gt;]
+          Compare against this baseline if present but do not overwrite it
+
+          [env: GUNGRAUN_BASELINE=]
+
+      --load-baseline[=&lt;LOAD_BASELINE&gt;]
+          Load this baseline as the new data set instead of creating a new one
+
+          [env: GUNGRAUN_LOAD_BASELINE=]
+
+      --save-baseline[=&lt;SAVE_BASELINE&gt;]
+          Compare against this baseline if present and then overwrite it
+
+          [env: GUNGRAUN_SAVE_BASELINE=]
+
+      --nocapture[=&lt;NOCAPTURE&gt;]
+          Don't capture terminal output of benchmarks
+
+          Possible values are one of [true, false, stdout, stderr].
+
+          This option is currently restricted to the `callgrind` run of benchmarks. The output of
+          additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
+          same output of benchmarks multiple times. Use `GUNGRAUN_LOG=info` to also show captured and
+          logged output.
+
+          If no value is given, the default missing value is `true` and doesn't capture stdout and
+          stderr. Besides `true` or `false` you can specify the special values `stdout` or `stderr`.
+          If `--nocapture=stdout` is given, the output to `stdout` won't be captured and the output
+          to `stderr` will be discarded. Likewise, if `--nocapture=stderr` is specified, the output
+          to `stderr` won't be captured and the output to `stdout` will be discarded.
+
+          [env: GUNGRAUN_NOCAPTURE=]
+          [default: false]
+
+      --nosummary[=&lt;NOSUMMARY&gt;]
+          Suppress the summary showing regressions and execution time at the end of a benchmark run
+
+          Note, that a summary is only printed if the `--output-format` is not JSON.
+
+          The summary described by `--nosummary` is different from `--save-summary` and they do not
+          affect each other.
+
+          [env: GUNGRAUN_NOSUMMARY=]
+          [default: false]
+          [possible values: true, false]
+
+      --output-format &lt;OUTPUT_FORMAT&gt;
+          The terminal output format in default human-readable format or in machine-readable json
+          format
+
+          # The JSON Output Format
+
+          The json terminal output schema is the same as the schema with the `--save-summary`
+          argument when saving to a `summary.json` file. All other output than the json output goes
+          to stderr and only the summary output goes to stdout. When not printing pretty json, each
+          line is a dictionary summarizing a single benchmark. You can combine all lines (benchmarks)
+          into an array for example with `jq`
+
+          `cargo bench -- --output-format=json | jq -s`
+
+          which transforms `{...}\n{...}` into `[{...},{...}]`
+
+          Possible values:
+          - default:     The default terminal output
+          - json:        Json terminal output
+          - pretty-json: Pretty json terminal output
+
+          [env: GUNGRAUN_OUTPUT_FORMAT=]
+          [default: default]
+
+      --save-summary[=&lt;SAVE_SUMMARY&gt;]
+          Save a machine-readable summary of each benchmark run in json format next to the usual
+          benchmark output
+
+          Possible values:
+          - json:        The format in a space optimal json representation without newlines
+          - pretty-json: The format in pretty printed json
+
+          [env: GUNGRAUN_SAVE_SUMMARY=]
+
+      --show-grid[=&lt;SHOW_GRID&gt;]
+          Show an ascii grid in the benchmark terminal output
+
+          A matter of taste but the guiding lines can also be helpful reading benchmark output when
+          running multiple tools with multiple threads and subprocesses for example by using
+          `--show-intermediate`.
+
+          [env: GUNGRAUN_SHOW_GRID=]
+          [possible values: true, false]
+
+      --show-intermediate[=&lt;SHOW_INTERMEDIATE&gt;]
+          Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
+
+          In callgrind, threads are treated as separate units (similar to subprocesses) and the
+          metrics for them are dumped into an own file. Other valgrind tools usually separate the
+          output files only by subprocesses. Use this option, to also show the metrics of any
+          intermediate fragments and not just the total over all of them.
+
+          Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
+          multi-thread/multi-process benchmarks.
+
+          [env: GUNGRAUN_SHOW_INTERMEDIATE=]
+          [possible values: true, false]
+
+      --show-only-comparison[=&lt;SHOW_ONLY_COMPARISON&gt;]
+          Show only the comparison between different benchmarks when using `compare_by_id`
+
+          If you're only interested in the comparisons between different benchmarks but not the
+          metric
+          differences between the self comparisons of the new and old benchmark run, use this option.
+          This option is only useful if `compare_by_id` is used in the `library_benchmark_group!` or
+          `binary_benchmark_group!`. Note, that it does not prevent any benchmarks to be run,
+          especially benchmarks which are not compared to another benchmark. Such benchmarks have
+          only
+          the usual benchmark headline printed.
+
+          [env: GUNGRAUN_SHOW_ONLY_COMPARISON=]
+          [possible values: true, false]
+
+      --tolerance[=&lt;TOLERANCE&gt;]
+          Show changes only when they are above the `tolerance` level
+
+          If no value is specified, the default value of `0.000_009_999_999_999_999_999` is based on
+          the number of decimal places of the percentages displayed in the terminal output in case of
+          differences.
+
+          Negative tolerance values are converted to their absolute value.
+
+          Examples:
+          * --tolerance (applies the default value)
+          * --tolerance=0.1 (set the tolerance level to `0.1`)
+
+          [env: GUNGRAUN_TOLERANCE=]
+
+      --truncate-description[=&lt;TRUNCATE_DESCRIPTION&gt;]
+          Adjust, enable or disable the truncation of the description in the Gungraun output
+
+          The default is to truncate the description to the size of 50 ascii characters. A false
+          value disables the truncation entirely and a value will truncate the description to the
+          given amount of characters excluding the ellipsis.
+
+          To clearify which part of the output is meant by `DESCRIPTION`:
+
+          ```text
+          benchmark_file::group_name::function_name id:DESCRIPTION
+            Instructions:              352135|352135          (No change)
+            ...
+          ```
+
+          Examples:
+            * --truncate-description=no (disables truncation)
+            * --truncate-description=100 (set the truncation to 100 ascii chars)
+            * --truncate-description (this is the default and sets the size of 50 ascii chars)
+
+          [env: GUNGRAUN_TRUNCATE_DESCRIPTION=]
+
+      --bbv-args &lt;BBV_ARGS&gt;
+          The command-line arguments to pass through to the experimental BBV
+
+          &lt;https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --bbv-args=--interval-size=10000
+            * --bbv-args='--interval-size=10000 --instr-count-only=yes'
+
+          [env: GUNGRAUN_BBV_ARGS=]
+
+      --cachegrind-args &lt;CACHEGRIND_ARGS&gt;
+          The command-line arguments to pass through to Cachegrind
+
+          &lt;https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --cachegrind-args=--intr-at-start=no
+            * --cachegrind-args='--branch-sim=yes --instr-at-start=no'
+
+          [env: GUNGRAUN_CACHEGRIND_ARGS=]
+
+      --callgrind-args &lt;CALLGRIND_ARGS&gt;
+          The command-line arguments to pass through to Callgrind
+
+          &lt;https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options&gt; and the core valgrind
+          command-line arguments
+          &lt;https://valgrind.org/docs/manual/manual-core.html#manual-core.options&gt;. Note that not all
+          command-line arguments are supported especially the ones which change output paths.
+          Unsupported arguments will be ignored printing a warning.
+
+          Examples:
+            * --callgrind-args=--dump-instr=yes
+            * --callgrind-args='--dump-instr=yes --collect-systime=yes'
+
+          [env: GUNGRAUN_CALLGRIND_ARGS=]
+
+      --dhat-args &lt;DHAT_ARGS&gt;
+          The command-line arguments to pass through to DHAT
+
+          &lt;https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --dhat-args=--mode=ad-hoc
+
+          [env: GUNGRAUN_DHAT_ARGS=]
+
+      --drd-args &lt;DRD_ARGS&gt;
+          The command-line arguments to pass through to DRD
+
+          &lt;https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --drd-args=--exclusive-threshold=100
+            * --drd-args='--exclusive-threshold=100 --free-is-write=yes'
+
+          [env: GUNGRAUN_DRD_ARGS=]
+
+      --helgrind-args &lt;HELGRIND_ARGS&gt;
+          The command-line arguments to pass through to Helgrind
+
+          &lt;https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --helgrind-args=--free-is-write=yes
+            * --helgrind-args='--conflict-cache-size=100000 --free-is-write=yes'
+
+          [env: GUNGRAUN_HELGRIND_ARGS=]
+
+      --massif-args &lt;MASSIF_ARGS&gt;
+          The command-line arguments to pass through to Massif
+
+          &lt;https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --massif-args=--heap=no
+            * --massif-args='--heap=no --threshold=2.0'
+
+          [env: GUNGRAUN_MASSIF_ARGS=]
+
+      --memcheck-args &lt;MEMCHECK_ARGS&gt;
+          The command-line arguments to pass through to Memcheck
+
+          &lt;https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --memcheck-args=--leak-check=full
+            * --memcheck-args='--leak-check=yes --show-leak-kinds=all'
+
+          [env: GUNGRAUN_MEMCHECK_ARGS=]
+
+      --valgrind-args &lt;VALGRIND_ARGS&gt;
+          The command-line arguments to pass through to all tools
+
+          The core valgrind command-line arguments
+          &lt;https://valgrind.org/docs/manual/manual-core.html#manual-core.options&gt; which are
+          recognized by all tools. More specific arguments for example set with --callgrind-args
+          override the arguments with the same name specified with this option.
+
+          Examples:
+            * --valgrind-args=--time-stamp=yes
+            * --valgrind-args='--error-exitcode=202 --num-callers=50'
+
+          [env: GUNGRAUN_VALGRIND_ARGS=]
+
+      --cachegrind-limits &lt;CACHEGRIND_LIMITS&gt;
+          Set performance regression limits for specific cachegrind metrics
+
+          This is a `,` separate list of CachegrindMetric=limit or CachegrindMetrics=limit
+          (key=value) pairs. See the description of --callgrind-limits for the details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetrics.html&gt;
+          respectively &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetric.html&gt;
+          for valid metrics and group members.
+
+          See the the guide
+          (https://gungraun.github.io/gungraun/latest/html/regressions.html) for all
+          details or replace the format spec in `--callgrind-limits` with the following:
+
+          group ::= "@" ( "default"
+                        | "all"
+                        | ("cachemisses" | "misses" | "ms")
+                        | ("cachemissrates" | "missrates" | "mr")
+                        | ("cachehits" | "hits" | "hs")
+                        | ("cachehitrates" | "hitrates" | "hr")
+                        | ("cachesim" | "cs")
+                        | ("branchsim" | "bs")
+                        )
+          event ::= CachegrindMetric
+
+          Examples:
+          * --cachegrind-limits='ir=0.0%'
+          * --cachegrind-limits='ir=10000,EstimatedCycles=10%'
+          * --cachegrind-limits='@all=10%,ir=10000,EstimatedCycles=10%'
+
+          [env: GUNGRAUN_CACHEGRIND_LIMITS=]
+
+      --callgrind-limits &lt;CALLGRIND_LIMITS&gt;
+          Set performance regression limits for specific `EventKinds`
+
+          This is a `,` separate list of EventKind=limit or CallgrindMetrics=limit (key=value) pairs
+          with the limit being a soft limit if the number suffixed with a `%` or a hard limit if it
+          is a bare number. It is possible to specify hard and soft limits in one go with the `|`
+          operator (e.g. `ir=10%|10000`). Groups (CallgrindMetrics) are prefixed with `@`. List of
+          allowed groups and events with their abbreviations:
+
+          group ::= "@" ( "default"
+                        | "all"
+                        | ("cachemisses" | "misses" | "ms")
+                        | ("cachemissrates" | "missrates" | "mr")
+                        | ("cachehits" | "hits" | "hs")
+                        | ("cachehitrates" | "hitrates" | "hr")
+                        | ("cachesim" | "cs")
+                        | ("cacheuse" | "cu")
+                        | ("systemcalls" | "syscalls" | "sc")
+                        | ("branchsim" | "bs")
+                        | ("writebackbehaviour" | "writeback" | "wb")
+                        )
+          event ::= EventKind
+
+          See the guide (https://gungraun.github.io/gungraun/latest/html/regressions.html)
+          for more details, the docs of `CallgrindMetrics`
+          (&lt;https://docs.rs/gungraun/latest/gungraun/enum.CallgrindMetrics.html&gt;) and
+          `EventKind` &lt;https://docs.rs/gungraun/latest/gungraun/enum.EventKind.html&gt; for a
+          list of metrics and groups with their members.
+
+          A performance regression check for an `EventKind` fails if the limit is exceeded. If
+          limits are defined and one or more regressions have occurred during the benchmark run,
+          the whole benchmark is considered to have failed and the program exits with error and
+          exit code `3`.
+
+          Examples:
+          * --callgrind-limits='ir=5.0%'
+          * --callgrind-limits='ir=10000,EstimatedCycles=10%'
+          * --callgrind-limits='@all=10%,ir=5%|10000'
+
+          [env: GUNGRAUN_CALLGRIND_LIMITS=]
+
+      --dhat-limits &lt;DHAT_LIMITS&gt;
+          Set performance regression limits for specific dhat metrics
+
+          This is a `,` separate list of DhatMetrics=limit or DhatMetric=limit (key=value) pairs. See
+          the description of --callgrind-limits for the details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetrics.html&gt; respectively
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetric.html&gt; for valid metrics
+          and group members.
+
+          See the the guide
+          (https://gungraun.github.io/gungraun/latest/html/regressions.html) for all
+          details or replace the format spec in `--callgrind-limits` with the following:
+
+          group ::= "@" ( "default" | "all" )
+          event ::=   ( "totalunits" | "tun" )
+                    | ( "totalevents" | "tev" )
+                    | ( "totalbytes" | "tb" )
+                    | ( "totalblocks" | "tbk" )
+                    | ( "attgmaxbytes" | "gb" )
+                    | ( "attgmaxblocks" | "gbk" )
+                    | ( "attendbytes" | "eb" )
+                    | ( "attendblocks" | "ebk" )
+                    | ( "readsbytes" | "rb" )
+                    | ( "writesbytes" | "wb" )
+                    | ( "totallifetimes" | "tl" )
+                    | ( "maximumbytes" | "mb" )
+                    | ( "maximumblocks" | "mbk" )
+
+          `events` with a long name have their allowed abbreviations placed in the same parentheses.
+
+          Examples:
+          * --dhat-limits='totalbytes=0.0%'
+          * --dhat-limits='totalbytes=10000,totalblocks=5%'
+          * --dhat-limits='@all=10%,totalbytes=5000,totalblocks=5%'
+
+          [env: GUNGRAUN_DHAT_LIMITS=]
+
+      --regression-fail-fast[=&lt;REGRESSION_FAIL_FAST&gt;]
+          If true, the first failed performance regression check fails the whole benchmark run
+
+          Note that if --regression-fail-fast is set to true, no summary is printed.
+
+          [env: GUNGRAUN_REGRESSION_FAIL_FAST=]
+          [possible values: true, false]
+
+      --cachegrind-metrics &lt;CACHEGRIND_METRICS&gt;...
+          Define the cachegrind metrics and the order in which they are displayed
+
+          This is a `,`-separated list of cachegrind metric groups and event kinds which are allowed
+          to appear in the terminal output of cachegrind.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetrics.html&gt;
+          respectively
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetric.html&gt; for valid
+          metrics and group members.
+
+          The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+          described in the `--cachegrind-limits` option.
+
+          Examples:
+          * --cachegrind-metrics='ir' to show only `Instructions`
+          * --cachegrind-metrics='@all' to show all possible cachegrind metrics
+          * --cachegrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
+
+          [env: GUNGRAUN_CACHEGRIND_METRICS=]
+
+      --callgrind-metrics &lt;CALLGRIND_METRICS&gt;...
+          Define the callgrind metrics and the order in which they are displayed
+
+          This is a `,`-separated list of callgrind metric groups and event kinds which are allowed
+          to appear in the terminal output of callgrind. Group names need to be prefixed with '@'.
+          The order matters and the callgrind metrics are shown in their insertion order of this
+          option. More precisely, in case of duplicate metrics, the first specified one wins.
+
+          The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+          described in the `--callgrind-limits` option.
+
+          For a list of valid metrics, groups and their members see the docs of `CallgrindMetrics`
+          (&lt;https://docs.rs/gungraun/latest/gungraun/enum.CallgrindMetrics.html&gt;) and
+          `EventKind` &lt;https://docs.rs/gungraun/latest/gungraun/enum.EventKind.html&gt;.
+
+          Note that setting the metrics here does not imply that these metrics are actually
+          collected. This option just sets the order and appearance of metrics in case they are
+          collected. To activate the collection of specific metrics you need to use
+          `--callgrind-args`.
+
+          Examples:
+          * --callgrind-metrics='ir' to show only `Instructions`
+          * --callgrind-metrics='@all' to show all possible callgrind metrics
+          * --callgrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
+
+          [env: GUNGRAUN_CALLGRIND_METRICS=]
+
+      --dhat-metrics &lt;DHAT_METRICS&gt;...
+          Define the dhat metrics and the order in which they are displayed
+
+          This is a `,`-separated list of dhat metric groups and event kinds which are allowed to
+          appear in the terminal output of dhat.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetrics.html&gt; respectively
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetric.html&gt; for valid metrics
+          and group members.
+
+          The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+          described in the `--dhat-limits` option.
+
+          Examples:
+          * --dhat-metrics='totalbytes' to show only `Total Bytes`
+          * --dhat-metrics='@all' to show all possible dhat metrics
+          * --dhat-metrics='@default,mb' to show maximum bytes in addition to the defaults
+
+          [env: GUNGRAUN_DHAT_METRICS=]
+
+      --drd-metrics &lt;DRD_METRICS&gt;...
+          Define the drd error metrics and the order in which they are displayed
+
+          This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+          output of drd. The `group` and `event` are the same as for `--memcheck-metrics`.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.ErrorMetric.html&gt; for valid error
+          metrics.
+
+          Since this is a very small set of metrics, there is only one `group`: `@all`
+
+          Examples:
+          * --drd-metrics='errors' to show only `Errors`
+          * --drd-metrics='@all' to show all possible error metrics (the default)
+          * --drd-metrics='err,ctx' to show only errors and contexts
+
+          [env: GUNGRAUN_DRD_METRICS=]
+
+      --helgrind-metrics &lt;HELGRIND_METRICS&gt;...
+          Define the helgrind error metrics and the order in which they are displayed
+
+          This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+          output of helgrind. The `group` and `event` are the same as for `--memcheck-metrics`.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.ErrorMetric.html&gt; for valid error
+          metrics.
+
+          Examples:
+          * --helgrind-metrics='errors' to show only `Errors`
+          * --helgrind-metrics='@all' to show all possible error metrics (the default)
+          * --helgrind-metrics='err,ctx' to show only errors and contexts
+
+          [env: GUNGRAUN_HELGRIND_METRICS=]
+
+      --memcheck-metrics &lt;MEMCHECK_METRICS&gt;...
+          Define the memcheck error metrics and the order in which they are displayed
+
+          This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+          output of memcheck.
+
+          Since this is a very small set of metrics, there is only one `group`: `@all`
+
+          group ::= "@all"
+          event ::=   ( "errors" | "err" )
+                    | ( "contexts" | "ctx" )
+                    | ( "suppressederrors" | "serr")
+                    | ( "suppressedcontexts" | "sctx" )
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.ErrorMetric.html&gt; for valid
+          metrics.
+
+          Examples:
+          * --memcheck-metrics='errors' to show only `Errors`
+          * --memcheck-metrics='@all' to show all possible error metrics (the default)
+          * --memcheck-metrics='err,ctx' to show only errors and contexts
+
+          [env: GUNGRAUN_MEMCHECK_METRICS=]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+  Exit codes:
+      0: Success
+      1: All other errors
+      2: Parsing command-line arguments failed
+      3: One or more regressions occurred
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../flamegraphs.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../cli_and_env/baselines.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../flamegraphs.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../cli_and_env/baselines.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../js/dropdown.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,6 +1,7 @@
 document.write(
   '\
 <!-- Insert new version here -->\
+<a href="/gungraun/0.17.2/html/index.html">0.17.2</a>\
 <a href="/gungraun/0.17.1/html/index.html">0.17.1</a>\
 <a href="/gungraun/0.17.0/html/index.html">0.17.0</a>\
 <a href="/gungraun/0.16.1/html/index.html">0.16.1</a>\

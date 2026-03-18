@@ -1,0 +1,4 @@
+src/main.rs:main 10
+src/main.rs:main;src/main.rs:rec_func 20
+src/main.rs:main;src/main.rs:rec_func;src/main.rs:leaf 30
+src/main.rs:main;src/main.rs:helper 15

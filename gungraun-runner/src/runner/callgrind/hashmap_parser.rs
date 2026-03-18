@@ -67,7 +67,7 @@ pub struct HashMapParser {
 }
 
 /// The unique `Id` identifying a function uniquely
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize, Deserialize)]
 pub struct Id {
     /// the file the function is found in
     pub file: Option<SourcePath>,
@@ -135,8 +135,23 @@ impl From<Id> for CurrentId {
 impl CallgrindParser for HashMapParser {
     type Output = CallgrindMap;
 
-    #[allow(clippy::too_many_lines)]
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
+        self.parse_with_edges(path, |_, _, _| {})
+    }
+}
+
+impl HashMapParser {
+    /// Like [`CallgrindParser::parse_single`] but invokes `on_call_edge(caller, callee, cost)`
+    /// for each caller→callee edge encountered.
+    #[allow(clippy::too_many_lines)]
+    pub fn parse_with_edges<F>(
+        &self,
+        path: &Path,
+        mut on_call_edge: F,
+    ) -> Result<(CallgrindProperties, CallgrindMap)>
+    where
+        F: FnMut(&Id, &Id, &Metrics),
+    {
         let mut iter = BufReader::new(File::open(path)?)
             .lines()
             .map(Result::unwrap);
@@ -229,8 +244,14 @@ impl CallgrindParser for HashMapParser {
                     )?;
 
                     if let Some(cfn_record) = cfn_record.take() {
+                        let callee_id = cfn_record.id.expect("cfn record id must be present");
+                        on_call_edge(
+                            &current_id.clone().try_into().expect("A valid id"),
+                            &callee_id,
+                            &metrics,
+                        );
                         cfn_totals
-                            .entry(cfn_record.id.expect("cfn record id must be present"))
+                            .entry(callee_id)
                             .and_modify(|value| value.metrics.add(&metrics))
                             .or_insert(Value {
                                 metrics: metrics.clone(),

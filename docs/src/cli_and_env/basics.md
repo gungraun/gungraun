@@ -25,10 +25,8 @@ have a corresponding command-line argument are:
 
 For an update-to-date list run `cargo bench` with `--help` as described above.
 
-<!-- FIX: UPDATE -->
-
 ````text
-High-precision and consistent benchmarking framework/harness for Rust
+High-precision, one-shot and consistent benchmarking framework/harness for Rust
 
 Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
 instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
@@ -114,8 +112,10 @@ Options:
           could noise up the callgrind cache simulation results a bit. Setting this option to true
           runs all benchmarks with ASLR enabled.
 
-          See also
-          <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
+          See also [kernel.org: randomize_va_space]
+
+          [kernel.org: randomize_va_space]:
+          https://docs.kernel.org/admin-guide/sysctl/kernel.html#randomize-va-space
 
           [env: GUNGRAUN_ALLOW_ASLR=]
           [possible values: true, false]
@@ -219,6 +219,25 @@ Options:
 
           [env: GUNGRAUN_OUTPUT_FORMAT=]
           [default: default]
+
+      --parallel[=<PARALLEL>]
+          Number of benchmarks to run in parallel.
+
+          A value of `1` runs benchmarks serially which is the default if this option is not
+          specified. Passing `auto` lets the runner choose the parallelism level based on available
+          hardware which is the number of available logical cores.
+
+          Note that benchmark groups are used as synchronization points and only benchmarks within
+          the same group are executed in parallel.
+
+          Valgrind and gungraun perform disk I/O even if your benchmarks don't. This is usually a
+          bottleneck, so running with parallelism of 10 may provide similar speedup as 5. Actual
+          results depend on the hardware and if your benchmarks are performing disk I/O, too.
+
+          Examples: * --parallel=4 * --parallel=auto
+
+          [env: GUNGRAUN_PARALLEL=]
+          [default: 1]
 
       --save-summary[=<SAVE_SUMMARY>]
           Save a machine-readable summary of each benchmark run in json format next to the usual
@@ -425,10 +444,10 @@ Options:
           (key=value) pairs. See the description of --callgrind-limits for the details and
           <https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetrics.html>
           respectively <https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetric.html>
-           for valid metrics and group members.
+          for valid metrics and group members.
 
           See the guide
-          (https://gungraun.github.io/gungraun/latest/html/regressions.html) for all
+          (<https://gungraun.github.io/gungraun/latest/html/regressions.html>) for all
           details or replace the format spec in `--callgrind-limits` with the following:
 
           group ::= "@" ( "default"
@@ -472,7 +491,7 @@ Options:
                         )
           event ::= EventKind
 
-          See the guide (https://gungraun.github.io/gungraun/latest/html/regressions.html)
+          See the guide (<https://gungraun.github.io/gungraun/latest/html/regressions.html>)
           for more details, the docs of `CallgrindMetrics`
           (<https://docs.rs/gungraun/latest/gungraun/enum.CallgrindMetrics.html>) and
           `EventKind` <https://docs.rs/gungraun/latest/gungraun/enum.EventKind.html> for a
@@ -497,10 +516,10 @@ Options:
           the description of --callgrind-limits for the details and
           <https://docs.rs/gungraun/latest/gungraun/enum.DhatMetrics.html> respectively
           <https://docs.rs/gungraun/latest/gungraun/enum.DhatMetric.html> for valid metrics
-           and group members.
+          and group members.
 
           See the guide
-          (https://gungraun.github.io/gungraun/latest/html/regressions.html) for all
+          (<https://gungraun.github.io/gungraun/latest/html/regressions.html>) for all
           details or replace the format spec in `--callgrind-limits` with the following:
 
           group ::= "@" ( "default" | "all" )

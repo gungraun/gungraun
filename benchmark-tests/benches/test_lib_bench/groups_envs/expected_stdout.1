@@ -1,8 +1,5 @@
-test_bin_bench_command_delay::delay::delay_duration delay:() -> target/release/file-exists some.pid true
-Waiting to create file...
-Creating file...
-File created...
-Verifying that file exists succeeded
+test_lib_bench_groups_envs::pass_through_single::bench_print_env_single single:(& [TEST_VAR_1])
+__GUNGRAUN_TEST_VAR_1=yes
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -10,11 +7,9 @@ Verifying that file exists succeeded
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-test_bin_bench_command_delay::delay::delay_path delay:() -> target/release/file-exists some.pid true
-Waiting to create file...
-Creating file...
-File created...
-Verifying that file exists succeeded
+test_lib_bench_groups_envs::pass_through_multiple::bench_print_env_multiple multiple:(& [TEST_VAR_1, TEST_VAR_2])
+__GUNGRAUN_TEST_VAR_1=yes
+__GUNGRAUN_TEST_VAR_2=no
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -22,11 +17,8 @@ Verifying that file exists succeeded
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-test_bin_bench_command_delay::delay::delay_tcp delay:() -> target/release/echo "I'm ECHO"
-Waiting to start server...
-Starting server...
-I'm ECHO
-Stopped server...
+test_lib_bench_groups_envs::custom_single::bench_print_env_custom_single single:(& ["FOO=BAR"])
+FOO=BAR
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -34,11 +26,19 @@ Stopped server...
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-test_bin_bench_command_delay::delay::delay_udp delay:() -> target/release/echo "I'm ECHO"
-Waiting to start server...
-Starting server...
-Stopped server...
-I'm ECHO
+test_lib_bench_groups_envs::custom_multiple::bench_print_env_custom_multiple multiple:(& ["FOO=BAR", "BAR=BAZ"])
+FOO=BAR
+BAR=BAZ
+- end of stdout/stderr
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+test_lib_bench_groups_envs::configs::bench_print_env_when_config multiple:(& ["FOO=BAR", "BAR=BAZ"])
+FOO=BAR
+BAR=BAZ
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -47,4 +47,4 @@ I'm ECHO
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
 
-Gungraun result: Ok. 4 without regressions; 0 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 5 without regressions; 0 regressed; 0 filtered; 5 benchmarks finished in <__SECONDS__>s

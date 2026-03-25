@@ -20,7 +20,10 @@
 #   - Group teardown assertions pass, verifying correct cost attribution
 #   - Flamegraphs are generated
 
-# TODO: assert files and maybe output
 groups:
   - runs:
       - args: ["--nocapture"]
+        expected:
+          files: expected_files.1.yml
+          stdout: expected_stdout.1
+          no_stderr: true

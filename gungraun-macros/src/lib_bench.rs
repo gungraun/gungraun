@@ -297,7 +297,7 @@ impl Bench {
                     self.consts
                         .to_function_calls(&self.generics, callee_ident, Some(bench_id));
 
-                // TODO: Why the difference?
+                // There is a difference to allow the clippy let_unit_value lint
                 let call_bench_id = if self.setup.is_some() {
                     self.teardown.render_as_code(quote_spanned! {
                         bench_id.span() => {

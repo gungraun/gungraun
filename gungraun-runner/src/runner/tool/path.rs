@@ -1431,7 +1431,6 @@ mod tests {
         }
     }
 
-    // TODO: Test with temp dir
     #[rstest]
     #[case::out(
         ValgrindTool::Callgrind,

@@ -1,0 +1,28 @@
+data:
+  - group: my_group
+    function: bench_lib
+    id: default
+    expected:
+      files:
+        - callgrind.bench_lib.default.log
+        - callgrind.bench_lib.default.out
+        - callgrind.bench_lib.default.total.Ir.flamegraph.svg
+        - summary.json
+  - group: my_group
+    function: bench_lib
+    id: none
+    expected:
+      files:
+        - callgrind.bench_lib.none.log
+        - callgrind.bench_lib.none.out
+        - callgrind.bench_lib.none.total.Ir.flamegraph.svg
+        - summary.json
+  - group: my_group
+    function: bench_lib
+    id: nested
+    expected:
+      files:
+        - callgrind.bench_lib.nested.log
+        - callgrind.bench_lib.nested.out
+        - callgrind.bench_lib.nested.total.Ir.flamegraph.svg
+        - summary.json

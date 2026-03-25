@@ -10,16 +10,15 @@ use gungraun::{
 };
 
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
+const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
 
-// TODO: Improve this test and show that the delay really works. for example with a parallel setup
-// output
 #[binary_benchmark]
-#[bench::delay()]
+#[bench::delay(setup = setup_path())]
 fn delay_duration() -> Command {
-    Command::new(ECHO)
-        .arg("I'm ECHO")
+    Command::new(FILE_EXISTS)
+        .args(["some.pid", "true"])
         .setup_parallel(true)
-        .delay(Duration::from_millis(500))
+        .delay(Duration::from_millis(600))
         .build()
 }
 
@@ -34,16 +33,15 @@ fn setup_path() {
     println!("File created...");
 }
 
-// TODO: test without sandbox, too
 #[binary_benchmark]
 #[bench::delay(setup = setup_path())]
 fn delay_path() -> Command {
-    Command::new(ECHO)
-        .arg("I'm ECHO")
+    Command::new(FILE_EXISTS)
+        .args(["some.pid", "true"])
         .setup_parallel(true)
         .delay(
             Delay::new(DelayKind::PathExists("some.pid".into()))
-                .timeout(Duration::from_millis(500)),
+                .timeout(Duration::from_millis(600)),
         )
         .build()
 }
@@ -105,7 +103,6 @@ fn setup_udp_server() {
     println!("Stopped server...");
 }
 
-// FIX: Why is Stopped server printed before the echo output?
 #[binary_benchmark]
 #[bench::delay(setup = setup_udp_server())]
 fn delay_udp() -> Command {

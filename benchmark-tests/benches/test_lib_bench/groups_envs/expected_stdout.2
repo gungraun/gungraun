@@ -1,0 +1,50 @@
+test_lib_bench_groups_envs::pass_through_single::bench_print_env_single single:(& [TEST_VAR_1])
+__GUNGRAUN_TEST_VAR_1=yes
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+test_lib_bench_groups_envs::pass_through_multiple::bench_print_env_multiple multiple:(& [TEST_VAR_1, TEST_VAR_2])
+__GUNGRAUN_TEST_VAR_1=yes
+__GUNGRAUN_TEST_VAR_2=no
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+test_lib_bench_groups_envs::custom_single::bench_print_env_custom_single single:(& ["FOO=BAR"])
+FOO=BAR
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+test_lib_bench_groups_envs::custom_multiple::bench_print_env_custom_multiple multiple:(& ["FOO=BAR", "BAR=BAZ"])
+FOO=BAR
+BAR=BAZ
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+test_lib_bench_groups_envs::configs::bench_print_env_when_config multiple:(& ["FOO=BAR", "BAR=BAZ"])
+FOO=BAR
+BAR=BAZ
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+
+Gungraun result: Ok. 5 without regressions; 0 regressed; 0 filtered; 5 benchmarks finished in <__SECONDS__>s

@@ -862,7 +862,6 @@ mod tests {
         assert_eq!(Delay::from(delay), expected);
     }
 
-    // TODO: test delay path with current dir
     #[test]
     fn test_delay_path() {
         let dir = tempdir().unwrap();
@@ -879,6 +878,29 @@ mod tests {
 
         thread::sleep(Duration::from_millis(100));
         File::create(file_path).unwrap();
+
+        handle.join().unwrap();
+        drop(dir);
+    }
+
+    #[test]
+    fn test_delay_path_with_current_dir() {
+        let dir = tempdir().unwrap();
+        let file_path = PathBuf::from("file.pid");
+
+        let delay = Delay {
+            poll: Duration::from_millis(50),
+            timeout: Duration::from_millis(200),
+            kind: DelayKind::PathExists(file_path.clone()),
+        };
+
+        let dir_path = dir.path().to_owned();
+        let handle = thread::spawn(move || {
+            delay.apply(Some(&dir_path)).unwrap();
+        });
+
+        thread::sleep(Duration::from_millis(100));
+        File::create(dir.path().join(file_path)).unwrap();
 
         handle.join().unwrap();
         drop(dir);

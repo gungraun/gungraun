@@ -1,8 +1,4 @@
-test_bin_bench_command_delay::delay::delay_duration delay:() -> target/release/file-exists some.pid true
-Waiting to create file...
-Creating file...
-File created...
-Verifying that file exists succeeded
+test_lib_bench_entry_point::my_group::bench_lib none
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -10,11 +6,7 @@ Verifying that file exists succeeded
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-test_bin_bench_command_delay::delay::delay_path delay:() -> target/release/file-exists some.pid true
-Waiting to create file...
-Creating file...
-File created...
-Verifying that file exists succeeded
+test_lib_bench_entry_point::my_group::bench_lib default
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -22,23 +14,7 @@ Verifying that file exists succeeded
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-test_bin_bench_command_delay::delay::delay_tcp delay:() -> target/release/echo "I'm ECHO"
-Waiting to start server...
-Starting server...
-I'm ECHO
-Stopped server...
-- end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-test_bin_bench_command_delay::delay::delay_udp delay:() -> target/release/echo "I'm ECHO"
-Waiting to start server...
-Starting server...
-Stopped server...
-I'm ECHO
+test_lib_bench_entry_point::my_group::bench_lib nested
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -47,4 +23,4 @@ I'm ECHO
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
 
-Gungraun result: Ok. 4 without regressions; 0 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 3 without regressions; 0 regressed; 0 filtered; 3 benchmarks finished in <__SECONDS__>s

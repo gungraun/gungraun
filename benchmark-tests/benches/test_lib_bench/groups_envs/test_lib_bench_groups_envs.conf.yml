@@ -10,6 +10,7 @@
 #   2. Run benchmarks to compare against the baseline
 #
 # Test Inputs:
+#   - Test environment variables
 #   - Single environment variable pass-through via pass_through_env
 #   - Multiple environment variables pass-through via pass_through_envs
 #   - Custom environment variable setting via env
@@ -25,12 +26,21 @@
 #   - Configuration inheritance works correctly across levels
 #   - Environment variables printed in output for verification
 
-# TODO: Verify output
 groups:
   - runs:
-      - args: []
+      - args: ["--nocapture", "--truncate-description=no"]
+        env:
+          __GUNGRAUN_TEST_VAR_1: yes
+          __GUNGRAUN_TEST_VAR_2: no
         expected:
           files: expected_files.1.yml
-      - args: []
+          stdout: expected_stdout.1
+          no_stderr: true
+      - args: ["--nocapture", "--truncate-description=no"]
+        env:
+          __GUNGRAUN_TEST_VAR_1: yes
+          __GUNGRAUN_TEST_VAR_2: no
         expected:
           files: expected_files.2.yml
+          stdout: expected_stdout.2
+          no_stderr: true

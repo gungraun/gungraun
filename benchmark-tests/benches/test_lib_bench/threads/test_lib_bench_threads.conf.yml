@@ -17,12 +17,11 @@
 #   - `compare_by_id` for consistent comparison
 #
 # Test Environment:
-#   - Excluded on FreeBSD and nightly Rust due to thread scheduling differences
+#   - Excluded on FreeBSD due to thread scheduling differences
 #   - Uses `flaky: 3` retry tolerance on FreeBSD
 
 groups:
   - runs_on: "!x86_64-unknown-freebsd"
-    rust_version: "!=nightly"
     runs:
       - args: ["--nocapture"]
         tolerance: 5
@@ -72,7 +71,6 @@ groups:
   # the tests can sometimes produce less files (a file for a thread was missing)
   # than expected therefore they are marked as flaky.
   - runs_on: "x86_64-unknown-freebsd"
-    rust_version: "!=nightly"
     runs:
       # The first run does not show any differences because there is no
       # benchmark run to compare to, so the stdout can be verified at least this

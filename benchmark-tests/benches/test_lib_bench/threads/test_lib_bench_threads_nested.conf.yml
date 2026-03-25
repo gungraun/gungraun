@@ -24,12 +24,8 @@
 #   - Excluded on FreeBSD and nightly Rust
 #   - Uses `entry_point(EntryPoint::None)` with manual instrumentation calls
 
-# TODO: Run these tests on nightly toolchain when rust upstream bug in nightly
-# is fixed
-
 groups:
   - runs_on: "!x86_64-unknown-freebsd"
-    rust_version: "!=nightly"
     runs:
       - args: ["--nocapture"]
         expected:
@@ -60,7 +56,6 @@ groups:
   # The tests on freebsd don't verify the stdout since freebsd does not support
   # `--fair-sched=yes` and the differences between two benchmark runs are random
   - runs_on: "x86_64-unknown-freebsd"
-    rust_version: "!=nightly"
     runs:
       # The first run does not show any differences because there is no
       # benchmark run to compare to, so the stdout can be verified at least this

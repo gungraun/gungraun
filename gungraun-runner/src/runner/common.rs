@@ -563,11 +563,9 @@ impl Assistant {
                 if output.status.success() {
                     Ok(output)
                 } else {
-                    let status = output.status;
                     Err(Error::new_process_error(
                         module_path.join(&id).to_string(),
-                        Some(output),
-                        status,
+                        output,
                         None,
                     ))
                 }

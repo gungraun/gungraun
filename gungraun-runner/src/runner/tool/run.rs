@@ -2,7 +2,7 @@
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Output};
+use std::process::{Child, Command, Output};
 
 use anyhow::Result;
 use log::{debug, error};
@@ -253,22 +253,17 @@ impl ToolCommandChild {
     }
 }
 
-// TODO: Refactor together with ProcessError and take output: Output instead of an option. Then
-// return Result<Output>
-///
 /// Check the exit code of the [`ToolCommand`] and verify it matches the expected [`ExitWith`]
 pub fn check_exit(
     tool: ValgrindTool,
     executable: &Path,
-    output: Option<Output>,
-    status: ExitStatus,
+    output: Output,
     output_path: &ToolOutputPath,
     exit_with: Option<&ExitWith>,
-) -> Result<Option<Output>> {
-    let Some(status_code) = status.code() else {
-        return Err(
-            Error::new_process_error(tool.id(), output, status, Some(output_path.clone())).into(),
-        );
+) -> Result<Output> {
+    let Some(status_code) = output.status.code() else {
+        // death by signal
+        return Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into());
     };
 
     match (status_code, exit_with) {
@@ -280,10 +275,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(
-                Error::new_process_error(tool.id(), output, status, Some(output_path.clone()))
-                    .into(),
-            )
+            Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into())
         }
         (0i32, Some(ExitWith::Failure)) => {
             error!(
@@ -291,10 +283,7 @@ pub fn check_exit(
                 tool.id(),
                 executable.display(),
             );
-            Err(
-                Error::new_process_error(tool.id(), output, status, Some(output_path.clone()))
-                    .into(),
-            )
+            Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into())
         }
         (_, Some(ExitWith::Failure)) => Ok(output),
         (code, Some(ExitWith::Success)) => {
@@ -304,10 +293,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(
-                Error::new_process_error(tool.id(), output, status, Some(output_path.clone()))
-                    .into(),
-            )
+            Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into())
         }
         (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
             Ok(output)
@@ -320,13 +306,8 @@ pub fn check_exit(
                 expected_code,
                 actual_code
             );
-            Err(
-                Error::new_process_error(tool.id(), output, status, Some(output_path.clone()))
-                    .into(),
-            )
+            Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into())
         }
-        _ => Err(
-            Error::new_process_error(tool.id(), output, status, Some(output_path.clone())).into(),
-        ),
+        _ => Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into()),
     }
 }

@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::io::stderr;
 use std::os::unix::process::ExitStatusExt;
 use std::path::PathBuf;
-use std::process::{ExitStatus, Output};
+use std::process::Output;
 
 use version_compare::Cmp;
 
@@ -62,12 +62,7 @@ pub enum Error {
     ///     ToolOutputPath
     /// )
     /// ```
-    ProcessError(
-        Box<String>,
-        Option<Box<Output>>,
-        ExitStatus,
-        Option<Box<ToolOutputPath>>,
-    ),
+    ProcessError(Box<String>, Box<Output>, Option<Box<ToolOutputPath>>),
     /// If a regression check fails a `RegressionError` is issued
     ///
     /// `RegressionError(is_fatal)`, `is_fatal` needs to be true if the error should lead to an
@@ -92,16 +87,10 @@ impl Error {
     /// overall size of the [`Error`] enum.
     pub fn new_process_error(
         name: String,
-        output: Option<Output>,
-        exit_status: ExitStatus,
+        output: Output,
         output_path: Option<ToolOutputPath>,
     ) -> Self {
-        Self::ProcessError(
-            Box::new(name),
-            output.map(Box::new),
-            exit_status,
-            output_path.map(Box::new),
-        )
+        Self::ProcessError(Box::new(name), Box::new(output), output_path.map(Box::new))
     }
 }
 
@@ -143,17 +132,15 @@ impl Display for Error {
             Self::LaunchError(exec, message) => {
                 write!(f, "Error launching '{}': {message}", exec.display())
             }
-            Self::ProcessError(process, output, status, output_path) => {
+            Self::ProcessError(process, output, output_path) => {
                 if let Some(output_path) = output_path {
                     let _ = output_path.dump_log(log::Level::Error, &mut stderr());
                 }
-                if let Some(output) = output {
-                    write_all_to_stderr(&output.stderr);
-                }
+                write_all_to_stderr(&output.stderr);
 
-                if let Some(code) = status.code() {
+                if let Some(code) = output.status.code() {
                     write!(f, "Error running '{process}': Exit code was: '{code}'")
-                } else if let Some(signal) = status.signal() {
+                } else if let Some(signal) = output.status.signal() {
                     write!(
                         f,
                         "Error running '{process}': Terminated by a signal '{signal}'"

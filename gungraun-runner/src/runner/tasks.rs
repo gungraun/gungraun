@@ -394,7 +394,7 @@ impl ProcessHandler {
     ///
     /// [`ExitWith`]: crate::api::ExitWith
     /// [`Error::TaskInterrupt`]: crate::error::Error::TaskInterrupt
-    pub fn wait_or_shutdown(&mut self) -> Result<Option<Output>> {
+    pub fn wait_or_shutdown(&mut self) -> Result<Output> {
         let mut bench_child = self
             .bench
             .take()
@@ -409,12 +409,10 @@ impl ProcessHandler {
         .wait(&self.force_shutdown, self.poll_interval)
         .with_context(|| "Trying to wait for the benchmark process to stop")
         .and_then(|output| {
-            let status = output.status;
             check_exit(
                 bench_child.tool,
                 &bench_child.executable,
-                Some(output),
-                status,
+                output,
                 &bench_child.log_path,
                 bench_child.exit_with.as_ref(),
             )
@@ -438,8 +436,7 @@ impl ProcessHandler {
                 } else {
                     Err(Error::new_process_error(
                         self.module_path.join(id).to_string(),
-                        Some(output),
-                        status,
+                        output,
                         None,
                     )
                     .into())

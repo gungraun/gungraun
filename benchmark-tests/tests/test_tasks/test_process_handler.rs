@@ -311,9 +311,10 @@ fn test_start_bench_when_setup_not_parallel_with_error_then_no_bench_and_setup_e
         .downcast::<Error>()
         .expect("The error should be the gungraun error")
     {
-        Error::ProcessError(_, _, status, _) => {
+        Error::ProcessError(_, output, _) => {
             assert_eq!(
-                status
+                output
+                    .status
                     .code()
                     .expect("The exit status code should be present"),
                 expected_exit_code
@@ -364,8 +365,7 @@ fn test_wait_or_shutdown_when_force_shutdown_is_false(#[case] has_setup: bool) {
 
     let output = handler
         .wait_or_shutdown()
-        .expect("Waiting for the benchmark process should succeed")
-        .expect("An output after a successful run should be present");
+        .expect("Waiting for the benchmark process should succeed");
 
     assert!(handler.bench.is_none());
     assert!(output.status.success());
@@ -458,9 +458,12 @@ fn test_wait_or_shutdown_when_error_in_setup_then_setup_error(#[case] exit_code:
 
     assert!(handler.bench.is_none());
     match result {
-        Error::ProcessError(_, _, status, _) => {
+        Error::ProcessError(_, output, _) => {
             assert_eq!(
-                status.code().expect("An exit code should be present"),
+                output
+                    .status
+                    .code()
+                    .expect("An exit code should be present"),
                 expected_exit_code
             );
         }
@@ -496,8 +499,7 @@ fn test_wait_or_shutdown_when_exit_with(#[case] exit_with_code: i32) {
 
     let output = handler
         .wait_or_shutdown()
-        .expect("Waiting for the benchmark to exit with the expected code should succeed")
-        .expect("An output should be present");
+        .expect("Waiting for the benchmark to exit with the expected code should succeed");
 
     assert!(handler.bench.is_none());
     assert_eq!(
@@ -541,9 +543,12 @@ fn test_wait_or_shutdown_when_exit_with_no_match_then_error() {
 
     assert!(handler.bench.is_none());
     match error {
-        Error::ProcessError(_, _, status, _) => {
+        Error::ProcessError(_, output, _) => {
             assert_eq!(
-                status.code().expect("An exit code should be present"),
+                output
+                    .status
+                    .code()
+                    .expect("An exit code should be present"),
                 actual_exit_code
             );
         }

@@ -98,12 +98,13 @@ gungnir
 gungraun
 hard_limit
 Hasher
-HEAPBLOCK
 heapblock
+HEAPBLOCK
 Heisler
 Helgrind
 hitrate
 hitrates
+hkps
 hljs
 hwpref
 idirafter
@@ -112,8 +113,8 @@ ilmr
 ilog
 iname
 indexmap
-IndexSet
 indexset
+IndexSet
 inlines
 instrs
 iquote
@@ -126,6 +127,7 @@ JITter
 jsonschema
 Justfile
 kcachegrind
+keyserver
 lateout
 LazyLock
 lbzip2
@@ -141,8 +143,8 @@ llhitrate
 llhits
 llimissrate
 llmissrate
-logfile
 Logfile
+logfile
 logfiles
 malloc
 malloclike

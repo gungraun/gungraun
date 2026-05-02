@@ -29,6 +29,7 @@ mod imp {
         X86,
         X86_64,
         Riscv64,
+        S390x,
         Native,
         No,
     }
@@ -219,6 +220,8 @@ mod imp {
             Some(Support::Aarch64)
         } else if target.arch == "riscv64gc" && target.os == "linux" {
             Some(Support::Riscv64)
+        } else if target.arch == "s390x" && target.os == "linux" {
+            Some(Support::S390x)
         } else {
             let re = regex::Regex::new(
                 r"VR_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)",

@@ -49,6 +49,7 @@ jobs:
       - name: Check Documentation
         run: cargo doc --all-features --no-deps --document-private-items
 
+  # FIX: Add macos, if successful also in release workflow
   build_release:
     name: Release build for targets supported by valgrind
     runs-on: ubuntu-latest

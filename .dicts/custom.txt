@@ -82,8 +82,8 @@ estimatedcycles
 EventKind
 exidx
 exitcode
-flamegraph
 Flamegraph
+flamegraph
 flamegraphs
 Flamegraphs
 fldcw
@@ -114,8 +114,8 @@ ilmr
 ilog
 iname
 indexmap
-IndexSet
 indexset
+IndexSet
 inlines
 instrs
 iquote
@@ -123,8 +123,8 @@ isystem
 Itamar
 itertools
 jcnd
-jitter
 JITter
+jitter
 jsonschema
 Justfile
 kcachegrind
@@ -209,8 +209,8 @@ pthread
 PTHREAD
 punct
 pushd
-Quickstart
 quickstart
+Quickstart
 ramhitrate
 ramhits
 raun

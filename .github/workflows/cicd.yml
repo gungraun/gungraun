@@ -72,3 +72,8 @@ jobs:
     uses: ./.github/workflows/freebsd.yml
     with:
       cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}
+
+  macos:
+    name: MacOS checks
+    needs: [basic]
+    uses: ./.github/workflows/macos.yml

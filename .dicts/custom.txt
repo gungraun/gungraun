@@ -6,8 +6,8 @@ ahash
 Aparicio
 ARANGE
 armv7
-ASLR
 aslr
+ASLR
 Assche
 atstart
 attendblocks
@@ -36,9 +36,9 @@ cachemissrates
 cachesim
 cacheuse
 cachuse
-callgrind
-CALLGRIND
 Callgrind
+CALLGRIND
+callgrind
 CFLAGS
 cicd
 Clearify
@@ -81,10 +81,10 @@ estimatedcycles
 EventKind
 exidx
 exitcode
-flamegraph
 Flamegraph
-Flamegraphs
+flamegraph
 flamegraphs
+Flamegraphs
 fldcw
 formattable
 freelike
@@ -112,8 +112,8 @@ ilmr
 ilog
 iname
 indexmap
-IndexSet
 indexset
+IndexSet
 inlines
 instrs
 iquote
@@ -121,8 +121,8 @@ isystem
 Itamar
 itertools
 jcnd
-jitter
 JITter
+jitter
 jsonschema
 Justfile
 kcachegrind
@@ -144,6 +144,7 @@ llmissrate
 logfile
 Logfile
 logfiles
+LouisBrunner
 malloc
 malloclike
 massif
@@ -205,8 +206,8 @@ pthread
 PTHREAD
 punct
 pushd
-Quickstart
 quickstart
+Quickstart
 ramhitrate
 ramhits
 raun
@@ -236,8 +237,8 @@ rustified
 RUSTSEC
 rustup
 rustversion
-rwlock
 RWLOCK
+rwlock
 rwlocks
 sandboxing
 sanitized
@@ -299,8 +300,8 @@ USERSO
 usize
 valgrind
 Valgrind
-Valgrind's
 valgrind's
+Valgrind's
 Valgrinds
 valico
 valist

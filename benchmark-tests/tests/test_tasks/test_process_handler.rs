@@ -12,7 +12,7 @@ use tempfile::tempdir;
 use crate::assert_not_elapsed;
 use crate::util::common::{
     BENCH_BIN_FAKE_EXE, ECHO_EXE, EXIT_WITH_EXE, FILE_EXISTS_EXE, TIMEOUT_EXE,
-    cleanup_test_process_handler,
+    cleanup_test_process_handler, tool_output_path_dump,
 };
 use crate::util::fixtures::{
     assistant_f, config_f, force_shutdown_f, module_path_f, process_handler_f, run_options_f,
@@ -160,7 +160,9 @@ fn test_start_bench_when_force_shutdown_is_false_then_bench_is_started(
             &tool_config_f().fixture(),
             &ECHO_EXE,
             &["foo".into()],
-            &RunOptions::default(),
+            &run_options_f()
+                .env_clear(!cfg!(target_os = "macos"))
+                .fixture(),
             &tool_output_path,
             &module_path_f().fixture(),
             None,
@@ -178,7 +180,14 @@ fn test_start_bench_when_force_shutdown_is_false_then_bench_is_started(
         .wait_with_output()
         .expect("Waiting for the benchmark process to exit should succeed");
 
-    assert!(output.status.success());
+    if !output.status.success() {
+        use std::io::stderr;
+
+        let mut writer = stderr();
+        tool_output_path_dump(&tool_output_path.to_log_output(), &mut writer).unwrap();
+        panic!("Assertion failed: Exit status was failure");
+    }
+
     assert_eq!(std::str::from_utf8(&output.stdout).unwrap(), "foo\n");
 
     cleanup_test_process_handler(handler);
@@ -205,7 +214,10 @@ fn test_start_bench_when_setup_is_parallel_then_bench_is_started(#[case] exit_co
         )
         .fixture();
 
-    let run_options = run_options_f().fixture();
+    let run_options = run_options_f()
+        .env_clear(!cfg!(target_os = "macos"))
+        .fixture();
+
     let result = handler.start_bench(
         tool_command_f()
             .output_path(&tool_output_path)
@@ -222,7 +234,7 @@ fn test_start_bench_when_setup_is_parallel_then_bench_is_started(#[case] exit_co
     );
 
     result.expect("Starting the benchmark should succeed");
-    let mut child = handler
+    let child = handler
         .bench
         .take()
         .expect("The tool command child process should be present")
@@ -230,10 +242,17 @@ fn test_start_bench_when_setup_is_parallel_then_bench_is_started(#[case] exit_co
         .take()
         .expect("The benchmark child process should be present");
 
-    let status = child
-        .wait()
+    let output = child
+        .wait_with_output()
         .expect("Waiting for the benchmark process to exit should succeed");
-    assert!(status.success());
+
+    if !output.status.success() {
+        use std::io::stderr;
+
+        let mut writer = stderr();
+        tool_output_path_dump(&tool_output_path.to_log_output(), &mut writer).unwrap();
+        panic!("Assertion failed: Exit status was failure");
+    }
 
     cleanup_test_process_handler(handler);
 }

@@ -41,3 +41,8 @@ jobs:
     name: Freebsd checks
     needs: [basic]
     uses: ./.github/workflows/freebsd.yml
+
+  macos:
+    name: MacOS checks
+    needs: [basic]
+    uses: ./.github/workflows/macos.yml

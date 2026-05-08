@@ -177,7 +177,7 @@ pub fn test_file_f(dir: Option<&Path>) -> (PathBuf, File) {
 }
 
 #[builder(finish_fn = "fixture")]
-pub fn run_options_f() -> RunOptions {
+pub fn run_options_f(env_clear: Option<bool>) -> RunOptions {
     // Sometimes necessary to be able to run the tests with valgrind
     let valgrind_lib = OsString::from("VALGRIND_LIB");
 
@@ -189,7 +189,7 @@ pub fn run_options_f() -> RunOptions {
     RunOptions {
         current_dir: None,
         delay: None,
-        env_clear: true,
+        env_clear: env_clear.unwrap_or(true),
         envs,
         exit_with: None,
         sandbox: None,

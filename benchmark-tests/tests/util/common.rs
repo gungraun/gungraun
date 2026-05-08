@@ -1,12 +1,12 @@
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::LazyLock;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use gungraun::ValgrindTool;
 use gungraun_runner::runner::summary::BaselineKind;
 use gungraun_runner::runner::tasks::ProcessHandler;
@@ -303,6 +303,26 @@ pub fn cleanup_test_process_handler(process_handler: ProcessHandler) {
             .wait()
             .expect("Waiting for the teardown process should succeed");
     }
+}
+
+/// If the [`log::Level`] matches dump the content of all output files into the `writer`
+pub fn tool_output_path_dump<W>(tool_output_path: &ToolOutputPath, writer: &mut W) -> Result<()>
+where
+    W: Write,
+{
+    for path in tool_output_path.real_paths()? {
+        let file = File::open(&path).with_context(|| {
+            format!(
+                "Error opening {} output file '{}'",
+                tool_output_path.tool.id(),
+                path.display()
+            )
+        })?;
+
+        let mut reader = BufReader::new(file);
+        std::io::copy(&mut reader, writer)?;
+    }
+    Ok(())
 }
 
 pub fn get_project_root() -> PathBuf {

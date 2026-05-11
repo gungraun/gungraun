@@ -15,6 +15,7 @@ mod imp {
 
     #[derive(Debug)]
     struct Target {
+        abi: String,
         arch: String,
         env: String,
         os: String,
@@ -50,6 +51,7 @@ mod imp {
 
         fn from_env() -> Self {
             Self {
+                abi: std::env::var("CARGO_CFG_TARGET_ABI").unwrap(),
                 arch: std::env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
                 env: std::env::var("CARGO_CFG_TARGET_ENV").unwrap(),
                 os: std::env::var("CARGO_CFG_TARGET_OS").unwrap(),
@@ -198,9 +200,8 @@ mod imp {
         let bindings = build_bindings(&target);
 
         let support = if target.arch == "x86_64"
-            && (target.os == "linux"
+            && (((target.os == "linux" || target.os == "android") && target.abi != "x32")
                 || target.os == "freebsd"
-                || target.os == "android"
                 || (target.vendor == "apple" && target.os == "darwin")
                 || (target.os == "windows" && target.env == "gnu")
                 || ((target.vendor == "sun" || target.vendor == "pc") && target.os == "solaris"))

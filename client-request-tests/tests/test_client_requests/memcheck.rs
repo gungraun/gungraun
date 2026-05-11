@@ -26,8 +26,6 @@ fn test_memcheck_reqs_when_running_on_valgrind() {
         Ok(assert) => {
             let fixture_string = if cfg!(target_arch = "arm") {
                 common::get_fixture_as_string("memcheck-reqs-test.armv7.stderr")
-            } else if cfg!(target_arch = "s390x") {
-                common::get_fixture_as_string("memcheck-reqs-test.s390x.stderr")
             } else if cfg!(target_os = "freebsd") {
                 common::get_fixture_as_string("memcheck-reqs-test.freebsd.stderr")
             } else if cfg!(target_arch = "x86_64") {

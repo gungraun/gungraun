@@ -81,8 +81,8 @@ estimatedcycles
 EventKind
 exidx
 exitcode
-flamegraph
 Flamegraph
+flamegraph
 Flamegraphs
 flamegraphs
 fldcw
@@ -203,12 +203,12 @@ printenv
 println
 proccontrol
 profraw
-pthread
 PTHREAD
+pthread
 punct
 pushd
-Quickstart
 quickstart
+Quickstart
 ramhitrate
 ramhits
 raun
@@ -225,6 +225,7 @@ rlib
 rlval
 rlwinm
 rolq
+rotldi
 rposition
 rsplit
 rstest
@@ -300,10 +301,10 @@ unsanitized
 USERREQ
 USERSO
 usize
-valgrind
 Valgrind
-valgrind's
+valgrind
 Valgrind's
+valgrind's
 Valgrinds
 valico
 valist

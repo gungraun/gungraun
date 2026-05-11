@@ -31,6 +31,7 @@ mod imp {
         Riscv64,
         S390x,
         Powerpc,
+        Powerpc64, // little and big endian
         Native,
         No,
     }
@@ -227,9 +228,17 @@ mod imp {
             Some(Support::S390x)
         } else if target.arch == "powerpc"
             && target.os == "linux"
-            && rust_version.is_some_and(|r| r.major >= 1 && r.minor >= 95)
+            && rust_version
+                .as_ref()
+                .is_some_and(|r| r.major >= 1 && r.minor >= 95)
         {
             Some(Support::Powerpc)
+            // Note target.arch matches both little and big endian
+        } else if target.arch == "powerpc64"
+            && target.os == "linux"
+            && rust_version.is_some_and(|r| r.major >= 1 && r.minor >= 95)
+        {
+            Some(Support::Powerpc64)
         } else {
             let re = regex::Regex::new(
                 r"VR_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)",

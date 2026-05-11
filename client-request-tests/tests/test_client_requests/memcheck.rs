@@ -30,6 +30,8 @@ fn test_memcheck_reqs_when_running_on_valgrind() {
                 common::get_fixture_as_string("memcheck-reqs-test.freebsd.stderr")
             } else if cfg!(target_arch = "x86_64") {
                 common::get_fixture_as_string("memcheck-reqs-test.x86_64.stderr")
+            } else if cfg!(target_arch = "powerpc64") && cfg!(target_endian = "little") {
+                common::get_fixture_as_string("memcheck-reqs-test.powerpc64le.stderr")
             } else {
                 common::get_fixture_as_string("memcheck-reqs-test.stderr")
             };

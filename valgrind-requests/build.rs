@@ -30,6 +30,7 @@ mod imp {
         X86_64,
         Riscv64,
         S390x,
+        Powerpc,
         Native,
         No,
     }
@@ -170,10 +171,12 @@ mod imp {
 
         println!("cargo:rerun-if-env-changed=TARGET");
 
+        let rust_version = get_rust_version();
+
         // rustc-check-cfg is introduced in rust with version 1.80 and avoids the compiler warnings
         // in version >= 1.80.0. Printing it when compiling with versions < 1.80 triggers a warning,
         // too. To get the best of both worlds we check against the currently active rust version.
-        if let Some(rust_version) = get_rust_version() {
+        if let Some(rust_version) = &rust_version {
             if rust_version.major >= 1 && rust_version.minor >= 80 {
                 let values = Support::iter()
                     .map(|s| format!("\"{s}\""))
@@ -222,6 +225,11 @@ mod imp {
             Some(Support::Riscv64)
         } else if target.arch == "s390x" && target.os == "linux" {
             Some(Support::S390x)
+        } else if target.arch == "powerpc"
+            && target.os == "linux"
+            && rust_version.is_some_and(|r| r.major >= 1 && r.minor >= 95)
+        {
+            Some(Support::Powerpc)
         } else {
             let re = regex::Regex::new(
                 r"VR_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)",

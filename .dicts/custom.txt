@@ -36,8 +36,8 @@ cachemissrates
 cachesim
 cacheuse
 cachuse
-callgrind
 CALLGRIND
+callgrind
 Callgrind
 CFLAGS
 cicd
@@ -98,8 +98,8 @@ gungnir
 gungraun
 hard_limit
 Hasher
-heapblock
 HEAPBLOCK
+heapblock
 Heisler
 Helgrind
 hitrate
@@ -113,8 +113,8 @@ ilmr
 ilog
 iname
 indexmap
-indexset
 IndexSet
+indexset
 inlines
 instrs
 iquote
@@ -122,8 +122,8 @@ isystem
 Itamar
 itertools
 jcnd
-jitter
 JITter
+jitter
 jsonschema
 Justfile
 kcachegrind
@@ -143,8 +143,8 @@ llhitrate
 llhits
 llimissrate
 llmissrate
-Logfile
 logfile
+Logfile
 logfiles
 malloc
 malloclike
@@ -223,6 +223,7 @@ resizeinplace
 riscv
 rlib
 rlval
+rlwinm
 rolq
 rposition
 rsplit
@@ -238,8 +239,8 @@ rustified
 RUSTSEC
 rustup
 rustversion
-rwlock
 RWLOCK
+rwlock
 rwlocks
 sandboxing
 sanitized
@@ -301,8 +302,8 @@ USERSO
 usize
 valgrind
 Valgrind
-Valgrind's
 valgrind's
+Valgrind's
 Valgrinds
 valico
 valist

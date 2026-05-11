@@ -66,7 +66,6 @@ jobs:
       - name: Run the tests
         run: just test valgrind-requests
 
-  # TODO: Verify that not the native fallback is used
   test_linux:
     name: Run client request tests on linux targets
     needs: [build, test_basic]
@@ -100,6 +99,7 @@ jobs:
         run: just reqs-test ${{ matrix.target }}
         env:
           RUSTUP_TOOLCHAIN: "stable"
+          VALGRIND_REQUESTS_STRATEGY: strict
         #   CROSS_DEBUG: "1"
 
   test_freebsd:
@@ -112,8 +112,9 @@ jobs:
         env:
           VALGRIND_REQUESTS_VALGRIND_INCLUDE: "/usr/local/include"
           VALGRIND_REQUESTS_VALGRIND_PATH: "/usr/local/bin"
+          VALGRIND_REQUESTS_STRATEGY: strict
         with:
-          environment_variables: VALGRIND_REQUESTS_VALGRIND_INCLUDE VALGRIND_REQUESTS_VALGRIND_PATH CARGO_TERM_COLOR
+          environment_variables: VALGRIND_REQUESTS_VALGRIND_INCLUDE VALGRIND_REQUESTS_VALGRIND_PATH CARGO_TERM_COLOR VALGRIND_REQUESTS_STRATEGY
           operating_system: freebsd
           architecture: x86-64
           version: "15.0"

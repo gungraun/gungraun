@@ -73,7 +73,8 @@ jobs:
     with:
       cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}
 
-  macos:
-    name: MacOS checks
-    needs: [basic]
-    uses: ./.github/workflows/macos.yml
+  # FIX: REENABLE
+  # macos:
+  #   name: MacOS checks
+  #   needs: [basic]
+  #   uses: ./.github/workflows/macos.yml

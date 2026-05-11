@@ -17,14 +17,19 @@ env:
 jobs:
   build:
     name: Build with feature powerset
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        toolchain:
-          - "1.85.1" # MSRV
-          - stable
-          - nightly
+        include:
+          - toolchain: "1.85.1" # MSRV
+            os: ubuntu-latest
+          - toolchain: stable
+            os: ubuntu-latest
+          - toolchain: nightly
+            os: ubuntu-latest
+          - toolchain: stable
+            os: macos-14
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -36,9 +41,16 @@ jobs:
         with:
           key: ${{ matrix.toolchain }}
       - name: Install valgrind
+        if: matrix.os == 'ubuntu-latest'
         run: ./scripts/install_valgrind.sh "$VALGRIND_VERSION"
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Install valgrind
+        if: matrix.os == 'macos-14'
+        run: |
+          brew tap LouisBrunner/valgrind
+          brew install --HEAD LouisBrunner/valgrind/valgrind
+          echo "VALGRIND_REQUESTS_VALGRIND_INCLUDE=$(brew --prefix)/include" >> "$GITHUB_ENV"
       - name: Update dependencies
         if: matrix.toolchain != '1.85.1'
         run: cargo update
@@ -135,3 +147,22 @@ jobs:
 
             echo Disk usage
             df -h
+
+  test_macos:
+    name: Run client request tests on macos targets
+    needs: [build, test_basic]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install valgrind
+        run: |
+          brew tap LouisBrunner/valgrind
+          brew install --HEAD LouisBrunner/valgrind/valgrind
+          echo "VALGRIND_REQUESTS_VALGRIND_INCLUDE=$(brew --prefix)/include" >> "$GITHUB_ENV"
+      - name: Update dependencies
+        run: cargo update
+      - name: Test client requests
+        run: cargo test -p client-request-tests --test tests --release -- --nocapture
+        env:
+          VALGRIND_REQUESTS_STRATEGY: strict

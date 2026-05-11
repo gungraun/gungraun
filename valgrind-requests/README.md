@@ -183,6 +183,8 @@ the costs for the function call. All targets covered by Valgrind are also
 covered by `valgrind-requests`. Targets not supported by Valgrind produce a
 compile error.
 
+<!-- FIX: UPDATE TABLE -->
+
 | Target                | Optimized | Reason                   |
 | --------------------- | --------- | ------------------------ |
 | `x86_64/linux`        | yes       | -                        |

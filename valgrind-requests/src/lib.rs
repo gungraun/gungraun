@@ -109,6 +109,8 @@
 //! Here's a short overview on which targets the optimized client requests are available and why
 //! not:
 //!
+//! FIX: Update table
+//!
 //! | Target                | Optimized | Reason  |
 //! | --------------------- | --------- | ------- |
 //! | `x86_64/linux`        | yes | -

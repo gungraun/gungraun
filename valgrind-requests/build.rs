@@ -197,11 +197,10 @@ mod imp {
 
         let bindings = build_bindings(&target);
 
-        // FIX: Add android
-        // These guards mirror the checks in the `valgrind.h` header file
         let support = if target.arch == "x86_64"
             && (target.os == "linux"
                 || target.os == "freebsd"
+                || target.os == "android"
                 || (target.vendor == "apple" && target.os == "darwin")
                 || (target.os == "windows" && target.env == "gnu")
                 || ((target.vendor == "sun" || target.vendor == "pc") && target.os == "solaris"))
@@ -210,16 +209,18 @@ mod imp {
         } else if target.arch == "x86"
             && (target.os == "linux"
                 || target.os == "freebsd"
+                || target.os == "android"
                 || (target.vendor == "apple" && target.os == "darwin")
                 || (target.os == "windows" && target.env == "gnu")
                 || ((target.vendor == "sun" || target.vendor == "pc") && target.os == "solaris"))
         {
             Some(Support::X86)
-        } else if target.arch == "arm" && target.os == "linux" && target.env == "gnu" {
+        } else if target.arch == "arm" && (target.os == "linux" || target.os == "android") {
             Some(Support::Arm)
         } else if target.arch == "aarch64"
-            && (target.os == "freebsd"
-                || (target.os == "linux" && target.env == "gnu")
+            && ((target.os == "linux")
+                || target.os == "freebsd"
+                || target.os == "android"
                 || (target.vendor == "apple" && target.os == "macos"))
         {
             Some(Support::Aarch64)

@@ -13,31 +13,54 @@ on:
   schedule:
     - cron: "00 01 * * *"
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: "1"
-  VALGRIND_VERSION: "3.26.0"
-
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  config:
+    name: Shared workflow config
+    runs-on: ubuntu-latest
+    outputs:
+      cargo_term_color: ${{ steps.config.outputs.cargo_term_color }}
+      rust_backtrace: ${{ steps.config.outputs.rust_backtrace }}
+      valgrind_version: ${{ steps.config.outputs.valgrind_version }}
+    steps:
+      - id: config
+        run: |
+          {
+            echo 'cargo_term_color=always'
+            echo 'rust_backtrace=1'
+            echo 'valgrind_version=3.26.0'
+          } >> "$GITHUB_OUTPUT"
+
   basic:
     name: Basic checks
+    needs: [config]
     uses: ./.github/workflows/basic.yml
+    with:
+      cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}
+      rust_backtrace: ${{ needs.config.outputs.rust_backtrace }}
 
   common:
     name: Common checks
-    needs: [basic]
+    needs: [basic, config]
     uses: ./.github/workflows/common.yml
+    with:
+      cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}
+      valgrind_version: ${{ needs.config.outputs.valgrind_version }}
 
   linux:
     name: Linux checks
-    needs: [basic]
+    needs: [basic, config]
     uses: ./.github/workflows/linux.yml
+    with:
+      cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}
+      valgrind_version: ${{ needs.config.outputs.valgrind_version }}
 
   freebsd:
     name: Freebsd checks
-    needs: [basic]
+    needs: [basic, config]
     uses: ./.github/workflows/freebsd.yml
+    with:
+      cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}

@@ -3,11 +3,15 @@ name: FreeBSD checks
 
 on:
   workflow_call:
+    inputs:
+      cargo_term_color:
+        required: false
+        type: string
 
 env:
   VALGRIND_REQUESTS_VALGRIND_INCLUDE: "/usr/local/include"
   VALGRIND_REQUESTS_VALGRIND_PATH: "/usr/local/bin"
-  CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: ${{ inputs.cargo_term_color }}
 
 jobs:
   build_hack:

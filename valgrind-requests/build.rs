@@ -246,7 +246,7 @@ mod imp {
                 || (target.vendor == "apple" && target.os == "macos"))
         {
             Some(Support::Aarch64)
-        } else if target.arch == "riscv64gc" && target.os == "linux" {
+        } else if target.arch == "riscv64" && target.os == "linux" {
             Some(Support::Riscv64)
         } else if target.arch == "s390x" && target.os == "linux" {
             Some(Support::S390x)

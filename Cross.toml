@@ -5,12 +5,18 @@
 runner = "qemu-system"
 image = "ghcr.io/gungraun/x86_64-unknown-linux-gnu:latest"
 
+[target.x86_64-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
+
 ################
 # i686
 ################
 [target.i686-unknown-linux-gnu]
 runner = "qemu-system"
 image = "ghcr.io/gungraun/i686-unknown-linux-gnu:latest"
+
+[target.i686-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
 
 ################
 # s390x
@@ -19,12 +25,18 @@ image = "ghcr.io/gungraun/i686-unknown-linux-gnu:latest"
 runner = "qemu-system"
 image = "ghcr.io/gungraun/s390x-unknown-linux-gnu:latest"
 
+[target.s390x-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
+
 ################
 # aarch64
 ################
 [target.aarch64-unknown-linux-gnu]
 runner = "qemu-system"
 image = "ghcr.io/gungraun/aarch64-unknown-linux-gnu:latest"
+
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
 
 ################
 # armv7
@@ -33,12 +45,18 @@ image = "ghcr.io/gungraun/aarch64-unknown-linux-gnu:latest"
 runner = "qemu-system"
 image = "ghcr.io/gungraun/armv7-unknown-linux-gnueabihf:latest"
 
+[target.armv7-unknown-linux-gnueabihf.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
+
 ################
 # powerpc
 ################
 [target.powerpc-unknown-linux-gnu]
 runner = "qemu-system"
 image = "ghcr.io/gungraun/powerpc-unknown-linux-gnu:latest"
+
+[target.powerpc-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
 
 ################
 # powerpc64
@@ -47,6 +65,9 @@ image = "ghcr.io/gungraun/powerpc-unknown-linux-gnu:latest"
 runner = "qemu-system"
 image = "ghcr.io/gungraun/powerpc64-unknown-linux-gnu:latest"
 
+[target.powerpc64-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
+
 ################
 # powerpc64le
 ################
@@ -54,12 +75,18 @@ image = "ghcr.io/gungraun/powerpc64-unknown-linux-gnu:latest"
 runner = "qemu-system"
 image = "ghcr.io/gungraun/powerpc64le-unknown-linux-gnu:latest"
 
+[target.powerpc64le-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
+
 ################
 # riscv64gc
 ################
 [target.riscv64gc-unknown-linux-gnu]
 runner = "qemu-system"
 image = "ghcr.io/gungraun/riscv64gc-unknown-linux-gnu:latest"
+
+[target.riscv64gc-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
 
 ################
 # mips64el-unknown-linux-gnuabi64
@@ -69,6 +96,9 @@ build-std = true
 runner = "qemu-system"
 image = "ghcr.io/gungraun/mips64el-unknown-linux-gnuabi64:latest"
 
+[target.mips64el-unknown-linux-gnuabi64.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]
+
 ################
 # mipsel-unknown-linux-gnu
 ################
@@ -76,3 +106,6 @@ image = "ghcr.io/gungraun/mips64el-unknown-linux-gnuabi64:latest"
 build-std = true
 runner = "qemu-system"
 image = "ghcr.io/gungraun/mipsel-unknown-linux-gnu:latest"
+
+[target.mipsel-unknown-linux-gnu.env]
+passthrough = ["VALGRIND_REQUESTS_STRATEGY"]

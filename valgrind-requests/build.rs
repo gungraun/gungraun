@@ -13,6 +13,8 @@ mod imp {
     use rustc_version::{Version, version};
     use strum::{EnumIter, IntoEnumIterator};
 
+    use crate::BuildResult;
+
     #[derive(Debug)]
     struct Target {
         abi: String,
@@ -35,6 +37,30 @@ mod imp {
         Powerpc64, // little and big endian
         Native,
         No,
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    enum Strategy {
+        Strict,
+        Fallback,
+    }
+
+    impl Strategy {
+        fn from_env() -> BuildResult<Self> {
+            match std::env::var("VALGRIND_REQUESTS_STRATEGY") {
+                Ok(value) => match value.as_str() {
+                    "strict" => Ok(Self::Strict),
+                    "fallback" => Ok(Self::Fallback),
+                    _ => Err(format!(
+                        "invalid value for VALGRIND_REQUESTS_STRATEGY: {value}; valid values: \
+                         'strict', 'fallback'"
+                    )
+                    .into()),
+                },
+                Err(std::env::VarError::NotPresent) => Ok(Self::Fallback),
+                Err(error) => Err(format!("invalid VALGRIND_REQUESTS_STRATEGY: {error}").into()),
+            }
+        }
     }
 
     impl Display for Support {
@@ -157,11 +183,12 @@ mod imp {
         version().ok()
     }
 
-    pub fn main() {
+    pub fn main() -> BuildResult<()> {
         print_migration_warnings();
 
         let target = Target::from_env();
         let triple_env_key = target.triple_to_env_key();
+        let strategy = Strategy::from_env()?;
 
         println!("cargo:rerun-if-changed=valgrind/wrapper.h");
         println!("cargo:rerun-if-changed=valgrind/native.c");
@@ -173,6 +200,7 @@ mod imp {
         println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_{triple_env_key}_VALGRIND_INCLUDE");
 
         println!("cargo:rerun-if-env-changed=TARGET");
+        println!("cargo:rerun-if-env-changed=VALGRIND_REQUESTS_STRATEGY");
 
         let rust_version = get_rust_version();
 
@@ -187,7 +215,7 @@ mod imp {
             print_client_requests_support(&Support::X86_64);
             build_bindings(&target);
             build_native(&target);
-            return;
+            return Ok(());
         }
 
         let bindings = build_bindings(&target);
@@ -258,23 +286,42 @@ mod imp {
             support
         };
 
-        if let Some(support) = support {
-            print_client_requests_support(&support);
-            if support != Support::No {
+        match (strategy, support) {
+            (_, Some(Support::No)) => {
+                return Err(
+                    format!("target '{}' is unsupported by Valgrind", target.triple).into(),
+                );
+            }
+            (Strategy::Strict, Some(Support::Native)) => {
+                return Err(format!(
+                    "target '{}' doesn't have zero-indirection support and strict strategy is set",
+                    target.triple
+                )
+                .into());
+            }
+            (_, Some(support)) => {
+                print_client_requests_support(&support);
                 build_native(&target);
             }
-        } else {
-            eprintln!("{bindings}");
-            panic!("Unable to set cfg value for client_requests_support");
+            (_, None) => {
+                return Err("unable to determine client requests support".into());
+            }
         }
+
+        Ok(())
     }
 }
 
 #[cfg(not(feature = "stubs"))]
 mod imp {
-    pub fn main() {}
+    pub fn main() -> crate::BuildResult<()> {
+        Ok(())
+    }
 }
 
-fn main() {
-    imp::main();
+use std::error::Error;
+type BuildResult<T> = Result<T, Box<dyn Error>>;
+
+fn main() -> BuildResult<()> {
+    imp::main()
 }

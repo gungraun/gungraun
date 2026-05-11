@@ -287,10 +287,10 @@ reqs-test-targets:
 
 # Run the client request tests for a specific target on the stable toolchain. (Uses: 'cross', 'docker', 'grep')
 [group('test')]
-reqs-test target:
+reqs-test target *args:
     @just reqs-test-targets | grep -q '{{ target }}' \
         || { echo "Unsupported target: '{{ target }}'. Run 'just reqs-test-targets' to get a list of supported targets"; exit 1; }
-    CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096' cross test -p client-request-tests --test tests --target {{ target }} --release -- --nocapture
+    CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096' cross test -p client-request-tests --test tests --target {{ target }} --release {{ args }} -- --nocapture
 
 # Run a single benchmark test (Uses: 'coreutils', 'cargo')
 [group('test')]

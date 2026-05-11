@@ -372,7 +372,9 @@ impl Benchmark {
         // has been updated including the ubuntu specific version which had recently been patched
         // which might caused this issue.
         let mut envs = envs.clone();
-        envs.insert("RUSTFLAGS".to_owned(), "-C target-feature=-avx2".to_owned());
+        if !cfg!(target_os = "macos") {
+            envs.insert("RUSTFLAGS".to_owned(), "-C target-feature=-avx2".to_owned());
+        }
 
         if !envs.is_empty() {
             let envs_string = envs

@@ -174,44 +174,47 @@ The [`valgrind_printf!`], [`valgrind_printf_unchecked!`], [`valgrind_println!`],
 
 ## Platform support
 
-This is an ongoing work and depends on which platforms inline assembly is
-stable. Where it is stable, client requests execute with zero indirection - the
-same overhead as the original Valgrind C macros usable [even in high performance
-code][client-requests]. On other Valgrind-supported platforms, a native C FFI
-binding is used which introduces at least an additional frame on the stack and
-the costs for the function call. All targets covered by Valgrind are also
-covered by `valgrind-requests`. Targets not supported by Valgrind produce a
-compile error.
+If possible, client requests execute with zero indirection and the same overhead
+as the original Valgrind C macros usable [even in high performance
+code][client-requests]. On Valgrind-supported platforms for which
+zero-indirection isn't implemented by us, a native C FFI binding is used which
+introduces at least an additional frame on the stack and the costs for the
+function call. That means all targets covered by Valgrind are also covered by
+`valgrind-requests`. Targets not supported by Valgrind produce a compile error.
 
-<!-- FIX: UPDATE TABLE -->
+| Target               | Zero-indirection | Notes                                         |
+| -------------------- | ---------------- | --------------------------------------------- |
+| `x86_64/linux`       | yes              | except the x32 ABI                            |
+| `x86_64/android`     | yes              | except the x32 ABI                            |
+| `x86_64/freebsd`     | yes              | -                                             |
+| `x86_64/macos`       | yes              | the versions supported by Valgrind            |
+| `x86_64/windows+gnu` | yes              | -                                             |
+| `x86_64/solaris`     | yes              | -                                             |
+| `x86/linux`          | yes              | -                                             |
+| `x86/android`        | yes              | -                                             |
+| `x86/freebsd`        | yes              | -                                             |
+| `x86/macos`          | yes              | the versions supported by Valgrind            |
+| `x86/windows+gnu`    | yes              | -                                             |
+| `x86/solaris`        | yes              | -                                             |
+| `arm/linux`          | yes              | -                                             |
+| `arm/android`        | yes              | -                                             |
+| `aarch64/linux`      | yes              | -                                             |
+| `aarch64/android`    | yes              | -                                             |
+| `aarch64/freebsd`    | yes              | -                                             |
+| `aarch64/macos`      | yes              | [LouisBrunner/valgrind-macos][valgrind-macos] |
+| `riscv64/linux`      | yes              | -                                             |
+| `s390x/linux`        | yes              | -                                             |
+| `powerpc/linux`      | yes              | rust >= 1.95.0                                |
+| `powerpc64/linux`    | yes              | rust >= 1.95.0                                |
+| `powerpc64le/linux`  | yes              | rust >= 1.95.0                                |
+| `mips32/linux`       | no               | no rust inline assembly available             |
+| `mips64/linux`       | no               | no rust inline assembly available             |
+| `nanomips/linux`     | no               | no zero-indirection planned                   |
+| `x86/windows+msvc`   | no               | no zero-indirection planned                   |
 
-| Target                | Optimized | Reason                   |
-| --------------------- | --------- | ------------------------ |
-| `x86_64/linux`        | yes       | -                        |
-| `x86_64/freebsd`      | yes       | -                        |
-| `x86_64/apple+darwin` | yes       | -                        |
-| `x86_64/windows+gnu`  | yes       | -                        |
-| `x86_64/solaris`      | yes       | -                        |
-| `x86/linux`           | yes       | -                        |
-| `x86/freebsd`         | yes       | -                        |
-| `x86/apple+darwin`    | yes       | -                        |
-| `x86/windows+gnu`     | yes       | -                        |
-| `x86/solaris`         | yes       | -                        |
-| `x86/windows+msvc`    | no        | TBD                      |
-| `arm/linux`           | yes       | -                        |
-| `aarch64/linux`       | yes       | -                        |
-| `riscv64/linux`       | yes       | -                        |
-| `x86_64/windows+msvc` | no        | unsupported by Valgrind  |
-| `s390x/linux`         | no        | needs MSRV 1.84.0        |
-| `mips32/linux`        | no        | unstable inline assembly |
-| `mips64/linux`        | no        | unstable inline assembly |
-| `powerpc/linux`       | no        | needs MSRV 1.95.0        |
-| `powerpc64/linux`     | no        | needs MSRV 1.95.0        |
-| `powerpc64le/linux`   | no        | needs MSRV 1.95.0        |
-| `nanomips/linux`      | no        | Valgrind only            |
-
-If a platform uses the native C fallback instead of zero-indirection this is
-shown as a `no` entry in the `Optimized` column.
+To disable the native C FFI binding as fallback you can set the environment
+variable `VALGRIND_REQUESTS_STRATEGY=strict` (possible values are: `strict`,
+`fallback`)
 
 ## License
 
@@ -243,6 +246,7 @@ Licensed under Apache-2.0 or MIT, at your option.
     https://valgrind.org/docs/manual/mc-manual.html#mc-manual.clientreqs
 [`valgrind`]:
     https://docs.rs/valgrind-requests/latest/valgrind_requests/valgrind
+[valgrind-macos]: https://github.com/LouisBrunner/valgrind-macos
 [`valgrind_println!`]:
     https://docs.rs/valgrind-requests/latest/valgrind_requests/macro.valgrind_println.html
 [`valgrind_println_backtrace!`]:

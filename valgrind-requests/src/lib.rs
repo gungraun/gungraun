@@ -92,59 +92,45 @@
 //!
 //! # Performance and implementation details
 //!
-//! Depending on the target, the client requests are optimized to run with the same overhead as the
-//! original Valgrind client requests in C code. The optimizations are based on inline assembly with
-//! the `asm!` macro and depend on the availability of it on a specific target. Since inline
-//! assembly is not stable on all targets which are supported by Valgrind, we cannot provide
-//! optimized client requests for them. But, you can still use the non-optimized version on all
-//! platforms which would be natively supported by Valgrind. So, all targets which are covered by
-//! Valgrind are also covered by `valgrind-requests`.
+//! If possible, client requests execute with zero indirection and the same overhead as the original
+//! Valgrind C macros usable [even in high performance code][client-requests]. On
+//! Valgrind-supported platforms for which zero-indirection isn't implemented by us, a native C FFI
+//! binding is used which introduces at least an additional frame on the stack and the costs for the
+//! function call. That means all targets covered by Valgrind are also covered by
+//! `valgrind-requests`. Targets not supported by Valgrind produce a compile error.
 //!
-//! The non-optimized version adds overhead because we need to wrap the macro from the header file
-//! in a function call. This additional function adds a frame on the call stack and the call adds
-//! additional overhead compared to the original Valgrind implementation. Although this is usually
-//! not much, we try hard to avoid any overhead to not slow down benchmarks and other high
-//! performance code.
+//! | Target               | Zero-indirection | Notes                                         |
+//! | -------------------- | ---------------- | --------------------------------------------- |
+//! | `x86_64/linux`       | yes              | -                                             |
+//! | `x86_64/android`     | yes              | except the x32 ABI                            |
+//! | `x86_64/freebsd`     | yes              | -                                             |
+//! | `x86_64/macos`       | yes              | the versions supported by Valgrind            |
+//! | `x86_64/windows+gnu` | yes              | -                                             |
+//! | `x86_64/solaris`     | yes              | -                                             |
+//! | `x86/linux`          | yes              | -                                             |
+//! | `x86/android`        | yes              | -                                             |
+//! | `x86/freebsd`        | yes              | -                                             |
+//! | `x86/macos`          | yes              | the versions supported by Valgrind            |
+//! | `x86/windows+gnu`    | yes              | -                                             |
+//! | `x86/solaris`        | yes              | -                                             |
+//! | `arm/linux`          | yes              | -                                             |
+//! | `arm/android`        | yes              | -                                             |
+//! | `aarch64/linux`      | yes              | -                                             |
+//! | `aarch64/android`    | yes              | -                                             |
+//! | `aarch64/freebsd`    | yes              | -                                             |
+//! | `aarch64/macos`      | yes              | [LouisBrunner/valgrind-macos][valgrind-macos] |
+//! | `riscv64/linux`      | yes              | -                                             |
+//! | `s390x/linux`        | yes              | -                                             |
+//! | `powerpc/linux`      | yes              | rust >= 1.95.0                                |
+//! | `powerpc64/linux`    | yes              | rust >= 1.95.0                                |
+//! | `powerpc64le/linux`  | yes              | rust >= 1.95.0                                |
+//! | `mips32/linux`       | no               | no rust inline assembly available             |
+//! | `mips64/linux`       | no               | no rust inline assembly available             |
+//! | `nanomips/linux`     | no               | no zero-indirection planned                   |
+//! | `x86/windows+msvc`   | no               | no zero-indirection planned                   |
 //!
-//! Here's a short overview on which targets the optimized client requests are available and why
-//! not:
-//!
-//! FIX: Update table
-//!
-//! | Target                | Optimized | Reason  |
-//! | --------------------- | --------- | ------- |
-//! | `x86_64/linux`        | yes | -
-//! | `x86_64/freebsd`      | yes | -
-//! | `x86_64/apple+darwin` | yes | -
-//! | `x86_64/windows+gnu`  | yes | -
-//! | `x86_64/solaris`      | yes | -
-//! | `x86/linux`           | yes | -
-//! | `x86/freebsd`         | yes | -
-//! | `x86/apple+darwin`    | yes | -
-//! | `x86/windows+gnu`     | yes | -
-//! | `x86/solaris`         | yes | -
-//! | `x86/windows+msvc`    | no  | TBD
-//! | `arm/linux`           | yes | -
-//! | `aarch64/linux`       | yes | -
-//! | `riscv64/linux`       | yes | -
-//! | `x86_64/windows+msvc` | no  | unsupported by Valgrind
-//! | `s390x/linux`         | no  | needs MSRV 1.84.0
-//! | `mips32/linux`        | no  | unstable inline assembly
-//! | `mips64/linux`        | no  | unstable inline assembly
-//! | `powerpc/linux`       | no  | needs MSRV 1.95.0
-//! | `powerpc64/linux`     | no  | needs MSRV 1.95.0
-//! | `powerpc64le/linux`   | no  | needs MSRV 1.95.0
-//! | `nanomips/linux`      | no  | Valgrind only
-//!
-//! All other targets you don't find in the table above are also not supported by Valgrind, yet.
-//!
-//! Note this table might quickly become outdated with higher versions of Valgrind, and you should
-//! not rely on it to be up-to-date. The build.rs determines support at compile-time. As indicated
-//! above, the bindings are created dynamically in such a way, that always all targets which are
-//! covered by Valgrind are also covered by `valgrind-requests`. They just might not have been
-//! optimized, yet. If you need to know if your target is supported you should consult the
-//! `valgrind.h` header file in the [Valgrind Repository][valgrind-repository] or have a look at the
-//! [Valgrind Release Notes][valgrind-release-notes]
+//! To disable the native C FFI binding as fallback you can set the environment variable
+//! `VALGRIND_REQUESTS_STRATEGY=strict` (possible values are: `strict`, `fallback`).
 //!
 //! # Sources and additional documentation
 //!
@@ -165,8 +151,7 @@
 //!     https://valgrind.org/docs/manual/hg-manual.html#hg-manual.client-requests
 //! [memcheck-docs]:
 //!     https://valgrind.org/docs/manual/mc-manual.html#mc-manual.clientreqs
-//! [valgrind-release-notes]: https://valgrind.org/downloads/current.html
-//! [valgrind-repository]: https://sourceware.org/git/?p=valgrind.git
+//! [valgrind-macos]: https://github.com/LouisBrunner/valgrind-macos
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(test(attr(warn(unused))))]

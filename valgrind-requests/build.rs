@@ -176,18 +176,11 @@ mod imp {
 
         let rust_version = get_rust_version();
 
-        // rustc-check-cfg is introduced in rust with version 1.80 and avoids the compiler warnings
-        // in version >= 1.80.0. Printing it when compiling with versions < 1.80 triggers a warning,
-        // too. To get the best of both worlds we check against the currently active rust version.
-        if let Some(rust_version) = &rust_version {
-            if rust_version.major >= 1 && rust_version.minor >= 80 {
-                let values = Support::iter()
-                    .map(|s| format!("\"{s}\""))
-                    .collect::<Vec<String>>()
-                    .join(",");
-                println!("cargo:rustc-check-cfg=cfg(client_requests_support,values({values}))");
-            }
-        }
+        let values = Support::iter()
+            .map(|s| format!("\"{s}\""))
+            .collect::<Vec<String>>()
+            .join(",");
+        println!("cargo:rustc-check-cfg=cfg(client_requests_support,values({values}))");
 
         // When building the docs on docs.rs we can take a shortcut
         if std::env::var("DOCS_RS").is_ok() {

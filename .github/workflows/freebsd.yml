@@ -44,35 +44,6 @@ jobs:
             echo Disk usage
             df -h
 
-  test_client_requests:
-    name: Run client request tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: cross-platform-actions/action@v1.0.0
-        with:
-          environment_variables: VALGRIND_REQUESTS_VALGRIND_INCLUDE VALGRIND_REQUESTS_VALGRIND_PATH CARGO_TERM_COLOR
-          operating_system: freebsd
-          architecture: x86-64
-          version: "15.0"
-          shell: bash
-          memory: 8G
-          sync_files: runner-to-vm
-          # Our custom freebsd image with increased disk space (15G instead of
-          # 12G) and dependencies pre-installed
-          image_url: https://github.com/gungraun/freebsd-builder/releases/download/v0.1.2-custom/freebsd-15.0-x86-64.qcow2
-          run: |
-            curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
-
-            ./scripts/freebsd_print_info.sh
-
-            . ~/.cargo/env
-            cargo update
-            cargo test -p client-request-tests --test tests --release -- --nocapture
-
-            echo Disk usage
-            df -h
-
   test_system:
     name: Run system tests
     strategy:

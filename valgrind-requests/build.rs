@@ -197,6 +197,7 @@ mod imp {
 
         let bindings = build_bindings(&target);
 
+        // FIX: Add android
         // These guards mirror the checks in the `valgrind.h` header file
         let support = if target.arch == "x86_64"
             && (target.os == "linux"

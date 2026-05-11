@@ -107,38 +107,6 @@ jobs:
           fi
           exit 1
 
-  # FIX: Move all client request tests into own workflow
-  # TODO: Verify that not the native fallback is used
-  test_client_requests:
-    name: Run client request tests
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - i686-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
-          - armv7-unknown-linux-gnueabihf
-          - riscv64gc-unknown-linux-gnu
-          - s390x-unknown-linux-gnu
-          - powerpc-unknown-linux-gnu
-          - powerpc64-unknown-linux-gnu
-          - powerpc64le-unknown-linux-gnu
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@cross
-      - uses: taiki-e/install-action@just
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}
-      - name: Test client requests
-        run: just reqs-test ${{ matrix.target }}
-        env:
-          RUSTUP_TOOLCHAIN: "stable"
-        #   CROSS_DEBUG: "1"
-
   test_system:
     name: Run system tests
     strategy:

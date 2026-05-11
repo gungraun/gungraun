@@ -50,6 +50,14 @@ jobs:
       cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}
       valgrind_version: ${{ needs.config.outputs.valgrind_version }}
 
+  valgrind_requests:
+    name: Valgrind requests checks
+    needs: [basic, config]
+    uses: ./.github/workflows/valgrind_requests.yml
+    with:
+      cargo_term_color: ${{ needs.config.outputs.cargo_term_color }}
+      valgrind_version: ${{ needs.config.outputs.valgrind_version }}
+
   linux:
     name: Linux checks
     needs: [basic, config]

@@ -6,8 +6,8 @@ ahash
 Aparicio
 ARANGE
 armv7
-ASLR
 aslr
+ASLR
 Assche
 atstart
 attendblocks
@@ -36,8 +36,8 @@ cachemissrates
 cachesim
 cacheuse
 cachuse
-CALLGRIND
 callgrind
+CALLGRIND
 Callgrind
 CFLAGS
 cicd
@@ -45,6 +45,7 @@ Clearify
 clippy
 condi
 condvar
+connrefused
 consts
 coregrind
 coreutils
@@ -83,8 +84,8 @@ exidx
 exitcode
 Flamegraph
 flamegraph
-Flamegraphs
 flamegraphs
+Flamegraphs
 fldcw
 formattable
 freelike
@@ -98,8 +99,8 @@ gungnir
 gungraun
 hard_limit
 Hasher
-HEAPBLOCK
 heapblock
+HEAPBLOCK
 Heisler
 Helgrind
 hitrate
@@ -113,8 +114,8 @@ ilmr
 ilog
 iname
 indexmap
-IndexSet
 indexset
+IndexSet
 inlines
 instrs
 iquote
@@ -203,12 +204,12 @@ printenv
 println
 proccontrol
 profraw
-PTHREAD
 pthread
+PTHREAD
 punct
 pushd
-quickstart
 Quickstart
+quickstart
 ramhitrate
 ramhits
 raun
@@ -240,8 +241,8 @@ rustified
 RUSTSEC
 rustup
 rustversion
-RWLOCK
 rwlock
+RWLOCK
 rwlocks
 sandboxing
 sanitized
@@ -281,6 +282,7 @@ tempdir
 tempfile
 thiserror
 threadid
+tlsv1
 tmpfs
 toolname
 totalblocks
@@ -301,8 +303,8 @@ unsanitized
 USERREQ
 USERSO
 usize
-Valgrind
 valgrind
+Valgrind
 Valgrind's
 valgrind's
 Valgrinds

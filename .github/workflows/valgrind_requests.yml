@@ -152,6 +152,12 @@ jobs:
     name: Run client request tests on macos targets
     needs: [build, test_basic]
     runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-14
+          - macos-14-large
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable

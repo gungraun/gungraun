@@ -4,6 +4,7 @@ categories = [
   "api-bindings",
   "development-tools::profiling",
   "development-tools::testing",
+  "no-std",
 ]
 description = """
 Idiomatic Rust bindings for Valgrind client requests, with zero-indirection \
@@ -11,7 +12,7 @@ execution and zero-cost fallback
 """
 edition.workspace = true
 homepage.workspace = true
-keywords = ["valgrind", "bindings", "client-requests", "memcheck", "callgrind"]
+keywords = ["valgrind", "bindings", "client-requests", "no_std", "callgrind"]
 license.workspace = true
 name = "valgrind-requests"
 repository.workspace = true

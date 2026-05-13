@@ -68,6 +68,9 @@
 //!
 //! # Features
 //!
+//! Core client request APIs are `no_std` compatible. The `std` feature which implies the `alloc`
+//! feature are enabled by default.
+//!
 //! This crate provides two execution feature levels:
 //!
 //! - **`act`** *(default)*: Enables actual execution of client requests when running under
@@ -77,8 +80,8 @@
 //!   away entirely, making this a zero-cost option suitable for production code.
 //!
 //! Formatting convenience macros such as [`valgrind_printf`] and [`valgrind_println`] require the
-//! **`alloc`** feature because they allocate owned C strings. In allocation-free builds, use
-//! [`valgrind_print`] or [`valgrind_print_backtrace`] instead.
+//! **`alloc`** feature because they allocate owned C strings. In allocation-free builds, you can
+//! use [`valgrind_print`] or [`valgrind_print_backtrace`] instead.
 //!
 //! To use the zero-cost fallback, for example if you want to use the client requests for tests or
 //! benchmarks and need to make annotations in production code:

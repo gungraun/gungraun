@@ -21,12 +21,23 @@ supported platforms - avoiding the function call overhead of a C FFI layer. The
 `stubs` feature compiles all client requests to no-ops with zero runtime cost,
 making it safe to ship in production code without conditional compilation.
 
+Core client request APIs are `no_std` compatible. The `std` feature, which
+implies `alloc`, is enabled by default.
+
 ## Features
 
 - **`act`** _(default)_: Enables actual execution of client requests when
   running under Valgrind. Implies `stubs`.
-- **`stubs`**: Enables the client request definitions and build-time code
+- **`stubs`**: Enables the same public API surface and build-time code
   generation, but all client requests compile to no-ops.
+- **`alloc`**: Enables allocation-backed convenience APIs, such as formatting
+  macros and owned C string helpers.
+- **`std`** _(default)_: Enables standard library support and implies `alloc`.
+
+Formatting convenience macros such as [`valgrind_printf!`] and
+[`valgrind_println!`] require the **`alloc`** feature because they allocate
+owned C strings. Allocation-free alternatives are [`valgrind_print`] or
+[`valgrind_print_backtrace`].
 
 ## Installation
 
@@ -37,8 +48,9 @@ valgrind-requests = "1.0"
 
 or `cargo add valgrind-requests`.
 
-To use the zero-cost fallback for example if you want to use the client requests
-for tests or benchmarks and need to make annotations in production code:
+To use the zero-cost fallback, for example if you want to use the client
+requests for tests or benchmarks and need to make annotations in production
+code:
 
 ```toml
 [dependencies]
@@ -49,7 +61,8 @@ valgrind-requests = { version = "1.0" }
 ```
 
 The stubs compile down to nothing and your production code is as performant as
-without any annotations.
+without any annotations. If your production code uses the formatting convenience
+macros, enable both `stubs` and `alloc` with `features = ["stubs", "alloc"]`.
 
 The client requests require the Valgrind header files. These are typically
 installed by your distribution's package manager alongside Valgrind and
@@ -94,6 +107,22 @@ fn test_memcheck() {
 
     assert!(dubious == 0 && leaked == 0 && reachable == 0);
 }
+```
+
+## no_std Example
+
+Disable default features and re-enable either `stubs` or `act`:
+
+```toml
+valgrind-requests = { version = "1.0", default-features = false, features = ["act"] }
+```
+
+The core client request functions are `no_std` compatible and can be used as
+usual. In allocation-free environments, you can use allocation-free print
+functions, for example:
+
+```rust
+valgrind_requests::valgrind_print(c"running under Valgrind\n");
 ```
 
 ## Gungraun example
@@ -167,10 +196,12 @@ file:
 - [`drd`] - `drd.h` - [DRD: a thread error detector][drd-docs]
 - [`dhat`] - `dhat.h` - [DHAT: a dynamic heap analysis tool][dhat-docs]
 
-The [`valgrind_printf!`], [`valgrind_printf_unchecked!`], [`valgrind_println!`],
+The allocation-free [`valgrind_print`] and [`valgrind_print_backtrace`]
+functions live in the crate root. The `alloc`-backed [`valgrind_printf!`],
+[`valgrind_printf_unchecked!`], [`valgrind_println!`],
 [`valgrind_println_unchecked!`], [`valgrind_printf_backtrace!`],
 [`valgrind_printf_backtrace_unchecked!`], [`valgrind_println_backtrace!`], and
-[`valgrind_println_backtrace_unchecked!`] macros live in the crate root.
+[`valgrind_println_backtrace_unchecked!`] macros also live in the crate root.
 
 ## Platform support
 
@@ -214,7 +245,7 @@ function call. That means all targets covered by Valgrind are also covered by
 
 To disable the native C FFI binding as fallback you can set the environment
 variable `VALGRIND_REQUESTS_STRATEGY=strict` (possible values are: `strict`,
-`fallback`)
+`fallback`).
 
 ## License
 
@@ -247,6 +278,10 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`valgrind`]:
     https://docs.rs/valgrind-requests/latest/valgrind_requests/valgrind
 [valgrind-macos]: https://github.com/LouisBrunner/valgrind-macos
+[`valgrind_print`]:
+    https://docs.rs/valgrind-requests/latest/valgrind_requests/fn.valgrind_print.html
+[`valgrind_print_backtrace`]:
+    https://docs.rs/valgrind-requests/latest/valgrind_requests/fn.valgrind_print_backtrace.html
 [`valgrind_println!`]:
     https://docs.rs/valgrind-requests/latest/valgrind_requests/macro.valgrind_println.html
 [`valgrind_println_backtrace!`]:

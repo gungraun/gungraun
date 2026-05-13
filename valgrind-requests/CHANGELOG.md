@@ -27,6 +27,12 @@ and this project adheres to
   `fallback` modes to control whether native C FFI fallback is allowed.
 - ([#618]): Illumos target detection to support zero-indirection client requests
   like Solaris targets.
+- ([#622]): `no_std` support for `valgrind-requests`. Added `alloc` and `std`
+  features. Core client request APIs and generated bindings no longer require
+  `std`.
+- ([#622]): Allocation-free `valgrind_print` and `valgrind_print_backtrace`
+  functions which can be used in `no_std` environments unlike the
+  `valgrind_printf` macro family.
 
 ### Changed
 
@@ -35,6 +41,8 @@ and this project adheres to
   behavior, and compile errors for targets unsupported by Valgrind.
 - ([#618]): Fail early in the build script instead of during the build if there
   is no client request support for this platform by Valgrind.
+- ([#622]): Either the `stubs` or `act` feature is now required for a successful
+  compilation.
 
 ### Fixed
 
@@ -47,6 +55,9 @@ and this project adheres to
   architecture instead of `riscv64gc`.
 - ([#618]): The x86_64 x32 ABI is excluded for Linux and Android targets,
   matching Valgrind's platform checks.
+- ([#622]): The panic message for unavailable client requests now distinguishes
+  detected old Valgrind versions from missing or too old Valgrind headers and
+  suggests `VALGRIND_REQUESTS_VALGRIND_INCLUDE` when appropriate.
 
 ## [1.0.0] - 2026-04-30
 
@@ -92,3 +103,4 @@ package. Additionally includes some fixes and missing client requests.
 [#603]: https://github.com/gungraun/gungraun/pull/603
 [#604]: https://github.com/gungraun/gungraun/pull/604
 [#618]: https://github.com/gungraun/gungraun/pull/618
+[#622]: https://github.com/gungraun/gungraun/pull/622

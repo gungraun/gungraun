@@ -37,6 +37,7 @@ impl Display for ClientRequestError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::__alloc::string::ToString;
 
     #[test]
     fn test_client_request_error_display_valgrind_print_error() {

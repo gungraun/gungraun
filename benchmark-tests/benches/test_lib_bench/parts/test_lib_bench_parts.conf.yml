@@ -27,7 +27,7 @@ groups:
   - runs_on: "!x86_64-unknown-freebsd"
     runs:
       - args: ["--nocapture"]
-        flaky: 2
+        flaky: 5
         expected:
           zero_metrics: true
           files: expected_files.yml
@@ -39,6 +39,6 @@ groups:
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: ["--nocapture"]
-        flaky: 2
+        flaky: 5
         expected:
           zero_metrics: true

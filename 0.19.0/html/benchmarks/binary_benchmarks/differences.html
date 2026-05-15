@@ -1,0 +1,376 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Differences to Library Benchmarks - Gungraun Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../../css/my.css">
+        <link rel="stylesheet" href="../../css/dropdown.css">
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="getting_help.html"><strong aria-hidden="true">2.</strong> Getting Help</a></span></li><li class="chapter-item expanded "><li class="part-title">Installation</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation/prerequisites.html"><strong aria-hidden="true">3.</strong> Prerequisites</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation/gungraun.html"><strong aria-hidden="true">4.</strong> Gungraun</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation/ci.html"><strong aria-hidden="true">5.</strong> CI</a></span></li><li class="chapter-item expanded "><li class="part-title">Benchmarks</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/overview.html"><strong aria-hidden="true">6.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="best_practices.html"><strong aria-hidden="true">7.</strong> Benchmarking Best Practices</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks.html"><strong aria-hidden="true">8.</strong> Library Benchmarks</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/important.html"><strong aria-hidden="true">8.1.</strong> Important Default Behaviour</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/quickstart.html"><strong aria-hidden="true">8.2.</strong> Quickstart</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/structure.html"><strong aria-hidden="true">8.3.</strong> Structure of a Library Benchmark</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/macros.html"><strong aria-hidden="true">8.4.</strong> The Macros in More Detail</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/setup_and_teardown.html"><strong aria-hidden="true">8.5.</strong> Setup and Teardown</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/multiple_benches.html"><strong aria-hidden="true">8.6.</strong> Specify Multiple Benches at Once</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/generic.html"><strong aria-hidden="true">8.7.</strong> Generic Benchmark Functions</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/compare_by_id.html"><strong aria-hidden="true">8.8.</strong> Comparing Benchmark Functions</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/configuration.html"><strong aria-hidden="true">8.9.</strong> Configuration</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/configuration/output_format.html"><strong aria-hidden="true">8.9.1.</strong> Output Format/Cache Misses</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/custom_entry_point.html"><strong aria-hidden="true">8.10.</strong> Custom Entry Points</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/threads_and_subprocesses.html"><strong aria-hidden="true">8.11.</strong> Multi-Threaded and Multi-Process Applications</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/library_benchmarks/examples.html"><strong aria-hidden="true">8.12.</strong> More Examples, please!</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks.html"><strong aria-hidden="true">9.</strong> Binary Benchmarks</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/important.html"><strong aria-hidden="true">9.1.</strong> Important Default Behaviour</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/quickstart.html"><strong aria-hidden="true">9.2.</strong> Quickstart</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/differences.html"><strong aria-hidden="true">9.3.</strong> Differences to Library Benchmarks</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/stdin_and_pipe.html"><strong aria-hidden="true">9.4.</strong> The Command&#39;s Stdin and Simulating Piped Input</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/configuration.html"><strong aria-hidden="true">9.5.</strong> Configuration</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/configuration/delay.html"><strong aria-hidden="true">9.5.1.</strong> Delay the Command</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/configuration/sandbox.html"><strong aria-hidden="true">9.5.2.</strong> Sandbox</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/configuration/exit_code.html"><strong aria-hidden="true">9.5.3.</strong> Configure the Exit Code of the Command</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/low_level.html"><strong aria-hidden="true">9.6.</strong> Low-Level API</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="benchmarks/binary_benchmarks/examples.html"><strong aria-hidden="true">9.7.</strong> More Examples Needed?</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="regressions.html"><strong aria-hidden="true">10.</strong> Detecting Performance Regressions</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cachegrind.html"><strong aria-hidden="true">11.</strong> Cachegrind</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="dhat.html"><strong aria-hidden="true">12.</strong> Heap Profiling with DHAT</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tools.html"><strong aria-hidden="true">13.</strong> Other Valgrind Tools</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="client_requests.html"><strong aria-hidden="true">14.</strong> Valgrind Client Requests</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="flamegraphs.html"><strong aria-hidden="true">15.</strong> Callgrind Flamegraphs</a></span></li><li class="chapter-item expanded "><li class="part-title">Command-line and environment variables</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/basics.html"><strong aria-hidden="true">16.</strong> Basic Usage and Exit Codes</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/baselines.html"><strong aria-hidden="true">17.</strong> Comparing with Baselines</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/parallel.html"><strong aria-hidden="true">18.</strong> Running Benchmarks in Parallel</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/valgrind_runner.html"><strong aria-hidden="true">19.</strong> Running Valgrind with a Custom Runner</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/output.html"><strong aria-hidden="true">20.</strong> Controlling the Output of Gungraun</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/output/out_directory.html"><strong aria-hidden="true">20.1.</strong> Customize the Output Directory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/output/machine_readable.html"><strong aria-hidden="true">20.2.</strong> Machine-Readable Output</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/output/terminal_output.html"><strong aria-hidden="true">20.3.</strong> Showing Terminal Output of Benchmarks</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/output/color.html"><strong aria-hidden="true">20.4.</strong> Changing the Color Output</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cli_and_env/output/logging.html"><strong aria-hidden="true">20.5.</strong> Changing the Logging Output</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Migration</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="migration/iai-callgrind-to-gungraun.html"><strong aria-hidden="true">21.</strong> Migrating from Iai-Callgrind to Gungraun</a></span></li><li class="chapter-item expanded "><li class="part-title">Troubleshooting</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="troubleshooting/im-getting-the-error-sentinel-not-found.html"><strong aria-hidden="true">22.</strong> I&#39;m Getting the Error Sentinel ... Not Found</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="troubleshooting/running-cargo-bench-results-in-an-unrecognized-option-error.html"><strong aria-hidden="true">23.</strong> Running cargo bench Results in an &quot;Unrecognized Option&quot; Error</a></span></li><li class="chapter-item expanded "><li class="part-title">Comparison</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="comparison/criterion.html"><strong aria-hidden="true">24.</strong> Criterion</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="comparison/iai.html"><strong aria-hidden="true">25.</strong> Iai</a></span></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        <div class="dropdown">
+                          <button onclick="versionDropdown()" class="icon-button version-dropdown-button" type="button">Version</button>
+                          <div id="version-dropdown" class="version-dropdown-content">
+                            <a href="../../../../latest/html/index.html">Latest</a>
+                            <hr class="sidbar-spacer">
+                            <script src="../../../../versions.js"></script>
+                          </div>
+                        </div>
+                    </div>
+
+                    <h1 class="menu-title">Gungraun Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fab-github"></i>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun/master/docs/src/benchmarks/binary_benchmarks/differences.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="differences-to-library-benchmarks"><a class="header" href="#differences-to-library-benchmarks">Differences to Library Benchmarks</a></h1>
+<p>In this section we’re going through the differences to
+<a href="../library_benchmarks.html">library benchmarks</a>. This assumes that you already
+know how to set up library benchmarks, and it is recommended to learn the very
+basics about library benchmarks, starting with
+<a href="../library_benchmarks/quickstart.html">Quickstart</a>,
+<a href="../library_benchmarks/structure.html">Structure of a library benchmark</a> and
+<a href="../library_benchmarks/macros.html">The macros in more detail</a>. Then come back to
+this section.</p>
+<h2 id="name-changes"><a class="header" href="#name-changes">Name Changes</a></h2>
+<p>Coming from library benchmarks, the names with <code>library</code> in it change to the
+same name but <code>library</code> with <code>binary</code> replaced, so the <code>#[library_benchmark]</code>
+attribute’s name changes to <code>#[binary_benchmark]</code> and <code>library_benchmark_group!</code>
+changes to <code>binary_benchmark_group!</code>, the config arguments take a
+<code>BinaryBenchmarkConfig</code> instead of a <code>LibraryBenchmarkConfig</code>…</p>
+<p>A quick reference of available macros in binary benchmarks:</p>
+<ul>
+<li><code>#[binary_benchmark]</code> and its inner attributes <code>#[bench]</code> and <code>#[benches]</code>:
+The exact pendant to the <code>#[library_benchmark]</code> attribute macro.</li>
+<li><code>binary_benchmark_group!</code>: Just the name of the macro has changed. It accepts
+the same parameters as <code>library_benchmark_group!</code>, including <code>config</code>,
+<code>compare_by_id</code>, <code>max_parallel</code>, <code>setup</code>, <code>teardown</code>, and <code>benchmarks</code>. The
+<code>max_parallel</code> parameter lets you limit or disable parallel execution for a
+specific group when using the <code>--parallel</code> CLI option. See
+<a href="../../cli_and_env/parallel.html#limiting-parallelism-per-group">Running Benchmarks in Parallel</a>
+for more details.</li>
+<li><code>binary_benchmark_attribute!</code>: An additional macro if you intend to
+<a href="./low_level.html#intermixing-high-level-and-low-level-api">migrate</a> from the
+high-level to the low-level API</li>
+<li><code>main!</code>: The same macro as in library benchmarks but the name of the
+<code>library_benchmark_groups</code> parameter changed to <code>binary_benchmark_groups</code>.</li>
+</ul>
+<p>To see all macros in action have a look at the example below.</p>
+<h2 id="the-return-value-of-the-benchmark-function"><a class="header" href="#the-return-value-of-the-benchmark-function">The Return Value of the Benchmark Function</a></h2>
+<p>Maybe the most important difference is that the <code>#[binary_benchmark]</code>-annotated
+function always needs to return a <code>gungraun::Command</code>. Note this function builds
+the command which is going to be benchmarked but doesn’t execute it, yet. So,
+the code in this function does not attribute to the event counts of the actual
+benchmark.</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">macro_rules! env { ($m:tt) =&gt; {{ "/some/path" }} }
+</span>use gungraun::prelude::*;
+use std::path::PathBuf;
+
+#[binary_benchmark]
+#[bench::foo("foo.txt")]
+#[bench::bar("bar.json")]
+fn bench_binary(path: &amp;str) -&gt; gungraun::Command {
+    // We can put any code in this function which is needed to configure and
+    // build the `Command`.
+    let path = PathBuf::from(path);
+
+    // Here, if the `path` ends with `.txt` we want to see
+    // the `Stdout` output of the `Command` in the benchmark output. In all other
+    // cases, the `Stdout` of the `Command` is redirected to a `File` with the
+    // same name as the input `path` but with the extension `out`.
+    let stdout = if path.extension().unwrap() == "txt" {
+        gungraun::Stdio::Inherit
+    } else {
+        gungraun::Stdio::File(path.with_extension("out"))
+    };
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .stdout(stdout)
+        .arg(path)
+        .build()
+}
+
+binary_benchmark_group!(name = my_group, benchmarks = bench_binary);
+<span class="boring">fn main() {
+</span>main!(binary_benchmark_groups = my_group);
+<span class="boring">}</span></code></pre>
+<h2 id="setup-and-teardown"><a class="header" href="#setup-and-teardown"><code>setup</code> and <code>teardown</code></a></h2>
+<p>Since we can put any code building the <code>Command</code> in the function itself, the
+<code>setup</code> and <code>teardown</code> of <code>#[binary_benchmark]</code>, <code>#[bench]</code> and <code>#[benches]</code>
+work differently.</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">macro_rules! env { ($m:tt) =&gt; {{ "/some/path" }} }
+</span>use gungraun::prelude::*;
+
+fn create_file() {
+    std::fs::write("foo.txt", "some content").unwrap();
+}
+
+#[binary_benchmark]
+#[bench::foo(args = ("foo.txt"), setup = create_file())]
+fn bench_binary(path: &amp;str) -&gt; gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
+}
+
+binary_benchmark_group!(name = my_group, benchmarks = bench_binary);
+<span class="boring">fn main() {
+</span>main!(binary_benchmark_groups = my_group);
+<span class="boring">}</span></code></pre>
+<p><code>setup</code>, which is here the expression <code>create_file()</code>, is not evaluated right
+away and the return value of <code>setup</code> is not used as input for the <code>function</code>!
+Instead, the expression in <code>setup</code> is getting evaluated and executed just before
+the benchmarked <code>Command</code> is <strong>executed</strong>. Similarly, <code>teardown</code> is executed
+after the <code>Command</code> is <strong>executed</strong>.</p>
+<p>In the example above, <code>setup</code> creates always the same file and is pretty static.
+It’s possible to use the same arguments for <code>setup</code> (<code>teardown</code>) <strong>and</strong> the
+<code>function</code> using the path (or file pointer) to a function as you’re used to from
+library benchmarks:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">macro_rules! env { ($m:tt) =&gt; {{ "/some/path" }} }
+</span>use gungraun::prelude::*;
+
+fn create_file(path: &amp;str) {
+    std::fs::write(path, "some content").unwrap();
+}
+
+fn delete_file(path: &amp;str) {
+    std::fs::remove_file(path).unwrap();
+}
+
+#[binary_benchmark]
+// Note the missing parentheses for `setup` of the function `create_file` which
+// tells Gungraun to pass the `args` to the `setup` function AND the
+// function `bench_binary`
+#[bench::foo(args = ("foo.txt"), setup = create_file)]
+// Same for `teardown`
+#[bench::bar(args = ("bar.txt"), setup = create_file, teardown = delete_file)]
+fn bench_binary(path: &amp;str) -&gt; gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
+}
+
+binary_benchmark_group!(name = my_group, benchmarks = bench_binary);
+<span class="boring">fn main() {
+</span>main!(binary_benchmark_groups = my_group);
+<span class="boring">}</span></code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../benchmarks/binary_benchmarks/quickstart.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../benchmarks/binary_benchmarks/stdin_and_pipe.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../benchmarks/binary_benchmarks/quickstart.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../benchmarks/binary_benchmarks/stdin_and_pipe.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../js/dropdown.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,977 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Multi-Threaded and Multi-Process Applications - Gungraun Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../../css/general-2459343d.css">
+        <link rel="stylesheet" href="../../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../../css/my-43cab82a.css">
+        <link rel="stylesheet" href="../../css/dropdown-65a47de8.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../../searchindex-8db40854.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../../toc-ebb9543f.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                        <div class="dropdown">
+                          <button onclick="versionDropdown()" class="icon-button version-dropdown-button" type="button">Version</button>
+                          <div id="version-dropdown" class="version-dropdown-content">
+                            <a href="../../../../latest/html/index.html">Latest</a>
+                            <hr class="sidbar-spacer">
+                            <script src="../../../../versions.js"></script>
+                          </div>
+                        </div>
+                    <h1 class="menu-title">Gungraun Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun/blob/main/docs/src/benchmarks/library_benchmarks/threads_and_subprocesses.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <!-- markdownlint-disable MD025 MD042 MD033 -->
+<h1 id="multi-threaded-and-multi-process-applications"><a class="header" href="#multi-threaded-and-multi-process-applications">Multi-Threaded and Multi-Process Applications</a></h1>
+<p>The default is to run Gungraun benchmarks with <code>--separate-threads=yes</code>,
+<code>--trace-children=yes</code> switched on. This enables Gungraun to trace threads and
+subprocesses, respectively. Note that <code>--separate-threads=yes</code> is not strictly
+necessary to be able to trace threads. But, if they are separated, Gungraun can
+collect and display the metrics for each thread. Due to the way <code>callgrind</code>
+applies <a href="https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options.collection">data collection options</a> like
+<code>--toggle-collect</code>, <code>--collect-atstart</code>, … further configuration is needed in
+library benchmarks.</p>
+<p>To actually see the collected metrics in the terminal output for all threads
+and/or subprocesses you can switch on <code>OutputFormat::show_intermediate</code>:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn find_primes_multi_thread(_: u64) -&gt; Vec&lt;u64&gt; { vec![]} }
+</span>use gungraun::prelude::*;
+use gungraun::OutputFormat;
+use std::hint::black_box;
+
+#[library_benchmark]
+fn bench_threads() -&gt; Vec&lt;u64&gt; {
+    black_box(my_lib::find_primes_multi_thread(black_box(2)))
+}
+
+library_benchmark_group!(name = my_group, benchmarks = bench_threads);
+<span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .show_intermediate(true)
+        ),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>The best method for benchmarking threads and subprocesses depends heavily on
+your code. So, rather than suggesting a single “best” method for benchmarking
+threads and subprocesses, this chapter will run through various possible
+approaches and try to highlight the pros and cons of each.</p>
+<h2 id="multi-threaded-applications"><a class="header" href="#multi-threaded-applications">Multi-Threaded Applications</a></h2>
+<p><code>Callgrind</code> treats each thread and process as a separate unit and it applies
+data collection options to each unit. In library benchmarks the
+<a href="./custom_entry_point.html">entry point</a> (or the default toggle) for <code>callgrind</code>
+is by default set to the benchmark function with the help of the
+<code>--toggle-collect</code> option. Setting <code>--toggle-collect</code> also automatically sets
+<code>--collect-atstart=no</code>. If not further customized for a benchmarked
+multi-threaded function, these options cause the metrics for the spawned threads
+to be zero. This happens since each thread is a separate unit with
+<code>--collect-atstart=no</code> and the default toggle applied to the units. The default
+toggle is set to the benchmark function and does not hook into any function in
+the thread, so the metrics are zero.</p>
+<p>There are multiple ways to customize the default behaviour and actually measure
+the threads. For the following examples, we’re using the benchmark and library
+code below to show the different customization options assuming this code lives
+in a benchmark file <code>benches/lib_bench_threads.rs</code></p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span>use gungraun::prelude::*;
+use gungraun::OutputFormat;
+use std::hint::black_box;
+
+/// Suppose this is your library
+pub mod my_lib {
+    /// Return true if `num` is a prime number
+    pub fn is_prime(num: u64) -&gt; bool {
+        if num &lt;= 1 {
+            return false;
+        }
+
+        for i in 2..=(num as f64).sqrt() as u64 {
+            if num % i == 0 {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Find and return all prime numbers in the inclusive range `low` to `high`
+    pub fn find_primes(low: u64, high: u64) -&gt; Vec&lt;u64&gt; {
+        (low..=high).filter(|n| is_prime(*n)).collect()
+    }
+
+    /// Return the prime numbers in the range `0..(num_threads * 10000)`
+    pub fn find_primes_multi_thread(num_threads: usize) -&gt; Vec&lt;u64&gt; {
+        let mut handles = vec![];
+        let mut low = 0;
+        for _ in 0..num_threads {
+            let handle = std::thread::spawn(move || find_primes(low, low + 10000));
+            handles.push(handle);
+
+            low += 10000;
+        }
+
+        let mut primes = vec![];
+        for handle in handles {
+            let result = handle.join();
+            primes.extend(result.unwrap())
+        }
+
+        primes
+    }
+}
+
+#[library_benchmark]
+#[bench::two_threads(2)]
+fn bench_threads(num_threads: usize) -&gt; Vec&lt;u64&gt; {
+    black_box(my_lib::find_primes_multi_thread(black_box(num_threads)))
+}
+
+library_benchmark_group!(name = my_group, benchmarks = bench_threads);
+<span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .show_intermediate(true)
+        ),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>Running this benchmark with <code>cargo bench</code> will present you with the following
+terminal output:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>66353</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>341</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>539</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>86923</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 thread: 2 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 thread: 3 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>66353</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>341</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>539</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>86923</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 1.19222s</code></pre>
+
+<p>As you can see, the counts for the threads <code>2</code> and <code>3</code> (our spawned threads) are
+all zero.</p>
+<h3 id="measuring-threads-using-toggles"><a class="header" href="#measuring-threads-using-toggles">Measuring Threads Using Toggles</a></h3>
+<p>At a first glance, setting a toggle to the function in the thread seems to be
+easiest way and can be done like so:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn find_primes_multi_thread(_: usize) -&gt; Vec&lt;u64&gt; { vec![] }}
+</span>use gungraun::prelude::*;
+use gungraun::{Callgrind, EntryPoint};
+use std::hint::black_box;
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["--toggle-collect=lib_bench_threads::my_lib::find_primes"]))
+)]
+#[bench::two_threads(2)]
+fn bench_threads(num_threads: usize) -&gt; Vec&lt;u64&gt; {
+    black_box(my_lib::find_primes_multi_thread(black_box(num_threads)))
+}
+<span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_threads);
+</span><span class="boring">fn main() {
+</span><span class="boring">main!(library_benchmark_groups = my_group);
+</span><span class="boring">}</span></code></pre>
+<p>This approach may or may not work, depending on whether the compiler inlines the
+target function of the <code>--toggle-collect</code> argument or not. This is the same
+problem as with
+<a href="./custom_entry_point.html#pitfall-inlined-functions">custom entry points</a>. As can
+be seen below, the compiler has chosen to inline <code>find_primes</code> and the metrics
+for the threads are still zero:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 thread: 2 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 thread: 3 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 1.19222s</code></pre>
+
+<p>Just to show what would happen if the compiler does not inline the <code>find_primes</code>
+method, we temporarily annotate it with <code>#[inline(never)]</code>:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Find and return all prime numbers in the inclusive range `low` to `high`
+<span class="boring">fn is_prime(_: u64) -&gt; bool { true }
+</span>#[inline(never)]
+pub fn find_primes(low: u64, high: u64) -&gt; Vec&lt;u64&gt; {
+    (low..=high).filter(|n| is_prime(*n)).collect()
+}
+<span class="boring">}</span></code></pre>
+<p>Now, running the benchmark does show the desired metrics:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 thread: 2 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>2460503</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>2534938</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>12</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>2535136</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>2541508</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 thread: 3 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>3650410</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>3724286</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>4</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>130</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>3724420</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>3728856</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                     <b>6138285</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>6325655</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>359</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>854</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>6326868</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>6357340</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 1.19222s</code></pre>
+
+<p>But, annotating functions with <code>#[inline(never)]</code> in production code is usually
+not an option and preventing the compiler from doing its job is not the
+preferred way to make a benchmark work. The truth is, there is no way to make
+the <code>--toggle-collect</code> argument work for all cases and it heavily depends on the
+choices of the compiler depending on your code.</p>
+<p>Another way to get the thread metrics is to set <code>--collect-atstart=yes</code> and turn
+off the <code>EntryPoint</code>:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn find_primes_multi_thread(_: usize) -&gt; Vec&lt;u64&gt; { vec![] }}
+</span>use gungraun::prelude::*;
+use gungraun::{Callgrind, EntryPoint};
+use std::hint::black_box;
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["--collect-atstart=yes"])
+            .entry_point(EntryPoint::None)
+        )
+)]
+#[bench::two_threads(2)]
+fn bench_threads(num_threads: usize) -&gt; Vec&lt;u64&gt; {
+    black_box(my_lib::find_primes_multi_thread(black_box(num_threads)))
+}
+<span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_threads);
+</span><span class="boring">fn main() {
+</span><span class="boring">main!(library_benchmark_groups = my_group);
+</span><span class="boring">}</span></code></pre>
+<p>But, the metrics of the main thread will include all the setup (and teardown)
+code from the benchmark executable (so the instructions of the main thread go up
+from <code>27372</code> to <code>404425</code>):</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                      <b>404425</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                           <b>570186</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                             <b>1307</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                            <b>4856</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                  <b>576349</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                  <b>746681</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 thread: 2 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>2466864</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>2543314</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>81</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>409</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>2543804</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>2558034</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 thread: 3 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>3656729</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>3732802</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>31</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>201</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>3733034</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>3739992</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                     <b>6528018</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>6846302</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                             <b>1419</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                            <b>5466</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>6853187</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>7044707</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 0.49333s</code></pre>
+
+<p>Additionally, expect a lot of metric changes if the benchmarks itself are
+changed. However, if the metrics of the main thread are not significant compared
+to the total, this might be an applicable (last) choice.</p>
+<p>There is another more reliable way as shown below in the next section.</p>
+<h3 id="measuring-threads-using-client-requests"><a class="header" href="#measuring-threads-using-client-requests">Measuring Threads Using Client Requests</a></h3>
+<p>The perhaps most reliable and flexible way to measure threads is using
+<a href="../../client_requests.html">client requests</a>. The downside is that you have to
+put some benchmark code into your production code. But, if you followed the
+installation instructions in <a href="../../client_requests.html">client requests</a>, this
+additional code is only compiled in benchmarks, not in your final
+production-ready library.</p>
+<p>Using the Callgrind client request, we adjust the threads in the
+<code>find_primes_multi_thread</code> function like so:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">fn find_primes(_a: u64, _b: u64) -&gt; Vec&lt;u64&gt; { vec![] }
+</span><span class="boring">extern crate gungraun;
+</span>use gungraun::client_requests::callgrind;
+
+/// Return the prime numbers in the range `0..(num_threads * 10000)`
+pub fn find_primes_multi_thread(num_threads: usize) -&gt; Vec&lt;u64&gt; {
+    let mut handles = vec![];
+    let mut low = 0;
+    for _ in 0..num_threads {
+        let handle = std::thread::spawn(move || {
+            callgrind::toggle_collect();
+            let result = find_primes(low, low + 10000);
+            callgrind::toggle_collect();
+            result
+        });
+        handles.push(handle);
+
+        low += 10000;
+    }
+
+    let mut primes = vec![];
+    for handle in handles {
+        let result = handle.join();
+        primes.extend(result.unwrap())
+    }
+
+    primes
+}
+<span class="boring">}</span></code></pre>
+<p>and running the same benchmark now will show the collected metrics of the
+threads:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>66352</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>344</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>537</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>86867</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 thread: 2 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>2460501</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>2534935</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>13</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>185</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>2535133</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>2541475</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 thread: 3 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>3650408</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>3724285</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>1</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>131</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>3724417</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>3728875</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                     <b>6138214</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>6325572</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>358</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>853</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>6326783</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>6357217</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 0.49333s</code></pre>
+
+<p>Using the client request toggles is very flexible since you can put the
+<code>gungraun::client_requests::callgrind::toggle_collect</code> instructions anywhere in
+the threads. In this example, we just have a single function in the thread, but
+if your threads consist of more than just a single function, you can easily
+exclude uninteresting parts from the final measurements.</p>
+<p>If you want to prevent the code of the main thread from being measured, you can
+use the following:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn find_primes_multi_thread(_: usize) -&gt; Vec&lt;u64&gt; { vec![] }}
+</span>use gungraun::prelude::*;
+use gungraun::{Callgrind, EntryPoint};
+use std::hint::black_box;
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["--collect-atstart=no"])
+            .entry_point(EntryPoint::None)
+        )
+)]
+#[bench::two_threads(2)]
+fn bench_threads(num_threads: usize) -&gt; Vec&lt;u64&gt; {
+    black_box(my_lib::find_primes_multi_thread(black_box(num_threads)))
+}
+<span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_threads);
+</span><span class="boring">fn main() {
+</span><span class="boring">main!(library_benchmark_groups = my_group);
+</span><span class="boring">}</span></code></pre>
+<p>Setting the <code>EntryPoint::None</code> disables the default toggle but also
+<code>--collect-atstart=no</code>, which is why we have to set the option manually.
+Altogether, running the benchmark will show:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 thread: 2 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>2460501</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>2534935</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>11</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>187</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>2535133</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>2541535</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 thread: 3 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
+<span style="color:#555">  </span>Instructions:                     <b>3650408</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>3724282</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>4</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>131</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>3724417</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>3728887</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                     <b>6110909</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                          <b>6259217</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>15</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>318</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                 <b>6259550</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                 <b>6270422</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 0.49333s</code></pre>
+
+<h2 id="multi-process-applications"><a class="header" href="#multi-process-applications">Multi-Process Applications</a></h2>
+<p>Measuring multi-process applications is in principle not that different from
+multi-threaded applications since subprocesses are just like threads separate
+units. As for threads, the <a href="https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options.collection">data collection options</a>
+are applied to subprocesses separately from the main process.</p>
+<p>Note there are multiple <a href="https://valgrind.org/docs/manual/manual-core.html#manual-core.basicopts">valgrind command-line arguments</a>
+that can disable the collection of metrics for uninteresting subprocesses, for
+example subprocesses that are spawned by your library function but are not part
+of your library/binary crate.</p>
+<p>For the following examples suppose the code below is the <code>cat</code> binary and part
+of a crate (so we can use <a href="https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates"><code>env!("CARGO_BIN_EXE_cat")</code></a>):</p>
+<pre class="playground"><code class="language-rust edition2024">use std::fs::File;
+use std::io::{copy, stdout, BufReader, BufWriter, Write};
+
+<span class="boring">fn main() {
+</span>fn main() {
+    let mut args_iter = std::env::args().skip(1);
+    let file_arg = args_iter.next().expect("File argument should be present");
+
+    let file = File::open(file_arg).expect("Opening file should succeed");
+    let stdout = stdout().lock();
+
+    let mut writer = BufWriter::new(stdout);
+    copy(&amp;mut BufReader::new(file), &amp;mut writer)
+        .expect("Printing file to stdout should succeed");
+
+    writer.flush().expect("Flushing writer should succeed");
+}
+<span class="boring">}</span></code></pre>
+<p>The above binary is a very simple version of <code>cat</code> taking a single file
+argument. The file content is read and dumped to the <code>stdout</code>. The following is
+the benchmark and library code to show the different options assuming this code
+is stored in a benchmark file <code>benches/lib_bench_subprocess.rs</code></p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">macro_rules! env { ($m:tt) =&gt; {{ "/some/path" }} }
+</span>use std::hint::black_box;
+use std::io;
+use std::path::PathBuf;
+use std::process::ExitStatus;
+
+use gungraun::prelude::*;
+use gungraun::OutputFormat;
+
+/// Suppose this is your library
+pub mod my_lib {
+    use std::io;
+    use std::path::Path;
+    use std::process::ExitStatus;
+
+    /// A function executing the crate's binary `cat`
+    pub fn cat(file: &amp;Path) -&gt; io::Result&lt;ExitStatus&gt; {
+        std::process::Command::new(env!("CARGO_BIN_EXE_cat"))
+            .arg(file)
+            .status()
+    }
+}
+
+/// Create a file `/tmp/foo.txt` with some content
+fn create_file() -&gt; PathBuf {
+    let path = PathBuf::from("/tmp/foo.txt");
+    std::fs::write(&amp;path, "some content").unwrap();
+    path
+}
+
+#[library_benchmark]
+#[bench::some(setup = create_file)]
+fn bench_subprocess(path: PathBuf) -&gt; io::Result&lt;ExitStatus&gt; {
+    black_box(my_lib::cat(black_box(&amp;path)))
+}
+
+library_benchmark_group!(name = my_group, benchmarks = bench_subprocess);
+<span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .show_intermediate(true)
+        ),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>Running the above benchmark with <code>cargo bench</code> results in the following terminal
+output:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_subprocess::my_group::bench_subprocess</span> <span style="color:#0AA">some</span><span style="color:#0AA">:</span><b><span style="color:#00A">create_file()</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3141785 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
+<span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3141786 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
+<span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 0.49333s</code></pre>
+
+<p>As expected, the <code>cat</code> subprocess is not measured and the metrics are zero for
+the same reasons as the initial measurement of threads.</p>
+<h3 id="measuring-subprocesses-using-toggles"><a class="header" href="#measuring-subprocesses-using-toggles">Measuring Subprocesses Using Toggles</a></h3>
+<p>The great advantage over measuring threads is that each process has a main
+function that is not inlined by the compiler and can serve as a reliable hook
+for the <code>--toggle-collect</code> argument so the following adaption to the above
+benchmark will just work:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib {
+</span><span class="boring">use std::{io, path::Path, process::ExitStatus};
+</span><span class="boring">pub fn cat(_: &amp;Path) -&gt; io::Result&lt;ExitStatus&gt; {
+</span><span class="boring">   std::process::Command::new("some").status()
+</span><span class="boring">}}
+</span><span class="boring">fn create_file() -&gt; PathBuf { PathBuf::from("some") }
+</span><span class="boring">use std::hint::black_box;
+</span><span class="boring">use std::io;
+</span><span class="boring">use std::path::PathBuf;
+</span><span class="boring">use std::process::ExitStatus;
+</span><span class="boring">use gungraun::prelude::*;
+</span><span class="boring">use gungraun::{OutputFormat, Callgrind};
+</span>#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["--toggle-collect=cat::main"]))
+)]
+#[bench::some(setup = create_file)]
+fn bench_subprocess(path: PathBuf) -&gt; io::Result&lt;ExitStatus&gt; {
+    black_box(my_lib::cat(black_box(&amp;path)))
+}
+<span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_subprocess);
+</span><span class="boring">fn main() {
+</span><span class="boring">main!(library_benchmark_groups = my_group);
+</span><span class="boring">}</span></code></pre>
+<p>producing the desired output</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_subprocess::my_group::bench_subprocess</span> <span style="color:#0AA">some</span><span style="color:#0AA">:</span><b><span style="color:#00A">create_file()</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3324117 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
+<span style="color:#555">  </span>Instructions:                        <b>4475</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>6112</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>14</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>187</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>6313</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>12727</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3324119 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
+<span style="color:#555">  </span>Instructions:                        <b>4019</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>5575</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>12</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>167</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>5754</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>11480</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                        <b>8494</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>11687</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>26</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>354</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>12067</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>24207</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 0.49333s</code></pre>
+
+<h3 id="measuring-subprocesses-using-client-requests"><a class="header" href="#measuring-subprocesses-using-client-requests">Measuring Subprocesses Using Client Requests</a></h3>
+<p>Naturally, client requests can also be used to measure subprocesses. The
+Callgrind client requests are added to the code of the <code>cat</code> binary:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span>use std::fs::File;
+use std::io::{copy, stdout, BufReader, BufWriter, Write};
+use gungraun::client_requests::callgrind;
+
+<span class="boring">fn main() {
+</span>fn main() {
+    let mut args_iter = std::env::args().skip(1);
+    let file_arg = args_iter.next().expect("File argument should be present");
+
+    callgrind::toggle_collect();
+    let file = File::open(file_arg).expect("Opening file should succeed");
+    let stdout = stdout().lock();
+
+    let mut writer = BufWriter::new(stdout);
+    copy(&amp;mut BufReader::new(file), &amp;mut writer)
+        .expect("Printing file to stdout should succeed");
+
+    writer.flush().expect("Flushing writer should succeed");
+    callgrind::toggle_collect();
+}
+<span class="boring">}</span></code></pre>
+<p>For the purpose of this example we decided that measuring the parsing of the
+command-line-arguments is not interesting for us and excluded it from the
+collected metrics. The benchmark itself is reverted to its original state
+without the toggle:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib {
+</span><span class="boring">use std::{io, path::Path, process::ExitStatus};
+</span><span class="boring">pub fn cat(_: &amp;Path) -&gt; io::Result&lt;ExitStatus&gt; {
+</span><span class="boring">   std::process::Command::new("some").status()
+</span><span class="boring">}}
+</span><span class="boring">fn create_file() -&gt; PathBuf { PathBuf::from("some") }
+</span><span class="boring">use std::hint::black_box;
+</span><span class="boring">use std::io;
+</span><span class="boring">use std::path::PathBuf;
+</span><span class="boring">use std::process::ExitStatus;
+</span><span class="boring">use gungraun::prelude::*;
+</span><span class="boring">use gungraun::OutputFormat;
+</span>#[library_benchmark]
+#[bench::some(setup = create_file)]
+fn bench_subprocess(path: PathBuf) -&gt; io::Result&lt;ExitStatus&gt; {
+    black_box(my_lib::cat(black_box(&amp;path)))
+}
+<span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_subprocess);
+</span><span class="boring">fn main() {
+</span><span class="boring">main!(library_benchmark_groups = my_group);
+</span><span class="boring">}</span></code></pre>
+<p>Now, running the benchmark shows</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_subprocess::my_group::bench_subprocess</span> <span style="color:#0AA">some</span><span style="color:#0AA">:</span><b><span style="color:#00A">create_file()</span></b>
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3421822 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
+<span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3421823 thread: 1 part: 1</b>        |N/A
+<span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
+<span style="color:#555">  </span>Instructions:                        <b>2429</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>3406</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>8</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>138</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>3552</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                    <b>8276</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
+<span style="color:#555">  </span>Instructions:                        <b>6896</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>9508</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>25</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                             <b>324</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>9857</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                   <b>20973</b>|N/A                  (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 0.49333s</code></pre>
+
+<p>As expected, the metrics for the <code>cat</code> binary are a little bit lower since we
+skipped measuring the parsing of the command-line arguments.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../benchmarks/library_benchmarks/custom_entry_point.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../../benchmarks/library_benchmarks/examples.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../benchmarks/library_benchmarks/custom_entry_point.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../../benchmarks/library_benchmarks/examples.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../../mark-09e88c2c.min.js"></script>
+        <script src="../../searcher-c2a407aa.js"></script>
+
+        <script src="../../clipboard-1626706a.min.js"></script>
+        <script src="../../highlight-abc7f01d.js"></script>
+        <script src="../../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../js/dropdown-3c42ae60.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

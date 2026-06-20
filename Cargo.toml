@@ -24,7 +24,7 @@ version = "0.19.2"
 [workspace.dependencies]
 anyhow = { version = "1.0.46" }
 assert_cmd = { version = "2.0" }
-bincode-next = { version = "2", default-features = false, features = [
+bincode-next = { version = "3", default-features = false, features = [
   "serde",
   "std",
 ] }

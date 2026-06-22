@@ -18,13 +18,13 @@ homepage = "https://github.com/gungraun/gungraun"
 keywords = ["performance", "benchmark", "profiling", "valgrind", "callgrind"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/gungraun/gungraun"
-rust-version = "1.85.1"
+rust-version = "1.90.0"
 version = "0.19.2"
 
 [workspace.dependencies]
 anyhow = { version = "1.0.46" }
 assert_cmd = { version = "2.0" }
-bincode-next = { version = "2", default-features = false, features = [
+bincode-next = { version = "3", default-features = false, features = [
   "serde",
   "std",
 ] }

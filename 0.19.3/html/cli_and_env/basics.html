@@ -1,0 +1,1194 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Basic Usage and Exit Codes - Gungraun Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../css/my-43cab82a.css">
+        <link rel="stylesheet" href="../css/dropdown-65a47de8.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-8f337141.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-ebb9543f.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                        <div class="dropdown">
+                          <button onclick="versionDropdown()" class="icon-button version-dropdown-button" type="button">Version</button>
+                          <div id="version-dropdown" class="version-dropdown-content">
+                            <a href="../../../latest/html/index.html">Latest</a>
+                            <hr class="sidbar-spacer">
+                            <script src="../../../versions.js"></script>
+                          </div>
+                        </div>
+                    <h1 class="menu-title">Gungraun Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun/blob/main/docs/src/cli_and_env/basics.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h1>
+<p>It’s possible to pass arguments to Gungraun separated by <code>--</code>
+(<code>cargo bench -- ARGS</code>). If you’re running into the error <code>Unrecognized Option</code>,
+see
+<a href="../troubleshooting/running-cargo-bench-results-in-an-unrecognized-option-error.html">Troubleshooting</a>.
+For a complete rundown of possible arguments, execute <code>gungraun-runner --help</code>.
+Almost all command-line arguments have a corresponding environment variable. The
+environment variables which don’t have a corresponding command-line argument
+are:</p>
+<ul>
+<li><code>GUNGRAUN_COLOR</code>: <a href="./output/color.html">Control the colored output of Gungraun</a>
+(Default is <code>auto</code>)</li>
+<li><code>GUNGRAUN_LOG</code>: <a href="./output/logging.html">Define the log level</a> (Default is
+<code>WARN</code>)</li>
+</ul>
+<h2 id="exit-codes"><a class="header" href="#exit-codes">Exit Codes</a></h2>
+<ul>
+<li><strong>0</strong>: Success</li>
+<li><strong>1</strong>: All other errors</li>
+<li><strong>2</strong>: Parsing command-line arguments failed</li>
+<li><strong>3</strong>: One or more regressions occurred</li>
+</ul>
+<h2 id="the-command-line-arguments"><a class="header" href="#the-command-line-arguments">The Command-Line Arguments</a></h2>
+<p>For an up-to-date list for your Gungraun version run <code>gungraun-runner --help</code>:</p>
+<!-- start: gungraun-runner-help -->
+<pre><code class="language-text">High-precision, one-shot and consistent benchmarking framework/harness for Rust
+
+Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
+instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
+`false`
+
+Usage: cargo bench ... -- [OPTIONS | FILTER]
+
+Arguments:
+  [FILTER]
+          If specified, only run benchmarks matching this wildcard pattern
+
+          The wildcard pattern can contain `*` to match any amount of characters, `?` to match a
+          single character and simple classes `[...]` like `[abc] `to match the characters `a` or `b`
+          or `c`. Character classes can contain ranges, so `[abc]` could be rewritten as `[a-c]` and
+          they can be negated with `[!...]` to not match the contained characters.
+
+          This pattern matches the whole module path of benchmarks. A list of all benchmarks with
+          their module path as recognized by this option can be obtained by running `--list`. The
+          general structure of the module path of a benchmark is:
+
+          `FILENAME::GROUP::FUNCTION::ID`
+
+          Examples:
+            * `*::my_benchmark_id` runs all benchmarks with the id `my_benchmark_id`
+            * `gungraun_benchmarks::*` runs all benchmarks in the file `gungraun_benchmarks`
+            * `my_file::some_group::*` runs all benchmarks in the file `my_file` and the group
+              `some_group`
+
+          [env: GUNGRAUN_FILTER=]
+
+Options:
+      --list[=&lt;LIST&gt;]
+          Print a list of all benchmarks. With this argument no benchmarks are executed.
+
+          The output format is intended to be the same as the output format of the libtest harness.
+          However, future changes of the output format by cargo might not be incorporated into
+          gungraun. As a consequence, it is not considered safe to rely on the output in scripts.
+
+          Combine with `--format terse` for `cargo nextest`-compatible output (per-benchmark lines
+          only, no trailing blank line or summary). `--list --format terse --ignored` emits an empty
+          list because gungraun has no ignored-benchmark concept.
+
+          [env: GUNGRAUN_LIST=]
+          [default: false]
+          [possible values: true, false]
+
+      --allow-aslr[=&lt;ALLOW_ASLR&gt;]
+          Allow ASLR (Address Space Layout Randomization)
+
+          If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
+          could noise up the Callgrind cache simulation results a bit. Setting this option to `true`
+          runs all benchmarks with ASLR enabled.
+
+          See also [kernel.org: randomize_va_space]
+
+          [kernel.org: randomize_va_space]:
+          https://docs.kernel.org/admin-guide/sysctl/kernel.html#randomize-va-space
+
+          [env: GUNGRAUN_ALLOW_ASLR=]
+          [possible values: true, false]
+
+      --env-clear [&lt;ENV_CLEAR&gt;]
+          Control whether environment variables are cleared before running a benchmark
+
+          By default (`true`), environment variables are cleared to ensure reproducible benchmark
+          results across different environments. Set to `false` to preserve all environment variables
+          of the `cargo bench` process.
+
+          Examples:
+            * `--env-clear` (default: clear environment)
+            * `--env-clear=false` (preserve environment)
+
+          [env: GUNGRAUN_ENV_CLEAR=]
+          [possible values: true, false]
+
+      --envs=&lt;ENVS&gt;
+          Set environment variables for benchmarks ignoring the clearing of environment variables
+
+          Environment variables can be specified in two forms:
+          - `KEY=VALUE`: Set `KEY` to `VALUE` explicitly
+          - `KEY`: Resolve `KEY` from the current environment and pass its value
+
+          Multiple key-value pairs can be specified in a single invocation using space-separated
+          values (posix-style quoting of values is supported). The `--envs` argument can also be
+          specified multiple times to accumulate environment variables.
+
+          These variables are cumulative to any environment variables configured via
+          `LibraryBenchmarkConfig::env` or `BinaryBenchmarkConfig::env`.
+
+          Examples:
+            * `--envs=FOO=bar` (set FOO to "bar")
+            * `--envs=FOO` (pass the original value of FOO from current environment)
+            * `--envs='FOO=bar BAZ=qux'` (set multiple variables and once)
+            * `--envs=FOO=bar --envs=BAZ=qux` (accumulate multiple times)
+
+          [env: GUNGRAUN_ENVS=]
+
+      --home &lt;HOME&gt;
+          Specify the home directory of gungraun benchmark output files
+
+          All output files are by default stored under the `$PROJECT_ROOT/target/gungraun` directory.
+          This option lets you customize this home directory, and it will be created if it doesn't
+          exist.
+
+          [env: GUNGRAUN_HOME=]
+
+      --parallel[=&lt;PARALLEL&gt;]
+          Number of benchmarks to run in parallel.
+
+          A value of `1` runs benchmarks serially which is the default if this option is not
+          specified. Passing `auto` lets the runner choose the parallelism level based on available
+          hardware which is the number of available logical cores.
+
+          Note that benchmark groups are used as synchronization points and only benchmarks within
+          the same group are executed in parallel.
+
+          Valgrind and gungraun perform disk I/O even if your benchmarks don't. This is usually a
+          bottleneck, so running with parallelism of 10 may provide similar speedup as 5. Actual
+          results depend on the hardware and if your benchmarks are performing disk I/O, too.
+
+          Examples: * --parallel=4 * --parallel=auto
+
+          [env: GUNGRAUN_PARALLEL=]
+          [default: 1]
+
+      --separate-targets[=&lt;SEPARATE_TARGETS&gt;]
+          Separate gungraun benchmark output files by target
+
+          The default output path for files created by Gungraun and Valgrind during the benchmark is
+
+          `target/gungraun/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+
+          This can be problematic if you're running the benchmarks not only for a single target
+          because you end up comparing the benchmark runs with the wrong targets. Setting this option
+          changes the default output path to
+
+          `target/gungraun/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+
+          Although not as comfortable and strict, you could achieve a separation by target also with
+          baselines and a combination of `--save-baseline=$TARGET` and `--baseline=$TARGET` if you
+          prefer having all files of a single $BENCH in the same directory.
+
+          [env: GUNGRAUN_SEPARATE_TARGETS=]
+          [default: false]
+          [possible values: true, false]
+
+      --valgrind-bin &lt;VALGRIND_BIN&gt;
+          Specify the path to the Valgrind executable
+
+          By default, Gungraun searches for `valgrind` in the system PATH. This option
+          allows specifying an alternative Valgrind executable. When used with
+          `--valgrind-runner`, this path is passed to the runner as the Valgrind binary
+          to invoke.
+
+          Note: The specified path is not validated for existence. If the path is invalid, the
+          benchmark will fail when attempting to execute Valgrind.
+
+          Examples:
+            * `--valgrind-bin=/usr/local/bin/valgrind`
+            * `--valgrind-bin=/doesnotexist` (used with `--valgrind-runner` for container setups)
+
+          [env: GUNGRAUN_VALGRIND_BIN=]
+
+      --workspace-root &lt;WORKSPACE_ROOT&gt;
+          Override the Cargo workspace root
+
+          By default, Gungraun queries `cargo metadata` to detect the workspace root. This is usually
+          correct, but this option provides the workspace root explicitly and avoids that part of the
+          Cargo metadata query.
+
+          To run without invoking `cargo` at all, also provide an explicit output location with
+          `--home`/`GUNGRAUN_HOME` or set `CARGO_TARGET_DIR`. If neither is provided, Gungraun still
+          queries `cargo metadata` to detect Cargo's effective target directory.
+
+          This can be useful when `gungraun-runner` executes in an environment where `cargo` is not
+          available, such as a container, VM, or emulator image.
+
+          Examples:
+            * `--workspace-root=/project`
+            * `GUNGRAUN_WORKSPACE_ROOT=/project GUNGRAUN_HOME=/tmp/gungraun cargo bench`
+
+          [env: GUNGRAUN_WORKSPACE_ROOT=]
+
+      --valgrind-runner &lt;VALGRIND_RUNNER&gt;
+          Specify an alternative executable to run Valgrind
+
+          By default, Gungraun runs the benchmark executable with Valgrind directly. This option
+          allows specifying an alternative runner executable that will be invoked instead, with
+          Valgrind passed as an argument to the runner.
+
+          When specified, the runner is invoked as:
+            `&lt;RUNNER&gt; [RUNNER_ARGS...] &lt;VALGRIND_BIN&gt; [VALGRIND_ARGS...] &lt;BENCHMARK&gt;
+            [BENCHMARK_ARGS...]`
+
+          The runner receives extra environment variables that provide context:
+          - `GUNGRAUN_VR_DEST_DIR`: The destination directory for Valgrind output files
+          - `GUNGRAUN_VR_HOME`: The gungraun home (`--home`) directory
+          - `GUNGRAUN_VR_WORKSPACE_ROOT`: The project's workspace root directory
+          - `GUNGRAUN_ALLOW_ASLR`: `yes` or `no` (the default) based on `--allow-aslr` setting
+
+          Environment variables in `--valgrind-runner-args` are interpolated using `${VAR}` syntax.
+          The interpolation priority is: `GUNGRAUN_VR_*` variables first, then `--envs` variables,
+          then the system environment.
+
+          This is useful for running benchmarks in containers or other environments where Valgrind is
+          not available on the host. See the online guide for detailed examples.
+
+          Examples:
+            * --valgrind-runner=docker
+            * --valgrind-runner=/path/to/wrapper
+            --valgrind-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
+
+          [env: GUNGRAUN_VALGRIND_RUNNER=]
+
+      --valgrind-runner-args &lt;VALGRIND_RUNNER_ARGS&gt;
+          Additional arguments to pass to the Valgrind runner executable
+
+          This option is only effective when `--valgrind-runner` is specified. The arguments are
+          passed to the runner executable after `--valgrind-runner` and before the Valgrind path.
+
+          Environment variable interpolation is supported using the `${VAR}` syntax. Variables are
+          resolved in this order:
+          1. `GUNGRAUN_VR_*` variables set by Gungraun (see `--valgrind-runner` for the list)
+          2. Variables specified via `--envs` and `LibraryBenchmarkConfig::envs` or
+             `BinaryBenchmarkConfig::envs`
+          3. System environment variables
+
+          The interpolation allows passing dynamic values to the runner based on Gungraun's
+          configuration. For example, `${GUNGRAUN_ALLOW_ASLR}` interpolation is useful for passing
+          the ASLR setting to container setups.
+
+          Examples:
+            * --valgrind-runner=sudo --valgrind-runner-args='--user=foo'
+            * --valgrind-runner=wrapper '--valgrind-runner-args=--allow-aslr=${GUNGRAUN_ALLOW_ASLR}'
+
+          [env: GUNGRAUN_VALGRIND_RUNNER_ARGS=]
+
+      --valgrind-runner-dest &lt;VALGRIND_RUNNER_DEST&gt;
+          Override the destination directory path for Valgrind runner output files
+
+          This option is only effective when `--valgrind-runner` is specified. By default, Valgrind
+          output files are written to paths under the gungraun home directory or in temporary
+          directories. This option allows substituting this path with a custom directory.
+
+          When specified, any occurrence of this path prefix in Valgrind arguments will be replaced
+          with the directory path specified by `--valgrind-runner-dest`.
+
+          WARNING: Make sure the directory of this argument exists, is empty and doesn't point to a
+          directory with important files in it! This directory is managed by Gungraun and Gungraun
+          might delete **all** files in this directory. More details can be found in the online
+          guide.
+
+          Examples:
+            * `--valgrind-runner-dest=/tmp/results`
+
+          [env: GUNGRAUN_VALGRIND_RUNNER_DEST=]
+
+      --valgrind-runner-root &lt;VALGRIND_RUNNER_ROOT&gt;
+          Override the workspace root path for the Valgrind runner
+
+          This option is only effective when `--valgrind-runner` is specified. It allows substituting
+          the workspace root path prefix in the benchmark executable path and all other Valgrind
+          arguments.
+
+          This can be useful for container setups where the workspace is mounted at a different
+          location inside the container.
+
+          Examples:
+            * `--valgrind-runner-root=/workspace`
+
+          [env: GUNGRAUN_VALGRIND_RUNNER_ROOT=]
+
+      --baseline[=&lt;BASELINE&gt;]
+          Compare benchmark results against a previously saved baseline
+
+          This option compares the current benchmark run against a named baseline from a previous run
+          without modifying the saved baseline. Baselines store benchmark results for future
+          comparisons, useful for tracking performance over time or comparing against fixed reference
+          points like a release tag or main branch.
+
+          If this option is specified but no baseline with that name exists yet, Gungraun creates a
+          new baseline with the current results instead of comparing.
+
+          See also: `--save-baseline` to create or update a baseline, `--load-baseline` to compare
+          existing baselines without running benchmarks.
+
+          Examples: * `--baseline` (uses the default baseline name "default") * `--baseline=main`
+          (compares against baseline saved as "main") * `--baseline=v1.0` (compares against baseline
+          saved as "v1.0")
+
+          [env: GUNGRAUN_BASELINE=]
+
+      --load-baseline[=&lt;LOAD_BASELINE&gt;]
+          Load an existing baseline instead of running new benchmarks
+
+          This option loads benchmark results from a previously saved baseline and uses them as the
+          "new" data for comparison against another baseline. This allows comparing two existing
+          baselines without re-running any benchmarks.
+
+          This option requires `--baseline` to be specified, which provides the "old" baseline to
+          compare against.
+
+          This is useful for: - Re-comparing existing baselines with different comparison targets -
+          Comparing two previously saved baselines against each other - Avoiding expensive benchmark
+          re-runs when only analysis is needed
+
+          See also: `--baseline` to compare against a baseline while running new benchmarks,
+          `--save-baseline` to create or update a baseline.
+
+          Examples: * `--load-baseline --baseline=main` (loads "default", compares against "main") *
+          `--load-baseline=feature --baseline=main` (loads "feature", compares against "main") *
+          `--load-baseline=v1.1 --baseline=v1.0` (loads "v1.1", compares against "v1.0")
+
+          [env: GUNGRAUN_LOAD_BASELINE=]
+
+      --save-baseline[=&lt;SAVE_BASELINE&gt;]
+          Save benchmark results as a named baseline for future comparisons
+
+          If a baseline with this name already exists, Gungraun first compares against it before
+          overwriting with the new results. If this option is used together with `--baseline`,
+          Gungraun compares against the baseline selected by `--baseline` and saves the new results
+          with the name selected by `--save-baseline`.
+
+          This option is useful for creating reference measurements (like from the main branch or a
+          release tag) that you can later compare against using `--baseline`.
+
+          This option conflicts with `--load-baseline`. See `--baseline` to compare against a saved
+          baseline without modifying it and `--load-baseline` to compare existing baselines without
+          running benchmarks.
+
+          Examples: * `--save-baseline` (uses the default baseline name "default") *
+          `--save-baseline=main` (saves as baseline "main") * `--save-baseline=v1.0` (saves as
+          baseline "v1.0") * `--save-baseline=pr_1234 --baseline=main` (compares against "main",
+          saves as `pr_1234`)
+
+          [env: GUNGRAUN_SAVE_BASELINE=]
+
+      --nocapture[=&lt;NOCAPTURE&gt;]
+          Don't capture terminal output of benchmarks
+
+          Possible values are one of [true, false, stdout, stderr].
+
+          This option is currently restricted to the Callgrind run of benchmarks. The output of
+          additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
+          same output of benchmarks multiple times. Use `GUNGRAUN_LOG=info` to also show captured and
+          logged output.
+
+          If no value is given, the default missing value is `true` and doesn't capture stdout and
+          stderr. Besides `true` or `false` you can specify the special values `stdout` or `stderr`.
+          If `--nocapture=stdout` is given, the output to `stdout` won't be captured and the output
+          to `stderr` will be discarded. Likewise, if `--nocapture=stderr` is specified, the output
+          to `stderr` won't be captured and the output to `stdout` will be discarded.
+
+          [env: GUNGRAUN_NOCAPTURE=]
+          [default: false]
+
+      --nosummary[=&lt;NOSUMMARY&gt;]
+          Suppress the summary showing regressions and execution time at the end of a benchmark run
+
+          Note, that a summary is only printed if the `--output-format` is not JSON.
+
+          The summary described by `--nosummary` is different from `--save-summary` and they do not
+          affect each other.
+
+          [env: GUNGRAUN_NOSUMMARY=]
+          [default: false]
+          [possible values: true, false]
+
+      --output-format &lt;OUTPUT_FORMAT&gt;
+          The terminal output format in default human-readable format or in machine-readable json
+          format
+
+          # The JSON Output Format
+
+          The json terminal output schema is the same as the schema with the `--save-summary`
+          argument when saving to a `summary.json` file. All other output than the json output goes
+          to stderr and only the summary output goes to stdout. When not printing pretty json, each
+          line is a dictionary summarizing a single benchmark. You can combine all lines (benchmarks)
+          into an array for example with `jq`
+
+          `cargo bench -- --output-format=json | jq -s`
+
+          which transforms `{...}\n{...}` into `[{...},{...}]`
+
+          Possible values:
+          - default:     The default terminal output
+          - json:        Json terminal output
+          - pretty-json: Pretty json terminal output
+
+          [env: GUNGRAUN_OUTPUT_FORMAT=]
+          [default: default]
+
+      --save-summary[=&lt;SAVE_SUMMARY&gt;]
+          Save a machine-readable summary of each benchmark run to a JSON file
+
+          This option saves a structured JSON summary of each benchmark run alongside the usual
+          benchmark output. The summary file contains benchmark results, metrics, detected
+          regressions, and other metadata in a machine-readable format.
+
+          The summary file is saved as `summary.json` in the benchmark's output directory next to the
+          other usual benchmark output.
+
+          Available formats: - `json`: Compact JSON without newlines (space-efficient) -
+          `pretty-json`: Pretty-printed JSON with indentation (human-readable)
+
+          See also `--output-format` for printing JSON summaries to the terminal instead of saving to
+          a file.
+
+          Examples: * `--save-summary` (saves as compact JSON) * `--save-summary=json` (saves as
+          compact JSON) * `--save-summary=pretty-json` (saves as pretty-printed JSON)
+
+          Possible values:
+          - json:        The format in a space optimal json representation without newlines
+          - pretty-json: The format in pretty printed json
+
+          [env: GUNGRAUN_SAVE_SUMMARY=]
+
+      --show-grid[=&lt;SHOW_GRID&gt;]
+          Show an ascii grid in the benchmark terminal output
+
+          A matter of taste but the guiding lines can also be helpful reading benchmark output when
+          running multiple tools with multiple threads and subprocesses for example by using
+          `--show-intermediate`.
+
+          [env: GUNGRAUN_SHOW_GRID=]
+          [possible values: true, false]
+
+      --show-intermediate[=&lt;SHOW_INTERMEDIATE&gt;]
+          Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
+
+          In Callgrind, threads are treated as separate units (similar to subprocesses) and the
+          metrics for them are dumped into an own file. Other Valgrind tools usually separate the
+          output files only by subprocesses. Use this option, to also show the metrics of any
+          intermediate fragments and not just the total over all of them.
+
+          Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
+          multi-thread/multi-process benchmarks.
+
+          [env: GUNGRAUN_SHOW_INTERMEDIATE=]
+          [possible values: true, false]
+
+      --show-only-comparison[=&lt;SHOW_ONLY_COMPARISON&gt;]
+          Show only the comparison between different benchmarks when using `compare_by_id`
+
+          If you're only interested in the comparisons between different benchmarks but not the
+          metric
+          differences between the self comparisons of the new and old benchmark run, use this option.
+          This option is only useful if `compare_by_id` is used in the `library_benchmark_group!` or
+          `binary_benchmark_group!`. Note, that it does not prevent any benchmarks to be run,
+          especially benchmarks which are not compared to another benchmark. Such benchmarks have
+          only
+          the usual benchmark headline printed.
+
+          [env: GUNGRAUN_SHOW_ONLY_COMPARISON=]
+          [possible values: true, false]
+
+      --tolerance[=&lt;TOLERANCE&gt;]
+          Show changes only when they are above the `tolerance` level
+
+          If no value is specified, the default value of `0.000_009_999_999_999_999_999` is based on
+          the number of decimal places of the percentages displayed in the terminal output in case of
+          differences.
+
+          Negative tolerance values are converted to their absolute value.
+
+          Examples:
+            * --tolerance (applies the default value)
+            * --tolerance=0.1 (set the tolerance level to `0.1`)
+
+          [env: GUNGRAUN_TOLERANCE=]
+
+      --truncate-description[=&lt;TRUNCATE_DESCRIPTION&gt;]
+          Adjust, enable or disable the truncation of the description in the Gungraun output
+
+          The default is to truncate the description to the size of 50 ascii characters. A false
+          value disables the truncation entirely and a value will truncate the description to the
+          given amount of characters excluding the ellipsis.
+
+          To clarify which part of the output is meant by `DESCRIPTION`:
+
+          ```text
+          benchmark_file::group_name::function_name id:DESCRIPTION
+            Instructions:              352135|352135          (No change)
+            ...
+          ```
+
+          Examples:
+            * --truncate-description=no (disables truncation)
+            * --truncate-description=100 (set the truncation to 100 ascii chars)
+            * --truncate-description (this is the default and sets the size of 50 ascii chars)
+
+          [env: GUNGRAUN_TRUNCATE_DESCRIPTION=]
+
+      --cachegrind-metrics &lt;CACHEGRIND_METRICS&gt;...
+          Define the Cachegrind metrics and the order in which they are displayed
+
+          This is a `,`-separated list of Cachegrind metric groups and event kinds which are allowed
+          to appear in the terminal output of Cachegrind.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetrics.html&gt;
+          respectively
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetric.html&gt; for valid
+          metrics and group members.
+
+          The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+          described in the `--cachegrind-limits` option.
+
+          Examples:
+            * --cachegrind-metrics='ir' to show only `Instructions`
+          * --cachegrind-metrics='@all' to show all possible Cachegrind metrics
+            * --cachegrind-metrics='@default,@mr' to show cache miss rates in addition to the
+            defaults
+
+          [env: GUNGRAUN_CACHEGRIND_METRICS=]
+
+      --callgrind-metrics &lt;CALLGRIND_METRICS&gt;...
+          Define the Callgrind metrics and the order in which they are displayed
+
+          This is a `,`-separated list of Callgrind metric groups and event kinds which are allowed
+          to appear in the terminal output of Callgrind. Group names need to be prefixed with '@'.
+          The order matters and the Callgrind metrics are shown in their insertion order of this
+          option. More precisely, in case of duplicate metrics, the first specified one wins.
+
+          The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+          described in the `--callgrind-limits` option.
+
+          For a list of valid metrics, groups and their members see the docs of `CallgrindMetrics`
+          (&lt;https://docs.rs/gungraun/latest/gungraun/enum.CallgrindMetrics.html&gt;) and
+          `EventKind` &lt;https://docs.rs/gungraun/latest/gungraun/enum.EventKind.html&gt;.
+
+          Note that setting the metrics here does not imply that these metrics are actually
+          collected. This option just sets the order and appearance of metrics in case they are
+          collected. To activate the collection of specific metrics you need to use
+          `--callgrind-args`.
+
+          Examples:
+            * --callgrind-metrics='ir' to show only `Instructions`
+          * --callgrind-metrics='@all' to show all possible Callgrind metrics
+            * --callgrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
+
+          [env: GUNGRAUN_CALLGRIND_METRICS=]
+
+      --dhat-metrics &lt;DHAT_METRICS&gt;...
+          Define the DHAT metrics and the order in which they are displayed
+
+          This is a `,`-separated list of DHAT metric groups and event kinds which are allowed to
+          appear in the terminal output of DHAT.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetrics.html&gt; respectively
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetric.html&gt; for valid metrics
+          and group members.
+
+          The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+          described in the `--dhat-limits` option.
+
+          Examples:
+            * --dhat-metrics='totalbytes' to show only `Total Bytes`
+          * --dhat-metrics='@all' to show all possible DHAT metrics
+            * --dhat-metrics='@default,mb' to show maximum bytes in addition to the defaults
+
+          [env: GUNGRAUN_DHAT_METRICS=]
+
+      --drd-metrics &lt;DRD_METRICS&gt;...
+          Define the DRD error metrics and the order in which they are displayed
+
+          This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+          output of DRD. The `group` and `event` are the same as for `--memcheck-metrics`.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.ErrorMetric.html&gt; for valid error
+          metrics.
+
+          Since this is a very small set of metrics, there is only one `group`: `@all`
+
+          Examples:
+            * --drd-metrics='errors' to show only `Errors`
+            * --drd-metrics='@all' to show all possible error metrics (the default)
+            * --drd-metrics='err,ctx' to show only errors and contexts
+
+          [env: GUNGRAUN_DRD_METRICS=]
+
+      --helgrind-metrics &lt;HELGRIND_METRICS&gt;...
+          Define the Helgrind error metrics and the order in which they are displayed
+
+          This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+          output of Helgrind. The `group` and `event` are the same as for `--memcheck-metrics`.
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.ErrorMetric.html&gt; for valid error
+          metrics.
+
+          Examples:
+            * --helgrind-metrics='errors' to show only `Errors`
+            * --helgrind-metrics='@all' to show all possible error metrics (the default)
+            * --helgrind-metrics='err,ctx' to show only errors and contexts
+
+          [env: GUNGRAUN_HELGRIND_METRICS=]
+
+      --memcheck-metrics &lt;MEMCHECK_METRICS&gt;...
+          Define the Memcheck error metrics and the order in which they are displayed
+
+          This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+          output of Memcheck.
+
+          Since this is a very small set of metrics, there is only one `group`: `@all`
+
+          group ::= "@all"
+          event ::=   ( "errors" | "err" )
+                    | ( "contexts" | "ctx" )
+                    | ( "suppressederrors" | "serr")
+                    | ( "suppressedcontexts" | "sctx" )
+
+          See `--callgrind-metrics` for more details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.ErrorMetric.html&gt; for valid
+          metrics.
+
+          Examples:
+            * --memcheck-metrics='errors' to show only `Errors`
+            * --memcheck-metrics='@all' to show all possible error metrics (the default)
+            * --memcheck-metrics='err,ctx' to show only errors and contexts
+
+          [env: GUNGRAUN_MEMCHECK_METRICS=]
+
+      --default-tool &lt;DEFAULT_TOOL&gt;
+          The default tool used to run the benchmarks
+
+          The standard tool to run the benchmarks is Callgrind but can be overridden with this
+          option. Any Valgrind tool can be used:
+            * callgrind
+            * cachegrind
+            * dhat
+            * memcheck
+            * helgrind
+            * drd
+            * massif
+            * exp-bbv
+
+          This argument matches the tool case-insensitive. Note that using Cachegrind with this
+          option to benchmark library functions needs adjustments to the benchmarking functions with
+          client-requests to measure the counts correctly. If you want to switch permanently to
+          Cachegrind, it is usually better to activate the `cachegrind` feature of gungraun in
+          your Cargo.toml. However, setting a tool with this option overrides Cachegrind set with the
+          gungraun feature. See the guide for all details.
+
+          [env: GUNGRAUN_DEFAULT_TOOL=]
+
+      --tools &lt;TOOLS&gt;...
+          A comma separated list of tools to run additionally to Callgrind or another default tool
+
+          The tools specified here take precedence over the tools in the benchmarks. The Valgrind
+          tools which are allowed here are the same as the ones listed in the documentation of
+          --default-tool.
+
+          Examples
+            * --tools dhat
+            * --tools memcheck,drd
+
+          [env: GUNGRAUN_TOOLS=]
+
+      --bbv-args &lt;BBV_ARGS&gt;
+          The command-line arguments to pass through to the experimental BBV
+
+          &lt;https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --bbv-args=--interval-size=10000
+            * --bbv-args='--interval-size=10000 --instr-count-only=yes'
+
+          [env: GUNGRAUN_BBV_ARGS=]
+
+      --cachegrind-args &lt;CACHEGRIND_ARGS&gt;
+          The command-line arguments to pass through to Cachegrind
+
+          &lt;https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --cachegrind-args=--instr-at-start=no
+            * --cachegrind-args='--branch-sim=yes --instr-at-start=no'
+
+          [env: GUNGRAUN_CACHEGRIND_ARGS=]
+
+      --callgrind-args &lt;CALLGRIND_ARGS&gt;
+          The command-line arguments to pass through to Callgrind
+
+          &lt;https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options&gt; and the core valgrind
+          command-line arguments
+          &lt;https://valgrind.org/docs/manual/manual-core.html#manual-core.options&gt;. Note that not all
+          command-line arguments are supported especially the ones which change output paths.
+          Unsupported arguments will be ignored printing a warning.
+
+          Examples:
+            * --callgrind-args=--dump-instr=yes
+            * --callgrind-args='--dump-instr=yes --collect-systime=yes'
+
+          [env: GUNGRAUN_CALLGRIND_ARGS=]
+
+      --dhat-args &lt;DHAT_ARGS&gt;
+          The command-line arguments to pass through to DHAT
+
+          &lt;https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --dhat-args=--mode=ad-hoc
+
+          [env: GUNGRAUN_DHAT_ARGS=]
+
+      --drd-args &lt;DRD_ARGS&gt;
+          The command-line arguments to pass through to DRD
+
+          &lt;https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --drd-args=--exclusive-threshold=100
+            * --drd-args='--exclusive-threshold=100 --free-is-write=yes'
+
+          [env: GUNGRAUN_DRD_ARGS=]
+
+      --helgrind-args &lt;HELGRIND_ARGS&gt;
+          The command-line arguments to pass through to Helgrind
+
+          &lt;https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --helgrind-args=--free-is-write=yes
+            * --helgrind-args='--conflict-cache-size=100000 --free-is-write=yes'
+
+          [env: GUNGRAUN_HELGRIND_ARGS=]
+
+      --massif-args &lt;MASSIF_ARGS&gt;
+          The command-line arguments to pass through to Massif
+
+          &lt;https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --massif-args=--heap=no
+            * --massif-args='--heap=no --threshold=2.0'
+
+          [env: GUNGRAUN_MASSIF_ARGS=]
+
+      --memcheck-args &lt;MEMCHECK_ARGS&gt;
+          The command-line arguments to pass through to Memcheck
+
+          &lt;https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options&gt;. See also the
+          description for --callgrind-args for more details and restrictions.
+
+          Examples:
+            * --memcheck-args=--leak-check=full
+            * --memcheck-args='--leak-check=yes --show-leak-kinds=all'
+
+          [env: GUNGRAUN_MEMCHECK_ARGS=]
+
+      --valgrind-args &lt;VALGRIND_ARGS&gt;
+          The command-line arguments to pass through to all tools
+
+          The core Valgrind command-line arguments
+          &lt;https://valgrind.org/docs/manual/manual-core.html#manual-core.options&gt; which are
+          recognized by all tools. More specific arguments for example set with --callgrind-args
+          override the arguments with the same name specified with this option.
+
+          Examples:
+            * --valgrind-args=--time-stamp=yes
+            * --valgrind-args='--error-exitcode=202 --num-callers=50'
+
+          [env: GUNGRAUN_VALGRIND_ARGS=]
+
+      --cachegrind-limits &lt;CACHEGRIND_LIMITS&gt;
+          Set performance regression limits for specific Cachegrind metrics
+
+          This is a `,` separate list of CachegrindMetric=limit or CachegrindMetrics=limit
+          (key=value) pairs. See the description of --callgrind-limits for the details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetrics.html&gt;
+          respectively &lt;https://docs.rs/gungraun/latest/gungraun/enum.CachegrindMetric.html&gt;
+          for valid metrics and group members.
+
+          See the guide
+          (&lt;https://gungraun.github.io/gungraun/latest/html/regressions.html&gt;) for all
+          details or replace the format spec in `--callgrind-limits` with the following:
+
+          group ::= "@" ( "default"
+                        | "all"
+                        | ("cachemisses" | "misses" | "ms")
+                        | ("cachemissrates" | "missrates" | "mr")
+                        | ("cachehits" | "hits" | "hs")
+                        | ("cachehitrates" | "hitrates" | "hr")
+                        | ("cachesim" | "cs")
+                        | ("branchsim" | "bs")
+                        )
+          event ::= CachegrindMetric
+
+          Examples:
+            * --cachegrind-limits='ir=0.0%'
+            * --cachegrind-limits='ir=10000,EstimatedCycles=10%'
+            * --cachegrind-limits='@all=10%,ir=10000,EstimatedCycles=10%'
+
+          [env: GUNGRAUN_CACHEGRIND_LIMITS=]
+
+      --callgrind-limits &lt;CALLGRIND_LIMITS&gt;
+          Set performance regression limits for specific `EventKinds`
+
+          This is a `,` separate list of EventKind=limit or CallgrindMetrics=limit (key=value) pairs
+          with the limit being a soft limit if the number suffixed with a `%` or a hard limit if it
+          is a bare number. It is possible to specify hard and soft limits in one go with the `|`
+          operator (e.g. `ir=10%|10000`). Groups (CallgrindMetrics) are prefixed with `@`. List of
+          allowed groups and events with their abbreviations:
+
+          group ::= "@" ( "default"
+                        | "all"
+                        | ("cachemisses" | "misses" | "ms")
+                        | ("cachemissrates" | "missrates" | "mr")
+                        | ("cachehits" | "hits" | "hs")
+                        | ("cachehitrates" | "hitrates" | "hr")
+                        | ("cachesim" | "cs")
+                        | ("cacheuse" | "cu")
+                        | ("systemcalls" | "syscalls" | "sc")
+                        | ("branchsim" | "bs")
+                        | ("writebackbehaviour" | "writeback" | "wb")
+                        )
+          event ::= EventKind
+
+          See the guide (&lt;https://gungraun.github.io/gungraun/latest/html/regressions.html&gt;)
+          for more details, the docs of `CallgrindMetrics`
+          (&lt;https://docs.rs/gungraun/latest/gungraun/enum.CallgrindMetrics.html&gt;) and
+          `EventKind` &lt;https://docs.rs/gungraun/latest/gungraun/enum.EventKind.html&gt; for a
+          list of metrics and groups with their members.
+
+          A performance regression check for an `EventKind` fails if the limit is exceeded. If
+          limits are defined and one or more regressions have occurred during the benchmark run,
+          the whole benchmark is considered to have failed and the program exits with error and
+          exit code `3`.
+
+          Examples:
+            * --callgrind-limits='ir=5.0%'
+            * --callgrind-limits='ir=10000,EstimatedCycles=10%'
+            * --callgrind-limits='@all=10%,ir=5%|10000'
+
+          [env: GUNGRAUN_CALLGRIND_LIMITS=]
+
+      --dhat-limits &lt;DHAT_LIMITS&gt;
+          Set performance regression limits for specific DHAT metrics
+
+          This is a `,` separate list of DhatMetrics=limit or DhatMetric=limit (key=value) pairs. See
+          the description of --callgrind-limits for the details and
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetrics.html&gt; respectively
+          &lt;https://docs.rs/gungraun/latest/gungraun/enum.DhatMetric.html&gt; for valid metrics
+          and group members.
+
+          See the guide
+          (&lt;https://gungraun.github.io/gungraun/latest/html/regressions.html&gt;) for all
+          details or replace the format spec in `--callgrind-limits` with the following:
+
+          group ::= "@" ( "default" | "all" )
+          event ::=   ( "totalunits" | "tun" )
+                    | ( "totalevents" | "tev" )
+                    | ( "totalbytes" | "tb" )
+                    | ( "totalblocks" | "tbk" )
+                    | ( "attgmaxbytes" | "gb" )
+                    | ( "attgmaxblocks" | "gbk" )
+                    | ( "attendbytes" | "eb" )
+                    | ( "attendblocks" | "ebk" )
+                    | ( "readsbytes" | "rb" )
+                    | ( "writesbytes" | "wb" )
+                    | ( "totallifetimes" | "tl" )
+                    | ( "maximumbytes" | "mb" )
+                    | ( "maximumblocks" | "mbk" )
+
+          `events` with a long name have their allowed abbreviations placed in the same parentheses.
+
+          Examples:
+            * --dhat-limits='totalbytes=0.0%'
+            * --dhat-limits='totalbytes=10000,totalblocks=5%'
+            * --dhat-limits='@all=10%,totalbytes=5000,totalblocks=5%'
+
+          [env: GUNGRAUN_DHAT_LIMITS=]
+
+      --regression-fail-fast[=&lt;REGRESSION_FAIL_FAST&gt;]
+          Fail the entire benchmark run on the first performance regression
+
+          When enabled, this option causes Gungraun to stop immediately when a performance regression
+          is detected, rather than continuing to run all benchmarks and reporting regressions at the
+          end. The program exits with exit code `3` to indicate that one or more regressions
+          occurred.
+
+          Performance regressions are defined by limits set via `--callgrind-limits`,
+          `--cachegrind-limits`, `--dhat-limits`, and similar options. Without this option, Gungraun
+          completes all benchmarks and reports all regressions in a summary at the end.
+
+          See also: `--callgrind-limits`, `--cachegrind-limits`, `--dhat-limits` for defining
+          regression limits.
+
+          Examples: * `--regression-fail-fast` (fail on first regression) *
+          `--regression-fail-fast=false` (continue running, report at end - default)
+
+          [env: GUNGRAUN_REGRESSION_FAIL_FAST=]
+          [possible values: true, false]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+  Exit codes:
+      0: Success
+      1: All other errors
+      2: Parsing command-line arguments failed
+      3: One or more regressions occurred
+
+</code></pre>
+<!-- end: gungraun-runner-help -->
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../flamegraphs.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../cli_and_env/baselines.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../flamegraphs.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../cli_and_env/baselines.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../js/dropdown-3c42ae60.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

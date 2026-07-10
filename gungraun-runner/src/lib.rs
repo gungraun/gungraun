@@ -11,13 +11,17 @@ pub mod error;
 #[cfg(any(feature = "__fixtures", test))]
 #[path = "../fixtures/mod.rs"]
 pub mod fixtures;
-#[cfg(any(feature = "runner", feature = "summary", feature = "schema"))]
+#[cfg(any(feature = "api", feature = "summary", feature = "schema"))]
 pub mod metrics;
 #[cfg(feature = "runner")]
 pub mod runner;
 #[cfg(any(feature = "api", feature = "summary", feature = "schema"))]
 pub mod serde;
-#[cfg(any(feature = "runner", feature = "summary", feature = "schema"))]
+#[cfg(any(feature = "api", feature = "runner"))]
+pub mod stats;
+#[cfg(any(feature = "api", feature = "summary", feature = "schema"))]
 pub mod summary;
+#[cfg(any(feature = "api", feature = "summary", feature = "schema"))]
+pub mod units;
 #[cfg(feature = "runner")]
 pub mod util;

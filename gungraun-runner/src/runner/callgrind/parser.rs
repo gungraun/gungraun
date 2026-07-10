@@ -56,7 +56,7 @@ pub trait CallgrindParser {
         &self,
         output: &ToolOutputPath,
     ) -> Result<Vec<(PathBuf, CallgrindProperties, Self::Output)>> {
-        let paths = output.real_paths()?;
+        let paths = output.sanitized_paths()?;
         let mut results: Vec<(PathBuf, CallgrindProperties, Self::Output)> =
             Vec::with_capacity(paths.len());
         for path in paths {

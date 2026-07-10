@@ -1,4 +1,4 @@
-//! Module containing the json parser for dhat output files
+//! Module containing dhat files for json output parser the
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};

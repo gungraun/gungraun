@@ -42,7 +42,7 @@ use super::format::{ListFormat, OutputFormatKind};
 use super::tool::regression::ToolRegressionConfig;
 use crate::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, ErrorMetric,
-    EventKind, RawToolArgs, ValgrindTool,
+    EventKind, RawToolArgs, Tool,
 };
 use crate::metrics::logic::TypeChecker;
 use crate::metrics::model::Metric;
@@ -90,6 +90,8 @@ pub enum TruncateDescription {
     None,
 }
 
+// TODO: Add cli args for perf, check current cli args like --tools, --default-tool if they support
+// perf, Update the documentation of the args which need it
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `gungraun-runner`. We collect
@@ -353,7 +355,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * --cachegrind-metrics='ir' to show only `Instructions`
-/// * --cachegrind-metrics='@all' to show all possible Cachegrind metrics
+    ///   * --cachegrind-metrics='@all' to show all possible Cachegrind metrics
     ///   * --cachegrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
     #[arg(
         display_order = 400,
@@ -459,7 +461,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * --callgrind-metrics='ir' to show only `Instructions`
-/// * --callgrind-metrics='@all' to show all possible Callgrind metrics
+    ///   * --callgrind-metrics='@all' to show all possible Callgrind metrics
     ///   * --callgrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
     #[arg(
         display_order = 400,
@@ -499,7 +501,7 @@ pub struct CommandLineArgs {
         num_args = 1,
         verbatim_doc_comment,
     )]
-    pub default_tool: Option<ValgrindTool>,
+    pub default_tool: Option<Tool>,
 
     #[rustfmt::skip]
     /// The command-line arguments to pass through to DHAT
@@ -579,7 +581,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * --dhat-metrics='totalbytes' to show only `Total Bytes`
-/// * --dhat-metrics='@all' to show all possible DHAT metrics
+    ///   * --dhat-metrics='@all' to show all possible DHAT metrics
     ///   * --dhat-metrics='@default,mb' to show maximum bytes in addition to the defaults
     #[arg(
         display_order = 400,
@@ -1243,6 +1245,123 @@ pub struct CommandLineArgs {
     pub tolerance: Option<f64>,
 
     #[rustfmt::skip]
+    /// Specify an alternative executable to run a tool invocation
+    ///
+    /// By default, Gungraun runs the selected tool directly. This option allows specifying an
+    /// alternative runner executable that will be invoked instead, with the selected tool binary
+    /// passed as an argument to the runner.
+    ///
+    /// When specified, the runner is invoked as:
+    ///   `<RUNNER> [RUNNER_ARGS...] <TOOL_BIN> [TOOL_ARGS...] <BENCHMARK> [BENCHMARK_ARGS...]`
+    ///
+    /// The runner receives extra environment variables that provide context:
+    /// - `GUNGRAUN_TR_DEST_DIR`: The destination directory for tool output files
+    /// - `GUNGRAUN_TR_HOME`: The gungraun home (`--home`) directory
+    /// - `GUNGRAUN_TR_WORKSPACE_ROOT`: The project's workspace root directory
+    /// - `GUNGRAUN_ALLOW_ASLR`: `yes` or `no` (the default) based on `--allow-aslr` setting
+    ///
+    /// Environment variables in `--tool-runner-args` are interpolated using `${VAR}` syntax.
+    /// The interpolation priority is: `GUNGRAUN_TR_*` variables first, then `--envs` variables,
+    /// then the system environment.
+    ///
+    /// This is useful for running benchmarks in containers or other environments where the tool is
+    /// not available on the host. See the online guide for detailed examples.
+    ///
+    /// Examples:
+    ///   * --tool-runner=docker
+    ///   * --tool-runner=/path/to/wrapper --tool-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
+    #[arg(
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER",
+        long = "tool-runner",
+        num_args = 1,
+        value_parser = PathBufValueParser::new().try_map(parse_path_resolved),
+        verbatim_doc_comment,
+    )]
+    pub tool_runner: Option<PathBuf>,
+
+    #[rustfmt::skip]
+    /// Additional arguments to pass to the tool runner executable
+    ///
+    /// This option is only effective when `--tool-runner` is specified. The arguments are passed
+    /// to the runner executable after `--tool-runner` and before the tool path.
+    ///
+    /// Environment variable interpolation is supported using the `${VAR}` syntax. Variables are
+    /// resolved in this order:
+    /// 1. `GUNGRAUN_TR_*` variables set by Gungraun (see `--tool-runner` for the list)
+    /// 2. Variables specified via `--envs` and `LibraryBenchmarkConfig::envs` or
+    ///    `BinaryBenchmarkConfig::envs`
+    /// 3. System environment variables
+    ///
+    /// The interpolation allows passing dynamic values to the runner based on Gungraun's
+    /// configuration. For example, `${GUNGRAUN_ALLOW_ASLR}` interpolation is useful for passing
+    /// the ASLR setting to container setups.
+    ///
+    /// Examples:
+    ///   * --tool-runner=sudo --tool-runner-args='--user=foo'
+    ///   * --tool-runner=wrapper '--tool-runner-args=--allow-aslr=${GUNGRAUN_ALLOW_ASLR}'
+    #[arg(
+        action = ArgAction::Append,
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER_ARGS",
+        long = "tool-runner-args",
+        num_args = 1,
+        required = false,
+        requires = "tool_runner",
+        value_parser = parse_raw_args,
+        verbatim_doc_comment,
+    )]
+    pub tool_runner_args: Vec<RawArgs>,
+
+    #[rustfmt::skip]
+    /// Override the destination directory path for tool runner output files
+    ///
+    /// This option is only effective when `--tool-runner` is specified. By default, tool output
+    /// files are written to paths under the gungraun home directory or in temporary directories.
+    /// This option allows substituting this path with a custom directory.
+    ///
+    /// When specified, any occurrence of this path prefix in tool arguments will be replaced with
+    /// the directory path specified by `--tool-runner-dest`.
+    ///
+    /// WARNING: Make sure the directory of this argument exists, is empty and doesn't point to a
+    /// directory with important files in it! This directory is managed by Gungraun and Gungraun
+    /// might delete **all** files in this directory. More details can be found in the online
+    /// guide.
+    ///
+    /// Examples:
+    ///   * `--tool-runner-dest=/tmp/results`
+    #[arg(
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER_DEST",
+        long = "tool-runner-dest",
+        num_args = 1,
+        requires = "tool_runner",
+        verbatim_doc_comment,
+    )]
+    pub tool_runner_dest: Option<PathBuf>,
+
+    #[rustfmt::skip]
+    /// Override the workspace root path for the tool runner
+    ///
+    /// This option is only effective when `--tool-runner` is specified. It allows substituting the
+    /// workspace root path prefix in the benchmark executable path and all other tool arguments.
+    ///
+    /// This can be useful for container setups where the workspace is mounted at a different
+    /// location inside the container.
+    ///
+    /// Examples:
+    ///   * `--tool-runner-root=/workspace`
+    #[arg(
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER_ROOT",
+        long = "tool-runner-root",
+        num_args = 1,
+        requires = "tool_runner",
+        verbatim_doc_comment,
+    )]
+    pub tool_runner_root: Option<PathBuf>,
+
+    #[rustfmt::skip]
     /// A comma separated list of tools to run additionally to Callgrind or another default tool
     ///
     /// The tools specified here take precedence over the tools in the benchmarks. The Valgrind
@@ -1260,7 +1379,7 @@ pub struct CommandLineArgs {
         value_delimiter = ',',
         verbatim_doc_comment,
     )]
-    pub tools: Vec<ValgrindTool>,
+    pub tools: Vec<Tool>,
 
     #[rustfmt::skip]
     /// Adjust, enable or disable the truncation of the description in the Gungraun output
@@ -1314,12 +1433,13 @@ pub struct CommandLineArgs {
     )]
     pub valgrind_args: Option<RawToolArgs>,
 
+    // TODO: Add perf_bin similar to this valgrind_bin
     #[rustfmt::skip]
     /// Specify the path to the Valgrind executable
     ///
     /// By default, Gungraun searches for `valgrind` in the system PATH. This option
     /// allows specifying an alternative Valgrind executable. When used with
-    /// `--valgrind-runner`, this path is passed to the runner as the Valgrind binary
+    /// `--tool-runner`, this path is passed to the runner as the Valgrind binary
     /// to invoke.
     ///
     /// Note: The specified path is not validated for existence. If the path is invalid, the
@@ -1327,7 +1447,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * `--valgrind-bin=/usr/local/bin/valgrind`
-    ///   * `--valgrind-bin=/doesnotexist` (used with `--valgrind-runner` for container setups)
+    ///   * `--valgrind-bin=/doesnotexist` (used with `--tool-runner` for container setups)
     #[arg(
         display_order = 100,
         env = "GUNGRAUN_VALGRIND_BIN",
@@ -1336,124 +1456,6 @@ pub struct CommandLineArgs {
         verbatim_doc_comment,
     )]
     pub valgrind_bin: Option<PathBuf>,
-
-    #[rustfmt::skip]
-    /// Specify an alternative executable to run Valgrind
-    ///
-    /// By default, Gungraun runs the benchmark executable with Valgrind directly. This option
-    /// allows specifying an alternative runner executable that will be invoked instead, with
-    /// Valgrind passed as an argument to the runner.
-    ///
-    /// When specified, the runner is invoked as:
-    ///   `<RUNNER> [RUNNER_ARGS...] <VALGRIND_BIN> [VALGRIND_ARGS...] <BENCHMARK> [BENCHMARK_ARGS...]`
-    ///
-    /// The runner receives extra environment variables that provide context:
-    /// - `GUNGRAUN_VR_DEST_DIR`: The destination directory for Valgrind output files
-    /// - `GUNGRAUN_VR_HOME`: The gungraun home (`--home`) directory
-    /// - `GUNGRAUN_VR_WORKSPACE_ROOT`: The project's workspace root directory
-    /// - `GUNGRAUN_ALLOW_ASLR`: `yes` or `no` (the default) based on `--allow-aslr` setting
-    ///
-    /// Environment variables in `--valgrind-runner-args` are interpolated using `${VAR}` syntax.
-    /// The interpolation priority is: `GUNGRAUN_VR_*` variables first, then `--envs` variables,
-    /// then the system environment.
-    ///
-    /// This is useful for running benchmarks in containers or other environments where Valgrind is
-    /// not available on the host. See the online guide for detailed examples.
-    ///
-    /// Examples:
-    ///   * --valgrind-runner=docker
-    ///   * --valgrind-runner=/path/to/wrapper --valgrind-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
-    #[arg(
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER",
-        long = "valgrind-runner",
-        num_args = 1,
-        value_parser = PathBufValueParser::new().try_map(parse_path_resolved),
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner: Option<PathBuf>,
-
-    #[rustfmt::skip]
-    /// Additional arguments to pass to the Valgrind runner executable
-    ///
-    /// This option is only effective when `--valgrind-runner` is specified. The arguments are
-    /// passed to the runner executable after `--valgrind-runner` and before the Valgrind path.
-    ///
-    /// Environment variable interpolation is supported using the `${VAR}` syntax. Variables are
-    /// resolved in this order:
-    /// 1. `GUNGRAUN_VR_*` variables set by Gungraun (see `--valgrind-runner` for the list)
-    /// 2. Variables specified via `--envs` and `LibraryBenchmarkConfig::envs` or
-    ///    `BinaryBenchmarkConfig::envs`
-    /// 3. System environment variables
-    ///
-    /// The interpolation allows passing dynamic values to the runner based on Gungraun's
-    /// configuration. For example, `${GUNGRAUN_ALLOW_ASLR}` interpolation is useful for passing
-    /// the ASLR setting to container setups.
-    ///
-    /// Examples:
-    ///   * --valgrind-runner=sudo --valgrind-runner-args='--user=foo'
-    ///   * --valgrind-runner=wrapper '--valgrind-runner-args=--allow-aslr=${GUNGRAUN_ALLOW_ASLR}'
-    #[arg(
-        action = ArgAction::Append,
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER_ARGS",
-        long = "valgrind-runner-args",
-        num_args = 1,
-        required = false,
-        requires = "valgrind_runner",
-        value_parser = parse_raw_args,
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner_args: Vec<RawArgs>,
-
-    #[rustfmt::skip]
-    /// Override the destination directory path for Valgrind runner output files
-    ///
-    /// This option is only effective when `--valgrind-runner` is specified. By default, Valgrind
-    /// output files are written to paths under the gungraun home directory or in temporary
-    /// directories. This option allows substituting this path with a custom directory.
-    ///
-    /// When specified, any occurrence of this path prefix in Valgrind arguments will be replaced
-    /// with the directory path specified by `--valgrind-runner-dest`.
-    ///
-    /// WARNING: Make sure the directory of this argument exists, is empty and doesn't point to a
-    /// directory with important files in it! This directory is managed by Gungraun and Gungraun
-    /// might delete **all** files in this directory. More details can be found in the online
-    /// guide.
-    ///
-    /// Examples:
-    ///   * `--valgrind-runner-dest=/tmp/results`
-    #[arg(
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER_DEST",
-        long = "valgrind-runner-dest",
-        num_args = 1,
-        requires = "valgrind_runner",
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner_dest: Option<PathBuf>,
-
-    #[rustfmt::skip]
-    /// Override the workspace root path for the Valgrind runner
-    ///
-    /// This option is only effective when `--valgrind-runner` is specified. It allows substituting
-    /// the workspace root path prefix in the benchmark executable path and all other Valgrind
-    /// arguments.
-    ///
-    /// This can be useful for container setups where the workspace is mounted at a different
-    /// location inside the container.
-    ///
-    /// Examples:
-    ///   * `--valgrind-runner-root=/workspace`
-    #[arg(
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER_ROOT",
-        long = "valgrind-runner-root",
-        num_args = 1,
-        requires = "valgrind_runner",
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner_root: Option<PathBuf>,
 
     /// Override the Cargo workspace root
     ///
@@ -1480,6 +1482,14 @@ pub struct CommandLineArgs {
     )]
     pub workspace_root: Option<PathBuf>,
 }
+
+/// A wrapper type for raw command-line arguments
+///
+/// Stores a list of raw string arguments without special processing or validation. Used for
+/// arguments passed through to external executables without modification, particularly for
+/// `--tool-runner-args`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawArgs(Vec<String>);
 
 impl CommandLineArgs {
     /// Parses command-line arguments and exits on parsing or validation errors.
@@ -1517,14 +1527,6 @@ impl CommandLineArgs {
         Ok(())
     }
 }
-
-/// A wrapper type for raw command-line arguments
-///
-/// Stores a list of raw string arguments without special processing or validation. Used for
-/// arguments passed through to external executables without modification, particularly for
-/// `--valgrind-runner-args`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RawArgs(Vec<String>);
 
 impl BenchmarkFilter {
     /// Return `true` if the filter matches the haystack
@@ -1926,7 +1928,7 @@ fn parse_raw_args(value: &str) -> Result<RawArgs, String> {
 /// This function parses a space separated list of raw argument strings into
 /// [`crate::api::RawToolArgs`]
 fn parse_tool_args(value: &str) -> Result<RawToolArgs, String> {
-    parse_raw_args(value).map(|r| RawToolArgs::new(r.0))
+    parse_raw_args(value).map(|r| RawToolArgs::new_ignore_flag(r.0))
 }
 
 /// Utility function to parse the --callgrind-metrics, ...
@@ -1992,7 +1994,7 @@ mod tests {
     )]
     fn test_parse_tool_args(#[case] value: &str, #[case] expected: &[&str]) {
         let actual = parse_tool_args(value).unwrap();
-        assert_eq!(actual, RawToolArgs::from_iter(expected));
+        assert_eq!(actual, RawToolArgs::from_iter_ignore_flag(expected));
     }
 
     #[test]
@@ -2142,7 +2144,7 @@ mod tests {
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.callgrind_args,
-            Some(RawToolArgs::new(vec![test_arg.to_owned()]))
+            Some(RawToolArgs::new_ignore_flag(vec![test_arg.to_owned()]))
         );
     }
 
@@ -2158,7 +2160,9 @@ mod tests {
         let result = CommandLineArgs::try_parse_from([input]).unwrap();
         assert_eq!(
             result.callgrind_args,
-            Some(RawToolArgs::new(expected.iter().map(ToOwned::to_owned)))
+            Some(RawToolArgs::new_ignore_flag(
+                expected.iter().map(ToOwned::to_owned)
+            ))
         );
     }
 
@@ -2174,7 +2178,7 @@ mod tests {
         let result = CommandLineArgs::parse_from([format!("--callgrind-args={test_arg_no}")]);
         assert_eq!(
             result.callgrind_args,
-            Some(RawToolArgs::new(vec![test_arg_no.to_owned()]))
+            Some(RawToolArgs::new_ignore_flag(vec![test_arg_no.to_owned()]))
         );
     }
 
@@ -2300,9 +2304,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case::single("drd", &[ValgrindTool::DRD])]
-    #[case::two("drd,callgrind", &[ValgrindTool::DRD, ValgrindTool::Callgrind])]
-    fn test_tools_cli(#[case] tools: &str, #[case] expected: &[ValgrindTool]) {
+    #[case::single("drd", &[Tool::DRD])]
+    #[case::two("drd,callgrind", &[Tool::DRD, Tool::Callgrind])]
+    fn test_tools_cli(#[case] tools: &str, #[case] expected: &[Tool]) {
         let actual = CommandLineArgs::parse_from([format!("--tools={tools}")]);
         assert_eq!(actual.tools, expected);
     }
@@ -2740,71 +2744,65 @@ mod tests {
     }
 
     #[test]
-    fn test_arg_valgrind_runner() {
+    fn test_arg_tool_runner() {
         let file = tempfile::Builder::new()
             .permissions(Permissions::from_mode(0o755))
             .tempfile()
             .unwrap();
-        let result = CommandLineArgs::try_parse_from([format!(
-            "--valgrind-runner={}",
-            file.path().display()
-        )])
-        .unwrap();
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())])
+                .unwrap();
 
-        assert_eq!(result.valgrind_runner, Some(file.path().to_path_buf()));
+        assert_eq!(result.tool_runner, Some(file.path().to_path_buf()));
     }
 
     #[test]
-    fn test_arg_valgrind_runner_when_directory_then_error() {
+    fn test_arg_tool_runner_when_directory_then_error() {
         let dir = tempdir().unwrap();
-        let result = CommandLineArgs::try_parse_from([format!(
-            "--valgrind-runner='{}'",
-            dir.path().display()
-        )]);
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner='{}'", dir.path().display())]);
         result.unwrap_err();
     }
 
     #[test]
-    fn test_arg_valgrind_runner_when_not_executable_then_error() {
+    fn test_arg_tool_runner_when_not_executable_then_error() {
         let file = NamedTempFile::new().unwrap();
-        let result = CommandLineArgs::try_parse_from([format!(
-            "--valgrind-runner={}",
-            file.path().display()
-        )]);
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())]);
         result.unwrap_err();
     }
 
     #[rstest]
-    #[case::positional_one(&["--valgrind-runner-args=foo"], &["foo"])]
-    #[case::positional_one_with_quotes(&["--valgrind-runner-args='foo'"], &["foo"])]
-    #[case::flag_one(&["--valgrind-runner-args=--foo"], &["--foo"])]
-    #[case::flag_one_with_quotes(&["--valgrind-runner-args='--foo'"], &["--foo"])]
-    #[case::flag_one_with_equals(&["--valgrind-runner-args=--foo=some"], &["--foo=some"])]
-    #[case::flag_two(&["--valgrind-runner-args='--foo --bar'"], &["--foo", "--bar"])]
-    fn test_valgrind_runner_args(#[case] input: &[&str], #[case] expected: &[&str]) {
+    #[case::positional_one(&["--tool-runner-args=foo"], &["foo"])]
+    #[case::positional_one_with_quotes(&["--tool-runner-args='foo'"], &["foo"])]
+    #[case::flag_one(&["--tool-runner-args=--foo"], &["--foo"])]
+    #[case::flag_one_with_quotes(&["--tool-runner-args='--foo'"], &["--foo"])]
+    #[case::flag_one_with_equals(&["--tool-runner-args=--foo=some"], &["--foo=some"])]
+    #[case::flag_two(&["--tool-runner-args='--foo --bar'"], &["--foo", "--bar"])]
+    fn test_tool_runner_args(#[case] input: &[&str], #[case] expected: &[&str]) {
         let result = CommandLineArgs::try_parse_from(
             input
                 .iter()
-                .chain(std::iter::once(&"--valgrind-runner=/bin/cat")),
+                .chain(std::iter::once(&"--tool-runner=/bin/cat")),
         )
         .map_err(|e| e.to_string())
         .unwrap();
         assert_eq!(
-            result.valgrind_runner_args,
+            result.tool_runner_args,
             vec![RawArgs(expected.iter().map(ToString::to_string).collect())]
         );
     }
 
     #[test]
-    fn test_valgrind_runner_args_when_twice() {
+    fn test_tool_runner_args_when_twice() {
         let result = CommandLineArgs::try_parse_from([
-            "--valgrind-runner-args=--foo",
-            "--valgrind-runner-args=--bar",
-            "--valgrind-runner=/bin/cat",
+            "--tool-runner-args=--foo",
+            "--tool-runner-args=--bar",
+            "--tool-runner=/bin/cat",
         ])
         .unwrap();
         assert_eq!(
-            result.valgrind_runner_args,
+            result.tool_runner_args,
             vec![
                 RawArgs(vec!["--foo".to_owned()]),
                 RawArgs(vec!["--bar".to_owned()])

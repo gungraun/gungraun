@@ -1,5 +1,6 @@
 //! Organize tasks within thread pools and processes
 
+use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -8,7 +9,7 @@ use std::sync::Arc;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{JoinHandle, sleep};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{iter, thread};
 
 use anyhow::{Context, Result, anyhow};
@@ -19,6 +20,7 @@ use nix::unistd::Pid;
 use parking_lot::{Condvar, Mutex};
 
 use super::common::AssistantKind;
+use crate::api::BenchRunMode;
 use crate::error::Error;
 use crate::runner::args::NoCapture;
 use crate::runner::common::{Assistant, CapturedOutput, Config, ModulePath};
@@ -200,12 +202,18 @@ struct ThreadPoolState {
 }
 
 impl ProcessChild {
-    fn wait(self, force_shutdown: &Arc<AtomicBool>, poll_interval: Duration) -> Result<Output> {
+    fn wait(
+        self,
+        force_shutdown: &Arc<AtomicBool>,
+        poll_interval: Duration,
+        timeout: Option<Duration>,
+    ) -> Result<Output> {
         let mut run_state = ProcessState::Running;
         // This should be enough time for a proper shutdown of any benchmark process
         let mut ticks = 100;
         let mut child = self.0;
         let mut interrupted = false;
+        let start = Instant::now();
 
         loop {
             match child.try_wait() {
@@ -226,6 +234,14 @@ impl ProcessChild {
 
                             run_state = ProcessState::Term;
                             interrupted = true;
+                        }
+                        // TODO: Refactor. Both Running cases are very similar
+                        ProcessState::Running if timeout.is_some_and(|t| start.elapsed() >= t) => {
+                            let pid_t = i32::try_from(child.id())?;
+                            let pid = Pid::from_raw(pid_t);
+                            signal::kill(pid, signal::SIGTERM)?;
+
+                            run_state = ProcessState::Term;
                         }
                         ProcessState::Running | ProcessState::Kill => {}
                         ProcessState::Term if ticks > 0 => {
@@ -339,18 +355,21 @@ impl ProcessHandler {
     /// Other notable errors are [`Error::LaunchError`] and [`Error::ProcessError`]. These are
     /// returned if either launching the benchmarked binary/library with the [`ToolCommand`] failed
     /// due to an os error or valgrind, the binary/library itself returned with an error.
-    pub fn start_bench(
+    pub fn start_bench<'args, F>(
         &mut self,
         command: ToolCommand,
         tool_config: &ToolConfig,
         executable: &Path,
-        executable_args: &[OsString],
+        executable_args: &F,
         run_options: &RunOptions,
         output_path: &ToolOutputPath,
         module_path: &ModulePath,
         captured_output: Option<&CapturedOutput>,
-        valgrind_runner_dest: Option<&Path>,
-    ) -> Result<()> {
+        tool_runner_dest: Option<&Path>,
+    ) -> Result<()>
+    where
+        F: Fn(&ToolConfig, Option<BenchRunMode>) -> Cow<'args, [OsString]>,
+    {
         if !self.setup_is_parallel {
             if let Some(Err(error)) = self.wait_for_setup() {
                 return Err(error);
@@ -371,7 +390,7 @@ impl ProcessHandler {
             self.setup.as_mut().map(|(_, c)| c),
             captured_output,
             self.sandbox_dir.as_deref(),
-            valgrind_runner_dest,
+            tool_runner_dest,
         )?;
 
         self.bench = Some(child);
@@ -408,7 +427,7 @@ impl ProcessHandler {
     ///
     /// [`ExitWith`]: crate::api::ExitWith
     /// [`Error::TaskInterrupt`]: crate::error::Error::TaskInterrupt
-    pub fn wait_or_shutdown(&mut self) -> Result<Output> {
+    pub fn wait_or_shutdown(&mut self, timeout: Option<Duration>) -> Result<Output> {
         let mut bench_child = self
             .bench
             .take()
@@ -420,7 +439,7 @@ impl ProcessHandler {
                 .take()
                 .expect("A child process should be present"),
         )
-        .wait(&self.force_shutdown, self.poll_interval)
+        .wait(&self.force_shutdown, self.poll_interval, timeout)
         .with_context(|| "Trying to wait for the benchmark process to stop")
         .and_then(|output| {
             check_exit(
@@ -441,7 +460,7 @@ impl ProcessHandler {
 
     fn wait_for_assistant(&self, child: Child, id: &str) -> Result<()> {
         ProcessChild(child)
-            .wait(&self.force_shutdown, self.poll_interval)
+            .wait(&self.force_shutdown, self.poll_interval, None)
             .with_context(|| format!("Trying to wait for the {id} process to stop"))
             .and_then(|output| {
                 let status = output.status;
@@ -958,7 +977,7 @@ mod tests {
             0,
             0,
             None,
-            crate::api::ValgrindTool::Callgrind,
+            crate::api::Tool::Callgrind,
         )
         .unwrap()
         .unwrap();

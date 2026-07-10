@@ -1,6 +1,7 @@
 //! The module containing the [`ToolConfig`] and other related elements
 
-use std::collections::HashMap;
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::Path;
 use std::sync::Arc;
@@ -10,19 +11,76 @@ use std::time::Duration;
 use anyhow::{Result, anyhow};
 
 use super::super::common::Assistant;
-use super::args::{ToolArgs, ValgrindArgs};
+use super::args::{ToolArgsLike, ValgrindArgs};
 use super::parser::parser_factory;
 use super::path::ToolOutputPath;
 use super::regression::ToolRegressionConfig;
 use super::run::{RunOptions, ToolCommand};
-use crate::api::{self, EntryPoint, RawToolArgs, SanitizeOutput, Tool, Tools, ValgrindTool};
+use crate::api::{
+    self, BenchRunMode, EntryPoint, PerfRunMode, RawToolArgs, SanitizeOutput, Tool, ToolSpec,
+    ToolSpecs,
+};
 use crate::runner::callgrind::flamegraph::Config as FlamegraphConfig;
 use crate::runner::common::{Analyzer, CapturedOutput, Config, ModulePath, Sandbox};
 use crate::runner::format::OutputFormat;
 use crate::runner::meta::Metadata;
+use crate::runner::perf::args::DEFAULT_PERF_EVENTS;
+use crate::runner::perf::run::measure_perf_overhead;
 use crate::runner::tasks::ProcessHandler;
-use crate::runner::{DEFAULT_TOGGLE, cachegrind, callgrind};
+use crate::runner::tool::args::ToolArgs;
+use crate::runner::{DEFAULT_TOGGLE, cachegrind, callgrind, perf};
 use crate::summary::model::BenchmarkSummary;
+use crate::util::resolve_perf_alpha;
+
+/// Default minimum percentage of time a PMU counter must be running before the runner keeps its
+/// sampled metrics.
+///
+/// Perf may multiplex (time-share) hardware counters when more events are requested than physical
+/// PMU slots are available. `pcnt_running` reports the fraction of the measurement interval that
+/// each counter was actually active. The runner drops sampled records whose `pcnt_running` falls
+/// below this threshold.
+pub const DEFAULT_PERF_PERCENT_RUNNING: f64 = 100.0;
+/// Default significance level used for perf regression checks when no alpha is configured.
+pub const DEFAULT_PERF_ALPHA: f64 = 0.05;
+/// Default patterns for perf metrics that must not be zero.
+///
+/// Metrics matching these patterns with a zero value cause the entire measurement batch to be
+/// discarded. Patterns use `simplematch` glob syntax.
+pub const DEFAULT_PERF_NON_ZERO_METRICS: &[&str] = &["task-clock*", "cpu-clock*", "*instructions*"];
+
+/// The DHAT-specific configuration stored in [`ToolConfigOptions::DHAT`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DhatConfig {
+    /// The wildcard patterns used to matched a function in the call stack of a program point
+    pub frames: Vec<String>,
+}
+
+/// The runner-resolved perf configuration stored in [`ToolConfigOptions::Perf`].
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PerfConfig {
+    /// The statistical significance threshold used for perf significance handling.
+    ///
+    /// The runner resolves this to the concrete alpha used when comparing perf results, including
+    /// regression checks and significance information shown in perf output.
+    pub alpha: f64,
+    /// The perf event selector passed through to this concrete perf tool configuration.
+    pub events: String,
+    /// Patterns for perf metrics that must not be zero.
+    ///
+    /// If a metric matching any of these patterns has a zero value, the entire measurement batch
+    /// is discarded. Patterns use `simplematch` glob syntax.
+    pub non_zero_metrics: Vec<String>,
+    /// The minimum percentage of time a PMU counter must be running before sampled metrics are
+    /// kept.
+    ///
+    /// When perf multiplexes hardware counters, `pcnt_running` indicates the fraction of the
+    /// measurement interval each counter was active. Records below this threshold are discarded.
+    pub percent_running: f64,
+    /// How the runner batches benchmark invocations inside each perf measurement.
+    pub run_mode: PerfRunMode,
+    /// Whether this perf configuration runs `perf stat` in sampled mode.
+    pub use_sampling: bool,
+}
 
 /// The tool specific flamegraph configuration
 #[derive(Debug, Clone, PartialEq)]
@@ -34,40 +92,72 @@ pub enum ToolFlamegraphConfig {
 }
 
 /// The [`ToolConfig`] containing the basic configuration values to run the benchmark for this tool
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ToolConfig {
     /// The arguments to pass to the Valgrind executable
-    pub args: ValgrindArgs,
+    pub args: ToolArgs,
     /// The [`EntryPoint`] of this tool
     pub entry_point: EntryPoint,
     /// The tool specific flamegraph configuration
     pub flamegraph_config: ToolFlamegraphConfig,
-    /// The wildcard patterns used to matched a function in the call stack of a program point
-    pub frames: Vec<String>,
+    /// TODO: DOCS
+    pub has_analyzer: bool,
     /// If true, this tool is the default tool for the benchmark run
     pub is_default: bool,
     /// If true, this tool is enabled for this benchmark
     pub is_enabled: bool,
+    /// TODO: DOCS
+    pub options: ToolConfigOptions,
+    /// TODO: DOCS,
+    pub part: Option<usize>,
     /// The tool specific regression check configuration
     pub regression_config: ToolRegressionConfig,
     /// The resolved output sanitization mode for this tool.
     pub sanitize_output: SanitizeOutput,
-    /// The [`ValgrindTool`]
-    pub tool: ValgrindTool,
+    /// TODO: DOCS
+    pub timeout: Option<Duration>,
 }
 
+/// TODO: DOCS
 #[derive(Debug)]
-struct ToolConfigBuilder {
+pub struct ToolConfigBuilder {
     entry_point: Option<EntryPoint>,
     flamegraph_config: ToolFlamegraphConfig,
-    frames: Vec<String>,
     is_default: bool,
     is_enabled: bool,
-    kind: ValgrindTool,
+    options: Vec<ToolConfigOptions>,
     raw_tool_args: RawToolArgs,
+    record: bool,
+    record_args: RawToolArgs,
     regression_config: ToolRegressionConfig,
     sanitize_output: SanitizeOutput,
-    tool: Option<Tool>,
+    timeout: Option<Duration>,
+    tool: Tool,
+    tool_spec: Option<ToolSpec>,
+}
+
+/// TODO: DOCS, used to determine the active tool, so all tools are listed here although they
+/// currently don't have a special configuration
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolConfigOptions {
+    /// TODO: DOCS
+    Callgrind,
+    /// TODO: DOCS
+    Cachegrind,
+    /// [`PerfConfig`] of the resolved perf tool configuration.
+    Perf(PerfConfig),
+    /// [`DhatConfig`] of the resolved DHAT tool configuration.
+    DHAT(DhatConfig),
+    /// TODO: DOCS
+    Memcheck,
+    /// TODO: DOCS
+    Helgrind,
+    /// TODO: DOCS
+    DRD,
+    /// TODO: DOCS
+    Massif,
+    /// TODO: DOCS
+    BBV,
 }
 
 /// Multiple [`ToolConfig`]s
@@ -77,57 +167,265 @@ pub struct ToolConfigs(pub Vec<ToolConfig>);
 impl ToolConfig {
     /// Creates a new `ToolConfig`.
     pub fn new(
-        tool: ValgrindTool,
         is_enabled: bool,
-        args: ValgrindArgs,
+        args: ToolArgs,
         regression_config: ToolRegressionConfig,
         flamegraph_config: ToolFlamegraphConfig,
         entry_point: EntryPoint,
         is_default: bool,
-        frames: Vec<String>,
         sanitize_output: SanitizeOutput,
+        part: Option<usize>,
+        options: ToolConfigOptions,
+        has_analyzer: bool,
+        timeout: Option<Duration>,
     ) -> Self {
         Self {
             args,
             entry_point,
             flamegraph_config,
-            frames,
+            has_analyzer,
             is_default,
             is_enabled,
+            options,
+            part,
             regression_config,
             sanitize_output,
-            tool,
+            timeout,
+        }
+    }
+
+    /// Returns the [`BenchRunMode`] for the measured main benchmark run.
+    ///
+    /// Perf-specific [`BenchRunMode`]s are only valid for [`EntryPoint::Default`]. In that case,
+    /// the benchmark binary executes through Gungraun's generated harness, which understands
+    /// perf-only modes such as [`PerfDynamic`], [`PerfOnce`], ...
+    ///
+    /// For [`EntryPoint::None`] and [`EntryPoint::Custom`], the selected function is not dispatched
+    /// through that generated mode switch, so the runner must fall back to
+    /// [`BenchRunMode::Default`].
+    ///
+    /// Also controls side effects: [`DefaultCalibrate`] and [`Calibrate(N)`] cause a calibration
+    /// pass to run before the measurement (see [`ToolCommand::new`]), but the measured run itself
+    /// uses [`PerfOnce`] — a single invocation inside the perf fence. `Raw` skips calibration
+    /// entirely and also uses [`PerfOnce`].
+    ///
+    /// Returns [`BenchRunMode::Default`] for non-perf tools.
+    ///
+    /// [`Calibrate(N)`]: PerfRunMode::Calibrate
+    /// [`DefaultCalibrate`]: PerfRunMode::DefaultCalibrate
+    /// [`PerfDynamic`]: BenchRunMode::PerfDynamic
+    /// [`PerfOnce`]: BenchRunMode::PerfOnce
+    pub fn benchmark_run_mode(&self) -> BenchRunMode {
+        match &self.options {
+            ToolConfigOptions::Perf(perf_config) if self.entry_point == EntryPoint::Default => {
+                match perf_config.run_mode {
+                    PerfRunMode::DynamicBatch => BenchRunMode::PerfDynamic,
+                    PerfRunMode::FixedBatch(count) => BenchRunMode::PerfRepeat(count),
+                    PerfRunMode::Raw
+                    | PerfRunMode::DefaultCalibrate
+                    | PerfRunMode::Calibrate(_) => BenchRunMode::PerfOnce,
+                }
+            }
+            _ => BenchRunMode::Default,
+        }
+    }
+
+    /// Returns the perf event set of this perf tool configuration if the active tool is perf
+    pub fn events(&self) -> Option<&str> {
+        match &self.options {
+            ToolConfigOptions::Perf(perf_config) => Some(perf_config.events.as_str()),
+            _ => None,
+        }
+    }
+
+    /// Returns `true` if this config represents the optional `perf record` run.
+    pub fn is_perf_record(&self) -> bool {
+        self.args.is_perf_record()
+    }
+
+    /// TODO: DOCS
+    pub fn output_path(&self, output_path: &ToolOutputPath) -> ToolOutputPath {
+        let output_path = output_path.to_tool_output(self.tool());
+        if let Some(part) = self.part {
+            output_path.with_modifiers([format!("p{part}")])
+        } else {
+            output_path
+        }
+    }
+
+    /// TODO: DOCS
+    pub fn tool(&self) -> Tool {
+        match &self.options {
+            ToolConfigOptions::Callgrind => Tool::Callgrind,
+            ToolConfigOptions::Cachegrind => Tool::Cachegrind,
+            ToolConfigOptions::Perf(_) => Tool::Perf,
+            ToolConfigOptions::DHAT(_) => Tool::DHAT,
+            ToolConfigOptions::Memcheck => Tool::Memcheck,
+            ToolConfigOptions::Helgrind => Tool::Helgrind,
+            ToolConfigOptions::DRD => Tool::DRD,
+            ToolConfigOptions::Massif => Tool::Massif,
+            ToolConfigOptions::BBV => Tool::BBV,
         }
     }
 }
 
+// TODO: Add events selection from cli for perf events, maybe --perf-events
+// TODO: Treat multiple perf specs as multiple parts? (Would be special to perf for now. There's no
+// reason to run callgrind or dhat twice and would complicate things!? Also, so that all tool
+// configs can use this pattern the part prefix `p` needs to be changed to something like `r` or `s`
+// and different from the callgrind part prefix `p`. That would have further implications down the
+// line because that would be an additional header field and ## pid: xxx, part: xx in the terminal
+// output wouldn't work either, ...)
 impl ToolConfigBuilder {
-    fn build(self) -> Result<ToolConfig> {
-        let args = match self.kind {
-            ValgrindTool::Callgrind => callgrind::args::CallgrindArgs::try_from_raw_tool_args(
-                self.kind,
+    /// TODO: DOCS
+    pub fn build(self) -> Result<Vec<ToolConfig>> {
+        let args = match self.tool {
+            Tool::Callgrind => ToolArgs::Valgrind(
+                callgrind::args::CallgrindArgs::try_from_raw_tool_args(
+                    self.tool,
+                    &[&self.raw_tool_args],
+                )?
+                .into(),
+            ),
+            Tool::Cachegrind => ToolArgs::Valgrind(
+                cachegrind::args::CachegrindArgs::try_from_raw_tool_args(
+                    self.tool,
+                    &[&self.raw_tool_args],
+                )?
+                .into(),
+            ),
+            Tool::Perf => ToolArgs::Perf(
+                perf::args::PerfStatArgs::try_from_raw_tool_args(
+                    self.tool,
+                    &[&self.raw_tool_args],
+                )?
+                .into(),
+            ),
+            _ => ToolArgs::Valgrind(ValgrindArgs::try_from_raw_tool_args(
+                self.tool,
                 &[&self.raw_tool_args],
-            )?
-            .into(),
-            ValgrindTool::Cachegrind => cachegrind::args::CachegrindArgs::try_from_raw_tool_args(
-                self.kind,
-                &[&self.raw_tool_args],
-            )?
-            .into(),
-            _ => ValgrindArgs::try_from_raw_tool_args(self.kind, &[&self.raw_tool_args])?,
+            )?),
         };
 
-        Ok(ToolConfig::new(
-            self.kind,
-            self.is_enabled,
-            args,
-            self.regression_config,
-            self.flamegraph_config,
-            self.entry_point.unwrap_or(EntryPoint::None),
-            self.is_default,
-            self.frames.iter().map(Into::into).collect(),
-            self.sanitize_output,
-        ))
+        assert!(!self.options.is_empty());
+
+        if let [options] = &self.options[..] {
+            let config = ToolConfig::new(
+                self.is_enabled,
+                args,
+                self.regression_config,
+                self.flamegraph_config,
+                self.entry_point.unwrap_or(EntryPoint::None),
+                self.is_default,
+                self.sanitize_output,
+                None,
+                options.clone(),
+                true,
+                self.timeout,
+            );
+
+            if self.record {
+                let record_args = ToolArgs::Perf(
+                    perf::args::PerfRecordArgs::try_from_raw_tool_args(
+                        self.tool,
+                        &[&self.record_args],
+                    )?
+                    .into(),
+                );
+
+                let mut timeout = self.timeout;
+                let record_options = if let ToolConfigOptions::Perf(perf_config) = options {
+                    if perf_config.use_sampling {
+                        timeout = None;
+                    }
+
+                    ToolConfigOptions::Perf(PerfConfig {
+                        run_mode: PerfRunMode::Raw,
+                        use_sampling: false,
+                        ..perf_config.clone()
+                    })
+                } else {
+                    options.clone()
+                };
+
+                let record_config = ToolConfig {
+                    args: record_args,
+                    is_default: false,
+                    options: record_options,
+                    has_analyzer: false,
+                    timeout,
+                    ..config.clone()
+                };
+
+                Ok(vec![config, record_config])
+            } else {
+                Ok(vec![config])
+            }
+        } else {
+            let mut configs = vec![];
+            for (mut option, part) in self.options.into_iter().zip(1usize..) {
+                let record_config = if self.record {
+                    let record_args = ToolArgs::Perf(
+                        perf::args::PerfRecordArgs::try_from_raw_tool_args(
+                            self.tool,
+                            &[&self.record_args],
+                        )?
+                        .into(),
+                    );
+
+                    // part and options are place holders and need to be overwritten
+                    let record_config = ToolConfig::new(
+                        self.is_enabled,
+                        record_args,
+                        self.regression_config.clone(),
+                        self.flamegraph_config.clone(),
+                        self.entry_point.clone().unwrap_or(EntryPoint::None),
+                        false,
+                        self.sanitize_output,
+                        None,
+                        option.clone(),
+                        false,
+                        self.timeout,
+                    );
+
+                    Some(record_config)
+                } else {
+                    None
+                };
+
+                let config = ToolConfig::new(
+                    self.is_enabled,
+                    args.clone(),
+                    self.regression_config.clone(),
+                    self.flamegraph_config.clone(),
+                    self.entry_point.clone().unwrap_or(EntryPoint::None),
+                    self.is_default && part == 1,
+                    self.sanitize_output,
+                    Some(part),
+                    option.clone(),
+                    part == 1,
+                    self.timeout,
+                );
+
+                configs.push(config);
+
+                if let Some(mut record_config) = record_config.clone() {
+                    if let ToolConfigOptions::Perf(perf_config) = &mut option {
+                        perf_config.run_mode = PerfRunMode::Raw;
+
+                        if perf_config.use_sampling {
+                            record_config.timeout = None;
+                            perf_config.use_sampling = false;
+                        }
+                    }
+                    record_config.part = Some(part);
+                    record_config.options = option;
+
+                    configs.push(record_config);
+                }
+            }
+            Ok(configs)
+        }
     }
 
     /// Build the entry point
@@ -140,10 +438,10 @@ impl ToolConfigBuilder {
         module_path: &ModulePath,
         _id: Option<&String>,
     ) {
-        match self.kind {
-            ValgrindTool::Callgrind => {
+        match self.tool {
+            Tool::Callgrind => {
                 let entry_point = self
-                    .tool
+                    .tool_spec
                     .as_ref()
                     .and_then(|t| t.entry_point.clone())
                     .unwrap_or_else(|| default_entry_point.clone());
@@ -162,9 +460,9 @@ impl ToolConfigBuilder {
 
                 self.entry_point = Some(entry_point);
             }
-            ValgrindTool::DHAT => {
+            Tool::DHAT => {
                 let entry_point = self
-                    .tool
+                    .tool_spec
                     .as_ref()
                     .and_then(|t| t.entry_point.clone())
                     .unwrap_or_else(|| default_entry_point.clone());
@@ -184,25 +482,39 @@ impl ToolConfigBuilder {
                         // This frame glob matches the standalone wrapper mod id function
                         // (`__gungraun_wrapper_id_mod`) and the constructed ones (for example
                         // `__gungraun_wrapper_id_mod_my_benchmark_id`) unambiguously.
-                        self.frames
-                            .push(format!("{file}::*::__gungraun_wrapper_id_mod*::*"));
+                        for option in &mut self.options {
+                            if let ToolConfigOptions::DHAT(dhat_config) = option {
+                                dhat_config
+                                    .frames
+                                    .push(format!("{file}::*::__gungraun_wrapper_id_mod*::*"));
+                            }
+                        }
                     }
                 }
 
                 self.entry_point = Some(entry_point);
             }
-            ValgrindTool::Cachegrind
-            | ValgrindTool::Memcheck
-            | ValgrindTool::Helgrind
-            | ValgrindTool::DRD
-            | ValgrindTool::Massif
-            | ValgrindTool::BBV => {}
+            Tool::Cachegrind
+            | Tool::Memcheck
+            | Tool::Helgrind
+            | Tool::DRD
+            | Tool::Massif
+            | Tool::BBV => {}
+            Tool::Perf => {
+                let entry_point = self
+                    .tool_spec
+                    .as_ref()
+                    .and_then(|t| t.entry_point.clone())
+                    .unwrap_or_else(|| default_entry_point.clone());
+
+                self.entry_point = Some(entry_point);
+            }
         }
     }
 
     fn flamegraph_config(&mut self) {
-        if let Some(tool) = &self.tool {
-            if let Some(flamegraph_config) = &tool.flamegraph_config {
+        if let Some(tool_spec) = &self.tool_spec {
+            if let Some(flamegraph_config) = &tool_spec.flamegraph_config {
                 self.flamegraph_config = flamegraph_config.clone().into();
             }
         }
@@ -210,59 +522,173 @@ impl ToolConfigBuilder {
 
     fn meta_args(&mut self, meta: &Metadata) {
         if let Some(args) = &meta.args.valgrind_args {
-            self.raw_tool_args.update(args);
+            self.valgrind_args(args);
         }
 
-        let raw_tool_args = match self.kind {
-            ValgrindTool::Callgrind => &meta.args.callgrind_args,
-            ValgrindTool::Cachegrind => &meta.args.cachegrind_args,
-            ValgrindTool::DHAT => &meta.args.dhat_args,
-            ValgrindTool::Memcheck => &meta.args.memcheck_args,
-            ValgrindTool::Helgrind => &meta.args.helgrind_args,
-            ValgrindTool::DRD => &meta.args.drd_args,
-            ValgrindTool::Massif => &meta.args.massif_args,
-            ValgrindTool::BBV => &meta.args.bbv_args,
+        let raw_tool_args = match self.tool {
+            Tool::Callgrind => &meta.args.callgrind_args,
+            Tool::Cachegrind => &meta.args.cachegrind_args,
+            Tool::DHAT => &meta.args.dhat_args,
+            Tool::Memcheck => &meta.args.memcheck_args,
+            Tool::Helgrind => &meta.args.helgrind_args,
+            Tool::DRD => &meta.args.drd_args,
+            Tool::Massif => &meta.args.massif_args,
+            Tool::BBV => &meta.args.bbv_args,
+            Tool::Perf => {
+                // TODO: implement
+                &None
+            }
         };
 
         if let Some(args) = raw_tool_args {
-            self.raw_tool_args.update(args);
+            self.raw_tool_args.update_ignore_flag(args);
         }
     }
 
-    fn new(
-        valgrind_tool: ValgrindTool,
-        tool: Option<Tool>,
+    /// TODO: DOCS, refactor! validate user input: Like `0.0 <= percent_running <= 100.0`
+    pub fn new(
+        tool: Tool,
+        tool_spec: Option<ToolSpec>,
         is_default: bool,
-        default_args: &HashMap<ValgrindTool, RawToolArgs>,
+        default_args: &HashMap<Tool, RawToolArgs>,
         module_path: &ModulePath,
         id: Option<&String>,
         meta: &Metadata,
         valgrind_args: &RawToolArgs,
         default_entry_point: &EntryPoint,
     ) -> Result<Self> {
-        let (is_enabled, frames) = if let Some(tool) = tool.as_ref() {
-            let is_enabled = tool.enable.unwrap_or(true);
-            let frames = tool.frames.as_ref().map_or_else(Vec::default, Clone::clone);
+        let (is_enabled, options, record, record_args, timeout) = if let Some(tool_spec) =
+            tool_spec.as_ref()
+        {
+            let is_enabled = tool_spec.enable.unwrap_or(true);
 
-            (is_enabled, frames)
+            let (options, record, record_args, timeout) = match &tool_spec.options {
+                api::ToolSpecOptions::Perf(perf_spec) => {
+                    let alpha = resolve_perf_alpha(perf_spec.alpha).map_err(anyhow::Error::msg)?;
+                    let non_zero_metrics = perf_spec.resolve_non_zero_metrics();
+
+                    let options = perf_spec.events.as_ref().map_or_else(
+                        || {
+                            vec![ToolConfigOptions::Perf(PerfConfig {
+                                alpha,
+                                events: DEFAULT_PERF_EVENTS.into(),
+                                non_zero_metrics: non_zero_metrics.clone(),
+                                run_mode: perf_spec.run_mode.unwrap_or_default(),
+                                use_sampling: perf_spec.samples.is_some(),
+                                percent_running: perf_spec
+                                    .percent_running
+                                    .unwrap_or(DEFAULT_PERF_PERCENT_RUNNING),
+                            })]
+                        },
+                        |events| {
+                            events
+                                .iter()
+                                .map(|e| {
+                                    ToolConfigOptions::Perf(PerfConfig {
+                                        alpha,
+                                        events: e.clone(),
+                                        non_zero_metrics: non_zero_metrics.clone(),
+                                        run_mode: perf_spec.run_mode.unwrap_or_default(),
+                                        use_sampling: perf_spec.samples.is_some(),
+                                        percent_running: perf_spec
+                                            .percent_running
+                                            .unwrap_or(DEFAULT_PERF_PERCENT_RUNNING),
+                                    })
+                                })
+                                .collect()
+                        },
+                    );
+
+                    (
+                        // TODO: Warn if any PerfRunMode counts are zero (that shouldn't be 0)
+                        options,
+                        perf_spec.record.unwrap_or_default(),
+                        perf_spec.record_args.clone(),
+                        perf_spec.samples,
+                    )
+                }
+                api::ToolSpecOptions::Dhat(dhat_spec) => (
+                    vec![ToolConfigOptions::DHAT(DhatConfig {
+                        frames: dhat_spec
+                            .frames
+                            .as_ref()
+                            .map_or_else(Vec::default, Clone::clone),
+                    })],
+                    false,
+                    RawToolArgs::default(),
+                    None,
+                ),
+                api::ToolSpecOptions::None => {
+                    let options = match tool {
+                        Tool::Callgrind => ToolConfigOptions::Callgrind,
+                        Tool::Cachegrind => ToolConfigOptions::Cachegrind,
+                        Tool::Memcheck => ToolConfigOptions::Memcheck,
+                        Tool::Helgrind => ToolConfigOptions::Helgrind,
+                        Tool::DRD => ToolConfigOptions::DRD,
+                        Tool::Massif => ToolConfigOptions::Massif,
+                        Tool::BBV => ToolConfigOptions::BBV,
+                        _ => unreachable!(),
+                    };
+                    (vec![options], false, RawToolArgs::default(), None)
+                }
+            };
+
+            (is_enabled, options, record, record_args, timeout)
         } else {
-            (true, Vec::default())
+            let options = match tool {
+                Tool::DHAT => vec![ToolConfigOptions::DHAT(DhatConfig {
+                    frames: Vec::default(),
+                })],
+                Tool::Perf => vec![ToolConfigOptions::Perf(PerfConfig {
+                    alpha: DEFAULT_PERF_ALPHA,
+                    events: DEFAULT_PERF_EVENTS.into(),
+                    non_zero_metrics: DEFAULT_PERF_NON_ZERO_METRICS
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect(),
+                    run_mode: PerfRunMode::default(),
+                    use_sampling: false,
+                    percent_running: DEFAULT_PERF_PERCENT_RUNNING,
+                })],
+                Tool::Callgrind => vec![ToolConfigOptions::Callgrind],
+                Tool::Cachegrind => vec![ToolConfigOptions::Cachegrind],
+                Tool::Memcheck => vec![ToolConfigOptions::Memcheck],
+                Tool::Helgrind => vec![ToolConfigOptions::Helgrind],
+                Tool::DRD => vec![ToolConfigOptions::DRD],
+                Tool::Massif => vec![ToolConfigOptions::Massif],
+                Tool::BBV => vec![ToolConfigOptions::BBV],
+            };
+
+            (true, options, false, RawToolArgs::default(), None)
         };
+
+        assert!(options.iter().all(|o| matches!(
+            (tool, &o),
+            (Tool::DHAT, ToolConfigOptions::DHAT(_))
+                | (Tool::Perf, ToolConfigOptions::Perf(_))
+                | (Tool::Callgrind, ToolConfigOptions::Callgrind)
+                | (Tool::Cachegrind, ToolConfigOptions::Cachegrind)
+                | (Tool::Memcheck, ToolConfigOptions::Memcheck)
+                | (Tool::Helgrind, ToolConfigOptions::Helgrind)
+                | (Tool::DRD, ToolConfigOptions::DRD)
+                | (Tool::Massif, ToolConfigOptions::Massif)
+                | (Tool::BBV, ToolConfigOptions::BBV),
+        )));
 
         let mut builder = Self {
             is_enabled,
-            frames,
-            tool,
+            tool_spec,
             entry_point: Option::default(),
             flamegraph_config: ToolFlamegraphConfig::None,
             is_default,
-            raw_tool_args: default_args
-                .get(&valgrind_tool)
-                .cloned()
-                .unwrap_or_default(),
+            raw_tool_args: default_args.get(&tool).cloned().unwrap_or_default(),
             regression_config: ToolRegressionConfig::None,
-            kind: valgrind_tool,
+            tool,
             sanitize_output: SanitizeOutput::No,
+            record,
+            record_args,
+            options,
+            timeout,
         };
 
         // Since the construction sequence is currently always the same, the construction of the
@@ -279,19 +705,25 @@ impl ToolConfigBuilder {
     }
 
     fn regression_config(&mut self, meta: &Metadata) -> Result<()> {
-        let meta_limits = match self.kind {
-            ValgrindTool::Callgrind => meta.args.callgrind_limits.clone(),
-            ValgrindTool::Cachegrind => meta.args.cachegrind_limits.clone(),
-            ValgrindTool::DHAT => meta.args.dhat_limits.clone(),
+        // TODO: Add perf
+        let meta_limits = match self.tool {
+            Tool::Callgrind => meta.args.callgrind_limits.clone(),
+            Tool::Cachegrind => meta.args.cachegrind_limits.clone(),
+            Tool::DHAT => meta.args.dhat_limits.clone(),
             _ => None,
         };
 
-        let mut regression_config = if let Some(tool) = &self.tool {
+        let mut regression_config = if let Some(tool_spec) = &self.tool_spec {
             meta_limits
                 .map(Ok)
-                .or_else(|| tool.regression_config.clone().map(TryInto::try_into))
+                .or_else(|| tool_spec.regression_config.clone().map(TryInto::try_into))
                 .transpose()
-                .map_err(|error| anyhow!("Invalid limits for {}: {error}", self.kind))?
+                .map_err(|error| {
+                    anyhow!(
+                        "Invalid regression configuration for {}: {error}",
+                        self.tool
+                    )
+                })?
                 .unwrap_or(ToolRegressionConfig::None)
         } else {
             meta_limits.unwrap_or(ToolRegressionConfig::None)
@@ -308,6 +740,9 @@ impl ToolConfigBuilder {
                 ToolRegressionConfig::Dhat(dhat_regression_config) => {
                     dhat_regression_config.fail_fast = fail_fast;
                 }
+                ToolRegressionConfig::Perf(perf_regression_config) => {
+                    perf_regression_config.fail_fast = fail_fast;
+                }
                 ToolRegressionConfig::None => {}
             }
         }
@@ -319,26 +754,33 @@ impl ToolConfigBuilder {
 
     fn sanitize_output(&mut self) {
         let apply_default = || {
-            if matches!(self.kind, ValgrindTool::DHAT) {
+            if matches!(self.tool, Tool::DHAT) {
                 SanitizeOutput::Yes
             } else {
                 SanitizeOutput::No
             }
         };
 
-        self.sanitize_output = self.tool.as_ref().map_or_else(apply_default, |t| {
+        self.sanitize_output = self.tool_spec.as_ref().map_or_else(apply_default, |t| {
             t.sanitize_output.unwrap_or_else(apply_default)
         });
     }
 
     fn tool_args(&mut self) {
-        if let Some(tool) = self.tool.as_ref() {
-            self.raw_tool_args.update(&tool.raw_tool_args);
+        if let Some(tool_spec) = self.tool_spec.as_ref() {
+            if self.tool == Tool::Perf {
+                self.raw_tool_args.update(&tool_spec.raw_tool_args);
+            } else {
+                self.raw_tool_args
+                    .update_ignore_flag(&tool_spec.raw_tool_args);
+            }
         }
     }
 
     fn valgrind_args(&mut self, valgrind_args: &RawToolArgs) {
-        self.raw_tool_args.update(valgrind_args);
+        if self.tool != Tool::Perf {
+            self.raw_tool_args.update_ignore_flag(valgrind_args);
+        }
     }
 }
 
@@ -361,19 +803,19 @@ impl ToolConfigs {
     /// This function will return an error if the configs cannot be created
     pub fn new(
         output_format: &mut OutputFormat,
-        mut tools: Tools,
+        mut tool_specs: ToolSpecs,
         module_path: &ModulePath,
         id: Option<&String>,
         meta: &Metadata,
-        default_tool: ValgrindTool,
+        default_tool: Tool,
         default_entry_point: &EntryPoint,
         valgrind_args: &RawToolArgs,
-        default_args: &HashMap<ValgrindTool, RawToolArgs>,
+        default_args: &HashMap<Tool, RawToolArgs>,
     ) -> Result<Self> {
-        let extracted_tool = tools.consume(default_tool);
+        let extracted_tool = tool_specs.consume(default_tool);
 
         output_format.update(extracted_tool.as_ref());
-        let default_tool_config = ToolConfigBuilder::new(
+        let default_tool_configs = ToolConfigBuilder::new(
             default_tool,
             extracted_tool,
             true,
@@ -389,27 +831,27 @@ impl ToolConfigs {
         // The tool selection from the command line or env args overwrites the tool selection from
         // the benchmark file. However, any tool configurations from the benchmark files are
         // preserved.
-        let meta_tools = if meta.args.tools.is_empty() {
-            tools.0
+        let meta_tool_specs = if meta.args.tools.is_empty() {
+            tool_specs.0
         } else {
-            let mut meta_tools = Vec::with_capacity(meta.args.tools.len());
-            for kind in &meta.args.tools {
-                if let Some(tool) = tools.consume(*kind) {
-                    meta_tools.push(tool);
+            let mut meta_tool_specs = Vec::with_capacity(meta.args.tools.len());
+            for tool in &meta.args.tools {
+                if let Some(tool_spec) = tool_specs.consume(*tool) {
+                    meta_tool_specs.push(tool_spec);
                 } else {
-                    meta_tools.push(Tool::new(*kind));
+                    meta_tool_specs.push(ToolSpec::new(*tool));
                 }
             }
-            meta_tools
+            meta_tool_specs
         };
 
-        let mut tool_configs = Self(vec![default_tool_config]);
-        tool_configs.extend(meta_tools.into_iter().map(|tool| {
-            output_format.update(Some(&tool));
+        let mut tool_configs = Self(default_tool_configs);
+        let iter = meta_tool_specs.into_iter().map(|tool_spec| {
+            output_format.update(Some(&tool_spec));
 
             ToolConfigBuilder::new(
-                tool.kind,
-                Some(tool),
+                tool_spec.tool,
+                Some(tool_spec),
                 false,
                 default_args,
                 module_path,
@@ -419,10 +861,28 @@ impl ToolConfigs {
                 default_entry_point,
             )?
             .build()
-        }))?;
+        });
+        tool_configs.extend(iter)?;
 
         output_format.update_from_meta(meta);
         Ok(tool_configs)
+    }
+
+    /// TODO: DOCS
+    #[expect(clippy::float_cmp)]
+    pub fn alpha(&self) -> Option<f64> {
+        let mut alphas = self.0.iter().filter_map(|t| match &t.options {
+            ToolConfigOptions::Perf(perf_config) => Some(perf_config.alpha),
+            _ => None,
+        });
+
+        let first = alphas.next()?;
+        assert!(
+            alphas.all(|alpha| alpha == first),
+            "all alpha values should have the exact same value"
+        );
+
+        Some(first)
     }
 
     /// Returns `true` if there are any [`Tool`]s enabled.
@@ -432,16 +892,27 @@ impl ToolConfigs {
 
     /// Returns `true` if there are multiple tools configured and are enabled.
     pub fn has_multiple(&self) -> bool {
-        self.0.len() > 1 && self.0.iter().filter(|f| f.is_enabled).count() > 1
+        self.0
+            .iter()
+            .filter(|config| config.is_enabled)
+            .map(ToolConfig::tool)
+            .collect::<HashSet<_>>()
+            .len()
+            > 1
     }
 
     /// Returns the parser and configurations for each tool to be able to analyze the outputs.
+    ///
+    /// Only one (the first) analyzer per tool is returned. This matters, in case of multiple
+    /// [`ToolConfig`]s) (for example multiple event sets for perf)
     pub fn analyzers(&self, root_dir: &Path, output_path: &ToolOutputPath) -> Vec<Analyzer> {
+        let mut seen = HashSet::new();
+
         self.0
             .iter()
-            .filter(|t| t.is_enabled)
+            .filter(|t| t.is_enabled && t.has_analyzer && seen.insert(t.tool()))
             .map(|t| {
-                let tool_path = output_path.to_tool_output(t.tool);
+                let tool_path = output_path.to_tool_output(t.tool());
                 (
                     parser_factory(t, root_dir.to_path_buf(), &tool_path),
                     tool_path,
@@ -453,44 +924,47 @@ impl ToolConfigs {
             .collect()
     }
 
-    /// Return all [`ToolOutputPath`]s of all enabled tools
+    /// Return all [`ToolOutputPath`]s of all enabled tools (once per tool)
     pub fn output_paths(&self, output_path: &ToolOutputPath) -> Vec<ToolOutputPath> {
+        let mut seen = HashSet::new();
+
         self.0
             .iter()
-            .filter(|t| t.is_enabled)
-            .map(|t| output_path.to_tool_output(t.tool))
+            .filter(|t| t.is_enabled && seen.insert(t.tool()))
+            .map(|t| output_path.to_tool_output(t.tool()))
             .collect()
     }
 
     /// Extends this collection of tools with the contents of an iterator.
     pub fn extend<I>(&mut self, iter: I) -> Result<()>
     where
-        I: Iterator<Item = Result<ToolConfig>>,
+        I: Iterator<Item = Result<Vec<ToolConfig>>>,
     {
         for a in iter {
-            self.0.push(a?);
+            self.0.extend(a?);
         }
 
         Ok(())
     }
 
     /// Run a benchmark with this configuration if not --load-baseline was given
-    pub fn run(
-        &self,
+    pub fn run<'args, F>(
+        self,
         benchmark_summary: BenchmarkSummary,
         config: &Config,
         executable: &Path,
-        executable_args: &[OsString],
+        executable_args: F,
         run_options: &RunOptions,
         output_path: &ToolOutputPath,
         module_path: &ModulePath,
         captured_output: Option<&CapturedOutput>,
         force_shutdown: &Arc<AtomicBool>,
-    ) -> Result<BenchmarkSummary> {
+    ) -> Result<BenchmarkSummary>
+    where
+        F: Fn(&ToolConfig, Option<BenchRunMode>) -> Cow<'args, [OsString]>,
+    {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
-            let tool = tool_config.tool;
-
-            let output_path = output_path.to_tool_output(tool);
+            let output_path = tool_config.output_path(output_path);
 
             // We're implicitly applying the default here: In the absence of a user provided sandbox
             // we don't run the benchmarks in a sandbox.
@@ -518,6 +992,7 @@ impl ToolConfigs {
             } else {
                 None
             };
+
             run_options.setup.as_ref().map_or(Ok(()), |setup| {
                 process_handler.start_assistant(
                     true,
@@ -542,14 +1017,32 @@ impl ToolConfigs {
                     command,
                     tool_config,
                     executable,
-                    executable_args,
+                    &executable_args,
                     run_options,
                     &output_path,
                     module_path,
                     captured_output,
-                    config.meta.args.valgrind_runner_dest.as_deref(),
+                    config.meta.args.tool_runner_dest.as_deref(),
                 )
-                .and_then(|()| process_handler.wait_or_shutdown())?;
+                .and_then(|()| process_handler.wait_or_shutdown(tool_config.timeout))?;
+
+            if let ToolConfigOptions::Perf(options) = &tool_config.options {
+                if matches!(
+                    options.run_mode,
+                    PerfRunMode::DynamicBatch | PerfRunMode::FixedBatch(_)
+                ) {
+                    measure_perf_overhead(
+                        &config.meta,
+                        tool_config,
+                        executable,
+                        &executable_args,
+                        run_options,
+                        &output_path,
+                        sandbox.as_ref().and_then(|s| s.path()),
+                        config.meta.args.tool_runner_dest.as_deref(),
+                    )?;
+                }
+            }
 
             if let Some(teardown) = run_options.teardown.as_ref() {
                 process_handler

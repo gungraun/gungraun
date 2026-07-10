@@ -39,7 +39,7 @@ need for `--tools=dhat`:
 # extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
 use gungraun::prelude::*;
-use gungraun::{Dhat, ValgrindTool};
+use gungraun::Dhat;
 use std::hint::black_box;
 
 #[library_benchmark]
@@ -65,7 +65,7 @@ for `Memcheck`
 
 ```rust
 # extern crate gungraun;
-use gungraun::{Memcheck, ValgrindTool};
+use gungraun::Memcheck;
 
 Memcheck::with_args(["--error-exitcode=0"]);
 ```

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::ffi::OsString;
 use std::process::Stdio as StdStdio;
 use std::time::Duration;
 
@@ -154,12 +156,14 @@ fn test_start_bench_when_force_shutdown_is_false_then_bench_is_started(
             .fixture()
     };
 
+    let executable_args = vec![OsString::from("foo")];
+
     handler
         .start_bench(
             tool_command_f().output_path(&tool_output_path).fixture(),
             &tool_config_f().fixture(),
             &ECHO_EXE,
-            &["foo".into()],
+            &|_, _| Cow::Borrowed(executable_args.as_slice()),
             &run_options_f()
                 .env_clear(!cfg!(target_os = "macos"))
                 .fixture(),
@@ -217,6 +221,7 @@ fn test_start_bench_when_setup_is_parallel_then_bench_is_started(#[case] exit_co
     let run_options = run_options_f()
         .env_clear(!cfg!(target_os = "macos"))
         .fixture();
+    let executable_args: Vec<OsString> = vec![];
 
     let result = handler.start_bench(
         tool_command_f()
@@ -225,7 +230,7 @@ fn test_start_bench_when_setup_is_parallel_then_bench_is_started(#[case] exit_co
             .fixture(),
         &tool_config_f().fixture(),
         &ECHO_EXE,
-        &[],
+        &|_, _| Cow::Borrowed(executable_args.as_slice()),
         &run_options,
         &tool_output_path,
         &module_path_f().fixture(),
@@ -281,12 +286,13 @@ fn test_start_bench_when_force_shutdown_is_true_then_interrupt(#[case] has_setup
             .set_force_shutdown(force_shutdown)
             .fixture()
     };
+    let executable_args: Vec<OsString> = vec![];
 
     let result = handler.start_bench(
         tool_command_f().output_path(&tool_output_path).fixture(),
         &tool_config_f().fixture(),
         &ECHO_EXE,
-        &[],
+        &|_, _| Cow::Borrowed(executable_args.as_slice()),
         &RunOptions::default(),
         &tool_output_path,
         &module_path_f().fixture(),
@@ -324,12 +330,13 @@ fn test_start_bench_when_setup_not_parallel_with_error_then_no_bench_and_setup_e
                 .fixture(),
         )
         .fixture();
+    let executable_args: Vec<OsString> = vec![];
 
     let result = handler.start_bench(
         tool_command_f().output_path(&tool_output_path).fixture(),
         &tool_config_f().fixture(),
         &ECHO_EXE,
-        &[],
+        &|_, _| Cow::Borrowed(executable_args.as_slice()),
         &RunOptions::default(),
         &tool_output_path,
         &module_path_f().fixture(),
@@ -364,7 +371,7 @@ fn test_start_bench_when_setup_not_parallel_with_error_then_no_bench_and_setup_e
 #[should_panic = "A benchmark should be started before waiting"]
 fn test_wait_or_shutdown_when_no_bench_then_panic() {
     let mut handler = process_handler_f().fixture();
-    let _ = handler.wait_or_shutdown();
+    let _ = handler.wait_or_shutdown(None);
 }
 
 #[rstest]
@@ -396,7 +403,7 @@ fn test_wait_or_shutdown_when_force_shutdown_is_false(#[case] has_setup: bool) {
     };
 
     let output = handler
-        .wait_or_shutdown()
+        .wait_or_shutdown(None)
         .expect("Waiting for the benchmark process should succeed");
 
     assert!(handler.bench.is_none());
@@ -441,7 +448,7 @@ fn test_wait_or_shutdown_when_force_shutdown_is_true_then_interrupt(#[case] has_
     let error = assert_not_elapsed!(
         Duration::from_millis(500),
         handler
-            .wait_or_shutdown()
+            .wait_or_shutdown(None)
             .expect_err("An error should be present")
             .downcast::<Error>()
             .expect("The error should be a gungraun error")
@@ -483,7 +490,7 @@ fn test_wait_or_shutdown_when_error_in_setup_then_setup_error(#[case] exit_code:
         .fixture();
 
     let result = handler
-        .wait_or_shutdown()
+        .wait_or_shutdown(None)
         .expect_err("An error should be present")
         .downcast::<Error>()
         .expect("The error should be a gungraun error");
@@ -530,7 +537,7 @@ fn test_wait_or_shutdown_when_exit_with(#[case] exit_with_code: i32) {
     let mut handler = process_handler_f().bench(tool_command_child).fixture();
 
     let output = handler
-        .wait_or_shutdown()
+        .wait_or_shutdown(None)
         .expect("Waiting for the benchmark to exit with the expected code should succeed");
 
     assert!(handler.bench.is_none());
@@ -566,7 +573,7 @@ fn test_wait_or_shutdown_when_exit_with_no_match_then_error() {
     let mut handler = process_handler_f().bench(tool_command_child).fixture();
 
     let error = handler
-        .wait_or_shutdown()
+        .wait_or_shutdown(None)
         .expect_err(
             "There should be an error if the actual exit code does not match the `ExitWith` code",
         )

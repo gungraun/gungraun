@@ -6,9 +6,7 @@
 use std::fs;
 use std::path::Path;
 
-pub use gungraun_runner::api::{
-    CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindTool,
-};
+pub use gungraun_runner::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, Tool};
 pub use gungraun_runner::metrics::model::{Metric, MetricKind, MetricsDiff, MetricsSummary};
 pub use gungraun_runner::summary::model::{
     BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData, ProfileInfo,

@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_best_case_array, setup_worst_case_array};
 use gungraun::prelude::*;
-use gungraun::{Dhat, DhatMetric, EntryPoint, SanitizeOutput, ValgrindTool};
+use gungraun::{Dhat, DhatMetric, EntryPoint, SanitizeOutput, Tool};
 
 #[inline(never)]
 fn custom_setup(start: i32) -> Vec<i32> {
@@ -163,7 +163,7 @@ library_benchmark_group!(
 );
 main!(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DHAT)
+        .default_tool(Tool::DHAT)
         .pass_through_env("CARGO_LLVM_COV"),
     library_benchmark_groups = my_group
 );

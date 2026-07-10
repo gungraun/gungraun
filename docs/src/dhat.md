@@ -203,11 +203,11 @@ to understand the basic idea.
 # mod benchmark_tests { pub fn find_primes_multi_thread (_: u64) -> Vec<u64> { vec![] } }
 use std::hint::black_box;
 use gungraun::prelude::*;
-use gungraun::ValgrindTool;
+use gungraun::Tool;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DHAT)
+        .default_tool(Tool::DHAT)
 )]
 fn bench_library() -> Vec<u64> {
     black_box(benchmark_tests::find_primes_multi_thread(black_box(1)))
@@ -329,10 +329,10 @@ output files.
 # mod benchmark_tests { pub fn find_primes_multi_thread (_: u64) -> Vec<u64> { vec![] } }
 # use std::hint::black_box;
 # use gungraun::prelude::*;
-# use gungraun::{Dhat, ValgrindTool, SanitizeOutput};
+# use gungraun::{Dhat, Tool, SanitizeOutput};
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DHAT)
+        .default_tool(Tool::DHAT)
         .tool(Dhat::default().sanitize_output(SanitizeOutput::KeepOrig))
 )]
 fn bench_library() -> Vec<u64> {
@@ -425,11 +425,11 @@ doesn't have to be specified) and additionally all threads which execute the
 # mod benchmark_tests { pub fn find_primes_multi_thread (_: u64) -> Vec<u64> { vec![] } }
 use std::hint::black_box;
 use gungraun::prelude::*;
-use gungraun::{Dhat, ValgrindTool};
+use gungraun::{Dhat, Tool};
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DHAT)
+        .default_tool(Tool::DHAT)
         .tool(Dhat::default()
             .frames(["benchmark_tests::find_primes"])
         )
@@ -469,11 +469,11 @@ specifying a frame with `Dhat::frames`:
 # mod benchmark_tests { pub fn find_primes_multi_thread (_: u64) -> Vec<u64> { vec![] } }
 use std::hint::black_box;
 use gungraun::prelude::*;
-use gungraun::{Dhat, EntryPoint, ValgrindTool};
+use gungraun::{Dhat, EntryPoint, Tool};
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DHAT)
+        .default_tool(Tool::DHAT)
         .tool(Dhat::default()
             .entry_point(
                 EntryPoint::Custom("benchmark_tests::find_primes".to_owned())

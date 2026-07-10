@@ -1,6 +1,6 @@
 use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, EventKind,
-    Callgrind, ValgrindTool, Cachegrind, CachegrindMetric
+    Callgrind, Tool, Cachegrind, CachegrindMetric
 };
 
 #[binary_benchmark]
@@ -14,7 +14,7 @@ use gungraun::{
 #[bench::regress_cachegrind(
     args = [{{ array_length }}],
     config = BinaryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Cachegrind)
+        .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::default()
             .soft_limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ fail_fast }})
         )

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use derive_more::AsRef;
 use gungraun_macros::IntoInner;
-use gungraun_runner::api::ValgrindTool;
+use gungraun_runner::api::Tool;
 
 use crate::__internal;
 
@@ -31,7 +31,7 @@ pub struct LibraryBenchmarkConfig(__internal::InternalLibraryBenchmarkConfig);
 impl LibraryBenchmarkConfig {
     /// Change the default tool to something different than Callgrind
     ///
-    /// Any [`ValgrindTool`] is valid, however using Cachegrind also requires to use client requests
+    /// Any [`Tool`] is valid, however using Cachegrind also requires to use client requests
     /// to produce correct metrics. The guide fully describes how to use Cachegrind instead of
     /// Callgrind.
     ///
@@ -40,7 +40,7 @@ impl LibraryBenchmarkConfig {
     /// ```rust
     /// # mod lib { pub fn some_func(value: u64) -> u64 { value + 2 }}
     /// use gungraun::{
-    ///     LibraryBenchmarkConfig, ValgrindTool, library_benchmark, library_benchmark_group, main,
+    ///     LibraryBenchmarkConfig, Tool, library_benchmark, library_benchmark_group, main,
     /// };
     ///
     /// #[library_benchmark]
@@ -52,7 +52,7 @@ impl LibraryBenchmarkConfig {
     ///
     /// # fn main() {
     /// main!(
-    ///     config = LibraryBenchmarkConfig::default().default_tool(ValgrindTool::DHAT),
+    ///     config = LibraryBenchmarkConfig::default().default_tool(Tool::DHAT),
     ///     library_benchmark_groups = my_group
     /// );
     /// # }
@@ -62,18 +62,18 @@ impl LibraryBenchmarkConfig {
     ///
     /// `--instr-at-start=no` is required to only measure the metrics between the two client
     /// request calls.
-    ///
-    /// ```rust
+    #[cfg_attr(not(feature = "stubs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "stubs", doc = "```rust")]
     /// # mod lib { pub fn some_func(value: u64) -> u64 { value + 2 }}
     /// use gungraun::client_requests::cachegrind as cr;
     /// use gungraun::{
-    ///     Cachegrind, LibraryBenchmarkConfig, ValgrindTool, library_benchmark,
+    ///     Cachegrind, LibraryBenchmarkConfig, Tool, library_benchmark,
     ///     library_benchmark_group, main,
     /// };
     ///
     /// #[library_benchmark(
     ///     config = LibraryBenchmarkConfig::default()
-    ///         .default_tool(ValgrindTool::Cachegrind)
+    ///         .default_tool(Tool::Cachegrind)
     ///         .tool(Cachegrind::with_args(["--instr-at-start=no"]))
     /// )]
     /// fn bench_me() -> u64 {
@@ -89,8 +89,11 @@ impl LibraryBenchmarkConfig {
     /// main!(library_benchmark_groups = my_group);
     /// # }
     /// ```
-    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
-        self.0.default_tool = Some(tool);
+    pub fn default_tool<T>(&mut self, tool: T) -> &mut Self
+    where
+        T: Into<Tool>,
+    {
+        self.0.default_tool = Some(tool.into());
         self
     }
 
@@ -414,9 +417,9 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn tool<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<__internal::InternalTool>,
+        T: Into<__internal::InternalToolSpec>,
     {
-        self.0.tools.update(tool.into());
+        self.0.tool_specs.update(tool.into());
         self
     }
 
@@ -455,11 +458,11 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn tool_override<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<__internal::InternalTool>,
+        T: Into<__internal::InternalToolSpec>,
     {
         self.0
-            .tools_override
-            .get_or_insert_with(__internal::InternalTools::default)
+            .tool_specs_override
+            .get_or_insert_with(__internal::InternalToolSpecs::default)
             .update(tool.into());
         self
     }

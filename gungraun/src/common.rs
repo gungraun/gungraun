@@ -1,6 +1,7 @@
 //! Common structs for `bin_bench` and `lib_bench`
 
 use std::path::PathBuf;
+use std::time::Duration;
 use std::vec::Vec;
 
 use derive_more::AsRef;
@@ -8,7 +9,8 @@ use gungraun_macros::IntoInner;
 
 use super::{
     __internal, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics,
-    Direction, ErrorMetric, EventKind, FlamegraphKind, Limit, SanitizeOutput, ValgrindTool,
+    Direction, ErrorMetric, EventKind, FlamegraphKind, Limit, PerfRunMode, SanitizeOutput, Tool,
+    Unit,
 };
 use crate::EntryPoint;
 
@@ -34,7 +36,7 @@ use crate::EntryPoint;
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Bbv(__internal::InternalTool);
+pub struct Bbv(__internal::InternalToolSpec);
 
 /// The configuration for Cachegrind
 ///
@@ -58,7 +60,7 @@ pub struct Bbv(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Cachegrind(__internal::InternalTool);
+pub struct Cachegrind(__internal::InternalToolSpec);
 
 /// The configuration for Callgrind
 ///
@@ -82,7 +84,7 @@ pub struct Cachegrind(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Callgrind(__internal::InternalTool);
+pub struct Callgrind(__internal::InternalToolSpec);
 
 /// The configuration for Dhat
 ///
@@ -106,7 +108,7 @@ pub struct Callgrind(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Dhat(__internal::InternalTool);
+pub struct Dhat(__internal::InternalToolSpec);
 
 /// The configuration for DRD
 ///
@@ -130,7 +132,7 @@ pub struct Dhat(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Drd(__internal::InternalTool);
+pub struct Drd(__internal::InternalToolSpec);
 
 /// The `FlamegraphConfig` which allows the customization of the created flamegraphs
 ///
@@ -190,7 +192,7 @@ pub struct FlamegraphConfig(__internal::InternalFlamegraphConfig);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Helgrind(__internal::InternalTool);
+pub struct Helgrind(__internal::InternalToolSpec);
 
 /// The configuration for Massif
 ///
@@ -214,7 +216,7 @@ pub struct Helgrind(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Massif(__internal::InternalTool);
+pub struct Massif(__internal::InternalToolSpec);
 
 /// The configuration for Memcheck
 ///
@@ -238,7 +240,7 @@ pub struct Massif(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Memcheck(__internal::InternalTool);
+pub struct Memcheck(__internal::InternalToolSpec);
 
 /// Configures the default output format of the terminal output of Gungraun.
 ///
@@ -269,6 +271,30 @@ pub struct Memcheck(__internal::InternalTool);
 /// ```
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct OutputFormat(__internal::InternalOutputFormat);
+
+/// The configuration for perf
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use gungraun::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group, benchmarks = some_func);
+/// use gungraun::{LibraryBenchmarkConfig, Perf, main};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default().tool(Perf::default()),
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Perf(__internal::InternalToolSpec);
 
 /// The `Sandbox` in which benchmarks are run.
 ///
@@ -335,7 +361,7 @@ impl Bbv {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(ValgrindTool::BBV, args))
+        Self(__internal::InternalToolSpec::with_args(Tool::BBV, args))
     }
 
     /// Adds command-line arguments to the `BBV` configuration.
@@ -380,7 +406,7 @@ impl Bbv {
 
 impl Default for Bbv {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::BBV))
+        Self(__internal::InternalToolSpec::new(Tool::BBV))
     }
 }
 
@@ -401,8 +427,8 @@ impl Cachegrind {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Cachegrind,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Cachegrind,
             args,
         ))
     }
@@ -616,7 +642,7 @@ impl Cachegrind {
 
 impl Default for Cachegrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Cachegrind))
+        Self(__internal::InternalToolSpec::new(Tool::Cachegrind))
     }
 }
 
@@ -637,8 +663,8 @@ impl Callgrind {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Callgrind,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Callgrind,
             args,
         ))
     }
@@ -709,8 +735,8 @@ impl Callgrind {
     /// If you're using callgrind client requests either in the benchmark function itself or in your
     /// library, then using [`EntryPoint::None`] is presumably be required. Consider the following
     /// example (`DEFAULT_ENTRY_POINT` marks the default entry point):
-    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
-    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
+    #[cfg_attr(not(feature = "stubs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "stubs", doc = "```rust")]
     /// use gungraun::{
     ///     main, LibraryBenchmarkConfig,library_benchmark, library_benchmark_group
     /// };
@@ -1055,7 +1081,7 @@ impl Callgrind {
 
 impl Default for Callgrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Callgrind))
+        Self(__internal::InternalToolSpec::new(Tool::Callgrind))
     }
 }
 
@@ -1076,10 +1102,7 @@ impl Dhat {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::DHAT,
-            args,
-        ))
+        Self(__internal::InternalToolSpec::with_args(Tool::DHAT, args))
     }
 
     /// Adds command-line arguments to the `Dhat` configuration.
@@ -1208,8 +1231,8 @@ impl Dhat {
     ///
     /// You most likely want to disable the entry point with [`EntryPoint::None`] if you're using
     /// DHAT ad-hoc profiling.
-    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
-    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
+    #[cfg_attr(not(feature = "stubs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "stubs", doc = "```rust")]
     /// use gungraun::{
     ///     main, LibraryBenchmarkConfig, library_benchmark, library_benchmark_group,
     ///     EntryPoint, Dhat
@@ -1339,7 +1362,8 @@ impl Dhat {
         I: Into<String>,
         T: IntoIterator<Item = I>,
     {
-        let this = self.0.frames.get_or_insert_with(Vec::new);
+        let spec = self.dhat_spec_mut();
+        let this = spec.frames.get_or_insert_with(Vec::new);
         this.extend(frames.into_iter().map(Into::into));
 
         self
@@ -1483,11 +1507,23 @@ impl Dhat {
         }
         self
     }
+
+    fn dhat_spec_mut(&mut self) -> &mut __internal::InternalDhatSpec {
+        if !matches!(self.0.options, __internal::InternalToolSpecOptions::Dhat(_)) {
+            self.0.options =
+                __internal::InternalToolSpecOptions::Dhat(__internal::InternalDhatSpec::default());
+        }
+
+        match &mut self.0.options {
+            __internal::InternalToolSpecOptions::Dhat(spec) => spec,
+            _ => unreachable!("Dhat should always use DhatSpec"),
+        }
+    }
 }
 
 impl Default for Dhat {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::DHAT))
+        Self(__internal::InternalToolSpec::new(Tool::DHAT))
     }
 }
 
@@ -1508,7 +1544,7 @@ impl Drd {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(ValgrindTool::DRD, args))
+        Self(__internal::InternalToolSpec::with_args(Tool::DRD, args))
     }
 
     /// Adds command-line arguments to the `Drd` configuration.
@@ -1582,7 +1618,7 @@ impl Drd {
 
 impl Default for Drd {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::DRD))
+        Self(__internal::InternalToolSpec::new(Tool::DRD))
     }
 }
 
@@ -1778,8 +1814,8 @@ impl Helgrind {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Helgrind,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Helgrind,
             args,
         ))
     }
@@ -1856,7 +1892,7 @@ impl Helgrind {
 
 impl Default for Helgrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Helgrind))
+        Self(__internal::InternalToolSpec::new(Tool::Helgrind))
     }
 }
 
@@ -1877,10 +1913,7 @@ impl Massif {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Massif,
-            args,
-        ))
+        Self(__internal::InternalToolSpec::with_args(Tool::Massif, args))
     }
 
     /// Adds command-line arguments to the `Massif` configuration.
@@ -1927,7 +1960,7 @@ impl Massif {
 
 impl Default for Massif {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Massif))
+        Self(__internal::InternalToolSpec::new(Tool::Massif))
     }
 }
 
@@ -1948,8 +1981,8 @@ impl Memcheck {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Memcheck,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Memcheck,
             args,
         ))
     }
@@ -2026,7 +2059,276 @@ impl Memcheck {
 
 impl Default for Memcheck {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Memcheck))
+        Self(__internal::InternalToolSpec::new(Tool::Memcheck))
+    }
+}
+
+impl Perf {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalToolSpec::with_args(Tool::Perf, args))
+    }
+
+    /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_tool_args.extend(args);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn alpha(&mut self, value: f64) -> &mut Self {
+        let perf_spec = self.perf_spec_mut();
+        perf_spec.alpha = Some(value);
+
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.alpha = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: Some(value),
+                    soft_limits: Vec::default(),
+                    hard_limits: Vec::default(),
+                    fail_fast: None,
+                },
+            ));
+        }
+
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn disable_entry_point(&mut self, yes: bool) -> &mut Self {
+        if yes {
+            self.0.entry_point = Some(EntryPoint::None);
+        } else {
+            self.0.entry_point = Some(EntryPoint::Default);
+        }
+
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn event_set<T>(&mut self, events: T) -> &mut Self
+    where
+        T: AsRef<str>,
+    {
+        let spec = self.perf_spec_mut();
+        let events_spec = spec.events.get_or_insert_with(Vec::new);
+        events_spec.push(events.as_ref().to_owned());
+
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn event_sets<I, T>(&mut self, events: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        let spec = self.perf_spec_mut();
+        let events_spec = spec.events.get_or_insert_with(Vec::new);
+        events_spec.extend(events.into_iter().map(|event| event.as_ref().to_owned()));
+
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.fail_fast = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: None,
+                    soft_limits: Vec::default(),
+                    hard_limits: Vec::default(),
+                    fail_fast: Some(value),
+                },
+            ));
+        }
+        self
+    }
+
+    /// Set patterns for perf metrics that must not be zero.
+    ///
+    /// If a metric matching any of these patterns has a zero value, the entire measurement batch is
+    /// discarded. Patterns use `simplematch` glob syntax.
+    ///
+    /// TODO: elaborate and examples
+    pub fn non_zero_metrics<I, T>(&mut self, values: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        let spec = self.perf_spec_mut();
+        spec.non_zero_metrics = Some(values.into_iter().map(|v| v.as_ref().to_owned()).collect());
+
+        self
+    }
+
+    // TODO: Rename to pcnt_running
+    /// Sets the minimum percentage of time a PMU counter must be running.
+    ///
+    /// When perf multiplexes hardware counters because more events are requested than physical PMU
+    /// slots exist, `pcnt_running` reports the fraction of the interval the counter was active. The
+    /// runner discards sampled records whose `pcnt_running` falls below this threshold.
+    ///
+    /// The default is `100.0` (no multiplexing tolerated). Lower this value only if you
+    /// intentionally request more events than the hardware can count simultaneously and you still
+    /// want to keep multiplexed data. Usually, it is better to keep the default and split the
+    /// amount of events into multiple sets using [`Perf::event_sets`] with each set having the
+    /// number of available physical PMU slots. However, splitting into multiple sets requires perf
+    /// to be run multiple times.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().percent_running(80.0);
+    /// ```
+    pub fn percent_running(&mut self, percent: f64) -> &mut Self {
+        let spec = self.perf_spec_mut();
+        spec.percent_running = Some(percent);
+
+        self
+    }
+
+    /// TODO: DOCS, mention that only significant changes are checked
+    pub fn soft_limits<K, T>(&mut self, soft_limits: T) -> &mut Self
+    where
+        K: Into<String>,
+        T: IntoIterator<Item = (K, f64)>,
+    {
+        let iter = soft_limits.into_iter().map(|(k, l)| (k.into(), l));
+
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.soft_limits.extend(iter);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: None,
+                    soft_limits: iter.collect(),
+                    hard_limits: Vec::default(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn hard_limits<K, L, U, T>(&mut self, hard_limits: T) -> &mut Self
+    where
+        K: Into<String>,
+        L: Into<Limit>,
+        U: Into<Option<Unit>>,
+        T: IntoIterator<Item = (K, U, L)>,
+    {
+        let iter = hard_limits
+            .into_iter()
+            .map(|(k, u, l)| (k.into(), u.into(), l.into()));
+
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.hard_limits.extend(iter);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: None,
+                    soft_limits: Vec::default(),
+                    hard_limits: iter.collect(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// Sets the [`PerfRunMode`] for this perf configuration.
+    ///
+    /// The run mode controls how benchmark invocations are batched and calibrated inside the `perf`
+    /// measurement. See [`PerfRunMode`] for a description of each mode. The default is
+    /// [`PerfRunMode::Raw`] which runs perf in normal mode without any special setup.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use gungraun::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group, benchmarks = some_func);
+    /// use gungraun::{LibraryBenchmarkConfig, Perf, PerfRunMode, main};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Perf::default().run_mode(PerfRunMode::DefaultCalibrate)),
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn run_mode(&mut self, run_mode: PerfRunMode) -> &mut Self {
+        self.perf_spec_mut().run_mode = Some(run_mode);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn record(&mut self, yes: bool) -> &mut Self {
+        self.perf_spec_mut().record = Some(yes);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn record_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        let spec = self.perf_spec_mut();
+        spec.record_args.extend(args);
+        self
+    }
+
+    /// TODO: DOCS, if there are multiple records, the first is sorted out to mitigate cold-start
+    /// effects
+    pub fn samples(&mut self, duration: Duration) -> &mut Self {
+        let spec = self.perf_spec_mut();
+        spec.samples = Some(duration);
+        self
+    }
+
+    fn perf_spec_mut(&mut self) -> &mut __internal::InternalPerfSpec {
+        if !matches!(self.0.options, __internal::InternalToolSpecOptions::Perf(_)) {
+            self.0.options =
+                __internal::InternalToolSpecOptions::Perf(__internal::InternalPerfSpec::default());
+        }
+
+        match &mut self.0.options {
+            __internal::InternalToolSpecOptions::Perf(spec) => spec,
+            _ => unreachable!("Perf should always use PerfSpec"),
+        }
+    }
+}
+
+impl Default for Perf {
+    fn default() -> Self {
+        Self(__internal::InternalToolSpec::new(Tool::Perf))
     }
 }
 

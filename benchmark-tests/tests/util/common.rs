@@ -7,14 +7,14 @@ use std::process::{Command, Output};
 use std::sync::LazyLock;
 
 use anyhow::{Context, Result};
-use gungraun::ValgrindTool;
+use gungraun::Tool;
 use gungraun_runner::runner::tasks::ProcessHandler;
 use gungraun_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use gungraun_runner::summary::model::BaselineKind;
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_TOOL: ValgrindTool = ValgrindTool::Callgrind;
+pub const DEFAULT_TOOL: Tool = Tool::Callgrind;
 pub const FIXTURES_ROOT: &str = "tests/fixtures";
 
 #[macro_export]
@@ -86,7 +86,7 @@ impl Fixtures {
 
     pub fn get_tool_output_path(
         dir: &str,
-        tool: ValgrindTool,
+        tool: Tool,
         kind: ToolOutputPathKind,
         name: &str,
     ) -> ToolOutputPath {
@@ -310,7 +310,7 @@ pub fn tool_output_path_dump<W>(tool_output_path: &ToolOutputPath, writer: &mut 
 where
     W: Write,
 {
-    for path in tool_output_path.real_paths()? {
+    for path in tool_output_path.sanitized_paths()? {
         let file = File::open(&path).with_context(|| {
             format!(
                 "Error opening {} output file '{}'",

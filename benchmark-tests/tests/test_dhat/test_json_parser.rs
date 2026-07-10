@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 
-use gungraun_runner::api::{EntryPoint, SanitizeOutput, ValgrindTool};
+use gungraun::Tool;
+use gungraun_runner::api::{EntryPoint, SanitizeOutput};
 use gungraun_runner::fixtures::tool_output_path_f;
 use gungraun_runner::runner::dhat::json_parser::{JsonParser, parse};
 use gungraun_runner::runner::dhat::model::DhatData;
@@ -49,7 +50,7 @@ fn test_json_parser_when_sanitize_yes() {
     let output = JsonParser::new(
         tool_output_path_f()
             .target_dir(temp_dir.path())
-            .tool(ValgrindTool::DHAT)
+            .tool(Tool::DHAT)
             .name("dhat")
             .fixture(),
         EntryPoint::Default,
@@ -84,7 +85,7 @@ fn test_json_parser_when_sanitize_keep_orig() {
     let output = JsonParser::new(
         tool_output_path_f()
             .target_dir(temp_dir.path())
-            .tool(ValgrindTool::DHAT)
+            .tool(Tool::DHAT)
             .name("dhat")
             .fixture(),
         EntryPoint::Default,
@@ -110,7 +111,7 @@ fn test_json_parser_when_sanitize_no() {
     let output = JsonParser::new(
         tool_output_path_f()
             .target_dir(temp_dir.path())
-            .tool(ValgrindTool::DHAT)
+            .tool(Tool::DHAT)
             .name("dhat")
             .fixture(),
         EntryPoint::Default,

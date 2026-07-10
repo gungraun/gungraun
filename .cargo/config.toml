@@ -6,6 +6,7 @@ debug = true
 
 [profile.bench]
 debug = true
+strip = false
 
 [profile.mdbook]
 inherits = "dev"

@@ -2,6 +2,7 @@
 //!
 //! This module runs all the library benchmarks
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fmt::Debug;
@@ -18,7 +19,7 @@ use super::tool::config::ToolConfigs;
 use super::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use super::tool::run::RunOptions;
 use crate::api::{
-    EntryPoint, LibraryBenchmarkConfig, LibraryBenchmarkGroups, RawToolArgs, ValgrindTool,
+    BenchRunMode, EntryPoint, LibraryBenchmarkConfig, LibraryBenchmarkGroups, RawToolArgs, Tool,
 };
 use crate::error::Error;
 use crate::runner::args;
@@ -27,6 +28,7 @@ use crate::runner::common::{
     BenchmarkSummaries, CapturedOutput, Config, Groups, LoadBaselineDataProcessor, ModulePath,
     Runner, SaveBaselineDataProcessor,
 };
+use crate::runner::tool::config::ToolConfig;
 use crate::summary::model::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput,
 };
@@ -54,8 +56,8 @@ pub struct LibBench {
     pub bench_index: usize,
     /// The arguments of the `consts` parameter as a single string
     pub consts_display: Option<String>,
-    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
-    pub default_tool: ValgrindTool,
+    /// The default [`Tool`]. If not changed it is `Callgrind`.
+    pub default_tool: Tool,
     /// The arguments of `args` attribute as a single string
     pub display: Option<String>,
     /// The name of the annotated function
@@ -208,14 +210,33 @@ impl Benchmark for BaselineAndSaveBenchmark {
             self.baselines(),
         );
 
-        lib_bench.tools.run(
+        let LibBench {
+            bench_index,
+            group_index,
+            iter_index,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = lib_bench;
+
+        tools.run(
             benchmark_summary,
             config,
             &config.bench_bin,
-            &lib_bench.bench_args(main_index),
-            &lib_bench.run_options,
+            |tool_config, run_mode| {
+                Cow::Owned(LibBench::bench_args(
+                    tool_config,
+                    run_mode,
+                    main_index,
+                    group_index,
+                    bench_index,
+                    iter_index,
+                ))
+            },
+            &run_options,
             &output_path,
-            &lib_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -288,14 +309,33 @@ impl Benchmark for BaselineBenchmark {
             self.baselines(),
         );
 
-        lib_bench.tools.run(
+        let LibBench {
+            bench_index,
+            group_index,
+            iter_index,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = lib_bench;
+
+        tools.run(
             benchmark_summary,
             config,
             &config.bench_bin,
-            &lib_bench.bench_args(main_index),
-            &lib_bench.run_options,
+            |tool_config, run_mode| {
+                Cow::Owned(LibBench::bench_args(
+                    tool_config,
+                    run_mode,
+                    main_index,
+                    group_index,
+                    bench_index,
+                    iter_index,
+                ))
+            },
+            &run_options,
             &output_path,
-            &lib_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -334,7 +374,7 @@ impl LibBench {
         group_index: usize,
         bench_index: usize,
         iter_index: Option<usize>,
-        default_tool: ValgrindTool,
+        default_tool: Tool,
     ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|s| format!("{s}_{iter_index}"))
@@ -366,10 +406,10 @@ impl LibBench {
         let default_tool = if let Some(meta_default_tool) = meta.args.default_tool {
             meta_default_tool
         } else {
-            if default_tool == ValgrindTool::Cachegrind {
+            if default_tool == Tool::Cachegrind {
                 default_args.insert(
-                    ValgrindTool::Cachegrind,
-                    RawToolArgs::new(["--instr-at-start=no"]),
+                    Tool::Cachegrind,
+                    RawToolArgs::new_ignore_flag(["--instr-at-start=no"]),
                 );
             }
             config.default_tool.unwrap_or(default_tool)
@@ -382,7 +422,7 @@ impl LibBench {
 
         let tool_configs = ToolConfigs::new(
             &mut output_format,
-            config.tools,
+            config.tool_specs,
             &module_path,
             id.as_ref(),
             meta,
@@ -436,19 +476,27 @@ impl LibBench {
     }
 
     /// The arguments for the `bench_bin` to actually run the benchmark function
-    fn bench_args(&self, main_index: usize) -> Vec<OsString> {
+    fn bench_args(
+        config: &ToolConfig,
+        run_mode: Option<BenchRunMode>,
+        main_index: usize,
+        group_index: usize,
+        bench_index: usize,
+        iter_index: Option<usize>,
+    ) -> Vec<OsString> {
         // The string has a fixed length to have an equal argument parser in the benchmark binary
         // for all benchmarks.
         let index_to_string = |index| format!("{index:05}");
 
         let mut args = vec![
             OsString::from("--gungraun-run".to_owned()),
+            OsString::from(run_mode.unwrap_or_else(|| config.benchmark_run_mode()).id()),
             OsString::from(index_to_string(main_index)),
-            OsString::from(index_to_string(self.group_index)),
-            OsString::from(index_to_string(self.bench_index)),
+            OsString::from(index_to_string(group_index)),
+            OsString::from(index_to_string(bench_index)),
         ];
 
-        if let Some(iter_index) = self.iter_index {
+        if let Some(iter_index) = iter_index {
             args.push(OsString::from(index_to_string(iter_index)));
         }
 
@@ -604,14 +652,33 @@ impl Benchmark for SaveBaselineBenchmark {
             self.baselines(),
         );
 
-        lib_bench.tools.run(
+        let LibBench {
+            bench_index,
+            group_index,
+            iter_index,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = lib_bench;
+
+        tools.run(
             benchmark_summary,
             config,
             &config.bench_bin,
-            &lib_bench.bench_args(main_index),
-            &lib_bench.run_options,
+            |tool_config, run_mode| {
+                Cow::Owned(LibBench::bench_args(
+                    tool_config,
+                    run_mode,
+                    main_index,
+                    group_index,
+                    bench_index,
+                    iter_index,
+                ))
+            },
+            &run_options,
             &output_path,
-            &lib_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -688,6 +755,14 @@ pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<B
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::{PerfRunMode, SanitizeOutput};
+    use crate::runner::perf::args::{DEFAULT_PERF_EVENTS, PerfStatArgs};
+    use crate::runner::tool::args::ToolArgs;
+    use crate::runner::tool::config::{
+        DEFAULT_PERF_ALPHA, DEFAULT_PERF_NON_ZERO_METRICS, PerfConfig, ToolConfigOptions,
+        ToolFlamegraphConfig,
+    };
+    use crate::runner::tool::regression::ToolRegressionConfig;
 
     #[test]
     fn test_baseline_and_save_benchmark_uses_different_display_baselines() {
@@ -700,5 +775,36 @@ mod tests {
             benchmark.baselines(),
             (Some("pr_1234".to_owned()), Some("main".to_owned()))
         );
+    }
+
+    #[test]
+    fn bench_args_uses_run_mode_override() {
+        let config = ToolConfig::new(
+            true,
+            ToolArgs::Perf(PerfStatArgs::default().into()),
+            ToolRegressionConfig::None,
+            ToolFlamegraphConfig::None,
+            EntryPoint::Default,
+            true,
+            SanitizeOutput::No,
+            Option::default(),
+            ToolConfigOptions::Perf(PerfConfig {
+                alpha: DEFAULT_PERF_ALPHA,
+                events: DEFAULT_PERF_EVENTS.to_owned(),
+                non_zero_metrics: DEFAULT_PERF_NON_ZERO_METRICS
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
+                run_mode: PerfRunMode::Raw,
+                use_sampling: false,
+                percent_running: 100.0,
+            }),
+            true,
+            None,
+        );
+
+        let args = LibBench::bench_args(&config, Some(BenchRunMode::PerfCalibrate), 1, 2, 3, None);
+
+        assert_eq!(args[1], OsString::from(BenchRunMode::PerfCalibrate.id()));
     }
 }

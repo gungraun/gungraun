@@ -6,6 +6,7 @@ pub mod cachegrind;
 pub mod callgrind;
 pub mod common;
 pub mod dhat;
+pub mod perf;
 pub mod run;
 pub mod tasks;
 

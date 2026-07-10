@@ -16,7 +16,7 @@ pre-build = ["""curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
 passthrough = [
   "GUNGRAUN_LOG",
   "GUNGRAUN_RUNNER=/tmp/bin/gungraun-runner",
-  "GUNGRAUN_VALGRIND_RUNNER=/linux-runner",
-  "GUNGRAUN_VALGRIND_RUNNER_ARGS=s390x",
+  "GUNGRAUN_TOOL_RUNNER=/linux-runner",
+  "GUNGRAUN_TOOL_RUNNER_ARGS=s390x",
   "GUNGRAUN_ENVS=CROSS_RUNNER=qemu-system TMPDIR GUNGRAUN_LOG",
 ]

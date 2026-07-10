@@ -29,7 +29,7 @@ use super::tool::config::ToolConfigs;
 use super::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use super::tool::run::RunOptions;
 use crate::api::{
-    self, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, EntryPoint, Stdin, ValgrindTool,
+    self, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, EntryPoint, Stdin, Tool,
 };
 use crate::error::Error;
 use crate::runner::args;
@@ -54,8 +54,8 @@ pub struct BinBench {
     pub command: Command,
     /// The arguments of `consts` parameter as a single string
     pub consts_display: Option<String>,
-    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
-    pub default_tool: ValgrindTool,
+    /// The default [`Tool`]. If not changed it is `Callgrind`.
+    pub default_tool: Tool,
     /// The arguments of `args` parameter as a single string
     pub display: Option<String>,
     /// The name of the annotated function
@@ -220,14 +220,22 @@ impl Benchmark for BaselineAndSaveBenchmark {
             self.baselines(),
         );
 
-        bin_bench.tools.run(
+        let BinBench {
+            command,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = bin_bench;
+
+        tools.run(
             benchmark_summary,
             config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &bin_bench.run_options,
+            &command.path,
+            |_, _| Cow::Borrowed(command.args.as_slice()),
+            &run_options,
             &output_path,
-            &bin_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -299,14 +307,22 @@ impl Benchmark for BaselineBenchmark {
             self.baselines(),
         );
 
-        bin_bench.tools.run(
+        let BinBench {
+            command,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = bin_bench;
+
+        tools.run(
             benchmark_summary,
             config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &bin_bench.run_options,
+            &command.path,
+            |_, _| Cow::Borrowed(command.args.as_slice()),
+            &run_options,
             &output_path,
-            &bin_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -364,7 +380,7 @@ impl BinBench {
         bench_index: usize,
         iter_index: Option<usize>,
         command: api::Command,
-        default_tool: ValgrindTool,
+        default_tool: Tool,
     ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|id| format!("{id}_{iter_index}"))
@@ -422,7 +438,7 @@ impl BinBench {
 
         let tool_configs = ToolConfigs::new(
             &mut output_format,
-            config.tools,
+            config.tool_specs,
             &module_path,
             id.as_ref(),
             meta,
@@ -797,14 +813,22 @@ impl Benchmark for SaveBaselineBenchmark {
             self.baselines(),
         );
 
-        bin_bench.tools.run(
+        let BinBench {
+            command,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = bin_bench;
+
+        tools.run(
             benchmark_summary,
             config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &bin_bench.run_options,
+            &command.path,
+            |_, _| Cow::Borrowed(command.args.as_slice()),
+            &run_options,
             &output_path,
-            &bin_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )

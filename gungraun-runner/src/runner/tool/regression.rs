@@ -5,21 +5,29 @@ use std::hash::Hash;
 use either_or_both::EitherOrBoth;
 
 use crate::api;
-use crate::metrics::logic::Summarize;
+use crate::metrics::logic::{MetricValue, Summarize};
 use crate::metrics::model::{Metric, MetricsSummary};
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
 use crate::runner::callgrind::regression::CallgrindRegressionConfig;
 use crate::runner::dhat::regression::DhatRegressionConfig;
-use crate::summary::model::{ProfileTotal, ToolMetricSummary, ToolRegression};
+use crate::runner::perf::regression::PerfRegressionConfig;
+use crate::summary::model::{ToolMetricSummary, ToolRegression};
+use crate::units::Unit;
 
 /// A short-lived utility enum used to hold the raw regressions until they can be transformed into a
 /// real [`ToolRegression`]
 #[derive(Debug)]
 pub enum RegressionMetrics<T> {
     /// The result of a checked soft limit
-    Soft(T, Metric, Metric, f64, f64),
+    ///
+    /// metric identifier, optional display label, optional unit, new metric value, old metric
+    /// value, percentage diff, and configured soft limit.
+    Soft(T, Option<String>, Option<Unit>, Metric, Metric, f64, f64),
     /// The result of a checked hard limit
-    Hard(T, Metric, Metric, Metric),
+    ///
+    /// metric identifier, optional display label, optional unit, new metric value, amount above
+    /// the limit, and configured hard limit.
+    Hard(T, Option<String>, Option<Unit>, Metric, Metric, Metric),
 }
 
 /// The tool specific regression check configuration
@@ -31,24 +39,33 @@ pub enum ToolRegressionConfig {
     Cachegrind(CachegrindRegressionConfig),
     /// The DHAT configuration
     Dhat(DhatRegressionConfig),
+    /// The DHAT configuration
+    Perf(PerfRegressionConfig),
     /// If there is no configuration
     None,
 }
 
 /// The trait which needs to be implemented in a tool specific regression check configuration
-pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
+pub trait RegressionConfig<T, V = Metric>
+where
+    T: Hash + Eq + Summarize<V> + Display + Clone,
+    V: MetricValue + Clone,
+{
     /// Check the `MetricsSummary` for regressions.
     ///
     /// The limits for event kinds which are not present in the `MetricsSummary` are ignored.
-    fn check(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression>;
+    fn check(&self, metrics_summary: &MetricsSummary<T, V>) -> Vec<ToolRegression>;
 
     /// Check for regressions and return the [`RegressionMetrics`]
-    fn check_regressions(&self, metrics_summary: &MetricsSummary<T>) -> Vec<RegressionMetrics<T>> {
+    fn check_regressions(
+        &self,
+        metrics_summary: &MetricsSummary<T, V>,
+    ) -> Vec<RegressionMetrics<T>> {
         let mut regressions = vec![];
         for (metric, new_cost, old_cost, pct, limit) in
             self.get_soft_limits().iter().filter_map(|(kind, limit)| {
                 metrics_summary.diff_by_kind(kind).and_then(|d| {
-                    if let EitherOrBoth::Both(new, old) = d.metrics {
+                    if let EitherOrBoth::Both(new, old) = d.metrics.as_ref() {
                         // This unwrap is safe since the diffs are calculated if both costs are
                         // present
                         Some((kind, new, old, d.diffs.unwrap().diff_pct, limit))
@@ -62,8 +79,10 @@ pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
                 if pct > *limit {
                     regressions.push(RegressionMetrics::Soft(
                         metric.clone(),
-                        new_cost,
-                        old_cost,
+                        None,
+                        None,
+                        new_cost.metric(),
+                        old_cost.metric(),
                         pct,
                         *limit,
                     ));
@@ -71,8 +90,10 @@ pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
             } else if pct < *limit {
                 regressions.push(RegressionMetrics::Soft(
                     metric.clone(),
-                    new_cost,
-                    old_cost,
+                    None,
+                    None,
+                    new_cost.metric(),
+                    old_cost.metric(),
                     pct,
                     *limit,
                 ));
@@ -91,11 +112,13 @@ pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
                 })
             })
         {
-            if new_cost > limit {
+            if new_cost.metric() > *limit {
                 regressions.push(RegressionMetrics::Hard(
                     metric.clone(),
-                    *new_cost,
-                    *new_cost - *limit,
+                    None,
+                    None,
+                    new_cost.metric(),
+                    new_cost.metric() - *limit,
                     *limit,
                 ));
             }
@@ -117,6 +140,7 @@ impl ToolRegressionConfig {
             Self::Callgrind(regression_config) => regression_config.fail_fast,
             Self::Cachegrind(regression_config) => regression_config.fail_fast,
             Self::Dhat(regression_config) => regression_config.fail_fast,
+            Self::Perf(regression_config) => regression_config.fail_fast,
             Self::None => false,
         }
     }
@@ -128,8 +152,8 @@ impl ToolRegressionConfig {
     /// # Panics
     ///
     /// Panics if the metric summary type does not match the active regression configuration.
-    pub fn check(&self, tool_total: &ProfileTotal) -> Vec<ToolRegression> {
-        match (&self, &tool_total.summary) {
+    pub fn check(&self, metrics_summary: &ToolMetricSummary) -> Vec<ToolRegression> {
+        match (&self, &metrics_summary) {
             (
                 Self::Callgrind(callgrind_regression_config),
                 ToolMetricSummary::Callgrind(metrics_summary),
@@ -140,6 +164,9 @@ impl ToolRegressionConfig {
             ) => cachegrind_regression_config.check(metrics_summary),
             (Self::Dhat(dhat_regression_config), ToolMetricSummary::Dhat(metrics_summary)) => {
                 dhat_regression_config.check(metrics_summary)
+            }
+            (Self::Perf(perf_regression_config), ToolMetricSummary::Perf(metrics_summary)) => {
+                perf_regression_config.check(metrics_summary)
             }
             (Self::None, _) => vec![],
             _ => {
@@ -162,6 +189,9 @@ impl TryFrom<api::ToolRegressionConfig> for ToolRegressionConfig {
             }
             api::ToolRegressionConfig::Dhat(regression_config) => {
                 regression_config.try_into().map(Self::Dhat)
+            }
+            api::ToolRegressionConfig::Perf(regression_config) => {
+                regression_config.try_into().map(Self::Perf)
             }
             api::ToolRegressionConfig::None => Ok(Self::None),
         }

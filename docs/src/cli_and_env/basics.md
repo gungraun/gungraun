@@ -180,7 +180,7 @@ Options:
 
           By default, Gungraun searches for `valgrind` in the system PATH. This option
           allows specifying an alternative Valgrind executable. When used with
-          `--valgrind-runner`, this path is passed to the runner as the Valgrind binary
+          `--tool-runner`, this path is passed to the runner as the Valgrind binary
           to invoke.
 
           Note: The specified path is not validated for existence. If the path is invalid, the
@@ -188,7 +188,7 @@ Options:
 
           Examples:
             * `--valgrind-bin=/usr/local/bin/valgrind`
-            * `--valgrind-bin=/doesnotexist` (used with `--valgrind-runner` for container setups)
+            * `--valgrind-bin=/doesnotexist` (used with `--tool-runner` for container setups)
 
           [env: GUNGRAUN_VALGRIND_BIN=]
 
@@ -212,46 +212,46 @@ Options:
 
           [env: GUNGRAUN_WORKSPACE_ROOT=]
 
-      --valgrind-runner <VALGRIND_RUNNER>
-          Specify an alternative executable to run Valgrind
+      --tool-runner <TOOL_RUNNER>
+          Specify an alternative executable to run a tool invocation
 
-          By default, Gungraun runs the benchmark executable with Valgrind directly. This option
-          allows specifying an alternative runner executable that will be invoked instead, with
-          Valgrind passed as an argument to the runner.
+          By default, Gungraun runs the selected tool directly. This option allows specifying an
+          alternative runner executable that will be invoked instead, with the selected tool binary
+          passed as an argument to the runner.
 
           When specified, the runner is invoked as:
-            `<RUNNER> [RUNNER_ARGS...] <VALGRIND_BIN> [VALGRIND_ARGS...] <BENCHMARK>
+            `<RUNNER> [RUNNER_ARGS...] <TOOL_BIN> [TOOL_ARGS...] <BENCHMARK>
             [BENCHMARK_ARGS...]`
 
           The runner receives extra environment variables that provide context:
-          - `GUNGRAUN_VR_DEST_DIR`: The destination directory for Valgrind output files
-          - `GUNGRAUN_VR_HOME`: The gungraun home (`--home`) directory
-          - `GUNGRAUN_VR_WORKSPACE_ROOT`: The project's workspace root directory
+          - `GUNGRAUN_TR_DEST_DIR`: The destination directory for tool output files
+          - `GUNGRAUN_TR_HOME`: The gungraun home (`--home`) directory
+          - `GUNGRAUN_TR_WORKSPACE_ROOT`: The project's workspace root directory
           - `GUNGRAUN_ALLOW_ASLR`: `yes` or `no` (the default) based on `--allow-aslr` setting
 
-          Environment variables in `--valgrind-runner-args` are interpolated using `${VAR}` syntax.
-          The interpolation priority is: `GUNGRAUN_VR_*` variables first, then `--envs` variables,
+          Environment variables in `--tool-runner-args` are interpolated using `${VAR}` syntax.
+          The interpolation priority is: `GUNGRAUN_TR_*` variables first, then `--envs` variables,
           then the system environment.
 
-          This is useful for running benchmarks in containers or other environments where Valgrind is
+          This is useful for running benchmarks in containers or other environments where the tool is
           not available on the host. See the online guide for detailed examples.
 
           Examples:
-            * --valgrind-runner=docker
-            * --valgrind-runner=/path/to/wrapper
-            --valgrind-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
+            * --tool-runner=docker
+            * --tool-runner=/path/to/wrapper
+            --tool-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
 
-          [env: GUNGRAUN_VALGRIND_RUNNER=]
+          [env: GUNGRAUN_TOOL_RUNNER=]
 
-      --valgrind-runner-args <VALGRIND_RUNNER_ARGS>
-          Additional arguments to pass to the Valgrind runner executable
+      --tool-runner-args <TOOL_RUNNER_ARGS>
+          Additional arguments to pass to the tool runner executable
 
-          This option is only effective when `--valgrind-runner` is specified. The arguments are
-          passed to the runner executable after `--valgrind-runner` and before the Valgrind path.
+          This option is only effective when `--tool-runner` is specified. The arguments are
+          passed to the runner executable after `--tool-runner` and before the tool path.
 
           Environment variable interpolation is supported using the `${VAR}` syntax. Variables are
           resolved in this order:
-          1. `GUNGRAUN_VR_*` variables set by Gungraun (see `--valgrind-runner` for the list)
+          1. `GUNGRAUN_TR_*` variables set by Gungraun (see `--tool-runner` for the list)
           2. Variables specified via `--envs` and `LibraryBenchmarkConfig::envs` or
              `BinaryBenchmarkConfig::envs`
           3. System environment variables
@@ -261,20 +261,20 @@ Options:
           the ASLR setting to container setups.
 
           Examples:
-            * --valgrind-runner=sudo --valgrind-runner-args='--user=foo'
-            * --valgrind-runner=wrapper '--valgrind-runner-args=--allow-aslr=${GUNGRAUN_ALLOW_ASLR}'
+            * --tool-runner=sudo --tool-runner-args='--user=foo'
+            * --tool-runner=wrapper '--tool-runner-args=--allow-aslr=${GUNGRAUN_ALLOW_ASLR}'
 
-          [env: GUNGRAUN_VALGRIND_RUNNER_ARGS=]
+          [env: GUNGRAUN_TOOL_RUNNER_ARGS=]
 
-      --valgrind-runner-dest <VALGRIND_RUNNER_DEST>
-          Override the destination directory path for Valgrind runner output files
+      --tool-runner-dest <TOOL_RUNNER_DEST>
+          Override the destination directory path for tool runner output files
 
-          This option is only effective when `--valgrind-runner` is specified. By default, Valgrind
+          This option is only effective when `--tool-runner` is specified. By default, tool
           output files are written to paths under the gungraun home directory or in temporary
           directories. This option allows substituting this path with a custom directory.
 
-          When specified, any occurrence of this path prefix in Valgrind arguments will be replaced
-          with the directory path specified by `--valgrind-runner-dest`.
+          When specified, any occurrence of this path prefix in tool arguments will be replaced
+          with the directory path specified by `--tool-runner-dest`.
 
           WARNING: Make sure the directory of this argument exists, is empty and doesn't point to a
           directory with important files in it! This directory is managed by Gungraun and Gungraun
@@ -282,24 +282,24 @@ Options:
           guide.
 
           Examples:
-            * `--valgrind-runner-dest=/tmp/results`
+            * `--tool-runner-dest=/tmp/results`
 
-          [env: GUNGRAUN_VALGRIND_RUNNER_DEST=]
+          [env: GUNGRAUN_TOOL_RUNNER_DEST=]
 
-      --valgrind-runner-root <VALGRIND_RUNNER_ROOT>
-          Override the workspace root path for the Valgrind runner
+      --tool-runner-root <TOOL_RUNNER_ROOT>
+          Override the workspace root path for the tool runner
 
-          This option is only effective when `--valgrind-runner` is specified. It allows substituting
-          the workspace root path prefix in the benchmark executable path and all other Valgrind
+          This option is only effective when `--tool-runner` is specified. It allows substituting
+          the workspace root path prefix in the benchmark executable path and all other tool
           arguments.
 
           This can be useful for container setups where the workspace is mounted at a different
           location inside the container.
 
           Examples:
-            * `--valgrind-runner-root=/workspace`
+            * `--tool-runner-root=/workspace`
 
-          [env: GUNGRAUN_VALGRIND_RUNNER_ROOT=]
+          [env: GUNGRAUN_TOOL_RUNNER_ROOT=]
 
       --baseline[=<BASELINE>]
           Compare benchmark results against a previously saved baseline

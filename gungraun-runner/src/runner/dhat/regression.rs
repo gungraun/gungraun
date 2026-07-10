@@ -175,6 +175,8 @@ mod tests {
             .iter()
             .map(|(e, n, d, l)| ToolRegression::Hard {
                 metric: MetricKind::Dhat(*e),
+                display: None,
+                unit: None,
                 new: (*n).into(),
                 diff: (*d).into(),
                 limit: (*l).into(),
@@ -199,11 +201,26 @@ mod tests {
         let expected = vec![
             ToolRegression::with(
                 MetricKind::Dhat,
-                RegressionMetrics::Soft(DhatMetric::TotalBlocks, 4.into(), 2.into(), 100f64, 20f64),
+                RegressionMetrics::Soft(
+                    DhatMetric::TotalBlocks,
+                    None,
+                    None,
+                    4.into(),
+                    2.into(),
+                    100f64,
+                    20f64,
+                ),
             ),
             ToolRegression::with(
                 MetricKind::Dhat,
-                RegressionMetrics::Hard(DhatMetric::TotalBytes, 3.into(), 1.into(), 2.into()),
+                RegressionMetrics::Hard(
+                    DhatMetric::TotalBytes,
+                    None,
+                    None,
+                    3.into(),
+                    1.into(),
+                    2.into(),
+                ),
             ),
         ];
 

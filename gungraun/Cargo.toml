@@ -1,6 +1,6 @@
 [package]
 authors = [
-  "Joining7943 <joining@posteo.de>",
+  "Joining7943 <joining@poSTeo.de>",
   "gamma0987 <gamma0987@posteo.de>",
   "Brook Heisler <redattack34@gmail.com>",
 ]
@@ -20,23 +20,22 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-__ui_tests = []
+__ui_tests = ["perf"]
+act = ["stubs", "valgrind-requests/act", "perf"]
 benchmark = [
-  "gungraun-runner",
+  "perf",
   "dep:bincode-next",
   "dep:gungraun-macros",
   "dep:derive_more",
 ]
-cachegrind = ["gungraun-macros/cachegrind", "client_requests"]
-client_requests = ["client_requests_defs", "valgrind-requests/act"]
-client_requests_defs = ["valgrind-requests/stubs", "dep:cty"]
+cachegrind = ["gungraun-macros/cachegrind", "act"]
 default = ["benchmark"]
-# Looks like a bug to have to create a feature instead of
-# `dep:gungraun-runner` in the benchmark feature directly
-gungraun-runner = ["dep:gungraun-runner"]
+perf = ["perf_stubs"]
+perf_stubs = ["gungraun-runner/api"]
+stubs = ["valgrind-requests/stubs", "dep:cty", "perf_stubs"]
 
 [package.metadata.docs.rs]
-features = ["client_requests_defs"]
+features = ["stubs", "perf"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]

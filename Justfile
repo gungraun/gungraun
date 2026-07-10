@@ -192,8 +192,8 @@ build package *args:
 
 # Build gungraun-runner (uses 'cargo')
 [group('build')]
-build-runner:
-    just build gungraun-runner --release
+build-runner *args:
+    just build gungraun-runner --release {{ args }}
 
 # Build the documentation (Uses: 'cargo')
 [group('build')]
@@ -204,7 +204,7 @@ build-docs:
 [group('build')]
 build-hack *args: (build-hack-runner args) (build-hack-valgrind-requests args)
     cargo hack --workspace --feature-powerset --exclude gungraun-runner \
-        --exclude valgrind-requests build {{ args }}
+        --exclude valgrind-requests --at-least-one-of perf,perf_stubs build {{ args }}
 
 # A thorough build of the gungraun-runner package (Uses: 'cargo-hack')
 [group('build')]

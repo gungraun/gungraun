@@ -7,6 +7,7 @@ use std::fmt::{Display, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use approx::abs_diff_eq;
 use colored::{Color, ColoredString, Colorize};
 use either_or_both::EitherOrBoth;
 use indexmap::{IndexSet, indexset};
@@ -18,10 +19,14 @@ use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use crate::api::{
     self, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics,
-    ErrorMetric, EventKind, Tool, ToolOutputFormat, ValgrindTool,
+    ErrorMetric, EventKind, Tool, ToolOutputFormat, ToolSpec,
 };
-use crate::metrics::model::{Metric, MetricKind, MetricsDiff};
+use crate::metrics::logic::MetricValue;
+use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsDiff, PerfQualities};
+use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
+use crate::stats::runner::DiffStats;
 use crate::summary::model::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
+use crate::units::Unit;
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
 };
@@ -29,7 +34,7 @@ use crate::util::{
 /// The width in bytes of the difference (and factor)
 pub const DIFF_WIDTH: usize = 9;
 /// The width in bytes of the FIELD as in `  FIELD: METRIC | METRIC (DIFF_PCT) [FACTOR]`
-pub const FIELD_WIDTH: usize = 21;
+pub const FIELD_WIDTH: usize = 36;
 /// The `DIFF_WIDTH` - the length of the unit
 pub const FLOAT_WIDTH: usize = DIFF_WIDTH - 1;
 /// The width in bytes of the "left" side of the separator `|`
@@ -116,6 +121,7 @@ pub struct Header {
 #[derive(Debug)]
 pub struct LibraryBenchmarkHeader(Header);
 
+// TODO: Add perf? How would the default look like? If adding perf update the format_single method
 /// The `OutputFormat` of the Gungraun terminal output
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputFormat {
@@ -170,11 +176,12 @@ pub trait Formatter {
     /// Format the output the whole [`ProfileData`]
     fn format(
         &mut self,
-        tool: ValgrindTool,
+        tool: Tool,
         config: &Config,
         baselines: &Baselines,
         data: &ProfileData,
         is_default_tool: bool,
+        alpha: Option<f64>,
     );
 
     /// Format a line in free form as is
@@ -183,25 +190,27 @@ pub trait Formatter {
     /// Format the output of a single [`ToolMetricSummary`] of a tool
     fn format_single(
         &mut self,
-        tool: ValgrindTool,
+        tool: Tool,
         baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
         is_default_tool: bool,
+        alpha: Option<f64>,
     );
 
     /// Print the formatted output of the whole [`ProfileData`]
     fn print(
         &mut self,
-        tool: ValgrindTool,
+        tool: Tool,
         config: &Config,
         baselines: &Baselines,
         data: &ProfileData,
         is_default_tool: bool,
+        alpha: Option<f64>,
     ) where
         Self: std::fmt::Display,
     {
-        self.format(tool, config, baselines, data, is_default_tool);
+        self.format(tool, config, baselines, data, is_default_tool, alpha);
 
         print!("{self}");
 
@@ -214,7 +223,8 @@ pub trait Formatter {
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        summaries: Vec<(ValgrindTool, ToolMetricSummary)>,
+        summaries: Vec<(Tool, ToolMetricSummary)>,
+        alpha: Option<f64>,
     );
 }
 
@@ -474,10 +484,10 @@ impl OutputFormat {
         self.kind == OutputFormatKind::Json || self.kind == OutputFormatKind::PrettyJson
     }
 
-    /// Updates the output format from the [`Tool`] if present.
-    pub fn update(&mut self, tool: Option<&Tool>) {
-        if let Some(tool) = tool {
-            if let Some(format) = &tool.output_format {
+    /// Updates the output format from the [`ToolSpec`] if present.
+    pub fn update(&mut self, tool_spec: Option<&ToolSpec>) {
+        if let Some(tool_spec) = tool_spec {
+            if let Some(format) = &tool_spec.output_format {
                 match format {
                     ToolOutputFormat::Callgrind(metrics) => {
                         self.callgrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
@@ -631,15 +641,24 @@ impl SummaryFormatter {
                         match regression {
                             ToolRegression::Soft {
                                 metric,
+                                display,
+                                unit,
                                 new,
                                 old,
                                 diff_pct,
                                 limit,
                             } => {
+                                let old = format_metric_with_unit(old, unit.as_ref());
+                                let new = format_metric_with_unit(new, unit.as_ref());
                                 println!(
-                                    "    {metric} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
+                                    "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
+                                    regression_display_name(
+                                        metric,
+                                        display.as_deref(),
+                                        unit.as_ref()
+                                    ),
                                     old,
-                                    new.to_string().bold(),
+                                    new.bold(),
                                     to_string_signed_short(*diff_pct).bright_red().bold(),
                                     "%".bright_red().bold(),
                                     to_string_signed_short(*limit).bright_black(),
@@ -648,15 +667,25 @@ impl SummaryFormatter {
                             }
                             ToolRegression::Hard {
                                 metric,
+                                display,
+                                unit,
                                 new,
                                 diff,
                                 limit,
                             } => {
+                                let new = format_metric_with_unit(new, unit.as_ref());
+                                let diff = format_metric_with_unit(diff, unit.as_ref());
+                                let limit = format_metric_with_unit(limit, unit.as_ref());
                                 println!(
-                                    "    {metric} ({0}): {0} exceeds limit of {1} by {2}",
-                                    new.to_string().bold(),
-                                    limit.to_string().bright_black(),
-                                    diff.to_string().bright_red().bold()
+                                    "    {0} ({1}): {1} exceeds limit of {2} by {3}",
+                                    regression_display_name(
+                                        metric,
+                                        display.as_deref(),
+                                        unit.as_ref()
+                                    ),
+                                    new.bold(),
+                                    limit.bright_black(),
+                                    diff.bright_red().bold()
                                 );
                             }
                         }
@@ -725,73 +754,142 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_field<T>(
+    fn write_field<VL, VR, F>(
         &mut self,
-        field: &str,
-        values: &EitherOrBoth<T>,
+        field: F,
+        values: EitherOrBoth<VL, VR>,
         color: Option<Color>,
         left_align: bool,
+        unit: Option<&Unit>,
     ) where
-        T: AsRef<str>,
+        F: Into<ColoredString>,
+        VL: Into<ColoredString>,
+        VR: Into<ColoredString>,
     {
         self.write_indent(&IndentKind::Normal);
 
-        let colored = values.as_ref().bimap(
+        let mut field = field.into();
+
+        #[expect(clippy::assigning_clones)]
+        let colored = values.bimap(
             |left| {
-                let left = left.as_ref().trim();
-                let colored = match color {
+                let mut left = left.into();
+                left.input = left.trim().to_owned();
+                match color {
                     Some(color) => left.color(color).bold(),
                     None => left.bold(),
-                };
-                (left, colored)
+                }
             },
             |right| {
-                let right = right.as_ref().trim();
+                let mut right = right.into();
+                right.input = right.trim().to_owned();
                 match color {
                     Some(color) => right.color(color),
-                    None => ColoredString::from(right),
+                    None => right,
                 }
             },
         );
 
+        if let Some(unit) = unit {
+            field.input = format!("{} [{}]:", field.trim_end_matches(':'), unit);
+        }
+
         match colored {
-            EitherOrBoth::Left((left, colored)) => {
-                if left_align {
-                    writeln!(self, "{field:<FIELD_WIDTH$}{colored}").unwrap();
+            EitherOrBoth::Left(left) => {
+                let is_multiline = left.input.len() + field.input.len() + 2 > LEFT_WIDTH;
+
+                if is_multiline {
+                    writeln!(self, "{field}").unwrap();
+                    self.write_indent(&IndentKind::Normal);
+                    if left_align {
+                        writeln!(self, "  {left}").unwrap();
+                    } else {
+                        writeln!(
+                            self,
+                            "{}{left}",
+                            " ".repeat(LEFT_WIDTH.saturating_sub(left.input.len()))
+                        )
+                        .unwrap();
+                    }
+                } else if left_align {
+                    writeln!(self, "{field:<FIELD_WIDTH$}{left}").unwrap();
                 } else {
                     writeln!(
                         self,
-                        "{field:<FIELD_WIDTH$}{}{colored}",
-                        " ".repeat(METRIC_WIDTH.saturating_sub(left.len()))
+                        "{field:<FIELD_WIDTH$}{}{left}",
+                        " ".repeat(METRIC_WIDTH.saturating_sub(left.input.len()))
                     )
                     .unwrap();
                 }
             }
-            EitherOrBoth::Right(colored) => {
-                writeln!(
-                    self,
-                    "{field:<FIELD_WIDTH$}{}|{colored}",
-                    " ".repeat(METRIC_WIDTH),
-                )
-                .unwrap();
-            }
-            EitherOrBoth::Both((left, colored_left), colored_right) => {
-                if left.len() > METRIC_WIDTH {
-                    writeln!(self, "{field:<FIELD_WIDTH$}{colored_left}").unwrap();
+            EitherOrBoth::Right(right) => {
+                let is_multiline = field.input.len() + 2 > LEFT_WIDTH;
+                if is_multiline {
+                    writeln!(self, "{field}").unwrap();
                     self.write_indent(&IndentKind::Normal);
-                    writeln!(self, "{}|{colored_right}", " ".repeat(LEFT_WIDTH)).unwrap();
-                } else if left_align {
+                    writeln!(self, "{}|{right}", " ".repeat(LEFT_WIDTH)).unwrap();
+                } else {
                     writeln!(
                         self,
-                        "{field:<FIELD_WIDTH$}{colored_left}{}|{colored_right}",
-                        " ".repeat(METRIC_WIDTH - left.len()),
+                        "{field}{}|{right}",
+                        " ".repeat(LEFT_WIDTH.saturating_sub(field.input.len()))
+                    )
+                    .unwrap();
+                }
+            }
+            EitherOrBoth::Both(left, right) => {
+                let is_multiline = left.input.len() + field.input.len() + 2 > LEFT_WIDTH;
+
+                if is_multiline {
+                    writeln!(self, "{field}").unwrap();
+                    self.write_indent(&IndentKind::Normal);
+
+                    if left_align {
+                        writeln!(
+                            self,
+                            "{}{left}{}|{right}",
+                            " ".repeat(FIELD_WIDTH),
+                            " ".repeat(
+                                LEFT_WIDTH
+                                    .saturating_sub(FIELD_WIDTH)
+                                    .saturating_sub(left.input.len())
+                            )
+                        )
+                        .unwrap();
+                    } else {
+                        writeln!(
+                            self,
+                            "{}{left}|{right}",
+                            " ".repeat(LEFT_WIDTH.saturating_sub(left.input.len()))
+                        )
+                        .unwrap();
+                    }
+                } else if left_align {
+                    let padding = LEFT_WIDTH
+                        .saturating_sub(field.input.len())
+                        .saturating_sub(left.input.len());
+                    let left_padding = FIELD_WIDTH
+                        .saturating_sub(field.input.len())
+                        .saturating_add(2)
+                        .min(padding);
+                    let right_padding = padding.saturating_sub(left_padding);
+
+                    writeln!(
+                        self,
+                        "{field}{}{left}{}|{right}",
+                        " ".repeat(left_padding),
+                        " ".repeat(right_padding)
                     )
                     .unwrap();
                 } else {
                     writeln!(
                         self,
-                        "{field:<FIELD_WIDTH$}{}{colored_left}|{colored_right}",
-                        " ".repeat(METRIC_WIDTH - left.len()),
+                        "{field}{}{left}|{right}",
+                        " ".repeat(
+                            LEFT_WIDTH
+                                .saturating_sub(field.input.len())
+                                .saturating_sub(left.input.len())
+                        ),
                     )
                     .unwrap();
                 }
@@ -799,7 +897,12 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_metric(&mut self, field: &str, metrics: &EitherOrBoth<&Metric>, diffs: Option<Diffs>) {
+    // TODO: The number of decimals for float metrics could be greater (METRIC_WIDTH has space for
+    // 20 digits). But not in the diff and factor.
+    fn write_metric<V>(&mut self, field: &str, metrics: &EitherOrBoth<&V>, diffs: Option<Diffs>)
+    where
+        V: MetricValue + PartialEq,
+    {
         match metrics {
             EitherOrBoth::Left(new) => {
                 let right = format!(
@@ -808,33 +911,38 @@ impl VerticalFormatter {
                 );
                 self.write_field(
                     field,
-                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    EitherOrBoth::Both(new.to_string_without_unit().as_str(), right.as_str()),
                     None,
                     false,
+                    new.unit(),
                 );
             }
             EitherOrBoth::Right(old) => {
                 let right = format!(
-                    "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    old.to_string_without_unit(),
                     UNKNOWN.bright_black()
                 );
                 self.write_field(
                     field,
-                    &EitherOrBoth::Both(NOT_AVAILABLE, right.as_str()),
+                    EitherOrBoth::Both(NOT_AVAILABLE, right.as_str()),
                     None,
                     false,
+                    old.unit(),
                 );
             }
             EitherOrBoth::Both(new, old) if new == old => {
                 let right = format!(
-                    "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    old.to_string_without_unit(),
                     NO_CHANGE.bright_black()
                 );
                 self.write_field(
                     field,
-                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    EitherOrBoth::Both(new.to_string_without_unit().as_str(), right.as_str()),
                     None,
                     false,
+                    merge_units(new.unit(), old.unit()).as_deref(),
                 );
             }
             EitherOrBoth::Both(new, old)
@@ -847,34 +955,201 @@ impl VerticalFormatter {
                 }) =>
             {
                 let right = format!(
-                    "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    old.to_string_without_unit(),
                     WITHIN_TOLERANCE.bright_black()
                 );
                 self.write_field(
                     field,
-                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    EitherOrBoth::Both(new.to_string_without_unit().as_str(), right.as_str()),
                     None,
                     false,
+                    merge_units(new.unit(), old.unit()).as_deref(),
+                );
+            }
+            EitherOrBoth::Both(new, old) if diffs.is_none() => {
+                let right = format!(
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    old.to_string_without_unit(),
+                    UNKNOWN.bright_black()
+                );
+                self.write_field(
+                    field,
+                    EitherOrBoth::Both(new.to_string_without_unit().as_str(), right.as_str()),
+                    None,
+                    false,
+                    merge_units(new.unit(), old.unit()).as_deref(),
                 );
             }
             EitherOrBoth::Both(new, old) => {
-                let diffs = diffs.expect(
-                    "If there are new metrics and old metrics there should be a difference present",
-                );
+                let diffs = diffs.expect("checked that diffs are present");
                 let pct_string = format_float(diffs.diff_pct, '%');
                 let factor_string = format_float(diffs.factor, 'x');
 
                 let right = format!(
-                    "{old:<METRIC_WIDTH$} ({pct_string:^DIFF_WIDTH$}) \
-                     [{factor_string:^DIFF_WIDTH$}]"
+                    "{:<METRIC_WIDTH$} ({pct_string:^DIFF_WIDTH$}) [{factor_string:^DIFF_WIDTH$}]",
+                    old.to_string_without_unit()
                 );
                 self.write_field(
                     field,
-                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    EitherOrBoth::Both(new.to_string_without_unit().as_str(), right.as_str()),
                     None,
                     false,
+                    merge_units(new.unit(), old.unit()).as_deref(),
                 );
             }
+        }
+    }
+
+    fn write_perf_metric(
+        &mut self,
+        field: &str,
+        metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
+        diffs: Option<Diffs>,
+        alpha: Option<f64>,
+    ) {
+        self.write_metric(field, &metrics, diffs);
+        // The second line is only printed if at least one rse is present
+        self.write_perf_significance_line(metrics, alpha);
+        // The third line is only printed if at least one samples count is present
+        self.write_perf_samples_line(metrics);
+    }
+
+    fn write_perf_significance_line(
+        &mut self,
+        metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
+        alpha: Option<f64>,
+    ) {
+        let field = "  rse% (sig.thr) [sig.fact]".bright_black();
+        match metrics.map(|a| (a, a.qualities.rse)) {
+            EitherOrBoth::Left((_, Some(rse))) | EitherOrBoth::Both((_, Some(rse)), (_, None)) => {
+                let right = format!(
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    NOT_AVAILABLE.bright_black(),
+                    UNKNOWN.bright_black()
+                );
+
+                self.write_field(
+                    field,
+                    EitherOrBoth::Both(
+                        Metric::Float(rse * 100.0)
+                            .to_string_without_unit()
+                            .bright_black(),
+                        right,
+                    ),
+                    None,
+                    false,
+                    None,
+                );
+            }
+            EitherOrBoth::Right((_, Some(rse))) | EitherOrBoth::Both((_, None), (_, Some(rse))) => {
+                let right = format!(
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    Metric::Float(rse * 100.0)
+                        .to_string_without_unit()
+                        .bright_black(),
+                    UNKNOWN.bright_black()
+                );
+
+                self.write_field(
+                    field,
+                    EitherOrBoth::Both(NOT_AVAILABLE.to_owned(), right),
+                    None,
+                    false,
+                    None,
+                );
+            }
+            EitherOrBoth::Both((new, Some(new_rse)), (old, Some(old_rse))) => {
+                let new_rse_string = Metric::Float(new_rse * 100.0).to_string_without_unit();
+                let old_rse_string = Metric::Float(old_rse * 100.0).to_string_without_unit();
+
+                let diff_stats =
+                    DiffStats::from_metrics(new, old, alpha.unwrap_or(DEFAULT_PERF_ALPHA));
+
+                let right = if let Some(diff_stats) = diff_stats {
+                    let significance_threshold = format!(
+                        ">{}%",
+                        Metric::Float(diff_stats.significance_threshold * 100.0)
+                            .to_string_without_unit()
+                    );
+
+                    format!(
+                        "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$}) [{:^DIFF_WIDTH$}]",
+                        old_rse_string.bright_black(),
+                        significance_threshold.bright_black(),
+                        format_significance_factor(diff_stats.significance_factor)
+                    )
+                } else {
+                    format!(
+                        "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                        old_rse_string.bright_black(),
+                        UNKNOWN.bright_black()
+                    )
+                };
+
+                self.write_field(
+                    field,
+                    EitherOrBoth::Both(new_rse_string.bright_black(), right),
+                    None,
+                    false,
+                    None,
+                );
+            }
+            _ => {}
+        }
+    }
+
+    fn write_perf_samples_line(&mut self, metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>) {
+        let field = "  samples".bright_black();
+        match metrics.map(|a| a.qualities.n) {
+            EitherOrBoth::Left(Some(n)) | EitherOrBoth::Both(Some(n), None) => {
+                let right = format!(
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    NOT_AVAILABLE.bright_black(),
+                    UNKNOWN.bright_black()
+                );
+
+                self.write_field(
+                    field,
+                    EitherOrBoth::Both(n.to_string().bright_black(), right),
+                    None,
+                    false,
+                    None,
+                );
+            }
+            EitherOrBoth::Right(Some(n)) | EitherOrBoth::Both(None, Some(n)) => {
+                let right = format!(
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    n.to_string().bright_black(),
+                    UNKNOWN.bright_black()
+                );
+
+                self.write_field(
+                    field,
+                    EitherOrBoth::Both(NOT_AVAILABLE.to_owned(), right),
+                    None,
+                    false,
+                    None,
+                );
+            }
+            EitherOrBoth::Both(Some(new_n), Some(old_n)) => {
+                let diffs = Diffs::new(new_n.into(), old_n.into());
+                let right = format!(
+                    "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$}) [{:^DIFF_WIDTH$}]",
+                    old_n.to_string().bright_black(),
+                    format!("{}%", to_string_signed_short(diffs.diff_pct)).bright_black(),
+                    format!("{}x", to_string_signed_short(diffs.factor)).bright_black()
+                );
+
+                self.write_field(
+                    field,
+                    EitherOrBoth::Both(new_n.to_string().bright_black(), right),
+                    None,
+                    false,
+                    None,
+                );
+            }
+            _ => {}
         }
     }
 
@@ -896,17 +1171,24 @@ impl VerticalFormatter {
             (None, None) => {}
             (Some(left), Some(right)) if left == right => {
                 let right = format!("{right} (old)");
-                self.write_field("Baselines:", &EitherOrBoth::Both(left, &right), None, false);
+                self.write_field(
+                    "Baselines:",
+                    EitherOrBoth::Both(left.as_str(), right.as_str()),
+                    None,
+                    false,
+                    None,
+                );
             }
             _ => {
                 self.write_field(
                     "Baselines:",
-                    &EitherOrBoth::try_from(baselines.clone())
+                    EitherOrBoth::try_from(baselines.clone())
                         .expect("At least one baseline should be present")
                         .as_ref()
                         .map(String::as_str),
                     None,
                     false,
+                    None,
                 );
             }
         }
@@ -927,13 +1209,27 @@ impl VerticalFormatter {
         }
     }
 
-    fn format_metrics<'a, K: Display>(
-        &mut self,
-        metrics: impl Iterator<Item = (K, &'a MetricsDiff)>,
-    ) {
+    fn format_metrics<'a, K, V>(&mut self, metrics: impl Iterator<Item = (K, &'a MetricsDiff<V>)>)
+    where
+        K: Display,
+        V: MetricValue + PartialEq + 'a,
+    {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
             self.write_metric(&description, &diff.metrics.as_ref(), diff.diffs);
+        }
+    }
+
+    fn format_perf_metrics<'a, K>(
+        &mut self,
+        alpha: Option<f64>,
+        metrics: impl Iterator<Item = (K, &'a MetricsDiff<AnnotatedMetric<PerfQualities>>)>,
+    ) where
+        K: Display,
+    {
+        for (metric_kind, diff) in metrics {
+            let description = format!("{metric_kind}:");
+            self.write_perf_metric(&description, diff.metrics.as_ref(), diff.diffs, alpha);
         }
     }
 
@@ -1020,11 +1316,11 @@ impl VerticalFormatter {
                 }
             });
 
-        self.write_field("Command:", &paths, Some(Color::Blue), true);
+        self.write_field("Command:", paths, Some(Color::Blue), true, None);
     }
 
     /// Format the tool headline shown for all tools
-    pub fn format_tool_headline(&mut self, tool: ValgrindTool) {
+    pub fn format_tool_headline(&mut self, tool: Tool) {
         self.write_indent(&IndentKind::ToolHeadline);
 
         let id = tool.id();
@@ -1049,11 +1345,12 @@ impl Display for VerticalFormatter {
 impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
-        tool: ValgrindTool,
+        tool: Tool,
         baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
         is_default_tool: bool,
+        alpha: Option<f64>,
     ) {
         if is_default_tool {
             self.format_baseline(baselines);
@@ -1071,9 +1368,9 @@ impl Formatter for VerticalFormatter {
             }
             ToolMetricSummary::ErrorTool(summary) => {
                 let format = match tool {
-                    ValgrindTool::Memcheck => &self.output_format.memcheck,
-                    ValgrindTool::Helgrind => &self.output_format.helgrind,
-                    ValgrindTool::DRD => &self.output_format.drd,
+                    Tool::Memcheck => &self.output_format.memcheck,
+                    Tool::Helgrind => &self.output_format.helgrind,
+                    Tool::DRD => &self.output_format.drd,
                     _ => {
                         unreachable!("{tool} should be an error metric tool");
                     }
@@ -1127,24 +1424,40 @@ impl Formatter for VerticalFormatter {
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 );
             }
+            ToolMetricSummary::Perf(summary) => {
+                // TODO: Use OutputFormat if present, otherwise sort alphabetically and print all
+                // TODO: Decide how to show units in the output, What about different units between
+                // an old and new run
+                self.format_perf_metrics(
+                    alpha,
+                    summary
+                        .all_diffs()
+                        .map(|(perf_metric, diff)| (perf_metric.display(), diff)),
+                );
+            }
         }
     }
 
     fn format(
         &mut self,
-        tool: ValgrindTool,
+        tool: Tool,
         config: &Config,
         baselines: &Baselines,
         data: &ProfileData,
         is_default_tool: bool,
+        alpha: Option<f64>,
     ) {
         if self.output_format.show_only_comparison {
             // no usual data to show
-        } else if data.has_multiple() && self.output_format.show_intermediate {
+        } else if data.has_multiple()
+            && (self.output_format.show_intermediate || tool == Tool::Perf)
+        {
             let mut first = true;
             for part in &data.parts {
                 self.format_multiple_segment_header(&part.details);
-                self.format_command(config, &part.details.as_ref().map(|i| &i.command));
+                if tool != Tool::Perf {
+                    self.format_command(config, &part.details.as_ref().map(|i| &i.command));
+                }
 
                 if first {
                     self.format_single(
@@ -1153,6 +1466,7 @@ impl Formatter for VerticalFormatter {
                         Some(&part.details),
                         &part.metrics_summary,
                         is_default_tool,
+                        alpha,
                     );
                     first = false;
                 } else {
@@ -1162,6 +1476,7 @@ impl Formatter for VerticalFormatter {
                         Some(&part.details),
                         &part.metrics_summary,
                         is_default_tool,
+                        alpha,
                     );
                 }
             }
@@ -1174,14 +1489,31 @@ impl Formatter for VerticalFormatter {
                     None,
                     &data.total.summary,
                     is_default_tool,
+                    alpha,
                 );
             }
         } else if data.total.is_some() {
-            self.format_single(tool, baselines, None, &data.total.summary, is_default_tool);
+            self.format_single(
+                tool,
+                baselines,
+                None,
+                &data.total.summary,
+                is_default_tool,
+                alpha,
+            );
+        } else if !data.is_empty() && tool == Tool::Perf {
+            self.format_single(
+                tool,
+                baselines,
+                None,
+                &data.parts[0].metrics_summary,
+                is_default_tool,
+                alpha,
+            );
         } else if data.total.is_none() && !data.parts.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
-            // the output of `Massif` and `BBV`.
+            // the output of `Massif`, `BBV` and `perf`.
             for part in &data.parts {
                 self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
@@ -1201,7 +1533,8 @@ impl Formatter for VerticalFormatter {
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        summaries: Vec<(ValgrindTool, ToolMetricSummary)>,
+        summaries: Vec<(Tool, ToolMetricSummary)>,
+        alpha: Option<f64>,
     ) {
         if self.output_format.is_default() {
             ComparisonHeader::new(function_name, id, details, &self.output_format).print();
@@ -1211,7 +1544,7 @@ impl Formatter for VerticalFormatter {
                 .iter()
                 .filter(|(_, s)| *s != ToolMetricSummary::None)
             {
-                if is_multiple || *tool != ValgrindTool::Callgrind {
+                if is_multiple || *tool != Tool::Callgrind {
                     self.format_line(&format!(
                         "{}{} {}\n",
                         self.indent_sub_header,
@@ -1219,7 +1552,7 @@ impl Formatter for VerticalFormatter {
                         tool.to_string().to_uppercase()
                     ));
                 }
-                self.format_single(*tool, &(None, None), None, summary, false);
+                self.format_single(*tool, &(None, None), None, summary, false, alpha);
             }
             self.print_buffer();
         }
@@ -1260,6 +1593,29 @@ pub fn format_float(float: f64, unit: char) -> ColoredString {
         format!("{signed_short:>+FLOAT_WIDTH$}{unit}")
             .bright_green()
             .bold()
+    }
+}
+
+fn format_significance_factor(float: f64) -> ColoredString {
+    let unsigned_short = to_string_unsigned_short(float);
+    if !float.is_finite() {
+        format!("{:^DIFF_WIDTH$}", "Invalid").bright_red().bold()
+    } else if float < 1.0 && !abs_diff_eq!(float, 1.0) {
+        format!("{unsigned_short:>+FLOAT_WIDTH$}x").bright_black()
+    } else {
+        format!("{unsigned_short:>+FLOAT_WIDTH$}x").blue().bold()
+    }
+}
+
+fn merge_units<'a>(new: Option<&'a Unit>, old: Option<&'a Unit>) -> Option<Cow<'a, Unit>> {
+    match (new, old) {
+        (None, None) => None,
+        (None, Some(unit)) | (Some(unit), None) => Some(Cow::Borrowed(unit)),
+        (Some(new_unit), Some(old_unit)) if new_unit == old_unit => Some(Cow::Borrowed(new_unit)),
+        // This is a safety net. The metrics in a diff should all have the same unit
+        (Some(new_unit), Some(old_unit)) => {
+            Some(Cow::Owned(Unit::Unknown(format!("{new_unit}/{old_unit}"))))
+        }
     }
 }
 
@@ -1313,31 +1669,34 @@ pub fn print_no_capture_footer(nocapture: NoCapture) {
 
 /// Print detected regressions to `stderr`
 pub fn print_regressions(regressions: &[ToolRegression]) {
+    let mut first = true;
+
     for regression in regressions {
+        if first {
+            println!();
+            first = false;
+        }
         match regression {
             ToolRegression::Soft {
                 metric,
+                display,
+                unit,
                 new,
                 old,
                 diff_pct,
                 limit,
             } => {
-                let metric_name = match metric {
-                    MetricKind::None => continue,
-                    MetricKind::Callgrind(event_kind) => event_kind.to_string(),
-                    MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
-                    MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
-                    MetricKind::Memcheck(error_metric)
-                    | MetricKind::Helgrind(error_metric)
-                    | MetricKind::DRD(error_metric) => error_metric.to_string(),
-                };
+                let display = regression_display_name(metric, display.as_deref(), unit.as_ref());
+                let old = format_metric_with_unit(old, unit.as_ref());
+                let new = format_metric_with_unit(new, unit.as_ref());
 
                 if limit.is_sign_positive() {
                     eprintln!(
-                        "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
+                        "Performance has {0}: {1} ({2} -> {3}) regressed by {4:>+6} (>{5:>+6})",
                         "regressed".bold().bright_red(),
-                        metric_name,
-                        new.to_string().bold(),
+                        display,
+                        old,
+                        new.bold(),
                         format!("{}%", to_string_signed_short(*diff_pct))
                             .bold()
                             .bright_red(),
@@ -1345,10 +1704,11 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                     );
                 } else {
                     eprintln!(
-                        "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
+                        "Performance has {0}: {1} ({2} -> {3}) regressed by {4:>+6} (<{5:>+6})",
                         "regressed".bold().bright_red(),
-                        metric_name,
-                        new.to_string().bold(),
+                        display,
+                        old,
+                        new.bold(),
                         format!("{}%", to_string_signed_short(*diff_pct))
                             .bold()
                             .bright_red(),
@@ -1358,30 +1718,70 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
             }
             ToolRegression::Hard {
                 metric,
+                display,
+                unit,
                 new,
                 diff,
                 limit,
             } => {
-                let metric_name = match metric {
-                    MetricKind::None => continue,
-                    MetricKind::Callgrind(event_kind) => event_kind.to_string(),
-                    MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
-                    MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
-                    MetricKind::Memcheck(error_metric)
-                    | MetricKind::Helgrind(error_metric)
-                    | MetricKind::DRD(error_metric) => error_metric.to_string(),
-                };
+                let display = regression_display_name(metric, display.as_deref(), unit.as_ref());
+                let new = format_metric_with_unit(new, unit.as_ref());
+                let diff = format_metric_with_unit(diff, unit.as_ref());
+                let limit = format_metric_with_unit(limit, unit.as_ref());
 
                 eprintln!(
                     "Performance has {0}: {1} ({2}) exceeds limit by {3} (>{4})",
                     "regressed".bold().bright_red(),
-                    metric_name,
-                    new.to_string().bold(),
-                    diff.to_string().bold().bright_red(),
-                    limit.to_string().bright_black(),
+                    display,
+                    new.bold(),
+                    diff.bold().bright_red(),
+                    limit.bright_black(),
                 );
             }
         }
+    }
+}
+
+fn regression_display_name<'a>(
+    metric: &MetricKind,
+    display: Option<&'a str>,
+    unit: Option<&Unit>,
+) -> Cow<'a, str> {
+    let display = display.map_or_else(
+        || {
+            let name = match metric {
+                MetricKind::None => None,
+                MetricKind::Callgrind(event_kind) => Some(event_kind.to_string()),
+                MetricKind::Cachegrind(cachegrind_metric) => Some(cachegrind_metric.to_string()),
+                MetricKind::Dhat(dhat_metric) => Some(dhat_metric.to_string()),
+                MetricKind::Memcheck(error_metric)
+                | MetricKind::Helgrind(error_metric)
+                | MetricKind::DRD(error_metric) => Some(error_metric.to_string()),
+                MetricKind::Perf(perf_metric) => Some(perf_metric.to_string()),
+            }
+            .unwrap_or_default();
+
+            Cow::Owned(name)
+        },
+        Cow::Borrowed,
+    );
+
+    if let Some(unit) = unit {
+        if display.is_empty() {
+            Cow::Owned(format!("[{unit}]"))
+        } else {
+            Cow::Owned(format!("{display} [{unit}]"))
+        }
+    } else {
+        display
+    }
+}
+
+fn format_metric_with_unit(metric: &Metric, unit: Option<&Unit>) -> String {
+    if let Some(unit) = unit {
+        format!("{metric} [{unit}]")
+    } else {
+        metric.to_string()
     }
 }
 
@@ -1406,6 +1806,15 @@ mod tests {
 
     use super::*;
     use crate::metrics::model::{Metrics, MetricsSummary};
+
+    const TWENTY_DIGITS: &str = "12345678901234567890";
+    const TWENTY_ONE_DIGITS: &str = "123456789012345678901";
+    const FIELD_SOME_5: &str = "Some:";
+    const FIELD_35: &str = "Some Field1234567890Some Field1234:";
+    const FIELD_34: &str = "Some Field1234567890Some Field123:";
+    const FIELD_50: &str = "Some Field1234567890Some Field1234567890123456789:";
+    const FIELD_54: &str = "Some Field1234567890Some Field1234567890Some Field123:";
+    const FIELD_55: &str = "Some Field1234567890Some Field1234567890Some Field1234:";
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
@@ -1625,7 +2034,7 @@ mod tests {
         formatter.format_metrics(metrics_summary.all_diffs());
 
         let expected = format!(
-            "  {:<21}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
+            "  {:<36}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
             format!("{event_kind}:"),
             old.map_or_else(|| NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
@@ -1720,46 +2129,170 @@ mod tests {
 
     #[rstest]
     #[case::left(
-        "Some:",
+        FIELD_SOME_5,
         EitherOrBoth::Left("left"),
-        "  Some:                                left\n"
+        None,
+        false,
+        format!("  {FIELD_SOME_5}{}left\n", " ".repeat(LEFT_WIDTH - 5 - 4))
+    )]
+    #[case::left_when_barely_fit(
+        FIELD_34,
+        EitherOrBoth::Left(TWENTY_DIGITS),
+        None,
+        false,
+        format!("  {FIELD_34}  {TWENTY_DIGITS}\n")
+    )]
+    #[case::left_when_barely_not_fit_then_multi_line(
+        FIELD_35,
+        EitherOrBoth::Left(TWENTY_DIGITS),
+        None,
+        false,
+        format!("  {FIELD_35}\n  {}{TWENTY_DIGITS}\n", " ".repeat(FIELD_WIDTH))
+    )]
+    #[case::left_when_not_fit_and_left_align_then_multi_line(
+        FIELD_35,
+        EitherOrBoth::Left(TWENTY_DIGITS),
+        None,
+        true,
+        format!("  {FIELD_35}\n    {TWENTY_DIGITS}\n")
+    )]
+    #[case::left_when_left_align(
+        FIELD_SOME_5,
+        EitherOrBoth::Left("left"),
+        None,
+        true,
+        format!("  {FIELD_SOME_5}{}left\n", " ".repeat(FIELD_WIDTH - 5))
+    )]
+    #[case::left_with_unit(
+        FIELD_SOME_5,
+        EitherOrBoth::Left("left"),
+        Unit::Seconds,
+        false,
+        format!("  Some [s]:{}left\n", " ".repeat(LEFT_WIDTH - 9 - 4))
     )]
     #[case::right(
-        "Field:",
+        FIELD_SOME_5,
         EitherOrBoth::Right("right"),
-        "  Field:                                   |right\n"
+        None,
+        false,
+        format!("  {FIELD_SOME_5}{}|right\n", " ".repeat(LEFT_WIDTH - 5))
+    )]
+    #[case::right_when_barely_fit(
+        FIELD_54,
+        EitherOrBoth::Right("right"),
+        None,
+        false,
+        format!("  {FIELD_54}  |right\n")
+    )]
+    #[case::right_when_barely_not_fit_then_multi_line(
+        FIELD_55,
+        EitherOrBoth::Right("right"),
+        None,
+        false,
+        format!("  {FIELD_55}\n  {}|right\n", " ".repeat(LEFT_WIDTH))
+    )]
+    #[case::right_when_left_align_no_effect(
+        FIELD_54,
+        EitherOrBoth::Right("right"),
+        None,
+        true,
+        format!("  {FIELD_54}  |right\n")
+    )]
+    #[case::right_with_unit(
+        FIELD_SOME_5,
+        EitherOrBoth::Right("right"),
+        Unit::Seconds,
+        false,
+        format!("  Some [s]:{}|right\n", " ".repeat(LEFT_WIDTH - 9))
     )]
     #[case::both(
-        "Field:",
+        FIELD_SOME_5,
         EitherOrBoth::Both("left", "right"),
-        "  Field:                               left|right\n"
+        None,
+        false,
+        format!("  {FIELD_SOME_5}{}left|right\n", " ".repeat(LEFT_WIDTH - 5 - 4))
     )]
-    #[case::both_u64_max(
-        "Field:",
-        EitherOrBoth::Both(format!("{}", u64::MAX), format!("{}", u64::MAX)),
-        "  Field:               18446744073709551615|18446744073709551615\n"
-    )]
-    #[case::split(
-        "Field:",
-        EitherOrBoth::Both(format!("{}1", u64::MAX), "right".to_owned()),
-        concat!(
-            "  Field:               184467440737095516151\n",
-            "                                           |right\n"
+    #[case::both_when_barely_fit(
+        FIELD_34,
+        EitherOrBoth::Both(TWENTY_DIGITS, TWENTY_DIGITS),
+        None,
+        false,
+        format!(
+            "  {FIELD_34}{}{TWENTY_DIGITS}|{TWENTY_DIGITS}\n",
+            " ".repeat(LEFT_WIDTH - 34 - 20)
         )
     )]
-    fn test_vertical_formatter_write_field<T>(
+    #[case::both_when_21_digits_then_no_multi_line(
+        FIELD_SOME_5,
+        EitherOrBoth::Both(TWENTY_ONE_DIGITS, TWENTY_ONE_DIGITS),
+        None,
+        false,
+        format!(
+            "  {FIELD_SOME_5}{}{TWENTY_ONE_DIGITS}|{TWENTY_ONE_DIGITS}\n",
+            " ".repeat(LEFT_WIDTH - 5 - 21)
+        )
+    )]
+    #[case::both_when_barely_not_fit_then_multi_line(
+        FIELD_35,
+        EitherOrBoth::Both(TWENTY_DIGITS, "right"),
+        None,
+        false,
+        format!("  {FIELD_35}\n  {}{TWENTY_DIGITS}|right\n", " ".repeat(LEFT_WIDTH - 20))
+    )]
+    #[case::both_with_unit(
+        FIELD_SOME_5,
+        EitherOrBoth::Both("left", "right"),
+        Unit::Seconds,
+        false,
+        format!("  Some [s]:{}left|right\n", " ".repeat(LEFT_WIDTH - 9 - 4))
+    )]
+    #[case::both_when_left_align(
+        FIELD_SOME_5,
+        EitherOrBoth::Both("left", "right"),
+        None,
+        true,
+        format!("  {FIELD_SOME_5}  {}left{}|right\n", " ".repeat(FIELD_WIDTH - 5), " ".repeat(LEFT_WIDTH - FIELD_WIDTH - 2 - 4))
+    )]
+    #[case::both_when_left_align_barely_fit(
+        FIELD_50,
+        EitherOrBoth::Both("left", "right"),
+        None,
+        true,
+        format!("  {FIELD_50}  left|right\n")
+    )]
+    #[case::both_when_left_align_with_some_space(
+        FIELD_50,
+        EitherOrBoth::Both("l", "right"),
+        None,
+        true,
+        format!("  {FIELD_50}  l   |right\n")
+    )]
+    #[case::both_when_left_align_and_multi_line(
+        FIELD_54,
+        EitherOrBoth::Both("left", "right"),
+        None,
+        true,
+        format!("  {FIELD_54}\n  {}left{}|right\n", " ".repeat(FIELD_WIDTH), " ".repeat(LEFT_WIDTH - FIELD_WIDTH - 4))
+    )]
+    fn test_vertical_formatter_write_field<E, U, V>(
         #[case] field: &str,
-        #[case] values: EitherOrBoth<T>,
-        #[case] expected: &str,
+        #[case] values: EitherOrBoth<V>,
+        #[case] unit: U,
+        #[case] left_align: bool,
+        #[case] expected: E,
     ) where
-        T: AsRef<str>,
+        E: Into<String>,
+        U: Into<Option<Unit>>,
+        V: Into<ColoredString>,
     {
         colored::control::set_override(false);
 
         let output_format = OutputFormat::default();
-
         let mut formatter = VerticalFormatter::new(output_format);
-        formatter.write_field(field, &values, None, false);
-        assert_eq!(formatter.buffer, expected);
+        let unit = unit.into();
+
+        formatter.write_field(field, values, None, left_align, unit.as_ref());
+
+        assert_eq!(formatter.buffer, expected.into());
     }
 }

@@ -10,10 +10,11 @@ use super::config::ToolConfig;
 use super::error_metric_parser::ErrorMetricLogfileParser;
 use super::generic_parser::GenericLogfileParser;
 use super::path::ToolOutputPath;
-use crate::api::{EntryPoint, ValgrindTool};
+use crate::api::EntryPoint;
 use crate::runner::dhat::json_parser::JsonParser;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
-use crate::runner::{cachegrind, callgrind};
+use crate::runner::tool::config::ToolConfigOptions;
+use crate::runner::{cachegrind, callgrind, perf};
 use crate::summary::model::ToolMetrics;
 
 /// The combined header of output and log files
@@ -34,7 +35,7 @@ pub struct Header {
 }
 
 /// The output of a [`Parser`]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParserOutput {
     /// Details about the profile run if present. A vector separated by lines
     pub details: Vec<String>,
@@ -67,7 +68,7 @@ pub trait Parser: std::fmt::Debug + Send {
     /// Returns a sorted vector of parser results.
     fn parse_with(&self, output_path: &ToolOutputPath) -> Result<Vec<ParserOutput>> {
         debug!("{}: Parsing file '{}'", output_path.tool.id(), output_path);
-        let Ok(paths) = output_path.real_paths() else {
+        let Ok(paths) = output_path.sanitized_paths() else {
             return Ok(vec![]);
         };
 
@@ -109,15 +110,15 @@ pub fn parser_factory(
     root_dir: PathBuf,
     output_path: &ToolOutputPath,
 ) -> Box<dyn Parser> {
-    match tool_config.tool {
-        ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
+    match &tool_config.options {
+        ToolConfigOptions::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
             output_path: output_path.clone(),
         }),
-        ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
+        ToolConfigOptions::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
             output_path: output_path.clone(),
         }),
-        ValgrindTool::DHAT => {
-            if tool_config.entry_point == EntryPoint::None && tool_config.frames.is_empty() {
+        ToolConfigOptions::DHAT(dhat_config) => {
+            if tool_config.entry_point == EntryPoint::None && dhat_config.frames.is_empty() {
                 Box::new(DhatLogfileParser::new(
                     output_path.to_log_output(),
                     root_dir,
@@ -126,17 +127,22 @@ pub fn parser_factory(
                 Box::new(JsonParser::new(
                     output_path.clone(),
                     tool_config.entry_point.clone(),
-                    tool_config.frames.clone(),
+                    dhat_config.frames.clone(),
                     tool_config.sanitize_output,
                 ))
             }
         }
-        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
+        ToolConfigOptions::Memcheck | ToolConfigOptions::DRD | ToolConfigOptions::Helgrind => {
             Box::new(ErrorMetricLogfileParser {
                 output_path: output_path.to_log_output(),
                 root_dir,
             })
         }
+        ToolConfigOptions::Perf(perf_config) => Box::new(perf::json_parser::JsonParser {
+            output_path: output_path.clone(),
+            percent_running: perf_config.percent_running,
+            non_zero_metrics: perf_config.non_zero_metrics.clone(),
+        }),
         _ => Box::new(GenericLogfileParser {
             output_path: output_path.to_log_output(),
             root_dir,

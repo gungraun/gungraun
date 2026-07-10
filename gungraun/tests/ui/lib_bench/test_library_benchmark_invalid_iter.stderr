@@ -45,36 +45,16 @@ error[E0308]: mismatched types
   --> tests/ui/lib_bench/test_library_benchmark_invalid_iter.rs:46:5
    |
 46 |     #[library_benchmark]
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected `&str`, found integer
-   |     arguments to this function are incorrect
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `&str`, found integer
    |
-note: function defined here
-  --> tests/ui/lib_bench/test_library_benchmark_invalid_iter.rs:47:16
-   |
-47 |     #[benches::some(iter = 1..=2)]
-   |                ^^^^
-48 |     fn bench_10(a: &str) -> String {
-   |                 -------
    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> tests/ui/lib_bench/test_library_benchmark_invalid_iter.rs:60:5
    |
 60 |     #[library_benchmark]
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected `u64`, found `String`
-   |     arguments to this function are incorrect
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `String`
    |
-note: function defined here
-  --> tests/ui/lib_bench/test_library_benchmark_invalid_iter.rs:61:16
-   |
-61 |     #[benches::some(iter = 1..=2, setup = setup)]
-   |                ^^^^
-62 |     fn bench_10(a: u64) -> String {
-   |                 ------
    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0631]: type mismatch in function arguments

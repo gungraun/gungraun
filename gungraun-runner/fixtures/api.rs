@@ -4,8 +4,9 @@ use bon::builder;
 
 use crate::api::{
     CachegrindMetrics, CachegrindRegressionConfig, DhatMetrics, DhatRegressionConfig, Limit,
+    PerfRegressionConfig,
 };
-
+use crate::units::Unit;
 #[builder(finish_fn = "fixture")]
 pub fn cachegrind_regression_config_f(
     soft_limits: Option<Vec<(CachegrindMetrics, f64)>>,
@@ -13,8 +14,8 @@ pub fn cachegrind_regression_config_f(
     fail_fast: Option<bool>,
 ) -> CachegrindRegressionConfig {
     CachegrindRegressionConfig {
-        soft_limits: soft_limits.map_or_else(Vec::default, |s| s.into_iter().collect()),
-        hard_limits: hard_limits.map_or_else(Vec::default, |h| h.into_iter().collect()),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
         fail_fast,
     }
 }
@@ -26,8 +27,23 @@ pub fn dhat_regression_config_f(
     fail_fast: Option<bool>,
 ) -> DhatRegressionConfig {
     DhatRegressionConfig {
-        soft_limits: soft_limits.map_or_else(Vec::default, |s| s.into_iter().collect()),
-        hard_limits: hard_limits.map_or_else(Vec::default, |h| h.into_iter().collect()),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
+        fail_fast,
+    }
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn perf_regression_config_f(
+    soft_limits: Option<Vec<(String, f64)>>,
+    hard_limits: Option<Vec<(String, Option<Unit>, Limit)>>,
+    fail_fast: Option<bool>,
+    alpha: Option<f64>,
+) -> PerfRegressionConfig {
+    PerfRegressionConfig {
+        alpha,
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
         fail_fast,
     }
 }

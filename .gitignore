@@ -1,5 +1,5 @@
 flamegraph.svg
-perf.data
+perf.data*
 *.profraw
 lcov*.info
 *.scip

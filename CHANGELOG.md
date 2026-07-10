@@ -36,6 +36,24 @@ and this project adheres to
 
 ## [Unreleased]
 
+- Rename ui_tests feature to `__ui_tests` to signal internal usage
+- Change serial execution to real serial execution without thread pool
+- Breaking: feature rename of `client_request_defs` -> `stubs` and
+  `client_requests` -> `act`, `act` now includes `perf` and `stubs` includes
+  `perf_stubs`
+- New features `perf`, `perf_stubs` (at least one of them is required)
+- `ExitWith::Failure` now accepts all signal deaths
+- Removed the now obsolete `gungraun-runner` feature from `gungraun`
+- Replaced specific valgrind-runner with tool-runner and updated the docs
+  accordingly.
+- Renamed to --tool-runner (GUNGRAUN_TOOL_RUNNER), --tool-runner-args
+  (GUNGRAUN_TOOL_RUNNER_ARGS), --tool-runner-dest (GUNGRAUN_TOOL_RUNNER_DEST),
+  --tool_runner_root (GUNGRAUN_TOOL_RUNNER_ROOT)
+- Added `GUNGRAUN_TR_DEST_DIR`, `GUNGRAUN_TR_HOME`, and
+  `GUNGRAUN_TR_WORKSPACE_ROOT` environment variables for tool runners
+- Improved multi-line split logic in terminal output
+- Print empty line between metrics and possible regressions
+
 ## [0.19.4] - 2026-07-10
 
 ### Fixed

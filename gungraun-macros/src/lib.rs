@@ -43,23 +43,14 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// fn my_setup(value: u64) -> String {
 ///     format!("{value}")
@@ -115,23 +106,14 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// use std::hint::black_box;
 ///
@@ -160,23 +142,14 @@ impl CargoMetadata {
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
 /// # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// use std::hint::black_box;
 ///
@@ -204,23 +177,14 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// # fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] }
 /// # fn setup_worst_case_array(_: i32) -> Vec<i32> { vec![] }
@@ -245,23 +209,14 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()), Iter(fn(Option<usize>) -> usize) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// # mod my_lib { pub fn u64_to_string(_: u64) -> String { "0".to_owned() } }
 /// use std::hint::black_box;
@@ -289,23 +244,14 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// # mod my_lib { pub fn string_to_u64(_line: String) -> Result<u64, String> { Ok(0) } }
 /// use std::hint::black_box;
@@ -322,19 +268,14 @@ impl CargoMetadata {
 ///
 /// ```rust,ignore
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// # mod my_lib { pub fn string_to_u64(_line: String) -> Result<u64, String> { Ok(0) } }
 /// use std::hint::black_box;
@@ -353,23 +294,14 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
-/// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// use std::hint::black_box;
 ///
@@ -394,23 +326,15 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # mod gungraun {
-/// # pub mod client_requests { pub mod cachegrind {
-/// # pub fn start_instrumentation() {}
-/// # pub fn stop_instrumentation() {}
-/// # }}
-/// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod __internal {
-/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
-/// # pub struct InternalMacroLibBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalLibFunctionKind,
-/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
+/// # include!("__doc_stubs.rs");
 /// # }
-/// # pub struct InternalLibraryBenchmarkConfig {}
-/// # }}
 /// use std::hint::black_box;
 ///
 /// // Our function we want to test
@@ -494,55 +418,20 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```rust
 /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 /// # use gungraun_macros::binary_benchmark;
+/// # #[macro_export]
+/// # macro_rules! perf_log { ($($arg:tt)*) => {}; }
+/// # #[macro_export]
+/// # macro_rules! perf_enable { () => { std::ptr::null_mut::<()>() }; }
+/// # #[macro_export]
+/// # macro_rules! perf_disable { ($control_token:expr) => {}; }
 /// # pub mod gungraun {
-/// # pub mod prelude {}
-/// # use std::path::PathBuf;
-/// # #[derive(Clone)]
-/// # pub struct Command {}
-/// # impl Command {
-/// #     pub fn new(_a: &str) -> Self { Self {}}
-/// #     pub fn stdout(&mut self, _a: Stdio) -> &mut Self {self}
-/// #     pub fn arg<T>(&mut self, _a: T) -> &mut Self where T: Into<PathBuf> {self}
-/// #     pub fn build(&mut self) -> Self {self.clone()}
-/// # }
-/// # pub enum Stdio { Inherit, File(PathBuf) }
-/// # #[derive(Clone)]
-/// # pub struct Sandbox {}
-/// # impl Sandbox {
-/// #     pub fn new(_a: bool) -> Self { Self {}}
-/// #     pub fn fixtures(&mut self, _a: [&str; 2]) -> &mut Self { self }
-/// # }
-/// # impl From<&mut Sandbox> for Sandbox { fn from(value: &mut Sandbox) -> Self {value.clone() }}
-/// # #[derive(Default)]
-/// # pub struct BinaryBenchmarkConfig {}
-/// # impl BinaryBenchmarkConfig {
-/// #     pub fn sandbox<T: Into<Sandbox>>(&mut self, _a: T) -> &mut Self {self}
-/// # }
-/// # impl From<&mut BinaryBenchmarkConfig> for BinaryBenchmarkConfig
-/// #     { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { BinaryBenchmarkConfig {}}}
-/// # pub mod __internal {
-/// # use super::*;
-/// # use crate::gungraun;
-/// # pub enum InternalBinFunctionKind { None, Default(fn() -> gungraun::Command) }
-/// # pub enum InternalBinAssistantKind { None, Default(fn()) }
-/// # pub struct InternalMacroBinBench {
-/// #   pub id_display: Option<&'static str>,
-/// #   pub args_display: Option<&'static str>,
-/// #   pub consts_display: Option<&'static str>,
-/// #   pub func: InternalBinFunctionKind,
-/// #   pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
-/// #   pub setup: InternalBinAssistantKind,
-/// #   pub teardown: InternalBinAssistantKind,
-/// # }
-/// # pub struct InternalBinaryBenchmarkConfig {}
-/// # impl From<&mut BinaryBenchmarkConfig> for InternalBinaryBenchmarkConfig
-/// #    { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { InternalBinaryBenchmarkConfig {}} }
-/// # }
+/// # include!("__doc_stubs.rs");
 /// # }
 /// # use gungraun::BinaryBenchmarkConfig;
-/// use gungraun::prelude::*;
-/// use gungraun::Sandbox;
 /// use std::path::PathBuf;
+///
+/// use gungraun::Sandbox;
+/// use gungraun::prelude::*;
 ///
 /// // In binary benchmarks there's no need to return a value from the setup function
 /// # #[allow(unused)]

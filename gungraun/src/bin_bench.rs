@@ -9,7 +9,7 @@ use std::time::Duration;
 use derive_more::AsRef;
 use gungraun_macros::IntoInner;
 
-use crate::{__internal, DelayKind, ExitWith, Stdin, Stdio, ValgrindTool};
+use crate::{__internal, DelayKind, ExitWith, Stdin, Stdio, Tool};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -997,13 +997,11 @@ impl BinaryBenchmarkConfig {
     ///
     /// ```rust
     /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    /// use gungraun::{
-    ///     BinaryBenchmarkConfig, ValgrindTool, binary_benchmark, binary_benchmark_group, main,
-    /// };
+    /// use gungraun::{BinaryBenchmarkConfig, Tool, binary_benchmark, binary_benchmark_group, main};
     ///
     /// #[binary_benchmark(
     ///     config = BinaryBenchmarkConfig::default()
-    ///         .default_tool(ValgrindTool::Cachegrind)
+    ///         .default_tool(Tool::Cachegrind)
     /// )]
     /// fn bench_me() -> gungraun::Command {
     ///     gungraun::Command::new(env!("CARGO_BIN_EXE_echo"))
@@ -1015,8 +1013,11 @@ impl BinaryBenchmarkConfig {
     /// main!(binary_benchmark_groups = my_group);
     /// # }
     /// ```
-    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
-        self.0.default_tool = Some(tool);
+    pub fn default_tool<T>(&mut self, tool: T) -> &mut Self
+    where
+        T: Into<Tool>,
+    {
+        self.0.default_tool = Some(tool.into());
         self
     }
 
@@ -1344,7 +1345,7 @@ impl BinaryBenchmarkConfig {
     /// # binary_benchmark_group!(
     /// #    name = my_group,
     /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use gungraun::{BinaryBenchmarkConfig, Dhat, ValgrindTool, main};
+    /// use gungraun::{BinaryBenchmarkConfig, Dhat, main};
     ///
     /// # fn main() {
     /// main!(
@@ -1355,9 +1356,9 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn tool<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<__internal::InternalTool>,
+        T: Into<__internal::InternalToolSpec>,
     {
-        self.0.tools.update(tool.into());
+        self.0.tool_specs.update(tool.into());
         self
     }
 
@@ -1399,11 +1400,11 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn tool_override<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<__internal::InternalTool>,
+        T: Into<__internal::InternalToolSpec>,
     {
         self.0
-            .tools_override
-            .get_or_insert_with(__internal::InternalTools::default)
+            .tool_specs_override
+            .get_or_insert_with(__internal::InternalToolSpecs::default)
             .update(tool.into());
         self
     }

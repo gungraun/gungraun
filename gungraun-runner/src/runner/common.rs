@@ -24,7 +24,7 @@ use tempfile::{TempDir, tempfile};
 use super::format::{OutputFormatKind, SummaryFormatter};
 use super::meta::Metadata;
 use crate::api::{
-    self, BinaryBenchmarkGroups, EntryPoint, LibraryBenchmarkGroups, Pipe, ValgrindTool,
+    self, BenchRunMode, BinaryBenchmarkGroups, EntryPoint, LibraryBenchmarkGroups, Pipe, Tool,
 };
 use crate::error::Error;
 use crate::runner::args::NoCapture;
@@ -170,6 +170,8 @@ pub struct Groups(pub Vec<Group>);
 /// Result payload returned by worker jobs when running a benchmark group.
 #[derive(Debug)]
 pub struct JobResult {
+    /// The perf alpha value to compute the p-value, significance threshold and factor
+    pub alpha: Option<f64>,
     /// Final benchmark summary produced by the executed job.
     pub benchmark_summary: BenchmarkSummary,
     /// Captured stdout/stderr output associated with this job.
@@ -248,6 +250,14 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
                 ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
             ) {
                 output_path.to_log_output().clear()?;
+            }
+            if output_path.tool == Tool::Perf
+                && matches!(
+                    output_path.kind,
+                    ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
+                )
+            {
+                output_path.to_data_output().clear()?;
             }
             if let Some(path) = output_path.to_xtree_output() {
                 path.clear()?;
@@ -374,13 +384,24 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
 
             let mut profile = Profile {
                 tool,
-                log_paths: output_path.to_log_output().real_paths()?,
-                out_paths: output_path.real_paths()?,
+                log_paths: output_path.to_log_output().sanitized_paths()?,
+                out_paths: output_path.sanitized_paths()?,
                 summaries: data,
                 flamegraphs: vec![],
             };
 
-            profile.summaries.total.regressions = regression_config.check(&profile.summaries.total);
+            if tool == Tool::Perf {
+                profile.summaries.total.regressions = profile
+                    .summaries
+                    .parts
+                    .iter()
+                    .flat_map(|p| regression_config.check(&p.metrics_summary))
+                    .collect();
+            } else {
+                profile.summaries.total.regressions =
+                    regression_config.check(&profile.summaries.total.summary);
+            }
+
             profile.flamegraphs = self.generate_flamegraphs(
                 config,
                 header,
@@ -437,6 +458,14 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
                 ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
             ) {
                 output_path.to_log_output().shift()?;
+            }
+            if output_path.tool == Tool::Perf
+                && matches!(
+                    output_path.kind,
+                    ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
+                )
+            {
+                output_path.to_data_output().shift()?;
             }
             if let Some(path) = output_path.to_xtree_output() {
                 path.shift()?;
@@ -522,7 +551,10 @@ impl Assistant {
 
     /// The arguments for the benchmark executable
     fn executable_args(&self) -> Vec<OsString> {
-        let mut args = vec![OsString::from("--gungraun-run")];
+        let mut args = vec![
+            OsString::from("--gungraun-run"),
+            OsString::from(BenchRunMode::Default.id()),
+        ];
 
         // The index of the binary or `library_benchmark_group!` in the main! macro
         if let Some(main_index) = &self.group_index {
@@ -659,7 +691,7 @@ impl BenchmarkDataProcessor for BaselineAndSaveDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 let save_baseline = output_path.loaded_baseline_name().expect(
                     "The saved baseline of a baseline-and-save output path should have a name",
@@ -702,8 +734,12 @@ impl BenchmarkDataProcessor for BaselineDataProcessor {
             .and_then(|()| self.remove_summary())
             .and_then(|()| self.shift())
             .and_then(|()| self.sanitize())
-            .and_then(|()| self.parse(benchmark_summary, config, header, None))
-            .and_then(|()| self.copy_temp())
+            .and_then(|()| {
+                let parse_result = self.parse(benchmark_summary, config, header, None);
+                let copy_result = self.copy_temp();
+
+                parse_result.and(copy_result)
+            })
     }
 
     fn has_benchmarks(&self) -> bool {
@@ -718,7 +754,7 @@ impl BenchmarkDataProcessor for BaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 return BaselineFlamegraphGenerator {
                     baseline_kind: output_path.baseline_kind.clone(),
@@ -847,6 +883,7 @@ impl Group {
     ) {
         for bench in benches {
             let fail_fast = bench.is_fail_fast();
+            let alpha = bench.tools.alpha();
             let benchmark: Arc<dyn bin_bench::Benchmark> = bin_bench::benchmark_factory(config);
             let header = BinaryBenchmarkHeader::new(&config.meta, &bench);
 
@@ -871,6 +908,7 @@ impl Group {
                     output_path.clone(),
                 ) {
                     Ok(benchmark_summary) => Ok(JobResult {
+                        alpha,
                         benchmark_summary,
                         fail_fast,
                         header: header.into(),
@@ -898,6 +936,7 @@ impl Group {
     ) {
         for bench in benches {
             let fail_fast = bench.is_fail_fast();
+            let alpha = bench.tools.alpha();
             let benchmark: Arc<dyn lib_bench::Benchmark> = lib_bench::benchmark_factory(config);
             let header = LibraryBenchmarkHeader::new(&bench);
 
@@ -923,6 +962,7 @@ impl Group {
                     output_path.clone(),
                 ) {
                     Ok(benchmark_summary) => Ok(JobResult {
+                        alpha,
                         benchmark_summary,
                         fail_fast,
                         header: header.into(),
@@ -941,6 +981,7 @@ impl Group {
         }
     }
 
+    // TODO: Update docs
     /// Runs all benchmarks in this group and returns the [`BenchmarkSummaries`].
     ///
     /// Benchmarks are executed in a thread pool, finalized through their data processors, and
@@ -1058,6 +1099,7 @@ impl Group {
 
                 for bench in lib_benches {
                     let fail_fast = bench.is_fail_fast();
+                    let alpha = bench.tools.alpha();
                     let benchmark: Arc<dyn lib_bench::Benchmark> =
                         lib_bench::benchmark_factory(config);
 
@@ -1098,6 +1140,7 @@ impl Group {
                     };
 
                     let job_result = JobResult {
+                        alpha,
                         benchmark_summary,
                         captured_output,
                         data_processor,
@@ -1120,6 +1163,7 @@ impl Group {
 
                 for bench in bin_benches {
                     let fail_fast = bench.is_fail_fast();
+                    let alpha = bench.tools.alpha();
                     let benchmark: Arc<dyn bin_bench::Benchmark> =
                         bin_bench::benchmark_factory(config);
 
@@ -1157,6 +1201,7 @@ impl Group {
                     };
 
                     let job_result = JobResult {
+                        alpha,
                         benchmark_summary,
                         captured_output,
                         data_processor,
@@ -1205,7 +1250,7 @@ impl BenchmarkDataProcessor for LoadBaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 let loaded_baseline = output_path.loaded_baseline_name().expect(
                     "The loaded baseline of an output path of a loaded baseline should have a name",
@@ -1243,6 +1288,7 @@ impl JobResult {
         comparison_summaries: &mut HashMap<String, Vec<BenchmarkSummary>>,
     ) -> Result<()> {
         let Self {
+            alpha,
             mut benchmark_summary,
             fail_fast,
             header,
@@ -1258,7 +1304,13 @@ impl JobResult {
         data_processor
             .finalize(&mut benchmark_summary, config, &header)
             .and_then(|()| {
-                benchmark_summary.print_and_save(config, &header, &output_format, captured_output)
+                benchmark_summary.print_and_save(
+                    config,
+                    &header,
+                    &output_format,
+                    captured_output,
+                    alpha,
+                )
             })
             .and_then(|()| benchmark_summary.check_regression(fail_fast))?;
 
@@ -1267,7 +1319,7 @@ impl JobResult {
             if let Some(id) = &benchmark_summary.id {
                 if let Some(sums) = comparison_summaries.get_mut(id) {
                     for sum in sums.iter() {
-                        sum.compare_and_print(id, &benchmark_summary, &output_format);
+                        sum.compare_and_print(id, &benchmark_summary, &output_format, alpha);
                     }
                     sums.push(benchmark_summary);
                 } else {
@@ -1929,7 +1981,7 @@ impl BenchmarkDataProcessor for SaveBaselineDataProcessor {
             .and_then(|()| self.move_temp())
             .and_then(|()| self.sanitize())
             .and_then(|()| self.parse(benchmark_summary, config, header, Some(parsed_old)))
-            .and_then(|()| self.copy_temp()) // for the flamegraphs which are created in the
+            .and_then(|()| self.copy_temp())
         // temporary directory
     }
 
@@ -1949,7 +2001,7 @@ impl BenchmarkDataProcessor for SaveBaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 let baseline = output_path.baseline_name().cloned().expect(
                     "The baseline of an output path of a saved baseline should have a name",

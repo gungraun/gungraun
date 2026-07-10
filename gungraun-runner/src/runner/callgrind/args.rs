@@ -4,9 +4,9 @@ use std::collections::VecDeque;
 use anyhow::Result;
 use log::warn;
 
-use crate::api::{RawToolArgs, ValgrindTool};
+use crate::api::{RawToolArgs, Tool};
 use crate::error::Error;
-use crate::runner::tool::args::{ToolArgs, ValgrindArgs, defaults};
+use crate::runner::tool::args::{ToolArgsLike, ValgrindArgs, ValgrindTool, defaults};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -28,9 +28,9 @@ pub struct CallgrindArgs {
     valgrind_args: ValgrindArgs,
 }
 
-impl ToolArgs for CallgrindArgs {
-    fn try_from_raw_tool_args(tool: ValgrindTool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
-        debug_assert_eq!(tool, ValgrindTool::Callgrind);
+impl ToolArgsLike for CallgrindArgs {
+    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
+        debug_assert_eq!(tool, Tool::Callgrind);
 
         let mut default = Self::default();
         default.try_update(raw_tool_args.iter().flat_map(|s| s.as_slice()))?;
@@ -265,8 +265,8 @@ mod tests {
     )]
     fn test_try_from_raw_tool_args(#[case] args: &[&str], #[case] expected: CallgrindArgs) {
         let actual = CallgrindArgs::try_from_raw_tool_args(
-            ValgrindTool::Callgrind,
-            &[&RawToolArgs::from_iter(args)],
+            Tool::Callgrind,
+            &[&RawToolArgs::from_iter_ignore_flag(args)],
         )
         .unwrap();
         assert_eq!(actual, expected);

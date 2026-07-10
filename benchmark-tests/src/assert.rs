@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Result, anyhow};
-use gungraun::ValgrindTool;
+use gungraun::Tool;
 use gungraun_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
 use gungraun_runner::runner::callgrind::parser::CallgrindParser;
 use gungraun_runner::runner::common::ModulePath;
@@ -106,7 +106,7 @@ impl Assert {
             .parse(
                 &ToolOutputPath::new(
                     ToolOutputPathKind::Out,
-                    ValgrindTool::Callgrind,
+                    Tool::Callgrind,
                     &BaselineKind::Old,
                     &self.target_dir,
                     &self.module_path.join(&self.group),

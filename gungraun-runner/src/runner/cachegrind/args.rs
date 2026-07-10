@@ -2,9 +2,9 @@
 
 use anyhow::Result;
 
-use crate::api::{RawToolArgs, ValgrindTool};
+use crate::api::{RawToolArgs, Tool};
 use crate::error::Error;
-use crate::runner::tool::args::{ToolArgs, ValgrindArgs, defaults};
+use crate::runner::tool::args::{ToolArgsLike, ValgrindArgs, ValgrindTool, defaults};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -17,9 +17,9 @@ pub struct CachegrindArgs {
     valgrind: ValgrindArgs,
 }
 
-impl ToolArgs for CachegrindArgs {
-    fn try_from_raw_tool_args(tool: ValgrindTool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
-        debug_assert_eq!(tool, ValgrindTool::Cachegrind);
+impl ToolArgsLike for CachegrindArgs {
+    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
+        debug_assert_eq!(tool, Tool::Cachegrind);
 
         let mut default = Self::default();
         default.try_update(raw_tool_args.iter().flat_map(|s| s.as_slice()))?;
@@ -160,8 +160,8 @@ mod tests {
     )]
     fn test_try_from_raw_tool_args(#[case] args: &[&str], #[case] expected: CachegrindArgs) {
         let actual = CachegrindArgs::try_from_raw_tool_args(
-            ValgrindTool::Cachegrind,
-            &[&RawToolArgs::from_iter(args)],
+            Tool::Cachegrind,
+            &[&RawToolArgs::from_iter_ignore_flag(args)],
         )
         .unwrap();
         assert_eq!(actual, expected);

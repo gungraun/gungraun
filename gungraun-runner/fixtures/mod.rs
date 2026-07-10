@@ -6,6 +6,7 @@
 #![allow(missing_docs)]
 
 pub mod api;
+pub mod perf;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -20,24 +21,49 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{
-    CachegrindMetric, DhatMetric, EntryPoint, ExitWith, RawToolArgs, SanitizeOutput, Tools,
-    ValgrindTool,
+    CachegrindMetric, DhatMetric, DhatSpec, EntryPoint, ExitWith, PerfMetric, PerfRunMode,
+    PerfSpec, RawToolArgs, SanitizeOutput, Tool, ToolSpec, ToolSpecOptions, ToolSpecs,
 };
-use crate::metrics::model::Metric;
+use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
+use crate::runner::cachegrind::args::CachegrindArgs;
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
+use crate::runner::callgrind::args::CallgrindArgs;
 use crate::runner::common::{Assistant, AssistantKind, Config, ModulePath};
 use crate::runner::dhat::regression::DhatRegressionConfig;
 use crate::runner::format::OutputFormat;
 use crate::runner::meta::Metadata;
+use crate::runner::perf::args::{DEFAULT_PERF_EVENTS, PerfStatArgs};
+use crate::runner::perf::regression::PerfRegressionConfig;
 use crate::runner::tasks::ProcessHandler;
-use crate::runner::tool::args::ToolArgs;
-use crate::runner::tool::config::{ToolConfig, ToolConfigs, ToolFlamegraphConfig};
+use crate::runner::tool::args::{ToolArgs, ToolArgsLike, ValgrindArgs};
+use crate::runner::tool::config::{
+    DEFAULT_PERF_ALPHA, DEFAULT_PERF_NON_ZERO_METRICS, DhatConfig, PerfConfig, ToolConfig,
+    ToolConfigBuilder, ToolConfigOptions, ToolConfigs, ToolFlamegraphConfig,
+};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
 use crate::runner::tool::run::{RunOptions, ToolCommand, ToolCommandChild};
 use crate::summary::model::BaselineKind;
+use crate::units::Unit;
 
-pub const DEFAULT_TOOL: ValgrindTool = ValgrindTool::Callgrind;
+pub const DEFAULT_TOOL: Tool = Tool::Callgrind;
+
+#[builder(finish_fn = "fixture", on(Metric, into))]
+pub fn annotated_metric_perf_f(
+    metric: Metric,
+    event_runtime: Option<u64>,
+    pcnt_running: Option<f64>,
+    rse: Option<f64>,
+    n: Option<u64>,
+    mean: Option<f64>,
+    unit: Option<Unit>,
+) -> AnnotatedMetric<PerfQualities> {
+    AnnotatedMetric::new(
+        metric,
+        PerfQualities::new(event_runtime, pcnt_running, rse, n, mean),
+        unit,
+    )
+}
 
 #[builder(finish_fn = "fixture")]
 pub fn assistant_f(kind: AssistantKind) -> Assistant {
@@ -97,8 +123,8 @@ pub fn cachegrind_regression_config_f(
     fail_fast: Option<bool>,
 ) -> CachegrindRegressionConfig {
     CachegrindRegressionConfig {
-        soft_limits: soft_limits.map_or_else(Vec::default, |s| s.into_iter().collect()),
-        hard_limits: hard_limits.map_or_else(Vec::default, |h| h.into_iter().collect()),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
         fail_fast: fail_fast.unwrap_or(false),
     }
 }
@@ -110,8 +136,8 @@ pub fn dhat_regression_config_f(
     fail_fast: Option<bool>,
 ) -> DhatRegressionConfig {
     DhatRegressionConfig {
-        soft_limits: soft_limits.map_or_else(Vec::default, |s| s.into_iter().collect()),
-        hard_limits: hard_limits.map_or_else(Vec::default, |h| h.into_iter().collect()),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
         fail_fast: fail_fast.unwrap_or(false),
     }
 }
@@ -136,6 +162,21 @@ pub fn metadata_f(raw_command_line_args: Option<&[&str]>, target: Option<&str>) 
 #[builder(finish_fn = "fixture")]
 pub fn module_path_f() -> ModulePath {
     ModulePath::new("test::path")
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn perf_regression_config_f(
+    soft_limits: Option<Vec<(PerfMetric, f64)>>,
+    hard_limits: Option<Vec<(PerfMetric, Option<Unit>, Metric)>>,
+    fail_fast: Option<bool>,
+    alpha: Option<f64>,
+) -> PerfRegressionConfig {
+    PerfRegressionConfig {
+        alpha: alpha.unwrap_or(DEFAULT_PERF_ALPHA),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
+        fail_fast: fail_fast.unwrap_or(false),
+    }
 }
 
 #[builder(finish_fn = "fixture")]
@@ -245,13 +286,20 @@ pub fn tool_command_f(
     output_path: &ToolOutputPath,
     metadata: Option<Metadata>,
     run_options: Option<&RunOptions>,
+    tool_config: Option<&ToolConfig>,
 ) -> ToolCommand {
     let meta = metadata.unwrap_or_else(|| metadata_f().fixture());
 
     let run_options =
         run_options.map_or_else(|| Cow::Owned(run_options_f().fixture()), Cow::Borrowed);
 
-    ToolCommand::new(&tool_config_f().fixture(), &meta, output_path, &run_options).unwrap()
+    let tool_config = if let Some(tool_config) = tool_config {
+        tool_config.clone()
+    } else {
+        tool_config_f().fixture()
+    };
+
+    ToolCommand::new(&tool_config, &meta, output_path, &run_options).unwrap()
 }
 
 #[builder(finish_fn = "fixture")]
@@ -259,7 +307,7 @@ pub fn tool_command_child_f(
     exe: &Path,
     args: Option<&[&str]>,
     log_path: ToolOutputPath,
-    tool: Option<ValgrindTool>,
+    tool: Option<Tool>,
     exit_with: Option<ExitWith>,
     stdout: Option<StdStdio>,
 ) -> ToolCommandChild {
@@ -275,30 +323,100 @@ pub fn tool_command_child_f(
         path,
         exit_with,
         log_path,
+        None,
     )
 }
 
 #[builder(finish_fn = "fixture")]
-pub fn tool_config_f(tool: Option<ValgrindTool>, is_default: Option<bool>) -> ToolConfig {
+pub fn tool_config_builder_f(
+    tool: Option<Tool>,
+    is_default: Option<bool>,
+    tool_spec: Option<ToolSpec>,
+) -> ToolConfigBuilder {
+    ToolConfigBuilder::new(
+        tool.unwrap_or(DEFAULT_TOOL),
+        tool_spec,
+        is_default.unwrap_or(true),
+        &HashMap::default(),
+        &module_path_f().fixture(),
+        Option::default(),
+        &metadata_f().fixture(),
+        &RawToolArgs::default(),
+        &EntryPoint::Default,
+    )
+    .expect("ToolConfigBuilder should be valid")
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn tool_config_f(
+    tool: Option<Tool>,
+    is_default: Option<bool>,
+    events: Option<String>,
+    entry_point: Option<EntryPoint>,
+    part: Option<usize>,
+    sanitize_output: Option<SanitizeOutput>,
+    has_analyzer: Option<bool>,
+) -> ToolConfig {
     let tool = tool.unwrap_or(DEFAULT_TOOL);
+    let args = match tool {
+        Tool::Perf => ToolArgs::Perf(PerfStatArgs::default().into()),
+        Tool::Callgrind => ToolArgs::Valgrind(
+            CallgrindArgs::try_from_raw_tool_args(tool, &[])
+                .unwrap()
+                .into(),
+        ),
+        Tool::Cachegrind => ToolArgs::Valgrind(
+            CachegrindArgs::try_from_raw_tool_args(tool, &[])
+                .unwrap()
+                .into(),
+        ),
+        _ => ToolArgs::Valgrind(ValgrindArgs::try_from_raw_tool_args(tool, &[]).unwrap()),
+    };
+
+    let options = match tool {
+        Tool::Perf => ToolConfigOptions::Perf(PerfConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            events: events.unwrap_or_else(|| DEFAULT_PERF_EVENTS.to_owned()),
+            non_zero_metrics: DEFAULT_PERF_NON_ZERO_METRICS
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+            run_mode: PerfRunMode::default(),
+            use_sampling: false,
+            percent_running: 100.0,
+        }),
+        Tool::DHAT => ToolConfigOptions::DHAT(DhatConfig {
+            frames: Vec::default(),
+        }),
+        Tool::Callgrind => ToolConfigOptions::Callgrind,
+        Tool::Cachegrind => ToolConfigOptions::Cachegrind,
+        Tool::Memcheck => ToolConfigOptions::Memcheck,
+        Tool::Helgrind => ToolConfigOptions::Helgrind,
+        Tool::DRD => ToolConfigOptions::DRD,
+        Tool::Massif => ToolConfigOptions::Massif,
+        Tool::BBV => ToolConfigOptions::BBV,
+    };
+
     ToolConfig::new(
-        tool,
         true,
-        ToolArgs::try_from_raw_tool_args(tool, &[]).unwrap(),
+        args,
         ToolRegressionConfig::None,
         ToolFlamegraphConfig::None,
-        EntryPoint::None,
+        entry_point.unwrap_or(EntryPoint::None),
         is_default.unwrap_or(true),
-        vec![],
-        SanitizeOutput::Yes,
+        sanitize_output.unwrap_or(SanitizeOutput::Yes),
+        part,
+        options,
+        has_analyzer.unwrap_or(true),
+        None,
     )
 }
 
 #[builder(finish_fn = "fixture")]
 pub fn tool_configs_f(
     raw_command_line_args: Option<&[&str]>,
-    tools: Option<Tools>,
-    default_tool: Option<ValgrindTool>,
+    tool_specs: Option<ToolSpecs>,
+    default_tool: Option<Tool>,
     valgrind_args: Option<RawToolArgs>,
     default_entry_point: Option<EntryPoint>,
 ) -> ToolConfigs {
@@ -310,7 +428,7 @@ pub fn tool_configs_f(
 
     ToolConfigs::new(
         &mut output_format,
-        tools.unwrap_or_default(),
+        tool_specs.unwrap_or_default(),
         &module_path,
         None,
         &meta,
@@ -325,7 +443,7 @@ pub fn tool_configs_f(
 #[builder(finish_fn = "fixture")]
 pub fn tool_output_path_f(
     target_dir: &Path,
-    tool: Option<ValgrindTool>,
+    tool: Option<Tool>,
     name: Option<&str>,
     module_path_string: Option<&str>,
     init: Option<bool>,
@@ -333,7 +451,7 @@ pub fn tool_output_path_f(
 ) -> ToolOutputPath {
     let path = ToolOutputPath::new(
         ToolOutputPathKind::Out,
-        tool.unwrap_or(ValgrindTool::Callgrind),
+        tool.unwrap_or(Tool::Callgrind),
         &BaselineKind::Old,
         target_dir,
         &module_path_string.map_or_else(|| module_path_f().fixture(), ModulePath::new),
@@ -355,4 +473,39 @@ pub fn tool_output_path_f(
     }
 
     path
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn tool_spec_f(
+    tool: Option<Tool>,
+    events: Option<Vec<String>>,
+    entry_point: Option<EntryPoint>,
+) -> ToolSpec {
+    let tool = tool.unwrap_or(DEFAULT_TOOL);
+    let options = match tool {
+        Tool::Perf => ToolSpecOptions::Perf(PerfSpec {
+            alpha: None,
+            events,
+            record: None,
+            non_zero_metrics: None,
+            record_args: RawToolArgs::default(),
+            run_mode: None,
+            samples: None,
+            percent_running: None,
+        }),
+        Tool::DHAT => ToolSpecOptions::Dhat(DhatSpec { frames: None }),
+        _ => ToolSpecOptions::None,
+    };
+    ToolSpec {
+        enable: Option::default(),
+        entry_point,
+        flamegraph_config: Option::default(),
+        tool,
+        output_format: Option::default(),
+        raw_tool_args: RawToolArgs::default(),
+        regression_config: Option::default(),
+        sanitize_output: Option::default(),
+        show_log: Option::default(),
+        options,
+    }
 }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use gungraun_runner::api::{ErrorMetric, ValgrindTool};
+use gungraun_runner::api::{ErrorMetric, Tool};
 use gungraun_runner::metrics::model::Metrics;
 use gungraun_runner::runner::tool::error_metric_parser::ErrorMetricLogfileParser;
 use gungraun_runner::runner::tool::parser::Parser;
@@ -27,7 +27,7 @@ fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4
     let expected_metrics = ToolMetrics::ErrorTool(metrics);
 
     let drd_output_path =
-        Fixtures::get_tool_output_path("drd", ValgrindTool::DRD, ToolOutputPathKind::Log, fixture);
+        Fixtures::get_tool_output_path("drd", Tool::DRD, ToolOutputPathKind::Log, fixture);
 
     let parser = ErrorMetricLogfileParser {
         output_path: drd_output_path,
@@ -56,12 +56,8 @@ fn test_drd_error_metric_parser_when_multiple_pids() {
     ]);
     let expected_second_metrics = ToolMetrics::ErrorTool(second_metrics);
 
-    let drd_output_path = Fixtures::get_tool_output_path(
-        "drd",
-        ValgrindTool::DRD,
-        ToolOutputPathKind::Log,
-        "multiple_pids",
-    );
+    let drd_output_path =
+        Fixtures::get_tool_output_path("drd", Tool::DRD, ToolOutputPathKind::Log, "multiple_pids");
 
     let parser = ErrorMetricLogfileParser {
         output_path: drd_output_path.to_log_output(),
@@ -92,7 +88,7 @@ fn test_memcheck_error_metric_parser(#[case] fixture: &str, #[case] expected: [u
 
     let memcheck_output_path = Fixtures::get_tool_output_path(
         "memcheck",
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         ToolOutputPathKind::Log,
         fixture,
     );
@@ -126,7 +122,7 @@ fn test_memcheck_error_metric_parser_when_multiple_pids() {
 
     let memcheck_output_path = Fixtures::get_tool_output_path(
         "memcheck",
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         ToolOutputPathKind::Log,
         "multiple_pids",
     );

@@ -1,0 +1,699 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Running Benchmarks in Parallel - Gungraun Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../css/my-43cab82a.css">
+        <link rel="stylesheet" href="../css/dropdown-65a47de8.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-475b9db9.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-ebb9543f.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                        <div class="dropdown">
+                          <button onclick="versionDropdown()" class="icon-button version-dropdown-button" type="button">Version</button>
+                          <div id="version-dropdown" class="version-dropdown-content">
+                            <a href="../../../latest/html/index.html">Latest</a>
+                            <hr class="sidbar-spacer">
+                            <script src="../../../versions.js"></script>
+                          </div>
+                        </div>
+                    <h1 class="menu-title">Gungraun Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun/blob/main/docs/src/cli_and_env/parallel.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <!-- spell-checker: ignore iotop iostat -->
+<h1 id="running-benchmarks-in-parallel"><a class="header" href="#running-benchmarks-in-parallel">Running Benchmarks in Parallel</a></h1>
+<p>Gungraun supports running multiple benchmarks in parallel to reduce total
+benchmark execution time. This is controlled by the <code>--parallel</code> command-line
+option or <code>GUNGRAUN_PARALLEL</code> environment variable.</p>
+<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
+<p>The <code>--parallel</code> option accepts either a positive integer or <code>auto</code>:</p>
+<pre><code class="language-bash"># Run up to 4 benchmarks in parallel
+cargo bench -- --parallel=4
+
+# Let Gungraun choose based on available CPU cores
+cargo bench -- --parallel=auto
+</code></pre>
+<p>When <code>--parallel=auto</code> is used, Gungraun sets the parallelism level to the
+number of available logical CPU cores. The default value is <code>1</code>, which runs
+benchmarks serially.</p>
+<p>You can also set the parallelism level via the environment variable
+<code>GUNGRAUN_PARALLEL</code>:</p>
+<pre><code class="language-bash">GUNGRAUN_PARALLEL=4 cargo bench
+</code></pre>
+<p>The command-line <code>--parallel</code> option takes precedence over the environment
+variable.</p>
+<h2 id="benefits"><a class="header" href="#benefits">Benefits</a></h2>
+<p>Running benchmarks in parallel can significantly reduce total execution time,
+especially when:</p>
+<ul>
+<li>You have many independent benchmarks</li>
+<li>Benchmarks are not I/O-bound (reading files, network operations)</li>
+<li>You have multiple CPU cores available</li>
+<li>Benchmarks have varying execution times (better resource utilization)</li>
+</ul>
+<h2 id="how-parallel-execution-works"><a class="header" href="#how-parallel-execution-works">How Parallel Execution Works</a></h2>
+<h3 id="benchmark-groups-as-synchronization-points"><a class="header" href="#benchmark-groups-as-synchronization-points">Benchmark Groups as Synchronization Points</a></h3>
+<p>Benchmark groups serve as synchronization barriers. Only benchmarks <strong>within the
+same group</strong> are executed in parallel. Gungraun waits for all benchmarks in a
+group to complete before moving on to the next group.</p>
+<p>For example, given the following structure:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span>use gungraun::prelude::*;
+
+#[library_benchmark]
+fn bench_a() { /* ... */ }
+
+#[library_benchmark]
+fn bench_b() { /* ... */ }
+
+library_benchmark_group!(
+    name = group_1,
+    benchmarks = [bench_a, bench_b]
+);
+
+#[library_benchmark]
+fn bench_c() { /* ... */ }
+
+library_benchmark_group!(
+    name = group_2,
+    benchmarks = [bench_c]
+);
+<span class="boring">fn main() {}</span></code></pre>
+<p>With <code>--parallel=4</code>, <code>bench_a</code> and <code>bench_b</code> would run in parallel (since
+they’re in <code>group_1</code>), but <code>bench_c</code> would only start after both <code>bench_a</code> and
+<code>bench_b</code> complete.</p>
+<h3 id="setup-and-teardown"><a class="header" href="#setup-and-teardown">Setup and Teardown</a></h3>
+<p>Group-level <code>setup</code> and <code>teardown</code> functions are executed <strong>before</strong> and
+<strong>after</strong> all benchmarks in that group, respectively. They are not run in
+parallel with the benchmarks themselves. However, if a benchmark has its own
+<code>setup</code> and <code>teardown</code> functions, they are run in parallel to other benchmarks
+(see <a href="#setup-and-teardown-interactions">Setup and Teardown Interactions</a>)</p>
+<h3 id="process-isolation"><a class="header" href="#process-isolation">Process Isolation</a></h3>
+<p>Each benchmark runs in its <strong>own separate process</strong>, which provides strong
+isolation guarantees:</p>
+<ul>
+<li><strong>Independent environment variables</strong>: Each process has its own set of
+environment variables. Modifying <code>std::env</code> in one benchmark doesn’t affect
+others.</li>
+<li><strong>Isolated global state</strong>: Global variables, static variables, and lazy static
+values are not shared between benchmarks. Each process has its own copy.</li>
+<li><strong>Separate memory space</strong>: Each process has its own virtual memory space.
+Memory allocations in one benchmark don’t affect others.</li>
+<li><strong>Independent file descriptors</strong>: Each process has its own file descriptor
+table. Opening/closing files in one benchmark doesn’t interfere with others.</li>
+</ul>
+<p><strong>This simplifies parallel execution significantly:</strong></p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span>use gungraun::prelude::*;
+// This is SAFE with --parallel - each benchmark gets its own process
+static mut COUNTER: usize = 0;
+
+#[library_benchmark]
+fn bench_a() {
+    unsafe { COUNTER += 1; } // Only affects this process's COUNTER
+    // COUNTER == 1
+}
+
+#[library_benchmark]
+fn bench_b() {
+    unsafe { COUNTER += 1; } // Different process, different COUNTER
+    // COUNTER == 1
+}
+<span class="boring">fn main() {}</span></code></pre>
+<p><strong>What you DON’T need to worry about:</strong></p>
+<ul>
+<li>Race conditions on global variables between benchmarks</li>
+<li>Environment variable conflicts between benchmarks</li>
+<li>Memory corruption from one benchmark affecting others</li>
+<li>File descriptor exhaustion (each process has its own limit)</li>
+</ul>
+<p><strong>What you STILL need to worry about:</strong></p>
+<ul>
+<li>Shared external resources (files on disk, network ports, databases)</li>
+<li>Setup/teardown interactions (if they modify shared filesystem state)</li>
+<li>Disk I/O contention (all processes write to the same disk)</li>
+</ul>
+<p>This process isolation is a key advantage over thread-based parallelism, where
+shared state requires careful synchronization.</p>
+<h2 id="limitations-and-dangers"><a class="header" href="#limitations-and-dangers">Limitations and Dangers</a></h2>
+<h3 id="disk-io-bottleneck"><a class="header" href="#disk-io-bottleneck">Disk I/O Bottleneck</a></h3>
+<p><strong>This is the most common limitation.</strong></p>
+<p>Valgrind and Gungraun perform disk I/O even if your benchmarks don’t. They
+write:</p>
+<ul>
+<li>Log files for each tool</li>
+<li>Profile data files</li>
+<li>Flamegraph data</li>
+<li>Summary JSON files</li>
+</ul>
+<p>Running with high parallelism may not provide proportional speedup because disk
+I/O becomes the bottleneck. For example, running with <code>--parallel=10</code> may
+provide similar speedup as <code>--parallel=5</code> on systems with limited disk bandwidth
+(especially HDDs or network-mounted filesystems).</p>
+<p><strong>Recommendation</strong>: Start with <code>--parallel=2</code> or <code>--parallel=4</code> and increase
+gradually while monitoring actual speedup.</p>
+<h3 id="memory-usage"><a class="header" href="#memory-usage">Memory Usage</a></h3>
+<p>Each parallel benchmark runs its own Valgrind instance, which adds considerable
+memory overhead beyond your benchmark’s normal usage. Valgrind’s memory overhead
+varies depending on:</p>
+<ul>
+<li><strong>The tool used</strong>: Memcheck typically has higher overhead than Callgrind or
+Cachegrind</li>
+<li><strong>Your program’s memory usage</strong>: Valgrind’s DHAT, Massif, … tracks
+allocations, so larger programs have more overhead</li>
+</ul>
+<h3 id="resource-contention"><a class="header" href="#resource-contention">Resource Contention</a></h3>
+<p>Parallel benchmarks compete for:</p>
+<ul>
+<li><strong>Memory bandwidth</strong>: Especially for memory-intensive benchmarks</li>
+<li><strong>File descriptors</strong>: Each Valgrind instance opens multiple files</li>
+<li><strong>Disk I/O bandwidth</strong>: As mentioned above</li>
+</ul>
+<p>This can lead to:</p>
+<ul>
+<li>Inconsistent measurements across runs</li>
+<li>Higher variance in results</li>
+<li>Slower individual benchmark times (even if total time is reduced)</li>
+</ul>
+<p><strong>Recommendation</strong>: If you notice high variance or inconsistent results, reduce
+parallelism.</p>
+<h3 id="setup-and-teardown-interactions"><a class="header" href="#setup-and-teardown-interactions">Setup and Teardown Interactions</a></h3>
+<p>Benchmarks within a group which share resources through <code>setup</code>/<code>teardown</code> or in
+themselves cause conflicts:</p>
+<ul>
+<li><strong>File system state</strong>: Benchmarks may interfere with each other’s files</li>
+<li><strong>Network ports</strong>: Multiple benchmarks trying to bind the same port</li>
+</ul>
+<p><strong>Example of a problematic scenario</strong>:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span>use std::path::PathBuf;
+use gungraun::prelude::*;
+
+const DIR: &amp;str = "/tmp/benchmark_temp";
+
+fn setup() -&gt; PathBuf {
+    std::fs::create_dir_all(DIR).unwrap();
+    PathBuf::from(DIR)
+}
+
+fn teardown(_: ()) {
+    std::fs::remove_dir_all(DIR).unwrap();
+}
+
+#[library_benchmark(setup = setup, teardown = teardown)]
+fn bench_a(path: PathBuf) {
+<span class="boring">let _ = path;
+</span>    /* ... */
+}
+
+#[library_benchmark(setup = setup, teardown = teardown)]
+fn bench_b(path: PathBuf) {
+<span class="boring">let _ = path;
+</span>    /* ... */
+}
+
+// If these run in parallel, they'll conflict on /tmp/benchmark_temp
+library_benchmark_group!(
+    name = my_group,
+    benchmarks = [bench_a, bench_b]
+);
+<span class="boring">fn main() { }</span></code></pre>
+<p><strong>Recommendation</strong>: Use unique identifiers for shared resources, or avoid
+parallel execution for such groups (See
+<a href="#limiting-parallelism-per-group">Limiting Parallelism Per Group</a>)</p>
+<h3 id="benchmarks-with-internal-threading"><a class="header" href="#benchmarks-with-internal-threading">Benchmarks with Internal Threading</a></h3>
+<p>Benchmarks that spawn their own threads present unique challenges when run with
+<code>--parallel</code> and it should be avoided.</p>
+<h4 id="how-valgrind-handles-threads"><a class="header" href="#how-valgrind-handles-threads">How Valgrind Handles Threads</a></h4>
+<p>Valgrind fully supports multi-threaded programs but serializes thread execution
+with locks. Even though your multi-threaded program uses the threading, Valgrind
+ensures only <strong>one kernel thread runs at a time</strong>. This means:</p>
+<ul>
+<li>Multi-threaded programs run on a <strong>single CPU core</strong> under Valgrind</li>
+<li>Thread scheduling is fundamentally different from native execution</li>
+<li>Your program sees “different scheduling” compared to normal runs</li>
+<li>The OS kernel still controls scheduling, but Valgrind serializes access</li>
+</ul>
+<p><strong>From the Valgrind documentation:</strong></p>
+<blockquote>
+<p>“Valgrind serializes execution so that only one (kernel) thread is running at
+a time. This approach avoids the horrible implementation problems of
+implementing a truly multithreaded version of Valgrind, but it does mean that
+threaded apps run only on one CPU, even if you have a multiprocessor or
+multi-core machine.”</p>
+</blockquote>
+<h4 id="the-problem-variadic-metrics"><a class="header" href="#the-problem-variadic-metrics">The Problem: Variadic Metrics</a></h4>
+<p>When you combine:</p>
+<ol>
+<li><strong>Gungraun’s parallel execution</strong> (<code>--parallel=N</code>)</li>
+<li><strong>Benchmark’s internal threading</strong> (spawns M threads)</li>
+<li><strong>Valgrind’s serialization</strong> (only 1 thread runs at a time)</li>
+</ol>
+<p>You can get <strong>highly variable, non-reproducible metrics</strong>.</p>
+<h4 id="example-scenario"><a class="header" href="#example-scenario">Example Scenario</a></h4>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">fn compute_intensively() {}
+</span>use gungraun::prelude::*;
+use std::thread;
+// Benchmark spawns 8 threads internally
+#[library_benchmark]
+fn threaded_work() {
+    let handles: Vec&lt;_&gt; = (0..8)
+        .map(|_| thread::spawn(|| {
+            compute_intensively();
+        }))
+        .collect();
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+}
+<span class="boring">fn main() {}</span></code></pre>
+<p>With <code>--parallel=4</code>:</p>
+<ul>
+<li>4 parallel benchmarks (Gungraun level)</li>
+<li>Each spawning 8 threads (benchmark level) serialized through Valgrind’s single
+execution context</li>
+<li><strong>Total: 32 concurrent threads</strong></li>
+<li><strong>Result: Variable metrics across runs</strong></li>
+</ul>
+<p><strong>Recommendation</strong>: Run threaded benchmarks serially</p>
+<h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
+<p>When running benchmarks in parallel, error handling follows a cooperative
+cancellation model:</p>
+<h3 id="what-triggers-shutdown"><a class="header" href="#what-triggers-shutdown">What Triggers Shutdown</a></h3>
+<p>The parallel execution is immediately terminated when:</p>
+<ul>
+<li><strong>A benchmark fails</strong>: Any error returned by a benchmark job triggers shutdown</li>
+<li><strong>Regression with <code>--regression-fail-fast</code></strong>: Performance regressions cause
+the shutdown sequence when this option is enabled</li>
+</ul>
+<h3 id="shutdown-sequence"><a class="header" href="#shutdown-sequence">Shutdown Sequence</a></h3>
+<p>When an error occurs:</p>
+<ol>
+<li><strong>SIGTERM sent</strong>: All running benchmark processes receive SIGTERM (graceful
+termination signal)</li>
+<li><strong>Grace period</strong>: Processes have about 5 seconds to terminate gracefully</li>
+<li><strong>SIGKILL sent</strong>: If processes don’t terminate after the grace period, they
+receive SIGKILL (forced termination)</li>
+<li><strong>Job draining</strong>: Queued jobs are skipped, but running jobs are allowed to
+finish their shutdown sequence</li>
+<li><strong>Temporary output files</strong> are copied to the benchmark directory. This
+ensures you can inspect partial results even when benchmarks fail and log
+files remain available for debugging</li>
+</ol>
+<h3 id="implications"><a class="header" href="#implications">Implications</a></h3>
+<ul>
+<li><strong>No partial results</strong>: When one benchmark fails, all other running benchmarks
+are terminated</li>
+<li><strong>Clean state</strong>: The shutdown sequence ensures processes don’t become orphaned</li>
+<li><strong>Debugging</strong>: Check the log files in the benchmark output directory to
+identify which benchmark failed</li>
+</ul>
+<h3 id="example-scenario-1"><a class="header" href="#example-scenario-1">Example Scenario</a></h3>
+<p>With <code>--parallel=8</code> running 8 benchmarks simultaneously:</p>
+<ol>
+<li>Benchmark #3 encounters an error</li>
+<li>Benchmarks #1, #2, #4-#8 receive SIGTERM</li>
+<li>All processes terminate gracefully (or are killed after grace period)</li>
+<li>Remaining queued benchmarks are skipped</li>
+<li>Error from benchmark #3 is reported</li>
+<li>Temporary files are copied for inspection</li>
+</ol>
+<h2 id="limiting-parallelism-per-group"><a class="header" href="#limiting-parallelism-per-group">Limiting Parallelism Per Group</a></h2>
+<p>Sometimes you may want to run most benchmarks in parallel but need to disable or
+limit parallelism for specific benchmarks. For example, when:</p>
+<ul>
+<li>A group contains benchmarks that conflict with each other (shared files,
+ports)</li>
+<li>A group has benchmarks with internal threading that produce variable results</li>
+<li>You want to isolate problematic benchmarks</li>
+</ul>
+<p>The <code>max_parallel</code> parameter in <code>library_benchmark_group!</code> and
+<code>binary_benchmark_group!</code> lets you control parallelism at the group level:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">use gungraun::prelude::*;
+</span><span class="boring">#[library_benchmark] fn bench_a() {}
+</span><span class="boring">#[library_benchmark] fn bench_b() {}
+</span><span class="boring">#[library_benchmark] fn bench_c() {}
+</span><span class="boring">#[library_benchmark] fn bench_limited_a() {}
+</span><span class="boring">#[library_benchmark] fn bench_limited_b() {}
+</span><span class="boring">#[library_benchmark] fn bench_serial_a() {}
+</span><span class="boring">#[library_benchmark] fn bench_serial_b() {}
+</span>// This group runs with full parallelism (up to --parallel value)
+library_benchmark_group!(
+    name = parallel_safe,
+    benchmarks = [bench_a, bench_b, bench_c]
+);
+
+// This group is limited to at most 2 parallel benchmarks
+library_benchmark_group!(
+    name = limited_parallel,
+    max_parallel = 2,
+    benchmarks = [bench_limited_a, bench_limited_b]
+);
+
+// This group runs serially (no parallelism)
+library_benchmark_group!(
+    name = needs_isolation,
+    max_parallel = 1,
+    benchmarks = [bench_serial_a, bench_serial_b]
+);
+<span class="boring">fn main() {}</span></code></pre>
+<h3 id="how-max_parallel-values-work"><a class="header" href="#how-max_parallel-values-work">How <code>max_parallel</code> Values Work</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Value</th><th>Behavior</th></tr>
+</thead>
+<tbody>
+<tr><td>Not specified</td><td>No limit (uses <code>--parallel</code> value)</td></tr>
+<tr><td><code>0</code></td><td>No limit (same as not specifying)</td></tr>
+<tr><td><code>1</code></td><td>Serial execution (one benchmark at a time)</td></tr>
+<tr><td><code>N</code> where N &gt;= 2</td><td>Limit to at most N parallel benchmarks</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="important-notes"><a class="header" href="#important-notes">Important Notes</a></h3>
+<ul>
+<li><strong>Only effective with parallel execution enabled</strong>: The <code>max_parallel</code>
+parameter has no effect unless parallel execution is enabled via <code>--parallel</code>
+or <code>GUNGRAUN_PARALLEL</code>. Benchmarks run serially by default.</li>
+<li><strong>Per-group setting</strong>: Each group can have its own <code>max_parallel</code> value,
+allowing fine-grained control.</li>
+<li><strong>Groups still run sequentially</strong>: Even with <code>max_parallel</code>, groups themselves
+still execute one after another. Only benchmarks <em>within</em> a group run in
+parallel (subject to the limit).</li>
+</ul>
+<h3 id="example-mixing-parallel-and-serial-groups"><a class="header" href="#example-mixing-parallel-and-serial-groups">Example: Mixing Parallel and Serial Groups</a></h3>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">#[library_benchmark] fn fast_bench_1() {}
+</span><span class="boring">#[library_benchmark] fn fast_bench_2() {}
+</span><span class="boring">#[library_benchmark] fn threaded_bench() {}
+</span><span class="boring">#[library_benchmark] fn io_bound_bench() {}
+</span>use gungraun::prelude::*;
+// These can run in parallel with each other
+library_benchmark_group!(
+    name = fast_benches,
+    benchmarks = [fast_bench_1, fast_bench_2]
+);
+
+// These benchmarks must run serially (spawns internal threads) and conflicts on
+// file resources
+library_benchmark_group!(
+    name = threaded_and_io_bound,
+    max_parallel = 1,
+    benchmarks = [threaded_bench, io_bound_bench]
+);
+
+<span class="boring">fn main() {
+</span>main!(library_benchmark_groups = [fast_benches, threaded_and_io_bound]);
+<span class="boring">}</span></code></pre>
+<p>Running with <code>--parallel=4</code>:</p>
+<ol>
+<li><code>fast_benches</code> runs with up to 4 parallel benchmarks</li>
+<li><code>threaded_and_io_bound</code> runs serially (waits for <code>fast_benches</code> to complete
+first)</li>
+</ol>
+<h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
+<h3 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h3>
+<ul>
+<li>
+<p>Create a baseline for the serial execution</p>
+<pre><code class="language-shell">GUNGRAUN_SAVE_BASELINE=serial cargo bench
+</code></pre>
+<p>then start experimenting and compare the benchmark runs with each other</p>
+<pre><code class="language-shell">GUNGRAUN_BASELINE=serial GUNGRAUN_PARALLEL=2 cargo bench
+</code></pre>
+</li>
+<li>
+<p>Start conservatively with <code>--parallel=2</code>, then <code>--parallel=4</code>, …</p>
+</li>
+</ul>
+<h3 id="isolate-problematic-benchmarks"><a class="header" href="#isolate-problematic-benchmarks">Isolate Problematic Benchmarks</a></h3>
+<p>If some benchmarks don’t work well in parallel, isolate them in their own group
+which <a href="#limiting-parallelism-per-group">limits parallelism</a>:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">#[library_benchmark] fn bench_a() {}
+</span><span class="boring">#[library_benchmark] fn bench_b() {}
+</span><span class="boring">#[library_benchmark] fn bench_c() {}
+</span><span class="boring">#[library_benchmark] fn problematic_bench() {}
+</span>use gungraun::prelude::*;
+// These can run in parallel
+library_benchmark_group!(
+    name = parallel_safe,
+    benchmarks = [bench_a, bench_b, bench_c]
+);
+
+// The benchmarks in this group run serially
+library_benchmark_group!(
+    name = needs_isolation,
+    max_parallel = 1,
+    benchmarks = [problematic_bench]
+);
+<span class="boring">fn main() {}</span></code></pre>
+<h4 id="consider-your-storage-or-ci-environment"><a class="header" href="#consider-your-storage-or-ci-environment">Consider Your Storage or CI Environment</a></h4>
+<ul>
+<li><strong>SSD</strong>: Can handle higher parallelism</li>
+<li><strong>HDD</strong>: Lower parallelism (2-4) due to seek times</li>
+<li><strong>Network storage</strong>: Very low parallelism or serial execution</li>
+</ul>
+<h3 id="when-to-avoid-parallel-execution"><a class="header" href="#when-to-avoid-parallel-execution">When to Avoid Parallel Execution</a></h3>
+<p>Avoid <code>--parallel</code> (or use <code>--parallel=1</code>) when:</p>
+<ul>
+<li>Benchmarks are heavily I/O-bound</li>
+<li>Benchmarks write to the same files or directories</li>
+<li>Benchmarks bind to the same network ports</li>
+<li>You need 100% deterministic, reproducible results for comparison</li>
+<li>You’re debugging a benchmark</li>
+<li>System resources are limited</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../cli_and_env/baselines.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../cli_and_env/valgrind_runner.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../cli_and_env/baselines.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../cli_and_env/valgrind_runner.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../js/dropdown-3c42ae60.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

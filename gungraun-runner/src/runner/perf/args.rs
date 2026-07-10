@@ -74,6 +74,11 @@ impl PerfArgs {
         )
     }
 
+    /// Ignored arguments common between perf stat and perf record
+    fn is_ignored_non_value_argument(arg: &str) -> bool {
+        matches!(arg, "-q" | "--quiet" | "-v" | "--verbose")
+    }
+
     /// Returns `true` when these arguments target `perf record`.
     pub fn is_record(&self) -> bool {
         matches!(self.tool, PerfTool::Record)
@@ -100,7 +105,7 @@ impl PerfArgs {
         let mut vec: Vec<OsString> = vec![self.tool.to_string().into()];
 
         vec.push(format!("--control={}", self.control).into());
-        vec.push(format!("--delay={}", &self.delay).into());
+        vec.push(format!("--delay={}", self.delay).into());
 
         vec.extend(self.events.iter().map(|e| format!("--event={e}").into()));
 
@@ -170,54 +175,57 @@ impl PerfArgs {
     {
         let mut args = args.peekable();
 
-        while let Some(current) = args.next() {
-            let arg = current.trim();
-            match arg.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
+        while let Some(arg) = args.next() {
+            let trimmed = arg.trim();
+            match trimmed.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
                 Some((flag, _)) if Self::is_ignored_event_argument(flag) => {
-                    warn!("Ignoring perf argument '{flag}': Setting events is managed by Gungraun");
+                    warn!("Ignoring perf argument '{arg}': Setting events is managed by Gungraun");
                 }
                 Some((flag, _)) if Self::is_ignored_outfile_argument(flag) => {
                     warn!(
-                        "Ignoring perf argument '{flag}': Output files of tools are managed by \
+                        "Ignoring perf argument '{arg}': Output files of tools are managed by \
                          Gungraun",
                     );
                 }
                 Some((flag, _)) if Self::is_ignored_value_argument(flag) => {
-                    warn!("Ignoring perf argument '{flag}'");
+                    warn!("Ignoring perf argument '{arg}'");
                 }
                 // value argument
                 Some((flag, _)) if flag.starts_with('-') => {
-                    self.other.push(arg.to_owned());
+                    self.other.push(trimmed.to_owned());
                 }
-                None if Self::is_ignored_event_argument(arg) => {
+                None if Self::is_ignored_event_argument(trimmed) => {
                     let _ = args.next();
                     warn!("Ignoring perf argument '{arg}': Setting events is managed by Gungraun");
                 }
-                None if Self::is_ignored_outfile_argument(arg) => {
+                None if Self::is_ignored_outfile_argument(trimmed) => {
                     let _ = args.next();
                     warn!(
                         "Ignoring perf argument '{arg}': Output files of tools are managed by \
                          Gungraun",
                     );
                 }
-                None if Self::is_ignored_value_argument(arg) => {
+                None if Self::is_ignored_value_argument(trimmed) => {
                     let _ = args.next();
                     warn!("Ignoring perf argument '{arg}'");
                 }
+                None if Self::is_ignored_non_value_argument(trimmed) => {
+                    warn!("Ignoring perf argument '{arg}'");
+                }
                 // value argument
-                None if arg.starts_with('-')
+                None if trimmed.starts_with('-')
                     && args.peek().is_some_and(|a| !a.starts_with('-')) =>
                 {
-                    self.other.push(arg.to_owned());
+                    self.other.push(trimmed.to_owned());
                     self.other.push(args.next().unwrap().to_owned());
                 }
                 // non-value argument
-                None if arg.starts_with('-') => {
-                    self.other.push(arg.to_owned());
+                None if trimmed.starts_with('-') => {
+                    self.other.push(trimmed.to_owned());
                 }
                 // positional
                 None | Some(_) => {
-                    warn!("Ignoring positional argument '{arg}'");
+                    warn!("Ignoring positional perf argument '{arg}'");
                 }
             }
         }
@@ -231,7 +239,7 @@ impl From<PerfRecordArgs> for PerfArgs {
         if value.exclude_perf {
             perf_args
                 .args_after_events
-                .push("--exclude_perf".to_owned());
+                .push("--exclude-perf".to_owned());
         }
         perf_args.args_after_events.extend(value.filter);
 
@@ -259,7 +267,18 @@ impl From<PerfStatArgs> for PerfArgs {
 
 impl PerfRecordArgs {
     fn is_ignored_value_argument(arg: &str) -> bool {
-        matches!(arg, "-u" | "--uid")
+        matches!(
+            arg,
+            "-u" | "--uid" | "--switch-max-files" | "--switch-output-event" | "--setup-filter"
+        )
+    }
+
+    fn is_ignored_non_value_argument(arg: &str) -> bool {
+        matches!(arg, "--dry-run")
+    }
+
+    fn is_ignored_argument(arg: &str) -> bool {
+        matches!(arg, "--switch-output" | "--threads")
     }
 }
 
@@ -282,16 +301,25 @@ impl ToolArgsLike for PerfRecordArgs {
         while let Some(arg) = args.next() {
             let trimmed = arg.trim();
             match trimmed.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
-                Some((flag, _)) if Self::is_ignored_value_argument(flag) => {
-                    warn!("Ignoring perf argument: '{flag}'");
+                Some((flag, _))
+                    if Self::is_ignored_argument(flag) || Self::is_ignored_value_argument(flag) =>
+                {
+                    warn!("Ignoring perf argument: '{arg}'");
                 }
-                // TODO: STOPPED HERE, and thinking about fp vs dwarf as default but possibly dwarf
-                // only for flamegraphs, otherwise no --call-graph or -g options, That's also where
-                // I stopped in man perf record sorting out perf record ignored arguments
                 Some(("--filter", _)) => {
                     self.filter.push(trimmed.to_owned());
                 }
+                None if Self::is_ignored_argument(trimmed) => {
+                    if args.peek().is_some_and(|a| !a.trim().starts_with('-')) {
+                        let _ = args.next();
+                    }
+                    warn!("Ignoring perf argument: '{arg}'");
+                }
                 None if Self::is_ignored_value_argument(trimmed) => {
+                    let _ = args.next();
+                    warn!("Ignoring perf argument: '{arg}'");
+                }
+                None if Self::is_ignored_non_value_argument(trimmed) => {
                     warn!("Ignoring perf argument: '{arg}'");
                 }
                 None if trimmed == "--exclude-perf" => self.exclude_perf = true,
@@ -303,7 +331,7 @@ impl ToolArgsLike for PerfRecordArgs {
                 }
                 // value argument
                 None if arg.starts_with('-')
-                    && args.peek().is_some_and(|a| !a.starts_with('-')) =>
+                    && args.peek().is_some_and(|a| !a.trim().starts_with('-')) =>
                 {
                     remainder.push(arg);
                     remainder.push(args.next().unwrap());
@@ -322,15 +350,7 @@ impl PerfStatArgs {
     fn is_ignored_non_value_argument(arg: &str) -> bool {
         matches!(
             arg,
-            "--append"
-                | "-B"
-                | "--big-num"
-                | "-v"
-                | "--verbose"
-                | "--interval-clear"
-                | "-T"
-                | "--transaction"
-                | "--quiet"
+            "--append" | "-B" | "--big-num" | "--interval-clear" | "-T" | "--transaction"
         )
     }
 
@@ -383,29 +403,29 @@ impl ToolArgsLike for PerfStatArgs {
         while let Some(arg) = args.next() {
             let trimmed = arg.trim();
             match trimmed.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
-                Some((flag, _)) if Self::is_ignored_repeat_argument(arg) => {
-                    warn!(
-                        "Ignoring perf argument '{flag}': Repetitions are managed by Gungraun \
-                         using sampling"
-                    );
-                }
-                Some((flag, _)) if Self::is_ignored_value_argument(flag) => {
-                    warn!("Ignoring perf argument '{flag}'");
-                }
-                None if Self::is_ignored_repeat_argument(arg) => {
+                Some((flag, _)) if Self::is_ignored_repeat_argument(flag) => {
                     warn!(
                         "Ignoring perf argument '{arg}': Repetitions are managed by Gungraun \
                          using sampling"
                     );
                 }
-                None if Self::is_ignored_value_argument(arg) => {
+                Some((flag, _)) if Self::is_ignored_value_argument(flag) => {
+                    warn!("Ignoring perf argument '{arg}'");
+                }
+                None if Self::is_ignored_repeat_argument(trimmed) => {
+                    warn!(
+                        "Ignoring perf argument '{arg}': Repetitions are managed by Gungraun \
+                         using sampling"
+                    );
+                }
+                None if Self::is_ignored_value_argument(trimmed) => {
                     let _ = args.next();
                     warn!("Ignoring perf argument '{arg}'");
                 }
-                None if Self::is_ignored_non_value_argument(arg) => {
+                None if Self::is_ignored_non_value_argument(trimmed) => {
                     warn!("Ignoring perf argument '{arg}'");
                 }
-                None if Self::is_ignored_subcommand(arg) => {
+                None if Self::is_ignored_subcommand(trimmed) => {
                     warn!(
                         "Ignoring perf argument: '{arg}' and all following arguments: Perf stat \
                          subcommands are not allowed"
@@ -466,6 +486,10 @@ mod tests {
 
     fn perf_stat_args(args: &[&str]) -> anyhow::Result<PerfStatArgs> {
         PerfStatArgs::try_from_raw_tool_args(Tool::Perf, &[&RawToolArgs::from_iter(args)])
+    }
+
+    fn perf_record_args(args: &[&str]) -> anyhow::Result<PerfRecordArgs> {
+        PerfRecordArgs::try_from_raw_tool_args(Tool::Perf, &[&RawToolArgs::from_iter(args)])
     }
 
     #[rstest]
@@ -537,5 +561,56 @@ mod tests {
         let args = perf_stat_args(&[input]).unwrap();
 
         assert_eq!(PerfStatArgs::default(), args);
+    }
+
+    #[rstest]
+    #[case::threads_equals(&["--threads=2"])]
+    #[case::threads_space(&["--threads", "2"])]
+    #[case::switch_output_equals(&["--switch-output=signal"])]
+    #[case::switch_output_space(&["--switch-output", "signal"])]
+    #[case::uid_equals(&["--uid=1000"])]
+    #[case::uid_space(&["--uid", "1000"])]
+    #[case::switch_max_files_equals(&["--switch-max-files=2"])]
+    #[case::switch_max_files_space(&["--switch-max-files", "2"])]
+    #[case::switch_output_event_equals(&["--switch-output-event=signal"])]
+    #[case::switch_output_event_space(&["--switch-output-event", "signal"])]
+    #[case::dry_run(&["--dry-run"])]
+    fn test_record_ignores_runner_managed_arguments(#[case] input: &[&str]) {
+        let args = perf_record_args(input).unwrap();
+
+        assert_eq!(PerfRecordArgs::default(), args);
+    }
+
+    #[test]
+    fn test_record_keeps_unknown_arguments_without_consuming_following_managed_arguments() {
+        let args = perf_record_args(&["--metric-only", "--output", "custom.data"]).unwrap();
+
+        assert_eq!(args.perf_args.other, &["--metric-only"][..]);
+        assert!(args.perf_args.output_path.is_none());
+    }
+
+    #[test]
+    fn test_record_serializes_exclude_perf_and_filters_after_events() {
+        let mut args = perf_record_args(&["--exclude-perf", "--filter", "pid == 1"]).unwrap();
+        args.perf_args.add_events("cycles");
+
+        let args = PerfArgs::from(args);
+        let actual = args
+            .to_vec()
+            .into_iter()
+            .map(|arg| arg.into_string().unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            actual,
+            vec![
+                "record".to_owned(),
+                format!("--control=fd:{PERF_CTL_FD_READ},{PERF_ACK_FD_WRITE}"),
+                "--delay=-1".to_owned(),
+                "--event=cycles".to_owned(),
+                "--exclude-perf".to_owned(),
+                "--filter=pid == 1".to_owned(),
+            ]
+        );
     }
 }

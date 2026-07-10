@@ -3071,7 +3071,6 @@ impl ToolSpec {
 
             match (&mut self.options, &other.options) {
                 (ToolSpecOptions::Perf(this), ToolSpecOptions::Perf(other)) => {
-                    // TODO: Decide whether to append or replace the events
                     this.events = update_option(&this.events, &other.events);
                     this.record = update_option(&this.record, &other.record);
                     this.record_args.update(&other.record_args);

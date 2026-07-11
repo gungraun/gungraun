@@ -217,8 +217,6 @@ impl ToolCommand {
             .args_rebase(executable_args)
     }
 
-    // TODO: Run perf once per event set, aggregate data in a single json, if possible use
-    // `perf stat --append` otherwise split like parts with p1, p2, pX modifier like callgrind does
     /// Run the `ToolCommand`
     pub fn run<'args, F>(
         mut self,
@@ -273,6 +271,7 @@ impl ToolCommand {
 
         let (mut perf_data, args, log_path) =
             if let ToolConfigOptions::Perf(options) = &config.options {
+                // FIXME: binary benchmarks shouldn't run calibration
                 if let Some(time) = match options.run_mode {
                     PerfRunMode::DefaultCalibrate => Some(DEFAULT_PERF_CALIBRATION_TIME),
                     PerfRunMode::Calibrate(time) => Some(time),

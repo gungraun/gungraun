@@ -1,4 +1,15 @@
-//! TODO: DOCS
+//! Macros and process-global control state for the `perf` feature.
+//!
+//! When the `perf` feature is enabled on Linux, the [`perf_enable!`], [`perf_disable!`] and
+//! [`perf_log!`] macros allow benchmarks to communicate with the runner's `perf` measurement
+//! infrastructure. The macros control a single process-global perf control channel and are not
+//! thread-safe.
+//!
+//! On non-Linux platforms or when the feature is disabled, the macros compile to no-ops.
+//!
+//! [`perf_enable!`]: crate::perf_enable
+//! [`perf_disable!`]: crate::perf_disable
+//! [`perf_log!`]: crate::perf_log
 
 #[cfg(all(target_os = "linux", feature = "perf"))]
 mod imp {

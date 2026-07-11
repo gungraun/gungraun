@@ -84,7 +84,7 @@ fn bench_perf_record(input: Vec<i32>) -> Vec<i32> {
             // .event_set("instructions,ocr.demand_data_rd.l3_hit.snoop_hit_with_fwd")
             .record(true)
             .record_args(["--verbose"])
-            .samples(Duration::from_secs(2))
+            .sample_duration(Duration::from_secs(2))
             .soft_limits([("*instructions*", 1.0), ("task-clock*", 10.0)])
             .hard_limits([("*instructions*", None, 500)])
         )

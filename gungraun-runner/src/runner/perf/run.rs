@@ -136,12 +136,16 @@ impl<'a> PerfCalibration<'a> {
 
         thread::sleep(self.time);
 
+        // FIXME: First try to terminate normally with SIGTERM and use SIGKILL only if nothing else
+        // worked.
         let _ = child.kill();
 
         let output = child
             .wait_with_output()
             .context("trying to wait for perf calibration to stop")?;
 
+        // FIXME: The ExitWith::Failure is too broad and "swallows" exit with code errors during
+        // calibration, Add a new ExitWith::Signal, ExitWith::Signals, ExitWith::Codes
         check_exit(
             self.config.tool(),
             self.executable,
@@ -196,7 +200,8 @@ impl From<File> for PerfLogFile {
     }
 }
 
-/// Measure the overhead of [`PerfRunMode::FixedBatch`] or [`PerfRunMode::DynamicBatch`]
+/// Measure the overhead of [`crate::api::PerfRunMode::FixedBatch`] or
+/// [`crate::api::PerfRunMode::DynamicBatch`]
 ///
 /// Batched perf runs measure more than the benchmark body itself. Although not much, each batch
 /// also pays for the surrounding control machinery: toggling measurement windows through the
@@ -205,8 +210,8 @@ impl From<File> for PerfLogFile {
 ///
 /// That cost is especially visible for short-running benchmarks, where the control overhead can be
 /// large compared to the code being measured. Gungraun therefore performs a matching overhead run
-/// and subtracts it later in the [`perf::json_parser`] from the real measurement instead of
-/// assuming that perf's coordination cost is negligible.
+/// and subtracts it later in the [`crate::runner::perf::json_parser`] from the real measurement
+/// instead of assuming that perf's coordination cost is negligible.
 ///
 /// The overhead run must use the same repetition count and the same tool-runner setup as the real
 /// run. Otherwise the measured adjustment would describe a different execution shape than the one

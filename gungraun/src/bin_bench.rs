@@ -512,7 +512,7 @@ impl Bench {
     /// Suppose your cargo's binary is named `my-echo` and you want to convert a file with inputs
     /// `benches/inputs` into commands and each line is the only argument for your `my-echo` binary:
     ///
-    /// // FIX: Use prelude where possible
+    /// // FIXME: Use prelude where possible
     /// ```rust
     /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
     /// use gungraun::{Bench, BinaryBenchmark, binary_benchmark_group};

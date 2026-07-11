@@ -1113,8 +1113,15 @@ pub struct CommandLineArgs {
     #[rustfmt::skip]
     /// Set perf regression limits
     ///
-    /// This is a comma-separated list of `pattern=limit` pairs. Patterns support wildcards. A
-    /// limit ending in `%` is a soft percentage limit. A bare number or a number with a perf unit
+    /// This is a comma-separated list of `pattern=limit` pairs. Patterns support wildcards:
+    ///
+    /// - the basic wildcard * (matches any sequence of characters),
+    /// - ? (matches a single character)
+    /// - escaping \ of special characters
+    /// - character classes [...]. Character classes can be negated [!...] and contain ranges
+    ///   [a-zA-Z].
+    ///
+    /// A limit ending in `%` is a soft percentage limit. A bare number or a number with a perf unit
     /// such as `ms`, `s`, `B`, or `Hz` is a hard limit. Combine soft and hard limits for one
     /// pattern with `|`.
     ///

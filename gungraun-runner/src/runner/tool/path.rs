@@ -1551,7 +1551,7 @@ impl<'a> PathSanitizer<'a> {
     /// * BBV: [`PathSanitizer::sanitize_bbv`]
     /// * perf: [`PathSanitizer::sanitize_perf`]
     /// * All other tools: [`PathSanitizer::sanitize`]
-    fn sanitize(&self) -> Result<()> {
+    pub fn sanitize(&self) -> Result<()> {
         match self.tool {
             Tool::Callgrind => self.sanitize_callgrind()?,
             Tool::BBV => self.sanitize_bbv()?,

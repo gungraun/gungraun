@@ -450,7 +450,7 @@ impl PerfStatRecords {
         }
     }
 
-    // FIX: Write units like msec back with the original unit name, not our name (in this case ms)
+    // FIXME: Write units like msec back with the original unit name, not our name (in this case ms)
     /// Write the records back to a JSON file, deduplicating by event name.
     pub fn write(&self, path: &Path) -> Result<()> {
         let mut file = File::options().write(true).truncate(true).open(path)?;

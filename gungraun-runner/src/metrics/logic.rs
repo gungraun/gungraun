@@ -1205,7 +1205,7 @@ impl PerfQualities {
     /// the individual inputs. `mean` is also discarded, because rescaling or recomputing it
     /// correctly would require unit context that is not available here.
     #[expect(clippy::cast_precision_loss)]
-    fn add(&self, other: &Self) -> Self {
+    pub fn add(&self, other: &Self) -> Self {
         let (event_runtime, pcnt_running) = match (
             (self.event_runtime, self.pcnt_running),
             (other.event_runtime, other.pcnt_running),

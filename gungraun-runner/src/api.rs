@@ -1037,6 +1037,7 @@ pub enum Limit {
     Float(f64),
 }
 
+// FIXME: REMOVE batched modes from public api
 /// Controls how a `perf` measurement is executed.
 ///
 /// The default is [`Self::Direct`], which is the normal mode and measures a single invocation with

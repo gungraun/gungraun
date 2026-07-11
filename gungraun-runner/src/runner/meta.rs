@@ -170,7 +170,7 @@ impl Cmd {
 
     /// Wrap this `Cmd` with another command.
     ///
-    /// This is a convenience wrapper for [`Cmd::wrap_by`] when the wrapper is already represented
+    /// This is a convenience wrapper for [`Cmd::wrap_with`] when the wrapper is already represented
     /// as a `Cmd`.
     fn wrap_with_other(self, other: Self) -> Self {
         self.wrap_with(other.bin, other.args)
@@ -178,7 +178,8 @@ impl Cmd {
 
     /// Wrap this `Cmd` in `<path> --cpu-list <p_core_list>`.
     ///
-    /// `path` should be the path to `taskset`. This is a convenience wrapper for [`Cmd::wrap_by`].
+    /// `path` should be the path to `taskset`. This is a convenience wrapper for
+    /// [`Cmd::wrap_with`].
     fn wrap_with_taskset(self, path: PathBuf, p_core_list: OsString) -> Self {
         self.wrap_with(path, vec![OsString::from("--cpu-list"), p_core_list])
     }

@@ -567,8 +567,8 @@ impl ToolConfigBuilder {
     }
 
     /// TODO: DOCS, refactor!
-    /// FIX: validate user input: Like `0.0 <= percent_running <= 100.0`
-    /// FIX: Validate `run_mode` calibration duration > ???
+    /// FIXME: validate user input: Like `0.0 <= percent_running <= 100.0`
+    /// FIXME: Validate `run_mode` calibration duration > ???
     pub fn new(
         tool: Tool,
         mut tool_spec: Option<ToolSpec>,
@@ -1052,6 +1052,8 @@ impl ToolConfigs {
                 .and_then(|()| process_handler.wait_or_shutdown(tool_config.timeout))?;
 
             if let ToolConfigOptions::Perf(options) = &tool_config.options {
+                // FIXME: Don't run batch modes for binary benchmarks. change those modes to direct
+                // in the tool config builder? Would solve the problem for calibrate, too
                 if matches!(
                     options.run_mode,
                     PerfRunMode::DynamicBatch | PerfRunMode::FixedBatch(_)

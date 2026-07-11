@@ -1039,9 +1039,9 @@ pub enum Limit {
 
 /// Controls how a `perf` measurement is executed.
 ///
-/// The default is [`Self::Raw`], which is the normal mode and measures a single invocation with no
-/// extra setup. Batch modes ([`Self::DynamicBatch`] and [`Self::FixedBatch`]) are experimental and
-/// wrap multiple invocations to amortize `perf` startup cost. They are an alternative to the
+/// The default is [`Self::Direct`], which is the normal mode and measures a single invocation with
+/// no extra setup. Batch modes ([`Self::DynamicBatch`] and [`Self::FixedBatch`]) are experimental
+/// and wrap multiple invocations to amortize `perf` startup cost. They are an alternative to the
 /// calibration modes. Calibration modes ([`Self::DefaultCalibrate`] and [`Self::Calibrate`]) run a
 /// separate overhead-measurement pass first, then subtract the best calibration run from the final
 /// result.
@@ -1112,7 +1112,7 @@ pub enum PerfRunMode {
     /// metrics.
     ///
     /// Whether calibration is worthwhile depends on the benchmark: if the overhead is small
-    /// relative to the main benchmark run, [`Self::Raw`] is usually sufficient.
+    /// relative to the main benchmark run, [`Self::Direct`] is usually sufficient.
     ///
     /// # Examples
     ///
@@ -1159,10 +1159,10 @@ pub enum PerfRunMode {
     /// # }
     /// use gungraun::PerfRunMode;
     ///
-    /// let mode = PerfRunMode::Raw;
+    /// let mode = PerfRunMode::Direct;
     /// ```
     #[default]
-    Raw,
+    Direct,
 }
 
 /// Configure the `Stream` which should be used as pipe in [`Stdin::Setup`]

@@ -2264,7 +2264,7 @@ impl Perf {
     ///
     /// The run mode controls how benchmark invocations are batched and calibrated inside the `perf`
     /// measurement. See [`PerfRunMode`] for a description of each mode. The default is
-    /// [`PerfRunMode::Raw`] which runs perf in normal mode without any special setup.
+    /// [`PerfRunMode::Direct`] which runs perf in normal mode without any special setup.
     ///
     /// # Examples
     ///

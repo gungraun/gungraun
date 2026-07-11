@@ -42,6 +42,7 @@ derive_more = { version = ">=0.99, <3", default-features = false }
 either-or-both = { version = "0.3" }
 env_logger = { version = ">=0.7, <0.12" }
 fs_extra = { version = "1.3" }
+fundu = { version = "2" }
 glob = { version = "0.3" }
 indexmap = { version = "2.2.3", features = ["serde"] }
 inferno = { version = "0.12", default-features = false, features = [

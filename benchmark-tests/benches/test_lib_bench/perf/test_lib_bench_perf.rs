@@ -45,7 +45,7 @@ use gungraun::{Callgrind, Perf, PerfRunMode, Tool};
     args = [],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .run_mode(PerfRunMode::Raw)
+        .run_mode(PerfRunMode::Direct)
         )
 )]
 fn bench_perf() -> Vec<i32> {

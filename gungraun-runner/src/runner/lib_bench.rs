@@ -795,7 +795,7 @@ mod tests {
                     .iter()
                     .map(ToString::to_string)
                     .collect(),
-                run_mode: PerfRunMode::Raw,
+                run_mode: PerfRunMode::Direct,
                 use_sampling: false,
                 percent_running: 100.0,
             }),

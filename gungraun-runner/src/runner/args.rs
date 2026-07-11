@@ -29,8 +29,11 @@ use std::process::{Command, Stdio};
 use std::str::FromStr;
 
 use anyhow::Result;
-use clap::builder::{BoolishValueParser, PathBufValueParser, TypedValueParser};
+use clap::builder::{
+    BoolishValueParser, NonEmptyStringValueParser, PathBufValueParser, TypedValueParser,
+};
 use clap::{ArgAction, CommandFactory, Parser};
+use fundu::{CustomTimeUnit, SaturatingInto, TimeUnit};
 use indexmap::{IndexMap, IndexSet, indexset};
 use simplematch::{DoWild, Options};
 use strum::IntoEnumIterator;
@@ -42,15 +45,23 @@ use super::format::{ListFormat, OutputFormatKind};
 use super::tool::regression::ToolRegressionConfig;
 use crate::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, ErrorMetric,
-    EventKind, RawToolArgs, Tool,
+    EventKind, Limit, PerfRunMode, RawToolArgs, Tool,
 };
 use crate::metrics::logic::TypeChecker;
 use crate::metrics::model::Metric;
 use crate::runner::common::CapturedOutput;
 use crate::summary::model::{BaselineName, SummaryFormat};
+use crate::units::Unit;
 use crate::util;
 
 const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
+
+const DEFAULT_TIME_UNITS: [CustomTimeUnit<'static>; 4] = [
+    CustomTimeUnit::with_default(TimeUnit::NanoSecond, &["ns", "nsec"]),
+    CustomTimeUnit::with_default(TimeUnit::MicroSecond, &["us", "usec"]),
+    CustomTimeUnit::with_default(TimeUnit::MilliSecond, &["ms", "msec"]),
+    CustomTimeUnit::with_default(TimeUnit::Second, &["s", "sec", "secs", "second", "seconds"]),
+];
 
 // Utility for complex types intended to be used during the parsing of the command-line arguments
 type Limits<T> = (IndexMap<T, f64>, IndexMap<T, Metric>);
@@ -90,8 +101,6 @@ pub enum TruncateDescription {
     None,
 }
 
-// TODO: Add cli args for perf, check current cli args like --tools, --default-tool if they support
-// perf, Update the documentation of the args which need it
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `gungraun-runner`. We collect
@@ -478,7 +487,7 @@ pub struct CommandLineArgs {
     /// The default tool used to run the benchmarks
     ///
     /// The standard tool to run the benchmarks is Callgrind but can be overridden with this
-    /// option. Any Valgrind tool can be used:
+    /// option. Any supported tool can be used:
     ///   * callgrind
     ///   * cachegrind
     ///   * dhat
@@ -487,6 +496,7 @@ pub struct CommandLineArgs {
     ///   * drd
     ///   * massif
     ///   * exp-bbv
+    ///   * perf
     ///
     /// This argument matches the tool case-insensitive. Note that using Cachegrind with this
     /// option to benchmark library functions needs adjustments to the benchmarking functions with
@@ -1041,6 +1051,154 @@ pub struct CommandLineArgs {
     pub parallel: usize,
 
     #[rustfmt::skip]
+    /// The command-line arguments to pass through to `perf stat`
+    ///
+    /// Gungraun controls output, event selection, and process execution. Not all perf arguments are
+    /// allowed and arguments that change those settings are ignored with a warning. Note that
+    /// `--perf-args` is used for the perf stat invocation. To pass arguments to the perf record
+    /// invocation use `--perf-record-args`.
+    ///
+    /// Examples:
+    ///   * --perf-args='--all-cpus'
+    #[arg(
+        display_order = 500,
+        env = "GUNGRAUN_PERF_ARGS",
+        long = "perf-args",
+        num_args = 1,
+        value_parser = parse_tool_args,
+        verbatim_doc_comment,
+    )]
+    pub perf_args: Option<RawToolArgs>,
+
+    #[rustfmt::skip]
+    /// Specify the path to the `perf` executable
+    ///
+    /// By default, Gungraun searches for `perf` in the system PATH. When used with `--tool-runner`,
+    /// the path of --perf-bin is passed to the runner as the perf binary to invoke.
+    ///
+    /// Examples:
+    ///   * --perf-bin=/usr/local/bin/perf
+    #[arg(
+        display_order = 100,
+        env = "GUNGRAUN_PERF_BIN",
+        long = "perf-bin",
+        num_args = 1,
+        verbatim_doc_comment,
+    )]
+    pub perf_bin: Option<PathBuf>,
+
+    #[rustfmt::skip]
+    /// Add an event set for `perf` (for the `-e`, `--event` perf argument)
+    ///
+    /// Each --perf-events occurrence creates a separate event set for the perf invocation. Each
+    /// event set is passed to perf with `-e`, `--event` as-is. So, comma-separated events within
+    /// one occurrence are measured together and you can use the same syntax as the perf stat/record
+    /// `-e` event selector.
+    ///
+    /// Examples:
+    ///   * --perf-events=instructions,cycles
+    ///   * --perf-events=instructions --perf-events=task-clock (creates two event sets)
+    ///   * --perf-events='{instructions,cycles},task-clock' (perf `--event` special syntax)
+    #[arg(
+        action = ArgAction::Append,
+        display_order = 500,
+        env = "GUNGRAUN_PERF_EVENTS",
+        long = "perf-events",
+        num_args = 1,
+        value_parser = NonEmptyStringValueParser::new(),
+        verbatim_doc_comment,
+    )]
+    pub perf_events: Vec<String>,
+
+    #[rustfmt::skip]
+    /// Set perf regression limits
+    ///
+    /// This is a comma-separated list of `pattern=limit` pairs. Patterns support wildcards. A
+    /// limit ending in `%` is a soft percentage limit. A bare number or a number with a perf unit
+    /// such as `ms`, `s`, `B`, or `Hz` is a hard limit. Combine soft and hard limits for one
+    /// pattern with `|`.
+    ///
+    /// Examples:
+    ///   * --perf-limits='*instructions*=5%'
+    ///   * --perf-limits='*instructions*=5%|1000000,task-clock*=40%|2.5ms'
+    #[arg(
+        display_order = 600,
+        env = "GUNGRAUN_PERF_LIMITS",
+        long = "perf-limits",
+        num_args = 1,
+        value_parser = parse_perf_limits,
+        verbatim_doc_comment,
+    )]
+    pub perf_limits: Option<ToolRegressionConfig>,
+
+    #[rustfmt::skip]
+    /// Run `perf record` in addition to the `perf stat` benchmark run
+    ///
+    /// This option does not enable running perf. Using this option without enabling perf (for
+    /// example with `--tools=perf` or in the benchmark within a `LibraryBenchmarkConfig` or
+    /// `BinaryBenchmarkConfig`) does nothing. Arguments to the perf record invocation can be passed
+    /// with `--perf-record-args`.
+    ///
+    /// Examples:
+    ///   * --perf-record
+    ///   * --perf-record=false
+    #[arg(
+        default_missing_value = "true",
+        display_order = 450,
+        env = "GUNGRAUN_PERF_RECORD",
+        long = "perf-record",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        verbatim_doc_comment,
+    )]
+    pub perf_record: Option<bool>,
+
+    #[rustfmt::skip]
+    /// The command-line arguments to pass to `perf record`
+    ///
+    /// If running perf record is enabled, these arguments are passed to the `perf record`
+    /// invocation. Note these arguments are independent of `perf-args` which are passed to `perf
+    /// stat`.
+    ///
+    /// Examples:
+    ///   * --perf-record-args=--all-cpus
+    ///   * --perf-record-args='--all-cpus --freq=400' (multiple args space separated in quotes)
+    #[arg(
+        display_order = 500,
+        env = "GUNGRAUN_PERF_RECORD_ARGS",
+        long = "perf-record-args",
+        num_args = 1,
+        value_parser = parse_tool_args,
+        verbatim_doc_comment,
+    )]
+    pub perf_record_args: Option<RawToolArgs>,
+
+    #[rustfmt::skip]
+    /// Select how perf runs the benchmark
+    ///
+    /// `direct` runs the benchmark once without calibration. `calibrate` samples the default
+    /// calibration duration, while `calibrate=<duration>` uses a duration such as `250ms` or `2s`.
+    ///
+    /// Supported duration units are nanoseconds (`ns`, `nsec`), microseconds (`us`, `usec`),
+    /// milliseconds (`ms`, `msec`), and seconds (`s`, `sec`, `secs`, `second`, `seconds`). A
+    /// missing unit defaults to seconds.
+    ///
+    /// Examples:
+    ///   * --perf-run-mode=direct
+    ///   * --perf-run-mode=calibrate
+    ///   * --perf-run-mode=calibrate=250ms
+    #[arg(
+        display_order = 500,
+        env = "GUNGRAUN_PERF_RUN_MODE",
+        long = "perf-run-mode",
+        num_args = 1,
+        value_parser = parse_perf_run_mode,
+        verbatim_doc_comment,
+    )]
+    pub perf_run_mode: Option<PerfRunMode>,
+
+    #[rustfmt::skip]
     /// Fail the entire benchmark run on the first performance regression
     ///
     /// When enabled, this option causes Gungraun to stop immediately when a performance regression
@@ -1364,13 +1522,14 @@ pub struct CommandLineArgs {
     #[rustfmt::skip]
     /// A comma separated list of tools to run additionally to Callgrind or another default tool
     ///
-    /// The tools specified here take precedence over the tools in the benchmarks. The Valgrind
+    /// The tools specified here take precedence over the tools in the benchmarks. The supported
     /// tools which are allowed here are the same as the ones listed in the documentation of
     /// --default-tool.
     ///
     /// Examples
     ///   * --tools dhat
     ///   * --tools memcheck,drd
+    ///   * --tools perf
     #[arg(
         display_order = 450,
         env = "GUNGRAUN_TOOLS",
@@ -1433,7 +1592,6 @@ pub struct CommandLineArgs {
     )]
     pub valgrind_args: Option<RawToolArgs>,
 
-    // TODO: Add perf_bin similar to this valgrind_bin
     #[rustfmt::skip]
     /// Specify the path to the Valgrind executable
     ///
@@ -1903,6 +2061,115 @@ fn parse_parallel(value: &str) -> Result<usize, String> {
     }
 }
 
+fn parse_perf_hard_limit_value(value: &str) -> Result<(Option<Unit>, Limit), String> {
+    let value = value.trim();
+    if let Ok(metric) = value.parse::<Metric>() {
+        return Ok((None, metric.into()));
+    }
+
+    for (index, b) in value.bytes().enumerate().rev() {
+        if b.is_ascii_digit() || b == b'.' {
+            let (number, unit) = value.split_at(index + 1);
+            if let Ok(metric) = number.trim().parse::<Metric>() {
+                return Ok((Some(Unit::parse(unit.trim())), metric.into()));
+            }
+
+            return Err(format!("Invalid perf hard limit '{value}'"));
+        }
+    }
+
+    Err(format!("Invalid perf hard limit '{value}'"))
+}
+
+fn parse_perf_limit(value: &str) -> Result<(&str, &str), String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("A perf limit must not be empty".to_owned());
+    }
+
+    let (pattern, limit) = value
+        .split_once('=')
+        .ok_or_else(|| format!("Invalid perf limit: expected pattern=limit, got '{value}'"))?;
+    let (pattern, limit) = (pattern.trim(), limit.trim());
+    if pattern.is_empty() || limit.is_empty() {
+        Err(format!("Invalid perf limit '{value}'"))
+    } else {
+        Ok((pattern, limit))
+    }
+}
+
+fn parse_perf_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("No perf limits found: At least one limit must be present".to_owned());
+    }
+
+    let mut soft_limits = Vec::new();
+    let mut hard_limits = Vec::new();
+    for item in value.split(',') {
+        let (pattern, limits) = parse_perf_limit(item)?;
+        for limit in limits.split('|') {
+            let limit = limit.trim();
+            if limit.is_empty() {
+                return Err(format!(
+                    "Invalid perf limit for '{pattern}': limit must not be empty"
+                ));
+            }
+
+            if let Some(percent) = limit.strip_suffix('%') {
+                let percent = percent
+                    .trim()
+                    .parse::<f64>()
+                    .map_err(|error| format!("Invalid perf soft limit for '{pattern}': {error}"))?;
+                soft_limits.push((pattern.to_owned(), percent));
+            } else {
+                let (unit, limit) = parse_perf_hard_limit_value(limit)?;
+                hard_limits.push((pattern.to_owned(), unit, limit));
+            }
+        }
+    }
+
+    let config: crate::runner::perf::regression::PerfRegressionConfig =
+        crate::api::PerfRegressionConfig {
+            hard_limits,
+            soft_limits,
+            ..Default::default()
+        }
+        .try_into()
+        .map_err(|error: String| error)?;
+    Ok(ToolRegressionConfig::Perf(config))
+}
+
+fn parse_perf_run_mode(value: &str) -> Result<PerfRunMode, String> {
+    let lower = value.to_ascii_lowercase();
+
+    match lower.as_str() {
+        "direct" => Ok(PerfRunMode::Direct),
+        "calibrate" => Ok(PerfRunMode::DefaultCalibrate),
+        lower => lower
+            .strip_prefix("calibrate=")
+            .ok_or_else(|| {
+                format!(
+                    "Invalid perf run mode '{value}': expected direct, calibrate, or \
+                     calibrate=<duration>"
+                )
+            })
+            .and_then(|duration| {
+                let parser = fundu::CustomDurationParser::builder()
+                    .disable_infinity()
+                    .default_unit(TimeUnit::Second)
+                    .time_units(&DEFAULT_TIME_UNITS)
+                    .build();
+
+                parser
+                    .parse(duration)
+                    .map(SaturatingInto::saturating_into)
+                    .map_err(|e| e.to_string())
+            })
+            .map(PerfRunMode::Calibrate),
+    }
+}
+
 fn parse_path_resolved(value: PathBuf) -> Result<PathBuf, String> {
     util::resolve_binary_path(value, None).map_err(|error| error.to_string())
 }
@@ -1975,13 +2242,15 @@ fn parse_truncate_description(value: &str) -> Result<TruncateDescription, String
 mod tests {
     use std::fs::Permissions;
     use std::os::unix::fs::PermissionsExt;
+    use std::time::Duration;
 
     use rstest::rstest;
     use tempfile::{NamedTempFile, tempdir};
 
     use super::*;
     use crate::api::EventKind::*;
-    use crate::api::RawToolArgs;
+    use crate::api::{PerfRunMode, RawToolArgs};
+    use crate::units::Unit;
 
     #[rstest]
     #[case::single_key_value("--some=yes", &["--some=yes"])]
@@ -2306,9 +2575,122 @@ mod tests {
     #[rstest]
     #[case::single("drd", &[Tool::DRD])]
     #[case::two("drd,callgrind", &[Tool::DRD, Tool::Callgrind])]
+    #[case::case_insensitive("DRD,CAcheGrind", &[Tool::DRD, Tool::Cachegrind])]
     fn test_tools_cli(#[case] tools: &str, #[case] expected: &[Tool]) {
         let actual = CommandLineArgs::parse_from([format!("--tools={tools}")]);
         assert_eq!(actual.tools, expected);
+    }
+
+    #[test]
+    fn test_perf_args_cli() {
+        let actual = CommandLineArgs::parse_from(["--perf-args='--all-user --no-big-num'"]);
+        assert_eq!(
+            actual.perf_args,
+            Some(RawToolArgs::new_ignore_flag([
+                "--all-user".to_owned(),
+                "--no-big-num".to_owned(),
+            ]))
+        );
+    }
+
+    #[rstest]
+    #[case::enabled("--perf-record", Some(true))]
+    #[case::disabled("--perf-record=false", Some(false))]
+    fn test_perf_record_cli(#[case] arg: &str, #[case] expected: Option<bool>) {
+        let actual = CommandLineArgs::parse_from([arg]);
+        assert_eq!(actual.perf_record, expected);
+    }
+
+    #[test]
+    fn test_perf_record_args_cli() {
+        let actual = CommandLineArgs::parse_from(["--perf-record-args='--all-cpus --freq=400'"]);
+        assert_eq!(
+            actual.perf_record_args,
+            Some(RawToolArgs::new_ignore_flag([
+                "--all-cpus".to_owned(),
+                "--freq=400".to_owned(),
+            ]))
+        );
+    }
+
+    #[test]
+    fn test_perf_events_cli_preserves_event_sets() {
+        let actual = CommandLineArgs::parse_from([
+            "--perf-events=instructions,cycles",
+            "--perf-events=task-clock",
+        ]);
+        assert_eq!(
+            actual.perf_events,
+            vec!["instructions,cycles".to_owned(), "task-clock".to_owned()]
+        );
+    }
+
+    #[rstest]
+    #[case::direct("direct", PerfRunMode::Direct)]
+    #[case::default_calibration("calibrate", PerfRunMode::DefaultCalibrate)]
+    #[case::timed_calibration(
+        "calibrate=250ms",
+        PerfRunMode::Calibrate(Duration::from_millis(250))
+    )]
+    #[case::default_seconds("calibrate=2", PerfRunMode::Calibrate(Duration::from_secs(2)))]
+    fn test_perf_run_mode_cli(#[case] value: &str, #[case] expected: PerfRunMode) {
+        let actual = CommandLineArgs::parse_from([format!("--perf-run-mode={value}")]);
+        assert_eq!(actual.perf_run_mode, Some(expected));
+    }
+
+    #[test]
+    fn test_perf_run_mode_cli_rejects_unsupported_duration_units() {
+        let error = CommandLineArgs::try_parse_from(["--perf-run-mode=calibrate=1m"])
+            .expect_err("minutes must not be accepted as calibration durations");
+        assert!(error.to_string().contains("Invalid time unit"));
+    }
+
+    #[test]
+    fn test_perf_limits_cli_smoke() {
+        let actual = CommandLineArgs::parse_from([
+            "--perf-limits=*instructions*=1.5%|1000,task-clock*=10%|2.5ms"
+        ]);
+
+        assert_eq!(
+            actual.perf_limits,
+            Some(ToolRegressionConfig::Perf(
+                crate::runner::perf::regression::PerfRegressionConfig {
+                    alpha: 0.05,
+                    fail_fast: false,
+                    hard_limits: vec![
+                        (
+                            crate::api::PerfMetric("*instructions*".to_owned()),
+                            None,
+                            1000.into(),
+                        ),
+                        (
+                            crate::api::PerfMetric("task-clock*".to_owned()),
+                            Some(Unit::Milliseconds),
+                            2.5.into(),
+                        ),
+                    ],
+                    soft_limits: vec![
+                        (crate::api::PerfMetric("*instructions*".to_owned()), 1.5),
+                        (crate::api::PerfMetric("task-clock*".to_owned()), 10.0),
+                    ],
+                }
+            ))
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_perf_bin_env() {
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::set_var("GUNGRAUN_PERF_BIN", "/opt/perf/bin/perf");
+        }
+        let actual = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(actual.perf_bin, Some(PathBuf::from("/opt/perf/bin/perf")));
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::remove_var("GUNGRAUN_PERF_BIN");
+        }
     }
 
     #[rstest]
@@ -3133,5 +3515,35 @@ mod tests {
             result,
             vec![(OsString::from(expected_key), OsString::from(expected_value))]
         );
+    }
+
+    #[rstest]
+    #[case::integer_joule("1J", Unit::Joules, 1)]
+    #[case::float_joule("1.0J", Unit::Joules, 1.0)]
+    #[case::point_joule("1.J", Unit::Joules, 1.0)]
+    #[case::exponent_joule("1.e3J", Unit::Joules, 1000.0)]
+    #[case::multiple_unit_chars("1ms", Unit::Milliseconds, 1)]
+    #[case::just_integer("1", None, 1)]
+    #[case::just_float("1.0", None, 1.0)]
+    #[case::float_with_exponent("1.0e1", None, 10.0)]
+    #[case::scientific_notation("1e-3Hz", Unit::Hertz, 0.001)]
+    #[case::unknown_unit("1what", Unit::Unknown("what".to_owned()), 1)]
+    fn test_parse_perf_hard_limit_value<L, U>(
+        #[case] input: &str,
+        #[case] expected_unit: U,
+        #[case] expected_limit: L,
+    ) where
+        L: Into<Limit>,
+        U: Into<Option<Unit>>,
+    {
+        let result = parse_perf_hard_limit_value(input).unwrap();
+        assert_eq!(result, (expected_unit.into(), expected_limit.into()));
+    }
+
+    #[rstest]
+    #[case::no_numeric_prefix("ms")]
+    #[case::invalid_numeric_prefix("1..ms")]
+    fn test_parse_perf_hard_limit_value_when_invalid_then_error(#[case] input: &str) {
+        parse_perf_hard_limit_value(input).unwrap_err();
     }
 }

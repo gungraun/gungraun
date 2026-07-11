@@ -206,7 +206,7 @@ impl ToolConfig {
     ///
     /// Also controls side effects: [`DefaultCalibrate`] and [`Calibrate(N)`] cause a calibration
     /// pass to run before the measurement (see [`ToolCommand::new`]), but the measured run itself
-    /// uses [`PerfOnce`] — a single invocation inside the perf fence. `Raw` skips calibration
+    /// uses [`PerfOnce`] — a single invocation inside the perf fence. `Direct` skips calibration
     /// entirely and also uses [`PerfOnce`].
     ///
     /// Returns [`BenchRunMode::Default`] for non-perf tools.
@@ -221,7 +221,7 @@ impl ToolConfig {
                 match perf_config.run_mode {
                     PerfRunMode::DynamicBatch => BenchRunMode::PerfDynamic,
                     PerfRunMode::FixedBatch(count) => BenchRunMode::PerfRepeat(count),
-                    PerfRunMode::Raw
+                    PerfRunMode::Direct
                     | PerfRunMode::DefaultCalibrate
                     | PerfRunMode::Calibrate(_) => BenchRunMode::PerfOnce,
                 }
@@ -269,13 +269,6 @@ impl ToolConfig {
     }
 }
 
-// TODO: Add events selection from cli for perf events, maybe --perf-events
-// TODO: Treat multiple perf specs as multiple parts? (Would be special to perf for now. There's no
-// reason to run callgrind or dhat twice and would complicate things!? Also, so that all tool
-// configs can use this pattern the part prefix `p` needs to be changed to something like `r` or `s`
-// and different from the callgrind part prefix `p`. That would have further implications down the
-// line because that would be an additional header field and ## pid: xxx, part: xx in the terminal
-// output wouldn't work either, ...)
 impl ToolConfigBuilder {
     /// TODO: DOCS
     pub fn build(self) -> Result<Vec<ToolConfig>> {
@@ -340,7 +333,7 @@ impl ToolConfigBuilder {
                     }
 
                     ToolConfigOptions::Perf(PerfConfig {
-                        run_mode: PerfRunMode::Raw,
+                        run_mode: PerfRunMode::Direct,
                         use_sampling: false,
                         ..perf_config.clone()
                     })
@@ -411,7 +404,7 @@ impl ToolConfigBuilder {
 
                 if let Some(mut record_config) = record_config.clone() {
                     if let ToolConfigOptions::Perf(perf_config) = &mut option {
-                        perf_config.run_mode = PerfRunMode::Raw;
+                        perf_config.run_mode = PerfRunMode::Direct;
 
                         if perf_config.use_sampling {
                             record_config.timeout = None;
@@ -534,21 +527,51 @@ impl ToolConfigBuilder {
             Tool::DRD => &meta.args.drd_args,
             Tool::Massif => &meta.args.massif_args,
             Tool::BBV => &meta.args.bbv_args,
-            Tool::Perf => {
-                // TODO: implement
-                &None
-            }
+            Tool::Perf => &meta.args.perf_args,
         };
 
         if let Some(args) = raw_tool_args {
-            self.raw_tool_args.update_ignore_flag(args);
+            match self.tool {
+                Tool::Perf => self.raw_tool_args.update(args),
+                _ => self.raw_tool_args.update_ignore_flag(args),
+            }
         }
     }
 
-    /// TODO: DOCS, refactor! validate user input: Like `0.0 <= percent_running <= 100.0`
+    fn apply_meta_perf_options(tool: Tool, tool_spec: &mut Option<ToolSpec>, meta: &Metadata) {
+        if tool != Tool::Perf
+            || (meta.args.perf_events.is_empty()
+                && meta.args.perf_record.is_none()
+                && meta.args.perf_record_args.is_none()
+                && meta.args.perf_run_mode.is_none())
+        {
+            return;
+        }
+
+        let tool_spec = tool_spec.get_or_insert_with(|| ToolSpec::new(Tool::Perf));
+
+        if let api::ToolSpecOptions::Perf(perf_spec) = &mut tool_spec.options {
+            if !meta.args.perf_events.is_empty() {
+                perf_spec.events = Some(meta.args.perf_events.clone());
+            }
+            if let Some(run_mode) = meta.args.perf_run_mode {
+                perf_spec.run_mode = Some(run_mode);
+            }
+            if let Some(record) = meta.args.perf_record {
+                perf_spec.record = Some(record);
+            }
+            if let Some(record_args) = &meta.args.perf_record_args {
+                perf_spec.record_args = record_args.clone();
+            }
+        }
+    }
+
+    /// TODO: DOCS, refactor!
+    /// FIX: validate user input: Like `0.0 <= percent_running <= 100.0`
+    /// FIX: Validate `run_mode` calibration duration > ???
     pub fn new(
         tool: Tool,
-        tool_spec: Option<ToolSpec>,
+        mut tool_spec: Option<ToolSpec>,
         is_default: bool,
         default_args: &HashMap<Tool, RawToolArgs>,
         module_path: &ModulePath,
@@ -557,6 +580,8 @@ impl ToolConfigBuilder {
         valgrind_args: &RawToolArgs,
         default_entry_point: &EntryPoint,
     ) -> Result<Self> {
+        Self::apply_meta_perf_options(tool, &mut tool_spec, meta);
+
         let (is_enabled, options, record, record_args, timeout) = if let Some(tool_spec) =
             tool_spec.as_ref()
         {
@@ -705,11 +730,11 @@ impl ToolConfigBuilder {
     }
 
     fn regression_config(&mut self, meta: &Metadata) -> Result<()> {
-        // TODO: Add perf
         let meta_limits = match self.tool {
             Tool::Callgrind => meta.args.callgrind_limits.clone(),
             Tool::Cachegrind => meta.args.cachegrind_limits.clone(),
             Tool::DHAT => meta.args.dhat_limits.clone(),
+            Tool::Perf => meta.args.perf_limits.clone(),
             _ => None,
         };
 

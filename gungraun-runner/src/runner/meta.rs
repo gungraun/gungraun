@@ -552,7 +552,7 @@ fn detect_perf_exec_mode_for(
     sys_devices: &Path,
     target: CoreTopologyTarget,
 ) -> Result<PerfExecMode> {
-    let perf_path = resolve_tool_bin("perf", None);
+    let perf_path = resolve_tool_bin("perf", args.perf_bin.as_ref());
 
     debug!("Detected perf path: '{}'", perf_path.display());
 
@@ -858,6 +858,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_detect_perf_exec_mode_in_with_taskset_and_aslr() {
         let temp_dir = tempfile::tempdir().unwrap();
         let sys_devices = temp_dir.path().join("sys/devices");
@@ -905,6 +906,27 @@ mod tests {
             }
             other => panic!("expected DisabledASLR perf exec mode, got {other:?}"),
         }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_detect_perf_exec_mode_uses_configured_perf_bin() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let perf_bin = temp_dir.path().join("perf");
+        let sys_devices = temp_dir.path().join("sys/devices");
+
+        let cmd = detect_perf_exec_mode_for(
+            &CommandLineArgs::parse_validated_from([
+                "gungraun-runner",
+                &format!("--perf-bin={}", perf_bin.display()),
+            ]),
+            None,
+            &sys_devices,
+            CoreTopologyTarget::None,
+        )
+        .unwrap();
+
+        assert!(matches!(cmd, PerfExecMode::Perf(cmd) if cmd.bin == perf_bin));
     }
 
     #[rstest]

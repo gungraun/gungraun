@@ -53,6 +53,8 @@ and this project adheres to
   `GUNGRAUN_TR_WORKSPACE_ROOT` environment variables for tool runners
 - Improved multi-line split logic in terminal output
 - Print empty line between metrics and possible regressions
+- Added new variants `ExitWith::Signal(i32)`, `ExitWith::Signals(Vec<i32>)`
+- ExitWith is not Copy anymore
 
 ## [0.19.4] - 2026-07-10
 

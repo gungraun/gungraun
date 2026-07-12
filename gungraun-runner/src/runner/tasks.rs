@@ -14,6 +14,7 @@ use std::{iter, thread};
 
 use anyhow::{Context, Result, anyhow};
 use crossbeam::deque::{Injector, Steal, Stealer, Worker};
+use derive_more::Deref;
 use log::debug;
 use nix::sys::signal;
 use nix::unistd::Pid;
@@ -35,8 +36,8 @@ type JobId = usize;
 type TaskHandle = JoinHandle<Result<()>>;
 
 /// The wrapper for a [`std::process::Child`] of the setup/teardown or benchmark process
-#[derive(Debug)]
-struct ProcessChild(Child);
+#[derive(Debug, Deref)]
+pub struct ProcessChild(pub Child);
 
 /// This struct is used to start and terminate processes related to the execution of a benchmark
 ///
@@ -202,7 +203,31 @@ struct ThreadPoolState {
 }
 
 impl ProcessChild {
-    fn wait(
+    /// Waits for the child process to exit while polling [`std::process::Child::try_wait`].
+    ///
+    /// The method consumes the wrapped [`std::process::Child`] and repeatedly polls it until the
+    /// process exits. It sleeps for `poll_interval` between polls and, when `timeout` is set,
+    /// sends SIGTERM after the timeout elapses. If `force_shutdown` becomes set, it also sends
+    /// SIGTERM and returns [`Error::TaskInterrupt`] once the process stops.
+    ///
+    /// Shutdown follows a three-state machine: `Running` polls the child, `Term` waits up to
+    /// 100 poll cycles after SIGTERM, and `Kill` sends SIGKILL via [`std::process::Child::kill`]
+    /// if the process still has not exited.
+    ///
+    /// # Returns
+    ///
+    /// Returns the child's [`Output`] on normal exit.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Waiting with [`std::process::Child::try_wait`] fails
+    /// - Signal delivery fails
+    /// - [`std::process::Child::kill`] fails
+    /// - The process is interrupted by `force_shutdown` ([`Error::TaskInterrupt`])
+    ///
+    /// [`Error::TaskInterrupt`]: crate::error::Error::TaskInterrupt
+    pub fn wait(
         self,
         force_shutdown: &Arc<AtomicBool>,
         poll_interval: Duration,

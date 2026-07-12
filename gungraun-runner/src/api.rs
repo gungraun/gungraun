@@ -994,15 +994,19 @@ pub enum EventKind {
 /// );
 /// # }
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExitWith {
     /// Exit with success is similar to `ExitCode(0)`
     Success,
     /// Exit with failure is similar to setting the `ExitCode` to something different from `0`
     /// without having to rely on a specific exit code
     Failure,
-    /// The exact `ExitCode` of the benchmark run
+    /// The exact exit code the benchmark run is expected to exit with
     Code(i32),
+    /// The exact signal code the benchmark run is expected to exit with
+    Signal(i32),
+    /// One of these signal codes, the benchmark run is expected to exit with
+    Signals(Vec<i32>),
 }
 
 /// The kind of `Flamegraph` which is going to be constructed

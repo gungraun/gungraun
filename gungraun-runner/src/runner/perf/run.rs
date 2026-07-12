@@ -8,6 +8,8 @@ use std::os::fd::{AsRawFd, OwnedFd};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::thread;
 use std::time::Duration;
 
@@ -24,6 +26,7 @@ use crate::api::{
 use crate::error::Error;
 use crate::runner::meta::Metadata;
 use crate::runner::perf::logfile_parser::parse_perf_log;
+use crate::runner::tasks::ProcessChild;
 use crate::runner::tool::config::ToolConfig;
 use crate::runner::tool::path::ToolOutputPath;
 use crate::runner::tool::run::{RunOptions, ToolCommand, check_exit};
@@ -126,9 +129,13 @@ impl<'a> PerfCalibration<'a> {
         tool_command.command.stdout(Stdio::null());
         tool_command.command.stderr(perf_data.log_file.try_clone()?);
 
-        let mut child = tool_command.command.spawn().map_err(|error| {
-            Error::LaunchError(PathBuf::from(self.config.tool().id()), error.to_string())
-        })?;
+        let child = tool_command
+            .command
+            .spawn()
+            .map_err(|error| {
+                Error::LaunchError(PathBuf::from(self.config.tool().id()), error.to_string())
+            })
+            .map(ProcessChild)?;
 
         perf_data
             .log_file
@@ -136,23 +143,20 @@ impl<'a> PerfCalibration<'a> {
 
         thread::sleep(self.time);
 
-        // FIXME: First try to terminate normally with SIGTERM and use SIGKILL only if nothing else
-        // worked.
-        let _ = child.kill();
+        let output = child.wait(
+            &Arc::new(AtomicBool::new(false)),
+            Duration::from_millis(10),
+            Some(Duration::ZERO),
+        )?;
 
-        let output = child
-            .wait_with_output()
-            .context("trying to wait for perf calibration to stop")?;
-
-        // FIXME: The ExitWith::Failure is too broad and "swallows" exit with code errors during
-        // calibration, Add a new ExitWith::Signal, ExitWith::Signals, ExitWith::Codes
         check_exit(
             self.config.tool(),
             self.executable,
             output,
             &cal_output_path.to_log_output(),
-            Some(&ExitWith::Failure),
+            Some(&ExitWith::Signals(vec![9, 15])),
         )
+        .with_context(|| "Failed calibration run")
         .map(|_| ())
     }
 }

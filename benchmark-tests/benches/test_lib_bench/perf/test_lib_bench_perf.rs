@@ -79,16 +79,17 @@ fn bench_perf_record(input: Vec<i32>) -> Vec<i32> {
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             // .alpha(0.001)
-            .run_mode(PerfRunMode::Calibrate(Duration::from_secs(1)))
+            // .run_mode(PerfRunMode::Calibrate(Duration::from_secs(1)))
             // .event_set("faults,instructions:u,cycles:u,task-clock,cpu-clock,context-switches,branch-misses,cache-misses")
             // .event_set("instructions,ocr.demand_data_rd.l3_hit.snoop_hit_with_fwd")
-            .record(true)
-            .record_args(["--verbose"])
+            // .record(true)
+            // .record_args(["--verbose"])
+            // .args(["--per-socket"])
             .sample_duration(Duration::from_secs(2))
-            .soft_limits([("*instructions*", 1.0), ("task-clock*", 10.0)])
-            .hard_limits([("*instructions*", None, 500)])
-        )
-        .tool(Callgrind::default().args(["branch-sim=yes"])),
+            // .soft_limits([("*instructions*", 1.0), ("task-clock*", 10.0)])
+            // .hard_limits([("*instructions*", None, 500)])
+        ),
+        // .tool(Callgrind::default().args(["branch-sim=yes"])),
     setup = setup_worst_case_array
 )]
 fn bench_perf_samples(input: Vec<i32>) -> Vec<i32> {

@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output};
 
@@ -243,12 +244,12 @@ impl ToolCommand {
             ..
         } = run_options;
 
-        // If preset, the timeout is expected to happen. S, the program/perf exits with a failure
-        // code since we interrupt perf with SIGTERM or SIGKILL.
-        let exit_with = if config.timeout.is_some() {
-            Some(ExitWith::Failure)
-        } else {
-            *exit_with
+        // If set, the timeout is expected to happen and the program/perf exits with a signal code
+        // since we interrupt perf with SIGTERM or SIGKILL. We do not override a user-specified exit
+        // status expectation, but in all other cases we set the expected exit signals.
+        let exit_with = match exit_with {
+            None if config.timeout.is_some() => Some(ExitWith::Signals(vec![9, 15])),
+            _ => exit_with.clone(),
         };
 
         match (sandbox_dir, current_dir.as_ref()) {
@@ -476,12 +477,76 @@ pub fn check_exit(
     exit_with: Option<&ExitWith>,
 ) -> Result<Output> {
     let Some(status_code) = output.status.code() else {
-        // death by signal
-        if exit_with.is_some_and(|e| *e == ExitWith::Failure) {
-            return Ok(output);
+        match (output.status.signal(), exit_with) {
+            (None, _) => {
+                error!(
+                    "{}: Expected '{}' to exit in a reproducible way but neither signal nor exit \
+                     code were set",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(signal), None | Some(ExitWith::Success)) => {
+                error!(
+                    "{}: Expected '{}' to exit with success but exited with signal '{signal}'",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(_), Some(ExitWith::Failure)) => {
+                return Ok(output);
+            }
+            (Some(signal), Some(ExitWith::Signal(expected_signal)))
+                if signal == *expected_signal =>
+            {
+                return Ok(output);
+            }
+            (Some(signal), Some(ExitWith::Signals(expected_signals)))
+                if expected_signals.contains(&signal) =>
+            {
+                return Ok(output);
+            }
+            (Some(signal), Some(ExitWith::Signal(expected_signal))) => {
+                error!(
+                    "{}: Expected '{}' to exit with signal '{expected_signal}' but exited with \
+                     signal '{signal}'",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(signal), Some(ExitWith::Signals(expected_signals))) => {
+                error!(
+                    "{}: Expected '{}' to exit with one of these signals '{}' but exited with \
+                     signal '{signal}'",
+                    tool.id(),
+                    executable.display(),
+                    expected_signals.iter().map(ToString::to_string).join(", ")
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(signal), Some(ExitWith::Code(code))) => {
+                error!(
+                    "{}: Expected '{}' to exit with code '{code}' but exited with signal \
+                     '{signal}'",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
         }
-
-        return Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into());
     };
 
     match (status_code, exit_with) {

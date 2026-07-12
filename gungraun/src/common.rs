@@ -2576,7 +2576,7 @@ impl Perf {
     /// ```
     pub fn sample_duration(&mut self, duration: Duration) -> &mut Self {
         let spec = self.perf_spec_mut();
-        spec.samples = Some(duration);
+        spec.sample_duration = Some(duration);
         self
     }
 

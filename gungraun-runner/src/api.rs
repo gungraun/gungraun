@@ -1675,7 +1675,7 @@ pub struct PerfSpec {
     /// The timeout used for sampled perf runs.
     ///
     /// Setting this enables sampling mode for `perf stat`.
-    pub samples: Option<Duration>,
+    pub sample_duration: Option<Duration>,
 }
 
 /// The raw arguments to pass to a valgrind tool
@@ -3048,7 +3048,8 @@ impl ToolSpec {
                     this.record = update_option(&this.record, &other.record);
                     this.record_args.update(&other.record_args);
                     this.run_mode = update_option(&this.run_mode, &other.run_mode);
-                    this.samples = update_option(&this.samples, &other.samples);
+                    this.sample_duration =
+                        update_option(&this.sample_duration, &other.sample_duration);
                     this.min_pcnt_running =
                         update_option(&this.min_pcnt_running, &other.min_pcnt_running);
                 }

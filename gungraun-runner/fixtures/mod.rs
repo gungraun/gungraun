@@ -492,7 +492,7 @@ pub fn tool_spec_f(
             non_zero_metrics: None,
             record_args: RawToolArgs::default(),
             run_mode: None,
-            samples: None,
+            sample_duration: None,
             min_pcnt_running: None,
         }),
         Tool::DHAT => ToolSpecOptions::Dhat(DhatSpec { frames: None }),

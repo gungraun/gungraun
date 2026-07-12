@@ -601,7 +601,7 @@ impl ToolConfigBuilder {
                                 events: DEFAULT_PERF_EVENTS.into(),
                                 non_zero_metrics: non_zero_metrics.clone(),
                                 run_mode,
-                                use_sampling: perf_spec.samples.is_some(),
+                                use_sampling: perf_spec.sample_duration.is_some(),
                                 min_pcnt_running,
                             })]
                         },
@@ -614,7 +614,7 @@ impl ToolConfigBuilder {
                                         events: e.clone(),
                                         non_zero_metrics: non_zero_metrics.clone(),
                                         run_mode,
-                                        use_sampling: perf_spec.samples.is_some(),
+                                        use_sampling: perf_spec.sample_duration.is_some(),
                                         min_pcnt_running,
                                     })
                                 })
@@ -623,11 +623,10 @@ impl ToolConfigBuilder {
                     );
 
                     (
-                        // TODO: Warn if any PerfRunMode counts are zero (that shouldn't be 0)
                         options,
                         perf_spec.record.unwrap_or_default(),
                         perf_spec.record_args.clone(),
-                        perf_spec.samples,
+                        validate_perf_sample_duration(perf_spec.sample_duration)?,
                     )
                 }
                 api::ToolSpecOptions::Dhat(dhat_spec) => (
@@ -1186,7 +1185,7 @@ fn resolve_perf_non_zero_metrics(non_zero_metrics: Option<&[String]>) -> Vec<Str
 ///
 /// If neither `run_mode` and `run_mode_override` are present, use the default `run_mode`.
 ///
-/// # Error
+/// # Errors
 ///
 /// Returns an error if the [`PerfRunMode::Calibrate`] duration is zero
 fn resolve_perf_run_mode(
@@ -1201,6 +1200,21 @@ fn resolve_perf_run_mode(
     }
 
     Ok(run_mode)
+}
+
+/// Validate that [`crate::api::PerfSpec::sample_duration`] is nonzero
+///
+/// # Errors
+///
+/// Returns an error if the `sample_duration` is zero
+fn validate_perf_sample_duration(sample_duration: Option<Duration>) -> Result<Option<Duration>> {
+    if let Some(sample_duration) = sample_duration {
+        if sample_duration.is_zero() {
+            return Err(anyhow!("perf sample duration was zero"));
+        }
+    }
+
+    Ok(sample_duration)
 }
 
 #[cfg(test)]

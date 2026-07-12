@@ -140,7 +140,7 @@ pub fn parser_factory(
         }
         ToolConfigOptions::Perf(perf_config) => Box::new(perf::json_parser::JsonParser {
             output_path: output_path.clone(),
-            percent_running: perf_config.percent_running,
+            min_pcnt_running: perf_config.min_pcnt_running,
             non_zero_metrics: perf_config.non_zero_metrics.clone(),
         }),
         _ => Box::new(GenericLogfileParser {

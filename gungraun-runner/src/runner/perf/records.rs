@@ -43,7 +43,7 @@ impl MetricsParser {
     fn parse(
         mut self,
         records: &[PerfStatRecord],
-        percent_running: f64,
+        min_pcnt_running: f64,
         adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
         non_zero_metrics: &[String],
     ) -> (Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>, bool) {
@@ -60,7 +60,7 @@ impl MetricsParser {
             ) {
                 (_, _, _, _, pcnt_running, _, _, _)
                     if pcnt_running.is_some_and(|p| {
-                        p < percent_running && !abs_diff_eq!(p, percent_running, epsilon = 1e-9)
+                        p < min_pcnt_running && !abs_diff_eq!(p, min_pcnt_running, epsilon = 1e-9)
                     }) => {}
                 // This is the old/base run (which has our `n` and `mean` stored with the original
                 // perf data)
@@ -479,11 +479,11 @@ impl PerfStatRecords {
     /// measurement batch is discarded. Patterns use `simplematch` glob syntax.
     pub fn to_metrics(
         &self,
-        percent_running: f64,
+        min_pcnt_running: f64,
         adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
         non_zero_metrics: &[String],
     ) -> (Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>, bool) {
-        MetricsParser::new().parse(&self.0, percent_running, adjustment, non_zero_metrics)
+        MetricsParser::new().parse(&self.0, min_pcnt_running, adjustment, non_zero_metrics)
     }
 }
 
@@ -521,7 +521,7 @@ mod tests {
 
     use super::*;
     use crate::fixtures::perf::{perf_stat_record_f, perf_stat_records_f};
-    use crate::runner::tool::config::DEFAULT_PERF_PERCENT_RUNNING;
+    use crate::runner::tool::config::DEFAULT_PERF_MIN_PCNT_RUNNING;
 
     #[rstest]
     #[case::integer_without_decimal("1000", Some((1000, 1000.0)))]
@@ -675,7 +675,7 @@ mod tests {
             AnnotatedMetric::with_default_qualities(1, None),
         )]);
 
-        let (actual, has_duplicates) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, has_duplicates) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(!has_duplicates);
         assert_eq!(actual, expected);
@@ -701,7 +701,8 @@ mod tests {
             ),
         ]);
 
-        let (metrics, has_duplicates) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (metrics, has_duplicates) =
+            records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(!has_duplicates);
         assert_eq!(metrics, expected);
@@ -736,7 +737,7 @@ mod tests {
             .fixture();
 
         let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_PERCENT_RUNNING,
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
             None,
             &["*instructions*".to_owned()],
         );
@@ -751,7 +752,7 @@ mod tests {
             .fixture();
 
         let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_PERCENT_RUNNING,
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
             None,
             &["task-clock*".to_owned()],
         );
@@ -773,7 +774,7 @@ mod tests {
             .fixture();
 
         let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_PERCENT_RUNNING,
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
             None,
             &["*instructions*".to_owned()],
         );
@@ -796,7 +797,7 @@ mod tests {
         )]);
 
         let (metrics, has_duplicates) = records.to_metrics(
-            DEFAULT_PERF_PERCENT_RUNNING,
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
             None,
             &["*instructions*".to_owned()],
         );
@@ -815,7 +816,7 @@ mod tests {
             .fixture();
 
         let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_PERCENT_RUNNING,
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
             None,
             &["*instructions*".to_owned()],
         );
@@ -839,7 +840,7 @@ mod tests {
         )]);
 
         let (actual, _) = records.to_metrics(
-            DEFAULT_PERF_PERCENT_RUNNING,
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
             None,
             &["*instructions*".to_owned()],
         );
@@ -856,7 +857,7 @@ mod tests {
                 .fixture()])
             .fixture();
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(actual.is_empty());
     }
@@ -870,7 +871,7 @@ mod tests {
                 .fixture()])
             .fixture();
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(actual.is_empty());
     }
@@ -900,7 +901,7 @@ mod tests {
     ) {
         let records = perf_stat_records_f().records([record]).fixture();
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(actual.is_empty());
     }
@@ -921,7 +922,7 @@ mod tests {
             AnnotatedMetric::new(1, PerfQualities::new(None, None, 0.0, 1, 1.0), None),
         )]);
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert_eq!(actual, expected);
     }
@@ -946,7 +947,7 @@ mod tests {
             ),
         )]);
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert_eq!(actual, expected);
     }
@@ -970,7 +971,7 @@ mod tests {
             AnnotatedMetric::new(3, PerfQualities::new(None, None, 0.01, 1, 1.0), None),
         )]);
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, Some(&adjustment), &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
 
         assert_eq!(actual, expected);
     }
@@ -1093,7 +1094,7 @@ mod tests {
             ),
         )]);
 
-        let (actual, has_duplicates) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, has_duplicates) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(has_duplicates);
         assert_eq!(actual, expected);
@@ -1117,7 +1118,7 @@ mod tests {
             AnnotatedMetric::with_default_qualities(1.0, Unit::Milliseconds),
         )]);
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, Some(&adjustment), &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
 
         assert_eq!(actual, expected);
     }
@@ -1138,7 +1139,7 @@ mod tests {
             AnnotatedMetric::with_default_qualities(1, None),
         )]);
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, Some(&adjustment), &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
 
         assert_eq!(actual, expected);
     }
@@ -1152,7 +1153,7 @@ mod tests {
                 .fixture()])
             .fixture();
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(actual.is_empty());
     }
@@ -1186,7 +1187,7 @@ mod tests {
                 .fixture()])
             .fixture();
 
-        let (metrics, _) = records.to_metrics(DEFAULT_PERF_PERCENT_RUNNING, None, &[]);
+        let (metrics, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
         assert!(metrics.is_empty());
     }
 }

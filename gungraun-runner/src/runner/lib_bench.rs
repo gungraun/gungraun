@@ -797,7 +797,7 @@ mod tests {
                     .collect(),
                 run_mode: PerfRunMode::Direct,
                 use_sampling: false,
-                percent_running: 100.0,
+                min_pcnt_running: 100.0,
             }),
             true,
             None,

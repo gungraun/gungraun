@@ -17,7 +17,6 @@ use which::{which, which_in};
 
 use crate::error::Error;
 use crate::metrics::model::Metric;
-use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
 
 /// The union over two [`IndexMaps`][IndexMap]
 #[derive(Debug)]
@@ -411,29 +410,6 @@ pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
         &string[..pos + c.len_utf8()]
     } else {
         &string[..0]
-    }
-}
-
-/// Resolves the configured perf significance level (`alpha`) to a concrete value.
-///
-/// Returns the provided `alpha` when it is within the valid open interval `(0.0, 1.0)`. If no value
-/// is provided, this falls back to [`DEFAULT_PERF_ALPHA`].
-///
-/// # Errors
-///
-/// Returns an error if `alpha` is provided but is not strictly between `0.0` and `1.0`. This
-/// includes `0.0`, `1.0`, negative values, values greater than `1.0`, and `NaN`.
-pub fn resolve_perf_alpha(alpha: Option<f64>) -> std::result::Result<f64, String> {
-    if let Some(alpha) = alpha {
-        if alpha > 0.0 && alpha < 1.0 {
-            Ok(alpha)
-        } else {
-            Err(format!(
-                "Invalid alpha value '{alpha}': alpha is required to be 0.0 < alpha < 1.0"
-            ))
-        }
-    } else {
-        Ok(DEFAULT_PERF_ALPHA)
     }
 }
 

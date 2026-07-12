@@ -20,6 +20,10 @@ use crate::summary::model::ToolMetrics;
 /// Parser for `perf stat -j` JSON output.
 #[derive(Debug)]
 pub struct JsonParser {
+    /// Minimum percentage of time a PMU counter must be running.
+    ///
+    /// Records below this threshold are discarded.
+    pub min_pcnt_running: f64,
     /// Patterns for perf metrics that must not be zero.
     ///
     /// If a metric matching any of these patterns has a zero value, the entire measurement batch
@@ -27,10 +31,6 @@ pub struct JsonParser {
     pub non_zero_metrics: Vec<String>,
     /// Path to the JSON file produced by `perf stat -j`.
     pub output_path: ToolOutputPath,
-    /// Minimum percentage of time a PMU counter must be running.
-    ///
-    /// Records below this threshold are discarded.
-    pub percent_running: f64,
 }
 
 impl JsonParser {
@@ -52,7 +52,7 @@ impl JsonParser {
 
         let ((metrics, has_duplicates), records) = PerfStatRecords::parse(&path).map(|r| {
             (
-                r.to_metrics(self.percent_running, adjustment, &self.non_zero_metrics),
+                r.to_metrics(self.min_pcnt_running, adjustment, &self.non_zero_metrics),
                 r,
             )
         })?;
@@ -90,7 +90,7 @@ impl JsonParser {
             debug!("Parsing perf adjustment '{}'", path.display());
 
             let (metrics, _) = PerfStatRecords::parse(path)
-                .map(|r| r.to_metrics(self.percent_running, None, &self.non_zero_metrics))?;
+                .map(|r| r.to_metrics(self.min_pcnt_running, None, &self.non_zero_metrics))?;
 
             debug!("Adjustment metrics: {metrics:#?}");
 

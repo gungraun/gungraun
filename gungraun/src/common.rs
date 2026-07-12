@@ -2354,30 +2354,33 @@ impl Perf {
         self
     }
 
-    // TODO: Rename to pcnt_running
     /// Sets the minimum percentage of time a PMU counter must be running.
     ///
     /// When perf multiplexes hardware counters because more events are requested than physical PMU
-    /// slots exist, `pcnt_running` reports the fraction of the interval the counter was active. The
-    /// runner discards sampled records whose `pcnt_running` falls below this threshold.
+    /// slots exist, `pcnt_running` reports the fraction of the interval the counter was active.
+    /// Gungraun discards sampled records whose `pcnt_running` falls below the `min_pcnt_running`
+    /// threshold.
     ///
-    /// The default is `100.0` (no multiplexing tolerated). Lower this value only if you
-    /// intentionally request more events than the hardware can count simultaneously and you still
-    /// want to keep multiplexed data. Usually, it is better to keep the default and split the
-    /// amount of events into multiple sets using [`Perf::event_sets`] with each set having the
-    /// number of available physical PMU slots. However, splitting into multiple sets requires perf
-    /// to be run multiple times.
+    /// The default is `100.0` (no multiplexing tolerated) and valid `min_pcnt_running` values are
+    ///
+    /// `0.0 <= min_pcnt_running <= 100.0`.
+    ///
+    /// Lower this value only if you intentionally request more events than the hardware can count
+    /// simultaneously and you still want to keep multiplexed data. Usually, it is better to keep
+    /// the default and split the amount of events into multiple sets using [`Perf::event_sets`]
+    /// with each set having the number of available physical PMU slots. However, splitting into
+    /// multiple sets requires perf to be run multiple times.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use gungraun::Perf;
     ///
-    /// let config = Perf::default().percent_running(80.0);
+    /// let config = Perf::default().min_pcnt_running(80.0);
     /// ```
-    pub fn percent_running(&mut self, percent: f64) -> &mut Self {
+    pub fn min_pcnt_running(&mut self, percent: f64) -> &mut Self {
         let spec = self.perf_spec_mut();
-        spec.percent_running = Some(percent);
+        spec.min_pcnt_running = Some(percent);
 
         self
     }

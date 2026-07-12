@@ -30,7 +30,6 @@ use crate::runner::tasks::ProcessHandler;
 use crate::runner::tool::args::ToolArgs;
 use crate::runner::{DEFAULT_TOGGLE, cachegrind, callgrind, perf};
 use crate::summary::model::BenchmarkSummary;
-use crate::util::resolve_perf_alpha;
 
 /// Default minimum percentage of time a PMU counter must be running before the runner keeps its
 /// sampled metrics.
@@ -39,7 +38,7 @@ use crate::util::resolve_perf_alpha;
 /// PMU slots are available. `pcnt_running` reports the fraction of the measurement interval that
 /// each counter was actually active. The runner drops sampled records whose `pcnt_running` falls
 /// below this threshold.
-pub const DEFAULT_PERF_PERCENT_RUNNING: f64 = 100.0;
+pub const DEFAULT_PERF_MIN_PCNT_RUNNING: f64 = 100.0;
 /// Default significance level used for perf regression checks when no alpha is configured.
 pub const DEFAULT_PERF_ALPHA: f64 = 0.05;
 /// Default patterns for perf metrics that must not be zero.
@@ -65,17 +64,17 @@ pub struct PerfConfig {
     pub alpha: f64,
     /// The perf event selector passed through to this concrete perf tool configuration.
     pub events: String,
-    /// Patterns for perf metrics that must not be zero.
-    ///
-    /// If a metric matching any of these patterns has a zero value, the entire measurement batch
-    /// is discarded. Patterns use `simplematch` glob syntax.
-    pub non_zero_metrics: Vec<String>,
     /// The minimum percentage of time a PMU counter must be running before sampled metrics are
     /// kept.
     ///
     /// When perf multiplexes hardware counters, `pcnt_running` indicates the fraction of the
     /// measurement interval each counter was active. Records below this threshold are discarded.
-    pub percent_running: f64,
+    pub min_pcnt_running: f64,
+    /// Patterns for perf metrics that must not be zero.
+    ///
+    /// If a metric matching any of these patterns has a zero value, the entire measurement batch
+    /// is discarded. Patterns use `simplematch` glob syntax.
+    pub non_zero_metrics: Vec<String>,
     /// How the runner batches benchmark invocations inside each perf measurement.
     pub run_mode: PerfRunMode,
     /// Whether this perf configuration runs `perf stat` in sampled mode.
@@ -567,7 +566,6 @@ impl ToolConfigBuilder {
     }
 
     /// TODO: DOCS, refactor!
-    /// FIXME: validate user input: Like `0.0 <= percent_running <= 100.0`
     /// FIXME: Validate `run_mode` calibration duration > ???
     pub fn new(
         tool: Tool,
@@ -590,7 +588,11 @@ impl ToolConfigBuilder {
             let (options, record, record_args, timeout) = match &tool_spec.options {
                 api::ToolSpecOptions::Perf(perf_spec) => {
                     let alpha = resolve_perf_alpha(perf_spec.alpha).map_err(anyhow::Error::msg)?;
-                    let non_zero_metrics = perf_spec.resolve_non_zero_metrics();
+                    let min_pcnt_running =
+                        resolve_perf_min_pcnt_running(perf_spec.min_pcnt_running)
+                            .map_err(anyhow::Error::msg)?;
+                    let non_zero_metrics =
+                        resolve_perf_non_zero_metrics(perf_spec.non_zero_metrics.as_deref());
 
                     let options = perf_spec.events.as_ref().map_or_else(
                         || {
@@ -600,9 +602,7 @@ impl ToolConfigBuilder {
                                 non_zero_metrics: non_zero_metrics.clone(),
                                 run_mode: perf_spec.run_mode.unwrap_or_default(),
                                 use_sampling: perf_spec.samples.is_some(),
-                                percent_running: perf_spec
-                                    .percent_running
-                                    .unwrap_or(DEFAULT_PERF_PERCENT_RUNNING),
+                                min_pcnt_running,
                             })]
                         },
                         |events| {
@@ -615,9 +615,7 @@ impl ToolConfigBuilder {
                                         non_zero_metrics: non_zero_metrics.clone(),
                                         run_mode: perf_spec.run_mode.unwrap_or_default(),
                                         use_sampling: perf_spec.samples.is_some(),
-                                        percent_running: perf_spec
-                                            .percent_running
-                                            .unwrap_or(DEFAULT_PERF_PERCENT_RUNNING),
+                                        min_pcnt_running,
                                     })
                                 })
                                 .collect()
@@ -673,7 +671,7 @@ impl ToolConfigBuilder {
                         .collect(),
                     run_mode: PerfRunMode::default(),
                     use_sampling: false,
-                    percent_running: DEFAULT_PERF_PERCENT_RUNNING,
+                    min_pcnt_running: DEFAULT_PERF_MIN_PCNT_RUNNING,
                 })],
                 Tool::Callgrind => vec![ToolConfigOptions::Callgrind],
                 Tool::Cachegrind => vec![ToolConfigOptions::Cachegrind],
@@ -1110,5 +1108,120 @@ impl From<api::ToolFlamegraphConfig> for ToolFlamegraphConfig {
             }
             api::ToolFlamegraphConfig::None => Self::None,
         }
+    }
+}
+
+/// Resolves the configured perf significance level (`alpha`) to a concrete value.
+///
+/// Returns the provided `alpha` when it is within the valid open interval `(0.0, 1.0)`. If no value
+/// is provided, this falls back to [`DEFAULT_PERF_ALPHA`].
+///
+/// # Errors
+///
+/// Returns an error if `alpha` is provided but is not strictly between `0.0` and `1.0`. This
+/// includes `0.0`, `1.0`, negative values, values greater than `1.0`, and `NaN`.
+pub fn resolve_perf_alpha(alpha: Option<f64>) -> std::result::Result<f64, String> {
+    if let Some(alpha) = alpha {
+        if alpha > 0.0 && alpha < 1.0 {
+            Ok(alpha)
+        } else {
+            Err(format!(
+                "Invalid alpha value '{alpha}': alpha is required to be 0.0 < alpha < 1.0"
+            ))
+        }
+    } else {
+        Ok(DEFAULT_PERF_ALPHA)
+    }
+}
+
+/// Resolves the configured perf `min_pcnt_running` to a concrete value.
+///
+/// Returns the provided `min_pcnt_running` if it is valid. If no value is provided, the default
+/// value [`DEFAULT_PERF_MIN_PCNT_RUNNING`] is applied.
+///
+/// # Errors
+///
+/// Returns an error if `min_pcnt_running` is provided but is not finite or is outside the inclusive
+/// range `0.0..=100.0`. This includes negative values, values greater than `100.0`, and `NaN`.
+fn resolve_perf_min_pcnt_running(
+    min_pcnt_running: Option<f64>,
+) -> std::result::Result<f64, String> {
+    if let Some(min_pcnt_running) = min_pcnt_running {
+        if min_pcnt_running.is_finite() && (0.0..=100.0).contains(&min_pcnt_running) {
+            Ok(min_pcnt_running)
+        } else {
+            Err(format!(
+                "Invalid min_pcnt_running value '{min_pcnt_running}': min_pcnt_running is \
+                 required to be finite and 0.0 <= min_pcnt_running <= 100.0"
+            ))
+        }
+    } else {
+        Ok(DEFAULT_PERF_MIN_PCNT_RUNNING)
+    }
+}
+
+/// Resolve the `non_zero_metrics` patterns, falling back to the default list if not set.
+///
+/// Empty strings are filtered out from both the default constants and user-provided values to
+/// avoid accidentally matching all metrics.
+pub fn resolve_perf_non_zero_metrics(non_zero_metrics: Option<&[String]>) -> Vec<String> {
+    non_zero_metrics.as_ref().map_or_else(
+        || {
+            DEFAULT_PERF_NON_ZERO_METRICS
+                .iter()
+                .filter(|n| !n.trim().is_empty())
+                .map(ToString::to_string)
+                .collect()
+        },
+        |metrics| {
+            metrics
+                .iter()
+                .filter(|n| !n.trim().is_empty())
+                .map(ToString::to_string)
+                .collect()
+        },
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::resolve_perf_min_pcnt_running;
+    use crate::runner::tool::config::DEFAULT_PERF_MIN_PCNT_RUNNING;
+
+    #[rstest]
+    #[case::default(None, DEFAULT_PERF_MIN_PCNT_RUNNING)]
+    #[case::zero(Some(0.0), 0.0)]
+    #[case::fifty(Some(50.0), 50.0)]
+    #[case::hundred(Some(100.0), 100.0)]
+    fn test_resolve_perf_min_pcnt_running(#[case] input: Option<f64>, #[case] expected: f64) {
+        let actual = resolve_perf_min_pcnt_running(input).unwrap();
+        #[expect(clippy::float_cmp)]
+        {
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[rstest]
+    #[case::negative(
+        Some(-0.1), "Invalid min_pcnt_running value '-0.1'".to_owned()
+    )]
+    #[case::barely_above_range(
+        Some(100.000_000_1), "Invalid min_pcnt_running value '100.0000001'".to_owned()
+    )]
+    #[case::nan(Some(f64::NAN), "Invalid min_pcnt_running value 'NaN'".to_owned())]
+    #[case::positive_infinity(
+        Some(f64::INFINITY), "Invalid min_pcnt_running value 'inf'".to_owned()
+    )]
+    #[case::negative_infinity(
+        Some(f64::NEG_INFINITY), "Invalid min_pcnt_running value '-inf'".to_owned()
+    )]
+    fn test_resolve_perf_min_pcnt_running_when_invalid_then_error(
+        #[case] input: Option<f64>,
+        #[case] expected: String,
+    ) {
+        let actual = resolve_perf_min_pcnt_running(input).unwrap_err();
+        assert!(actual.contains(&expected));
     }
 }

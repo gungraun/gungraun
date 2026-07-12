@@ -383,7 +383,7 @@ pub fn tool_config_f(
                 .collect(),
             run_mode: PerfRunMode::default(),
             use_sampling: false,
-            percent_running: 100.0,
+            min_pcnt_running: 100.0,
         }),
         Tool::DHAT => ToolConfigOptions::DHAT(DhatConfig {
             frames: Vec::default(),
@@ -491,7 +491,7 @@ pub fn tool_spec_f(
             record_args: RawToolArgs::default(),
             run_mode: None,
             samples: None,
-            percent_running: None,
+            min_pcnt_running: None,
         }),
         Tool::DHAT => ToolSpecOptions::Dhat(DhatSpec { frames: None }),
         _ => ToolSpecOptions::None,

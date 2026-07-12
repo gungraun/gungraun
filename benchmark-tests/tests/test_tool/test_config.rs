@@ -1,12 +1,14 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use gungraun::{EntryPoint, SanitizeOutput};
 use gungraun_runner::api::{PerfRunMode, RawToolArgs, Tool, ToolSpec, ToolSpecOptions, ToolSpecs};
 use gungraun_runner::fixtures::{
-    tool_config_builder_f, tool_config_f, tool_configs_f, tool_spec_f,
+    metadata_f, module_path_f, tool_config_builder_f, tool_config_f, tool_configs_f, tool_spec_f,
 };
+use gungraun_runner::runner::format::OutputFormat;
 use gungraun_runner::runner::perf::args::DEFAULT_PERF_EVENTS;
-use gungraun_runner::runner::tool::config::ToolConfigOptions;
+use gungraun_runner::runner::tool::config::{ToolConfigOptions, ToolConfigs};
 use gungraun_runner::runner::tool::regression::ToolRegressionConfig;
 use gungraun_runner::units::Unit;
 
@@ -159,7 +161,7 @@ fn test_tool_configs_apply_cli_perf_options() {
                     "cpu-clock*".to_owned(),
                     "*instructions*".to_owned(),
                 ],
-                percent_running: 100.0,
+                min_pcnt_running: 100.0,
                 run_mode: PerfRunMode::Calibrate(Duration::from_millis(250)),
                 use_sampling: false,
             })
@@ -234,4 +236,35 @@ fn test_tool_configs_cli_perf_record_options_override_benchmark_options() {
     let record_args = record_config.args.to_vec();
     assert!(record_args.iter().any(|arg| arg == "--metric-only"));
     assert!(record_args.iter().all(|arg| arg != "--old-record-arg"));
+}
+
+#[test]
+fn test_tool_configs_reject_invalid_perf_min_pcnt_running() {
+    let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
+    let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
+        unreachable!("perf tool specs must have perf options");
+    };
+    perf_spec.min_pcnt_running = Some(f64::NAN);
+
+    let module_path = module_path_f().fixture();
+    let mut output_format = OutputFormat::default();
+
+    let result = ToolConfigs::new(
+        &mut output_format,
+        ToolSpecs(vec![perf_tool_spec]),
+        &module_path,
+        None,
+        &metadata_f().fixture(),
+        Tool::Callgrind,
+        &EntryPoint::None,
+        &RawToolArgs::default(),
+        &HashMap::default(),
+    );
+
+    let err = result.expect_err("should fail for invalid min_pcnt_running");
+    let msg = format!("{err:#}");
+    assert!(
+        msg.contains("Invalid min_pcnt_running value 'NaN'"),
+        "expected validation error message, got: {msg}"
+    );
 }

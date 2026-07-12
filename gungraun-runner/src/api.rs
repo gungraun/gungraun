@@ -1662,12 +1662,12 @@ pub struct PerfSpec {
     /// When multiple selectors are configured, the runner expands them into separate perf tool
     /// configurations.
     pub events: Option<Vec<String>>,
+    /// The minimum percentage of time a PMU counter must be running.
+    pub min_pcnt_running: Option<f64>,
     /// Patterns for perf metrics that must not be zero.
     ///
     /// Defaults to [`DEFAULT_PERF_NON_ZERO_METRICS`] when not set.
     pub non_zero_metrics: Option<Vec<String>>,
-    /// The minimum percentage of time a PMU counter must be running.
-    pub percent_running: Option<f64>,
     /// Whether to run a companion `perf record` capture in addition to `perf stat`.
     pub record: Option<bool>,
     /// Additional arguments to pass only to the optional `perf record` run.
@@ -2623,32 +2623,6 @@ impl Summarize for PerfMetric {}
 #[cfg(feature = "runner")]
 impl Summarize<AnnotatedMetric<PerfQualities>> for PerfMetric {}
 
-#[cfg(feature = "runner")]
-impl PerfSpec {
-    /// Resolve the `non_zero_metrics` patterns, falling back to the default list if not set.
-    ///
-    /// Empty strings are filtered out from both the default constants and user-provided values to
-    /// avoid accidentally matching all metrics.
-    pub fn resolve_non_zero_metrics(&self) -> Vec<String> {
-        self.non_zero_metrics.as_ref().map_or_else(
-            || {
-                DEFAULT_PERF_NON_ZERO_METRICS
-                    .iter()
-                    .filter(|n| !n.trim().is_empty())
-                    .map(ToString::to_string)
-                    .collect()
-            },
-            |metrics| {
-                metrics
-                    .iter()
-                    .filter(|n| !n.trim().is_empty())
-                    .map(ToString::to_string)
-                    .collect()
-            },
-        )
-    }
-}
-
 impl RawToolArgs {
     /// Returns a slice of the underlying argument strings
     pub fn as_slice(&self) -> &[String] {
@@ -3077,8 +3051,8 @@ impl ToolSpec {
                     this.record_args.update(&other.record_args);
                     this.run_mode = update_option(&this.run_mode, &other.run_mode);
                     this.samples = update_option(&this.samples, &other.samples);
-                    this.percent_running =
-                        update_option(&this.percent_running, &other.percent_running);
+                    this.min_pcnt_running =
+                        update_option(&this.min_pcnt_running, &other.min_pcnt_running);
                 }
                 (ToolSpecOptions::Dhat(this), ToolSpecOptions::Dhat(other)) => {
                     this.frames = update_option(&this.frames, &other.frames);

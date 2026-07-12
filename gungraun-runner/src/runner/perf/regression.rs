@@ -7,12 +7,11 @@ use simplematch::{DoWild, Options};
 
 use crate::api::{self, PerfMetric};
 use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
-use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
+use crate::runner::tool::config::{DEFAULT_PERF_ALPHA, resolve_perf_alpha};
 use crate::runner::tool::regression::{RegressionConfig, RegressionMetrics};
 use crate::stats::runner::DiffStats;
 use crate::summary::model::ToolRegression;
 use crate::units::Unit;
-use crate::util::resolve_perf_alpha;
 
 const DOWILD_OPTIONS: Options<u8> = Options::new()
     .case_insensitive(true)

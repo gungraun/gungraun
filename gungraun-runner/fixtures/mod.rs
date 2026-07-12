@@ -343,6 +343,7 @@ pub fn tool_config_builder_f(
         &metadata_f().fixture(),
         &RawToolArgs::default(),
         &EntryPoint::Default,
+        None,
     )
     .expect("ToolConfigBuilder should be valid")
 }
@@ -436,6 +437,7 @@ pub fn tool_configs_f(
         &default_entry_point.unwrap_or(EntryPoint::None),
         &valgrind_args.unwrap_or_default(),
         &HashMap::default(),
+        None,
     )
     .expect("tool configs should be valid")
 }

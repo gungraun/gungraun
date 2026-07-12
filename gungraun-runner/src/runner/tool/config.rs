@@ -566,7 +566,6 @@ impl ToolConfigBuilder {
     }
 
     /// TODO: DOCS, refactor!
-    /// FIXME: Validate `run_mode` calibration duration > ???
     pub fn new(
         tool: Tool,
         mut tool_spec: Option<ToolSpec>,
@@ -577,6 +576,7 @@ impl ToolConfigBuilder {
         meta: &Metadata,
         valgrind_args: &RawToolArgs,
         default_entry_point: &EntryPoint,
+        perf_mode_override: Option<PerfRunMode>,
     ) -> Result<Self> {
         Self::apply_meta_perf_options(tool, &mut tool_spec, meta);
 
@@ -589,10 +589,10 @@ impl ToolConfigBuilder {
                 api::ToolSpecOptions::Perf(perf_spec) => {
                     let alpha = resolve_perf_alpha(perf_spec.alpha).map_err(anyhow::Error::msg)?;
                     let min_pcnt_running =
-                        resolve_perf_min_pcnt_running(perf_spec.min_pcnt_running)
-                            .map_err(anyhow::Error::msg)?;
+                        resolve_perf_min_pcnt_running(perf_spec.min_pcnt_running)?;
                     let non_zero_metrics =
                         resolve_perf_non_zero_metrics(perf_spec.non_zero_metrics.as_deref());
+                    let run_mode = resolve_perf_run_mode(perf_spec.run_mode, perf_mode_override)?;
 
                     let options = perf_spec.events.as_ref().map_or_else(
                         || {
@@ -600,7 +600,7 @@ impl ToolConfigBuilder {
                                 alpha,
                                 events: DEFAULT_PERF_EVENTS.into(),
                                 non_zero_metrics: non_zero_metrics.clone(),
-                                run_mode: perf_spec.run_mode.unwrap_or_default(),
+                                run_mode,
                                 use_sampling: perf_spec.samples.is_some(),
                                 min_pcnt_running,
                             })]
@@ -613,7 +613,7 @@ impl ToolConfigBuilder {
                                         alpha,
                                         events: e.clone(),
                                         non_zero_metrics: non_zero_metrics.clone(),
-                                        run_mode: perf_spec.run_mode.unwrap_or_default(),
+                                        run_mode,
                                         use_sampling: perf_spec.samples.is_some(),
                                         min_pcnt_running,
                                     })
@@ -669,7 +669,7 @@ impl ToolConfigBuilder {
                         .iter()
                         .map(ToString::to_string)
                         .collect(),
-                    run_mode: PerfRunMode::default(),
+                    run_mode: resolve_perf_run_mode(None, perf_mode_override)?,
                     use_sampling: false,
                     min_pcnt_running: DEFAULT_PERF_MIN_PCNT_RUNNING,
                 })],
@@ -834,6 +834,7 @@ impl ToolConfigs {
         default_entry_point: &EntryPoint,
         valgrind_args: &RawToolArgs,
         default_args: &HashMap<Tool, RawToolArgs>,
+        perf_mode_override: Option<PerfRunMode>,
     ) -> Result<Self> {
         let extracted_tool = tool_specs.consume(default_tool);
 
@@ -848,6 +849,7 @@ impl ToolConfigs {
             meta,
             valgrind_args,
             default_entry_point,
+            perf_mode_override,
         )?
         .build()?;
 
@@ -882,6 +884,7 @@ impl ToolConfigs {
                 meta,
                 valgrind_args,
                 default_entry_point,
+                perf_mode_override,
             )?
             .build()
         });
@@ -1050,8 +1053,6 @@ impl ToolConfigs {
                 .and_then(|()| process_handler.wait_or_shutdown(tool_config.timeout))?;
 
             if let ToolConfigOptions::Perf(options) = &tool_config.options {
-                // FIXME: Don't run batch modes for binary benchmarks. change those modes to direct
-                // in the tool config builder? Would solve the problem for calibrate, too
                 if matches!(
                     options.run_mode,
                     PerfRunMode::DynamicBatch | PerfRunMode::FixedBatch(_)
@@ -1143,16 +1144,14 @@ pub fn resolve_perf_alpha(alpha: Option<f64>) -> std::result::Result<f64, String
 ///
 /// Returns an error if `min_pcnt_running` is provided but is not finite or is outside the inclusive
 /// range `0.0..=100.0`. This includes negative values, values greater than `100.0`, and `NaN`.
-fn resolve_perf_min_pcnt_running(
-    min_pcnt_running: Option<f64>,
-) -> std::result::Result<f64, String> {
+fn resolve_perf_min_pcnt_running(min_pcnt_running: Option<f64>) -> Result<f64> {
     if let Some(min_pcnt_running) = min_pcnt_running {
         if min_pcnt_running.is_finite() && (0.0..=100.0).contains(&min_pcnt_running) {
             Ok(min_pcnt_running)
         } else {
-            Err(format!(
+            Err(anyhow!(
                 "Invalid min_pcnt_running value '{min_pcnt_running}': min_pcnt_running is \
-                 required to be finite and 0.0 <= min_pcnt_running <= 100.0"
+                 required to be 0.0 <= min_pcnt_running <= 100.0"
             ))
         }
     } else {
@@ -1164,7 +1163,7 @@ fn resolve_perf_min_pcnt_running(
 ///
 /// Empty strings are filtered out from both the default constants and user-provided values to
 /// avoid accidentally matching all metrics.
-pub fn resolve_perf_non_zero_metrics(non_zero_metrics: Option<&[String]>) -> Vec<String> {
+fn resolve_perf_non_zero_metrics(non_zero_metrics: Option<&[String]>) -> Vec<String> {
     non_zero_metrics.as_ref().map_or_else(
         || {
             DEFAULT_PERF_NON_ZERO_METRICS
@@ -1181,6 +1180,27 @@ pub fn resolve_perf_non_zero_metrics(non_zero_metrics: Option<&[String]>) -> Vec
                 .collect()
         },
     )
+}
+
+/// Resolve the [`PerfRunMode`] and if the `run_mode_override` is present use the override
+///
+/// If neither `run_mode` and `run_mode_override` are present, use the default `run_mode`.
+///
+/// # Error
+///
+/// Returns an error if the [`PerfRunMode::Calibrate`] duration is zero
+fn resolve_perf_run_mode(
+    run_mode: Option<PerfRunMode>,
+    run_mode_override: Option<PerfRunMode>,
+) -> Result<PerfRunMode> {
+    let run_mode = run_mode_override.unwrap_or_else(|| run_mode.unwrap_or_default());
+    if let PerfRunMode::Calibrate(duration) = run_mode {
+        if duration.is_zero() {
+            return Err(anyhow!("perf run mode calibration duration was zero"));
+        }
+    }
+
+    Ok(run_mode)
 }
 
 #[cfg(test)]
@@ -1222,6 +1242,6 @@ mod tests {
         #[case] expected: String,
     ) {
         let actual = resolve_perf_min_pcnt_running(input).unwrap_err();
-        assert!(actual.contains(&expected));
+        assert!(actual.to_string().contains(&expected));
     }
 }

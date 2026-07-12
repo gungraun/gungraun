@@ -259,6 +259,7 @@ fn test_tool_configs_reject_invalid_perf_min_pcnt_running() {
         &EntryPoint::None,
         &RawToolArgs::default(),
         &HashMap::default(),
+        None,
     );
 
     let err = result.expect_err("should fail for invalid min_pcnt_running");

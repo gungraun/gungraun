@@ -430,6 +430,7 @@ impl LibBench {
             &EntryPoint::Default,
             &config.valgrind_args,
             &default_args,
+            None,
         )
         .map_err(|error| {
             Error::ConfigurationError(module_path.clone(), id.clone(), error.to_string())

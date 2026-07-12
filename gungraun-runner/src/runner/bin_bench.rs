@@ -29,7 +29,8 @@ use super::tool::config::ToolConfigs;
 use super::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use super::tool::run::RunOptions;
 use crate::api::{
-    self, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, EntryPoint, Stdin, Tool,
+    self, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, EntryPoint, PerfRunMode, Stdin,
+    Tool,
 };
 use crate::error::Error;
 use crate::runner::args;
@@ -446,6 +447,7 @@ impl BinBench {
             &EntryPoint::None,
             &config.valgrind_args,
             &HashMap::default(),
+            Some(PerfRunMode::Direct),
         )
         .map_err(|error| {
             Error::ConfigurationError(module_path.clone(), id.clone(), error.to_string())

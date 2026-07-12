@@ -123,8 +123,6 @@ use crate::metrics::logic::Summarize;
 use crate::metrics::logic::TypeChecker;
 #[cfg(feature = "runner")]
 use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
-#[cfg(feature = "runner")]
-use crate::runner::tool::config::DEFAULT_PERF_NON_ZERO_METRICS;
 pub use crate::stats::common::{calibrate_linear, logistic};
 pub use crate::units::Unit;
 #[cfg(feature = "runner")]

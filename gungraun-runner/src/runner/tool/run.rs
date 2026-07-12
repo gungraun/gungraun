@@ -271,7 +271,6 @@ impl ToolCommand {
 
         let (mut perf_data, args, log_path) =
             if let ToolConfigOptions::Perf(options) = &config.options {
-                // FIXME: binary benchmarks shouldn't run calibration
                 if let Some(time) = match options.run_mode {
                     PerfRunMode::DefaultCalibrate => Some(DEFAULT_PERF_CALIBRATION_TIME),
                     PerfRunMode::Calibrate(time) => Some(time),

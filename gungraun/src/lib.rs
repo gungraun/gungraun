@@ -536,7 +536,7 @@ pub use bincode_next as bincode;
 #[cfg(feature = "default")]
 pub use common::{
     Bbv, Cachegrind, Callgrind, Dhat, Drd, FlamegraphConfig, Helgrind, Massif, Memcheck,
-    OutputFormat, Perf, Sandbox,
+    OutputFormat, Perf, PerfRunMode, Sandbox,
 };
 #[cfg(feature = "stubs")]
 pub use cty;
@@ -548,7 +548,7 @@ pub use gungraun_macros::{binary_benchmark, library_benchmark};
 pub use gungraun_runner::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DelayKind, DhatMetric, DhatMetrics,
     Direction, EntryPoint, ErrorMetric, EventKind, ExitWith, FlamegraphKind, Limit, PerfMetric,
-    PerfRunMode, Pipe, SanitizeOutput, Stdin, Stdio, Tool, Unit,
+    Pipe, SanitizeOutput, Stdin, Stdio, Tool, Unit,
 };
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;

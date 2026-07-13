@@ -13,20 +13,6 @@ use gungraun::{Callgrind, Perf, PerfRunMode, Tool};
             .event_sets(["instructions", "instructions"])
         )
 )]
-#[bench::dynamic_batch(
-    args = [],
-    config = LibraryBenchmarkConfig::default()
-        .tool(Perf::default()
-            .run_mode(PerfRunMode::DynamicBatch)
-        )
-)]
-#[bench::fixed_batch(
-    args = [],
-    config = LibraryBenchmarkConfig::default()
-        .tool(Perf::default()
-            .run_mode(PerfRunMode::FixedBatch(50))
-        )
-)]
 #[bench::default_calibrate(
     args = [],
     config = LibraryBenchmarkConfig::default()
@@ -65,7 +51,7 @@ fn bench_perf_more(input: Vec<i32>) -> Vec<i32> {
     args = [10000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .run_mode(PerfRunMode::DynamicBatch)
+            .run_mode(PerfRunMode::Direct)
         ),
     setup = setup_worst_case_array
 )]

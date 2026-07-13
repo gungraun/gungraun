@@ -9,10 +9,92 @@ use gungraun_macros::IntoInner;
 
 use super::{
     __internal, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics,
-    Direction, ErrorMetric, EventKind, FlamegraphKind, Limit, PerfRunMode, SanitizeOutput, Tool,
-    Unit,
+    Direction, ErrorMetric, EventKind, FlamegraphKind, Limit, SanitizeOutput, Tool, Unit,
 };
 use crate::EntryPoint;
+
+/// Controls how a `perf` measurement is executed.
+///
+/// The default is [`Self::Direct`], which is the normal mode and measures a single invocation with
+/// no extra setup. Batch modes ([`Self::DynamicBatch`] and [`Self::FixedBatch`]) are experimental
+/// and wrap multiple invocations to amortize `perf` startup cost. They are an alternative to the
+/// calibration modes. Calibration modes ([`Self::DefaultCalibrate`] and [`Self::Calibrate`]) run a
+/// separate overhead-measurement pass first, then subtract the best calibration run from the final
+/// result.
+///
+/// # Examples
+///
+/// ```rust
+/// # pub mod gungraun {
+/// # pub use gungraun_runner::api::PerfRunMode;
+/// # }
+/// use gungraun::PerfRunMode;
+///
+/// let mode = PerfRunMode::DynamicBatch;
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PerfRunMode {
+    /// Calibrate Gungraun by sampling the benchmark harness overhead, then run the benchmark once.
+    ///
+    /// Before the main measurement, the runner executes `perf` to measure the overhead introduced
+    /// by `perf` and the Gungraun harness. This doesn't run the benchmark itself. perf stops
+    /// sampling after a default duration of one second. The first sample is discarded to mitigate
+    /// cold-start effects, and the mean calibration metrics are subtracted from the final benchmark
+    /// metrics.
+    ///
+    /// Whether calibration is worthwhile depends on the benchmark: if the overhead is small
+    /// relative to the main benchmark run, [`Self::Direct`] is usually sufficient.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod gungraun {
+    /// # pub use gungraun_runner::api::PerfRunMode;
+    /// # }
+    /// use gungraun::PerfRunMode;
+    ///
+    /// let mode = PerfRunMode::DefaultCalibrate;
+    /// ```
+    DefaultCalibrate,
+
+    /// Like [`Self::DefaultCalibrate`] but with a custom calibration sampling duration.
+    ///
+    /// The provided [`Duration`] controls how long the runner samples `perf` overhead before
+    /// taking the main measurement. A longer duration collects more samples and may yield a more
+    /// stable overhead estimate, at the cost of increased total benchmark time.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod gungraun {
+    /// # pub use gungraun_runner::api::PerfRunMode;
+    /// # }
+    /// use std::time::Duration;
+    ///
+    /// use gungraun::PerfRunMode;
+    ///
+    /// let mode = PerfRunMode::Calibrate(Duration::from_secs(2));
+    /// ```
+    Calibrate(Duration),
+
+    /// Run `perf` once with a normal single benchmark invocation.
+    ///
+    /// This is the default mode. It is suitable when the benchmark execution time is long enough
+    /// that `perf` benchmark self costs are negligible compared to the main benchmark metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod gungraun {
+    /// # pub use gungraun_runner::api::PerfRunMode;
+    /// # }
+    /// use gungraun::PerfRunMode;
+    ///
+    /// let mode = PerfRunMode::Direct;
+    /// ```
+    #[default]
+    Direct,
+}
 
 /// The configuration for the experimental bbv
 ///
@@ -2495,7 +2577,14 @@ impl Perf {
     /// # }
     /// ```
     pub fn run_mode(&mut self, run_mode: PerfRunMode) -> &mut Self {
-        self.perf_spec_mut().run_mode = Some(run_mode);
+        let api_run_mode = match run_mode {
+            PerfRunMode::DefaultCalibrate => __internal::InternalPerfRunMode::DefaultCalibrate,
+            PerfRunMode::Calibrate(duration) => {
+                __internal::InternalPerfRunMode::Calibrate(duration)
+            }
+            PerfRunMode::Direct => __internal::InternalPerfRunMode::Direct,
+        };
+        self.perf_spec_mut().run_mode = Some(api_run_mode);
         self
     }
 

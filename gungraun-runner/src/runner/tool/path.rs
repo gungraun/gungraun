@@ -1134,7 +1134,7 @@ impl ToolOutputPath {
 
     /// Sanitize file names for a specific tool.
     ///
-    /// Dispatches to [`PathSanitizer::sanitize`], for more details see there.
+    /// Dispatches to `PathSanitizer::sanitize`, for more details see there.
     pub fn sanitize(&self) -> Result<()> {
         PathSanitizer::new(self).sanitize()
     }

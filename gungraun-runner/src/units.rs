@@ -1,4 +1,13 @@
-//! TODO DOCS
+//! Units of measurement for benchmark metrics.
+//!
+//! This module handles parsing, scaling, and rescaling of units. Most units originate from `perf`
+//! output, but the system also covers time, data size, frequency, and hardware-specific
+//! measurements like power or temperature.
+//!
+//! - [`Unit::parse`] turns raw strings into typed units.
+//! - [`Unit::scale_factor`] computes the factor to convert between compatible units.
+//! - [`Unit::scale_factor_metric`] does the same while preserving integer metrics where possible.
+//! - [`Unit::rescale`] picks the nicest unit on the same ladder for a given value.
 
 use std::fmt::Display;
 
@@ -9,82 +18,88 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "runner")]
 use crate::metrics::model::Metric;
 
-/// TODO: DOCS
+/// A unit of measurement for benchmark metrics.
+///
+/// Supports time, data size, frequency, and hardware-specific units. Can represent compound
+/// [`Self::Rate`]s and [`Self::Unknown`] units parsed from raw strings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum Unit {
-    /// TODO: DOCS
+    /// Nanoseconds (`ns`).
     Nanoseconds,
-    /// TODO: DOCS
+    /// Microseconds (`us`).
     Microseconds,
-    /// TODO: DOCS
+    /// Milliseconds (`ms`).
     Milliseconds,
-    /// TODO: DOCS
+    /// Seconds (`s`).
     Seconds,
 
-    /// TODO: DOCS
+    /// Hertz (`Hz`).
     Hertz,
-    /// TODO: DOCS
+    /// Kilohertz (`kHz`).
     Kilohertz,
-    /// TODO: DOCS
+    /// Megahertz (`MHz`).
     Megahertz,
-    /// TODO: DOCS
+    /// Gigahertz (`GHz`).
     Gigahertz,
 
-    /// TODO: DOCS
+    /// Bytes (`B`).
     Bytes,
-    /// TODO: DOCS
+    /// Kilobytes (`KB`).
     Kilobytes,
-    /// TODO: DOCS
+    /// Megabytes (`MB`).
     Megabytes,
-    /// TODO: DOCS
+    /// Gigabytes (`GB`).
     Gigabytes,
-    /// TODO: DOCS
+    /// Kibibytes (`KiB`).
     Kibibytes,
-    /// TODO: DOCS
+    /// Mebibytes (`MiB`).
     Mebibytes,
-    /// TODO: DOCS
+    /// Gibibytes (`GiB`).
     Gibibytes,
 
-    /// TODO: DOCS
+    /// Percent (`%`).
     Percent,
-    /// TODO: DOCS
+    /// Joules (`J`).
     Joules,
-    /// TODO: DOCS
+    /// Watts (`W`).
     Watts,
-    /// TODO: DOCS
+    /// Volts (`V`).
     Volts,
-    /// TODO: DOCS
+    /// Amperes (`A`).
     Amperes,
-    /// TODO: DOCS
+    /// Revolutions per minute (`rpm`).
     RevolutionsPerMinute,
-    /// TODO: DOCS
+    /// Degrees Celsius (`'C`).
     Celsius,
-    /// TODO: DOCS
+    /// Capacity unit (`cap`), used for hardware capacity metrics.
     Capacity,
-    /// TODO: DOCS
+    /// CPU cycles (`cyc`).
     Cycles,
 
-    /// TODO: DOCS
+    /// A compound rate unit (`numerator/denominator`)
     Rate(Box<Self>, Box<Self>),
-    /// TODO: DOCS
+    /// An unrecognized unit string, stored verbatim.
     Unknown(String),
 }
 
-/// TODO: DOCS
+/// The dimension category of a [`Unit`], used for compatibility checks.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum UnitDimension {
-    /// TODO: DOCS
+    /// Time units (nanoseconds to seconds).
     Time,
-    /// TODO: DOCS
+    /// Data size units (bytes to gigabytes or gibibytes).
     Data,
-    /// TODO: DOCS
+    /// Frequency units (hertz to gigahertz).
     Frequency,
 }
 
 #[cfg(feature = "runner")]
 impl Unit {
-    /// TODO: DOCS
+    /// Returns the base scale factor for converting this unit to its canonical base unit.
+    ///
+    /// For example, `Milliseconds` has a base scale of `1e-3` (to convert to seconds).
+    /// Returns `None` for units without a defined base scale.
     pub fn base_scale(&self) -> Option<f64> {
         match self {
             Self::Nanoseconds => Some(1e-9),
@@ -103,7 +118,7 @@ impl Unit {
         }
     }
 
-    /// TODO: DOCS
+    /// Returns the [`UnitDimension`] of this unit, if it belongs to a known dimension.
     pub fn dimension(&self) -> Option<UnitDimension> {
         match self {
             Self::Nanoseconds | Self::Microseconds | Self::Milliseconds | Self::Seconds => {
@@ -123,13 +138,17 @@ impl Unit {
         }
     }
 
-    /// TODO: DOCS
+    /// Returns `true` if this unit and `other` share the same [`UnitDimension`].
     pub fn is_same_dimension(&self, other: &Self) -> bool {
         self.dimension()
             .is_some_and(|d| other.dimension().is_some_and(|o| d == o))
     }
 
-    /// TODO: DOCS, most of these units come from perf
+    /// Parses a unit string into a [`Unit`].
+    ///
+    /// Recognizes SI and binary data prefixes, time units, frequency units, and hardware-specific
+    /// units from `perf` output. Compound rates are split on `/`. Unrecognized strings are stored
+    /// as [`Unit::Unknown`].
     pub fn parse(unit: &str) -> Self {
         let unit = unit.trim();
         if let Some((numerator, denominator)) = unit.split_once('/') {
@@ -200,7 +219,9 @@ impl Unit {
         }
     }
 
-    /// TODO: DOCS
+    /// Returns the multiplicative factor to convert a value from this unit to `target`.
+    ///
+    /// Returns `None` if the units are not convertible (different dimensions or unknown units).
     pub fn scale_factor(&self, target: &Self) -> Option<f64> {
         if self == target {
             return Some(1.0);
@@ -353,14 +374,11 @@ impl Unit {
 
     /// Returns the scale factor to convert a value in this unit to `target` as a [`Metric`].
     ///
-    /// TODO: IMPROVE docs, Tries to preserve integer metrics by scaling upwards instead of
-    /// downwards.
-    ///
-    /// Returns [`Metric::Int`] when the factor is an exact integer - always the case for
-    /// same-ladder conversions from a larger unit to a smaller one (e.g., `Seconds` ->
-    /// `Milliseconds` produces [`Metric::Int(1000)`]). Returns [`Metric::Float`] for fractional
-    /// factors (e.g., `Milliseconds` -> `Seconds`). Returns `None` if the units are not convertible
-    /// (cross-dimension or [`Unit::Unknown`]).
+    /// When the conversion factor is an exact integer, it is returned as [`Metric::Int`]. This
+    /// happens for same-ladder conversions from a larger unit to a smaller one (e.g., `Seconds` ->
+    /// `Milliseconds` produces [`Metric::Int(1000)`]). Fractional factors are returned as
+    /// [`Metric::Float`]. Returns `None` if the units are not convertible (cross-dimension or
+    /// [`Unit::Unknown`] if both unknown units don't match).
     ///
     /// For [`Unit::Rate`], recurses into numerator and denominator.
     ///

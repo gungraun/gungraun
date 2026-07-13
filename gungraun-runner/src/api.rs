@@ -1668,6 +1668,8 @@ pub struct PerfSpec {
     /// Patterns for perf metrics that must not be zero.
     ///
     /// Defaults to [`DEFAULT_PERF_NON_ZERO_METRICS`] when not set.
+    ///
+    /// [`DEFAULT_PERF_NON_ZERO_METRICS`]: crate::runner::tool::config::DEFAULT_PERF_NON_ZERO_METRICS
     pub non_zero_metrics: Option<Vec<String>>,
     /// Whether to run a companion `perf record` capture in addition to `perf stat`.
     pub record: Option<bool>,

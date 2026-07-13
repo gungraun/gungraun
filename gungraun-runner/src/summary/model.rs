@@ -164,7 +164,8 @@ pub enum ToolRegression {
     Soft {
         /// The [`MetricKind`] per tool
         metric: MetricKind,
-        /// TODO: DOCS
+        /// An optional human-readable display label for the regression metric, used in formatted
+        /// output.
         #[serde(skip_serializing_if = "Option::is_none")]
         display: Option<String>,
         /// The unit of the metric values, if present.
@@ -189,7 +190,8 @@ pub enum ToolRegression {
     Hard {
         /// The [`MetricKind`] per tool
         metric: MetricKind,
-        /// TODO: DOCS
+        /// An optional human-readable display label for the regression metric, used in formatted
+        /// output.
         #[serde(skip_serializing_if = "Option::is_none")]
         display: Option<String>,
         /// The unit of the metric values, if present.

@@ -53,10 +53,20 @@ pub struct PerfStatRecord {
     /// Present when the counter was not running 100% of the time.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_runtime: Option<u64>,
-    /// TODO: DOCS
+    /// Mean value of this [`Self::event`], added by Gungraun.
+    ///
+    /// This field is populated from [`PerfQualities::mean`] when the record is re-constructed and
+    /// written back from processed and analyzed perf data.
+    ///
+    /// [`PerfQualities::mean`]: crate::metrics::model::PerfQualities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gungraun_mean: Option<f64>,
-    /// TODO: DOCS
+    /// Number of samples (n) of this [`Self::event`], added by Gungraun.
+    ///
+    /// This field is populated from [`PerfQualities::n`] when the record is re-constructed and
+    /// written back from processed and analyzed perf data.
+    ///
+    /// [`PerfQualities::n`]: crate::metrics::model::PerfQualities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gungraun_n: Option<u64>,
     /// Timestamp as seconds since epoch (e.g. `1234.567890123`).

@@ -1,4 +1,43 @@
-//! TODO: DOCS
+//! Execution support for `perf stat` and `perf record` runs, including calibration and overhead
+//! measurement.
+//!
+//! This module implements most of the runner-side half of the actual perf benchmark run. The
+//! benchmark-side control macros (`perf_enable!`, `perf_disable!`) live in the `gungraun::perf`
+//! module of the main library crate.
+//!
+//! # Run flow
+//!
+//! 1. **Orchestration** — [`ToolCommand::run`] decides whether to execute a normal run or a perf
+//!    run. For perf, it may first run [`PerfCalibration`] if configured via
+//!    [`PerfRunMode::DefaultCalibrate`] or [`PerfRunMode::Calibrate`].
+//! 2. **Command preparation** — [`prepare_perf_command`] configures the `perf` subprocess:
+//!    * Creates control pipes ([`PERF_CTL_FD_READ`]/[`PERF_CTL_FD_WRITE`] and
+//!      [`PERF_ACK_FD_READ`]/[`PERF_ACK_FD_WRITE`]) for enabling/disabling data collection via
+//!      `perf`'s --control argument.
+//!    * Creates a log file and passes its file descriptor ([`PERF_LOG_FD`]) to the child along with
+//!      the other pipes
+//!    * Uses the [`Command::pre_exec`] hook to install and remap the file descriptors of the
+//!      control pipes inside the child process.
+//!    * See [`PerfData`] for more details about the control pipes.
+//! 3. **Benchmark execution** — The benchmark binary runs under `perf`. By default perf collection
+//!    starts automatically at the entry point. The benchmark harness calls `perf_enable!` /
+//!    `perf_disable!` (from `gungraun::perf`) to toggle collection around the code region of
+//!    interest (by default the benchmark function)
+//! 4. **Result collection** — After the child exits, the runner reads the log file and parses the
+//!    raw `perf` output. [`parse_perf_log`] converts the log into structured [`PerfLogData`]
+//!    records that feed into the final [`BenchmarkSummary`].
+//!
+//! [`BenchmarkSummary`]: crate::summary::model::BenchmarkSummary
+//! [`PERF_ACK_FD_READ`]: crate::api::PERF_ACK_FD_READ
+//! [`PERF_ACK_FD_WRITE`]: crate::api::PERF_ACK_FD_WRITE
+//! [`PERF_CTL_FD_READ`]: crate::api::PERF_CTL_FD_READ
+//! [`PERF_CTL_FD_WRITE`]: crate::api::PERF_CTL_FD_WRITE
+//! [`PERF_LOG_FD`]: crate::api::PERF_LOG_FD
+//! [`PerfRunMode::DefaultCalibrate`]: crate::api::PerfRunMode
+//! [`PerfRunMode::Calibrate`]: crate::api::PerfRunMode
+//! [`ToolCommand::run`]: crate::runner::tool::run::ToolCommand::run
+//! [`parse_perf_log`]: crate::runner::perf::logfile_parser::parse_perf_log
+//! [`PerfLogData`]: super::logfile_parser::PerfLogData
 
 use std::borrow::Cow;
 use std::ffi::OsString;
@@ -34,9 +73,9 @@ use crate::util::{close_if_different, dup_to_inheritable_fd};
 
 /// The default perf calibration sample time
 pub const DEFAULT_PERF_CALIBRATION_TIME: Duration = Duration::new(1, 0);
-/// TODO: DOCS
+/// File name modifier used for calibration [`ToolOutputPath`]s.
 pub const PERF_CALIBRATION_FILE_MODIFIER: &str = "cal";
-/// TODO: DOCS
+/// File name modifier used for overhead measurement [`ToolOutputPath`]s.
 pub const PERF_OVERHEAD_FILE_MODIFIER: &str = "overhead";
 
 /// Runs perf calibration candidates and retains the minimum JSON/log pair.
@@ -305,7 +344,7 @@ where
         })
 }
 
-/// Configure a command for a controlled `perf stat` run.
+/// Configure a [`Command`] for a controlled `perf` run.
 ///
 /// Perf is controlled through fixed file descriptors rather than inherited stdin/stdout pipes. This
 /// function creates the parent-side pipes used by the perf control protocol, creates the perf log
@@ -323,24 +362,40 @@ where
 /// - [`PERF_ACK_FD_WRITE`] receives the acknowledgement pipe write end.
 /// - [`PERF_LOG_FD`] receives the perf log file.
 ///
-/// This setup has to happen in `pre_exec` because the fixed descriptor numbers must exist in the
-/// process that will become `perf`. Duplicating them in the parent would mutate the runner process'
-/// descriptor table globally and could collide with other concurrent benchmark runs. Doing it in
-/// the child keeps the remapping isolated to the command being spawned.
+/// This setup has to happen in [`Command::pre_exec`] because the fixed descriptor numbers must
+/// exist in the process that will become `perf`. Duplicating them in the parent would mutate the
+/// runner process' descriptor table globally and could collide with other concurrent benchmark
+/// runs. Doing it in the child keeps the remapping isolated to the command being spawned.
 ///
 /// After duplicating each descriptor, the hook closes the original descriptor number when it
 /// differs from the fixed target descriptor. This avoids leaking duplicate descriptors into the
 /// child while keeping the fixed protocol descriptors open for `perf`.
 ///
-/// The function also builds the managed perf arguments: it sets the output path, adds the
-/// configured event set, and applies the sampling override used by calibration and adjustment runs.
-/// If `tool_runner_dest` is set, managed output paths are written from the tool runner's filesystem
+/// The function also builds the managed perf arguments: it sets the [`ToolOutputPath`], adds the
+/// configured event set, and enables sampling for `perf stat` when `use_sampling` is true. If
+/// `tool_runner_dest` is set, managed output paths are written from the tool runner's filesystem
 /// perspective.
+///
+/// # Errors
+///
+/// Returns an error if the log file cannot be created or if the control or acknowledgement pipes
+/// cannot be created.
+///
+/// # Panics
+///
+/// Panics if no event sets are configured in the [`ToolConfig`] and [`ToolConfig::events`] returns
+/// `None`.
+///
+/// [`PERF_ACK_FD_READ`]: crate::api::PERF_ACK_FD_READ
+/// [`PERF_ACK_FD_WRITE`]: crate::api::PERF_ACK_FD_WRITE
+/// [`PERF_CTL_FD_READ`]: crate::api::PERF_CTL_FD_READ
+/// [`PERF_CTL_FD_WRITE`]: crate::api::PERF_CTL_FD_WRITE
+/// [`PERF_LOG_FD`]: crate::api::PERF_LOG_FD
 pub fn prepare_perf_command(
     command: &mut Command,
     config: &ToolConfig,
     output_path: &ToolOutputPath,
-    use_sampling_override: bool,
+    use_sampling: bool,
     tool_runner_dest: Option<&Path>,
 ) -> Result<(PerfData, Vec<OsString>, ToolOutputPath)> {
     let log_output_path = if config.is_perf_record() {
@@ -395,12 +450,8 @@ pub fn prepare_perf_command(
 
     let mut tool_args = config.args.clone();
     tool_args.set_output_arg(output_path, tool_runner_dest);
-    tool_args.add_events(
-        config
-            .events()
-            .expect("At least one event set should be present"),
-    );
-    tool_args.use_sampling(use_sampling_override);
+    tool_args.add_events(config.events().expect("An event set should be present"));
+    tool_args.use_sampling(use_sampling);
 
     Ok((perf_data, tool_args.to_vec(), log_output_path))
 }

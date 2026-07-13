@@ -121,7 +121,6 @@ pub struct Header {
 #[derive(Debug)]
 pub struct LibraryBenchmarkHeader(Header);
 
-// TODO: Add perf? How would the default look like? If adding perf update the format_single method
 /// The `OutputFormat` of the Gungraun terminal output
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputFormat {
@@ -897,8 +896,6 @@ impl VerticalFormatter {
         }
     }
 
-    // TODO: The number of decimals for float metrics could be greater (METRIC_WIDTH has space for
-    // 20 digits). But not in the diff and factor.
     fn write_metric<V>(&mut self, field: &str, metrics: &EitherOrBoth<&V>, diffs: Option<Diffs>)
     where
         V: MetricValue + PartialEq,
@@ -1425,9 +1422,6 @@ impl Formatter for VerticalFormatter {
                 );
             }
             ToolMetricSummary::Perf(summary) => {
-                // TODO: Use OutputFormat if present, otherwise sort alphabetically and print all
-                // TODO: Decide how to show units in the output, What about different units between
-                // an old and new run
                 self.format_perf_metrics(
                     alpha,
                     summary

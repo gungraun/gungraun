@@ -16,9 +16,7 @@ use crate::EntryPoint;
 /// Controls how a `perf` measurement is executed.
 ///
 /// The default is [`Self::Direct`], which is the normal mode and measures a single invocation with
-/// no extra setup. Batch modes ([`Self::DynamicBatch`] and [`Self::FixedBatch`]) are experimental
-/// and wrap multiple invocations to amortize `perf` startup cost. They are an alternative to the
-/// calibration modes. Calibration modes ([`Self::DefaultCalibrate`] and [`Self::Calibrate`]) run a
+/// no extra setup. Calibration modes ([`Self::DefaultCalibrate`] and [`Self::Calibrate`]) run a
 /// separate overhead-measurement pass first, then subtract the best calibration run from the final
 /// result.
 ///
@@ -2550,7 +2548,7 @@ impl Perf {
 
     /// Sets the [`PerfRunMode`] for this perf configuration.
     ///
-    /// The run mode controls how benchmark invocations are batched and calibrated inside the `perf`
+    /// The run mode controls how benchmark invocations are calibrated inside the `perf`
     /// measurement. See [`PerfRunMode`] for a description of each mode. The default is
     /// [`PerfRunMode::Direct`] which runs perf in normal mode without any special setup.
     ///

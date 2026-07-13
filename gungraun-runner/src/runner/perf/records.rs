@@ -1,4 +1,5 @@
 //! Parse and process `perf stat -j` JSON output into [`Metrics`].
+
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, Write};
@@ -487,8 +488,20 @@ impl PerfStatRecords {
     }
 }
 
-/// TODO: DOCS, unit-less metrics are always counts (without fraction); especially ignores small
-/// 0.00000001 (noise) fractions.
+/// Parse a perf counter value string into a `(u64, f64)` pair.
+///
+/// Perf outputs counter values as strings with trailing decimals (e.g. `"1000.000000"`). This
+/// function normalizes such values into a `u64` integer suitable for unit-less counters, while
+/// preserving the original `f64` for reference.
+///
+/// Values without a decimal point are parsed directly as `u64`. This is for completeness - perf
+/// counters have always fractions. Values with a decimal point are parsed as `f64` first, then
+/// rounded to `u64` using standard rounding rules (except every exact half `.5` which rounds down).
+/// The function rejects non-finite, negative, and unsupported values (like `"<not supported>"` or
+/// `"<not counted>"`).
+///
+/// This is used for unit-less perf metrics which are always counts (without fractions). Small noise
+/// fractions (e.g. `0.00000001`) are handled by the rounding behavior.
 fn parse_perf_u64(value: &str) -> Option<(u64, f64)> {
     let value = value.trim();
 

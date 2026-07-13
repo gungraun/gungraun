@@ -1,4 +1,36 @@
-//! TODO: DOCS, tests
+//! Perf-specific regression checking with statistical significance filtering and unit-aware hard
+//! limits.
+//!
+//! This module implements the [`RegressionConfig`] trait for perf metrics, providing soft and hard
+//! limit checks that differ significantly from the default Valgrind-style regression checks in
+//! [`crate::runner::tool::regression`].
+//!
+//! # Differences from Valgrind tool regression checks
+//!
+//! 1. **Statistical significance filtering (soft limits only)** — Perf records are inherently noisy
+//!    due to hardware event sampling. Before reporting a soft-limit regression, the checker
+//!    computes [`DiffStats`] between the old and new metric values at the configured `alpha` level.
+//!    If the significance factor is at most `1.0`, the diff is considered noise and skipped.
+//!    Valgrind tools do not perform this statistical pre-filtering; they report any percentage
+//!    change that exceeds the configured limit.
+//!
+//! 2. **Metric name wildcard patterns** — Perf soft and hard limits use glob-style wildcard
+//!    patterns (via `simplematch`) to match against raw perf event names (e.g. `"instructions*"` or
+//!    `"cache-*"`). Valgrind tools typically match against fixed enum variants (e.g.
+//!    [`CachegrindMetric::Ir`].
+//!
+//! 3. **Unit-aware hard limits** — When a hard limit specifies a unit, the checker attempts to
+//!    normalize the measured metric to that unit before comparison. If the metric's unit is
+//!    incompatible with the limit unit, the check is skipped with a warning. Valgrind hard limits
+//!    are typically raw counts without unit conversion.
+//!
+//! 4. **Dedicated `alpha` threshold** — [`PerfRegressionConfig`] carries its own `alpha` field
+//!    (which is the same value as [`PerfConfig::alpha`]) for the statistical significance test.
+//!    Valgrind regression configs usually do not have an `alpha` because their measurements are
+//!    deterministic and do not require noise filtering.
+//!
+//! [`PerfConfig::alpha`]: crate::runner::tool::config::PerfConfig
+//! [`CachegrindMetric::Ir`]: crate::api::CachegrindMetric
 
 use either_or_both::EitherOrBoth;
 use indexmap::IndexMap;
@@ -7,7 +39,7 @@ use simplematch::{DoWild, Options};
 
 use crate::api::{self, PerfMetric};
 use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
-use crate::runner::tool::config::{DEFAULT_PERF_ALPHA, resolve_perf_alpha};
+use crate::runner::tool::config::resolve_perf_alpha;
 use crate::runner::tool::regression::{RegressionConfig, RegressionMetrics};
 use crate::stats::runner::DiffStats;
 use crate::summary::model::ToolRegression;
@@ -17,8 +49,6 @@ const DOWILD_OPTIONS: Options<u8> = Options::new()
     .case_insensitive(true)
     .enable_escape(true)
     .enable_classes(true);
-
-const DEFAULT_PATTERN: &str = "*instructions*";
 
 /// The perf regression check configuration
 #[derive(Debug, Clone, PartialEq)]
@@ -147,19 +177,6 @@ impl PerfRegressionConfig {
                         })
                     })
             })
-    }
-}
-
-// TODO: Where is this default actually used?
-impl Default for PerfRegressionConfig {
-    fn default() -> Self {
-        Self {
-            alpha: DEFAULT_PERF_ALPHA,
-            soft_limits: vec![(PerfMetric(DEFAULT_PATTERN.to_owned()), 10f64)],
-            hard_limits: Vec::default(),
-            // TODO: Use the default value of regression fail fast
-            fail_fast: false,
-        }
     }
 }
 

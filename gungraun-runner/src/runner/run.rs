@@ -1,4 +1,25 @@
-//! TODO: DOCS
+//! Main entry point for the gungraun benchmark runner process with [`run`] doing the hard work
+//!
+//! This module via `gungraun_runner::main` is invoked by the gungraun benchmarking harness (not by
+//! the end user directly). The harness spawns the runner as a subprocess and passes basic benchmark
+//! metadata via command-line arguments. The actual benchmark configuration
+//! ([`LibraryBenchmarkGroups`] or [`BinaryBenchmarkGroups`]) is sent through stdin as a
+//! bincode-encoded payload and deserialized by [`receive_benchmark`].
+//!
+//! # Runner flow
+//!
+//! 1. **CLI parsing**: `Cli::parse` inspects the first argument to decide between showing help,
+//!    version, or executing a benchmark run.
+//! 2. **Version check**: `compare_versions` validates that the runner version matches the library
+//!    version that spawned it, preventing mismatched ABI issues.
+//! 3. **Harness argument parsing**: `RunnerArgs::new` reads the remaining arguments passed by the
+//!    harness: benchmark kind (`--lib-bench` or `--bin-bench`), paths, target, and module.
+//! 4. **Configuration reception**: [`receive_benchmark`] reads the serialized
+//!    [`LibraryBenchmarkGroups`] or [`BinaryBenchmarkGroups`] from stdin.
+//! 5. **Dispatch**: [`run`] creates a [`Config`] and dispatches to either [`lib_bench::run`] or
+//!    [`bin_bench::run`], depending on the benchmark kind.
+//! 6. **Post-run**: `PostRun::execute` prints the benchmark summary and returns
+//!    [`Error::RegressionError`] if any regressions were detected.
 
 use std::env::ArgsOs;
 use std::ffi::OsString;

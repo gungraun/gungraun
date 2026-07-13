@@ -55,6 +55,9 @@ and this project adheres to
 - Print empty line between metrics and possible regressions
 - Added new variants `ExitWith::Signal(i32)`, `ExitWith::Signals(Vec<i32>)`
 - ExitWith is not Copy anymore
+- Changes to the json summary (and schema):
+    - Add display field to `summary::model::ToolRegression`, `Soft` and `Hard`
+      variants
 
 ## [0.19.4] - 2026-07-10
 

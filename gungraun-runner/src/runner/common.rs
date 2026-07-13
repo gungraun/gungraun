@@ -981,16 +981,17 @@ impl Group {
         }
     }
 
-    // TODO: Update docs
     /// Runs all benchmarks in this group and returns the [`BenchmarkSummaries`].
     ///
-    /// Benchmarks are executed in a thread pool, finalized through their data processors, and
-    /// optionally compared by id when configured.
+    /// When [`MaxParallel::Serial`] is configured, benchmarks run one after another on the current
+    /// thread. Otherwise, benchmarks are executed in a [`ThreadPool`] using the configured or
+    /// derived number of threads. On [`Error::JobError`], the temporary files are copied to the
+    /// benchmark directory keeping their unsanitized file names which makes them distinguishable
+    /// from the normal output files, so error logs and output files can be easily inspected.
     ///
     /// # Errors
     ///
-    /// Returns an error if benchmark execution, output finalization, printing, or regression checks
-    /// fail.
+    /// Returns an error if benchmark execution or result processing fails.
     pub fn run(self, config: &Arc<Config>) -> Result<BenchmarkSummaries> {
         let num_threads = match self.max_parallel {
             MaxParallel::Serial => {
@@ -1279,7 +1280,16 @@ impl BenchmarkDataProcessor for LoadBaselineDataProcessor {
 }
 
 impl JobResult {
-    /// TODO: DOCS
+    /// Finalizes, prints, and stores a single benchmark job result in [`BenchmarkSummaries`]
+    ///
+    /// This method consumes the [`JobResult`] to process its benchmark data through the
+    /// [`BenchmarkDataProcessor`] pipeline. When `compare_by_id` is `true` and the [`OutputFormat`]
+    /// is default (printing to terminal output), the summary is also compared against benchmarks in
+    /// other groups sharing the same benchmark id and stored in `comparison_summaries`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if finalization, printing/saving, or regression checks fail.
     fn process_data(
         self,
         config: &Arc<Config>,

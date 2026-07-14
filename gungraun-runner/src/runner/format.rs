@@ -632,10 +632,10 @@ impl SummaryFormatter {
                     } else {
                         println!("  {}:", summary.module_path.green());
                     }
-                    for regression in summary
+                    for (tool, regression) in summary
                         .profiles
                         .iter()
-                        .flat_map(|t| &t.summaries.total.regressions)
+                        .flat_map(|t| t.summaries.total.regressions.iter().map(|r| (t.tool, r)))
                     {
                         match regression {
                             ToolRegression::Soft {
@@ -650,7 +650,8 @@ impl SummaryFormatter {
                                 let old = format_metric_with_unit(old, unit.as_ref());
                                 let new = format_metric_with_unit(new, unit.as_ref());
                                 println!(
-                                    "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
+                                    "    {}: {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
+                                    tool.capitalized(),
                                     regression_display_name(
                                         metric,
                                         display.as_deref(),
@@ -676,7 +677,8 @@ impl SummaryFormatter {
                                 let diff = format_metric_with_unit(diff, unit.as_ref());
                                 let limit = format_metric_with_unit(limit, unit.as_ref());
                                 println!(
-                                    "    {0} ({1}): {1} exceeds limit of {2} by {3}",
+                                    "    {0}: {1} ({2}): {2} exceeds limit of {3} by {4}",
+                                    tool.capitalized(),
                                     regression_display_name(
                                         metric,
                                         display.as_deref(),
@@ -740,7 +742,7 @@ impl VerticalFormatter {
         self.clear();
     }
 
-    /// Write the indentation depending on the chosen [`OutputFormat`] and [`IndentKind`]
+    /// Write the indentation depending on the chosen output format and [`IndentKind`]
     fn write_indent(&mut self, kind: &IndentKind) {
         match kind {
             IndentKind::Normal => write!(self, "{}", self.indent.clone()).unwrap(),
@@ -797,26 +799,30 @@ impl VerticalFormatter {
             EitherOrBoth::Left(left) => {
                 let is_multiline = left.input.len() + field.input.len() + 2 > LEFT_WIDTH;
 
-                if is_multiline {
+                if left_align && field.input.len() + 2 > LEFT_WIDTH {
                     writeln!(self, "{field}").unwrap();
                     self.write_indent(&IndentKind::Normal);
-                    if left_align {
-                        writeln!(self, "  {left}").unwrap();
-                    } else {
-                        writeln!(
-                            self,
-                            "{}{left}",
-                            " ".repeat(LEFT_WIDTH.saturating_sub(left.input.len()))
-                        )
-                        .unwrap();
-                    }
+                    writeln!(self, "  {left}").unwrap();
                 } else if left_align {
-                    writeln!(self, "{field:<FIELD_WIDTH$}{left}").unwrap();
+                    writeln!(self, "{field} {left}").unwrap();
+                } else if is_multiline {
+                    writeln!(self, "{field}").unwrap();
+                    self.write_indent(&IndentKind::Normal);
+                    writeln!(
+                        self,
+                        "{}{left}",
+                        " ".repeat(LEFT_WIDTH.saturating_sub(left.input.len()))
+                    )
+                    .unwrap();
                 } else {
                     writeln!(
                         self,
-                        "{field:<FIELD_WIDTH$}{}{left}",
-                        " ".repeat(METRIC_WIDTH.saturating_sub(left.input.len()))
+                        "{field}{}{left}",
+                        " ".repeat(
+                            LEFT_WIDTH
+                                .saturating_sub(left.input.len())
+                                .saturating_sub(field.input.len())
+                        )
                     )
                     .unwrap();
                 }
@@ -1807,6 +1813,7 @@ mod tests {
     const FIELD_35: &str = "Some Field1234567890Some Field1234:";
     const FIELD_34: &str = "Some Field1234567890Some Field123:";
     const FIELD_50: &str = "Some Field1234567890Some Field1234567890123456789:";
+    const FIELD_53: &str = "Some Field1234567890Some Field1234567890Some Field12:";
     const FIELD_54: &str = "Some Field1234567890Some Field1234567890Some Field123:";
     const FIELD_55: &str = "Some Field1234567890Some Field1234567890Some Field1234:";
 
@@ -2136,6 +2143,13 @@ mod tests {
         false,
         format!("  {FIELD_34}  {TWENTY_DIGITS}\n")
     )]
+    #[case::left_when_field_barely_fit(
+        FIELD_53,
+        EitherOrBoth::Left("0"),
+        None,
+        false,
+        format!("  {FIELD_53}  0\n")
+    )]
     #[case::left_when_barely_not_fit_then_multi_line(
         FIELD_35,
         EitherOrBoth::Left(TWENTY_DIGITS),
@@ -2143,19 +2157,33 @@ mod tests {
         false,
         format!("  {FIELD_35}\n  {}{TWENTY_DIGITS}\n", " ".repeat(FIELD_WIDTH))
     )]
-    #[case::left_when_not_fit_and_left_align_then_multi_line(
+    #[case::left_when_not_fit_and_left_align_then_no_multi_line(
         FIELD_35,
         EitherOrBoth::Left(TWENTY_DIGITS),
         None,
         true,
-        format!("  {FIELD_35}\n    {TWENTY_DIGITS}\n")
+        format!("  {FIELD_35} {TWENTY_DIGITS}\n")
     )]
     #[case::left_when_left_align(
         FIELD_SOME_5,
         EitherOrBoth::Left("left"),
         None,
         true,
-        format!("  {FIELD_SOME_5}{}left\n", " ".repeat(FIELD_WIDTH - 5))
+        format!("  {FIELD_SOME_5} left\n")
+    )]
+    #[case::left_when_field_barely_fit_and_left_align(
+        FIELD_54,
+        EitherOrBoth::Left("0"),
+        None,
+        true,
+        format!("  {FIELD_54} 0\n")
+    )]
+    #[case::left_when_field_barely_not_fit_and_left_align_then_multiline(
+        FIELD_55,
+        EitherOrBoth::Left("0"),
+        None,
+        true,
+        format!("  {FIELD_55}\n    0\n")
     )]
     #[case::left_with_unit(
         FIELD_SOME_5,

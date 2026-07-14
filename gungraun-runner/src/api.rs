@@ -3123,6 +3123,21 @@ impl Tool {
         }
     }
 
+    /// Returns the capitalized id
+    pub fn capitalized(&self) -> String {
+        match self {
+            Self::DHAT => "DHAT".to_owned(),
+            Self::Callgrind => "Callgrind".to_owned(),
+            Self::Memcheck => "Memcheck".to_owned(),
+            Self::Helgrind => "Helgrind".to_owned(),
+            Self::DRD => "DRD".to_owned(),
+            Self::Massif => "Massif".to_owned(),
+            Self::BBV => "BBV".to_owned(),
+            Self::Cachegrind => "Cachegrind".to_owned(),
+            Self::Perf => "Perf".to_owned(),
+        }
+    }
+
     /// Returns `true` if this tool has output files in addition to log files.
     pub fn has_output_file(&self) -> bool {
         matches!(

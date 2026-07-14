@@ -686,12 +686,7 @@ impl ToolConfigBuilder {
                 .map(Ok)
                 .or_else(|| tool_spec.regression_config.clone().map(TryInto::try_into))
                 .transpose()
-                .map_err(|error| {
-                    anyhow!(
-                        "Invalid regression configuration for {}: {error}",
-                        self.tool
-                    )
-                })?
+                .map_err(|error| anyhow!("Invalid limits for {}: {error}", self.tool))?
                 .unwrap_or(ToolRegressionConfig::None)
         } else {
             meta_limits.unwrap_or(ToolRegressionConfig::None)

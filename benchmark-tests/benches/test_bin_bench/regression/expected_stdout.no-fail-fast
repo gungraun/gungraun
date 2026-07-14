@@ -1,25 +1,27 @@
 test_bench_template::bench_group::bench_bubble_sort regress_callgrind:(5) -> target/release/bubble-sort 5
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (+       %) [+       x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (+       %) [+       x]
+  Estimated Cycles:                                       |                     (         )
+
 test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:(5) -> target/release/bubble-sort 5
-  ======= CACHEGRIND ===================================================================
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  ======= CACHEGRIND ==================================================================================
+  Instructions:                                           |                     (+       %) [+       x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (+       %) [+       x]
+  Estimated Cycles:                                       |                     (         )
+
 test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regression:(10) -> target/release/bubble-sort 10
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 
 Regressions:
 

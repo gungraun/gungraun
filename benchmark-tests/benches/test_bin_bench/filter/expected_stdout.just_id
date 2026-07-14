@@ -1,11 +1,11 @@
 test_bin_bench_filter::group_2::benches_with_id forty_two:(42) -> target/release/echo 42
 42
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 
 Gungraun result: Ok. 1 without regressions; 0 regressed; 4 filtered; 1 benchmarks finished in <__SECONDS__>s

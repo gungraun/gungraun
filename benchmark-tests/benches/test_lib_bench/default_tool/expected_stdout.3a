@@ -1,858 +1,858 @@
 test_lib_bench_default_tool::my_group::default_tool callgrind
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool cachegrind
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool dhat
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool memcheck
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool helgrind
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool drd
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool massif
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool bbv
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config dhat
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config drd
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config massif
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_config bbv
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print something with 'echo'
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print something with 'echo'
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/echo Print\ something\ with\ 'echo'
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool callgrind_and_dhat
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool cachegrind_and_memcheck
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool dhat_and_callgrind
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool memcheck_and_cachegrind
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool helgrind_and_drd
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool drd_and_helgrind
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool massif_and_bbv
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool bbv_and_massif
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= HELGRIND =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
 
 Gungraun result: Ok. 24 without regressions; 0 regressed; 0 filtered; 24 benchmarks finished in <__SECONDS__>s

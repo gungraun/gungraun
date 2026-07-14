@@ -1,66 +1,66 @@
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_wb
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_cacheuse
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format explicit_default_with_wb
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format explicit_default_with_cacheuse
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format all_with_wb
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format all_with_cachuse
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_misses
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_miss_rates
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_hits
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_hit_rates
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_sim
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_use
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format system_calls
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format branch_sim
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format write_back
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_ir
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_ge
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_total_rw
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_estimated_cycles
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind_all_shuffled
-  ======= CACHEGRIND ===================================================================
-  Instructions:                            |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
+  ======= CACHEGRIND ==================================================================================
+  Instructions:                                           |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind_all_default_order
-  ======= CACHEGRIND ===================================================================
-  Instructions:                            |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
+  ======= CACHEGRIND ==================================================================================
+  Instructions:                                           |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind
-  ======= CACHEGRIND ===================================================================
-  Instructions:                            |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
+  ======= CACHEGRIND ==================================================================================
+  Instructions:                                           |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_format dhat
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_format memcheck
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_format helgrind
-  ======= HELGRIND =====================================================================
-  Suppressed Errors:                       |N/A                  (*********)
+  ======= HELGRIND ====================================================================================
+  Suppressed Errors:                                      |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_format drd
-  ======= DRD ==========================================================================
-  Contexts:                                |N/A                  (*********)
+  ======= DRD =========================================================================================
+  Contexts:                                               |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_tolerance hashmap:(make_hashmap(100_000))
-  Instructions:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
 
 Gungraun result: Ok. 27 without regressions; 0 regressed; 0 filtered; 27 benchmarks finished in <__SECONDS__>s

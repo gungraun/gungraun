@@ -1,27 +1,27 @@
 test_lib_bench_output_format_threads::my_group::bench_without_format for_comparison:("A very long string to see if the truncation of t...
-  ======= CALLGRIND ====================================================================
-  Instructions:                            |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
+  ======= CALLGRIND ===================================================================================
+  Instructions:                                           |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
 test_lib_bench_output_format_threads::my_group::bench_with_format for_comparison:("Another very long string to see if the truncation is disabled with the formatting option")
-|======== CALLGRIND ====================================================================
-|-## pid: <__PID__> thread: 1 part: 1      |N/A
+|======== CALLGRIND ===================================================================================
+|-## pid: <__PID__> thread: 1 part: 1                     |N/A
 | Command: <__COMMAND__>
-| Instructions:                            |N/A                  (*********)
-|-## pid: <__PID__> thread: 2 part: 1      |N/A
+| Instructions:                                           |N/A                  (*********)
+|-## pid: <__PID__> thread: 2 part: 1                     |N/A
 | Command: <__COMMAND__>
-| Instructions:                            |N/A                  (*********)
-|-## pid: <__PID__> thread: 3 part: 1      |N/A
+| Instructions:                                           |N/A                  (*********)
+|-## pid: <__PID__> thread: 3 part: 1                     |N/A
 | Command: <__COMMAND__>
-| Instructions:                            |N/A                  (*********)
+| Instructions:                                           |N/A                  (*********)
 |-## Total
-| Instructions:                            |N/A                  (*********)
-|======== DHAT =========================================================================
-| Total bytes:                             |N/A                  (*********)
+| Instructions:                                           |N/A                  (*********)
+|======== DHAT ========================================================================================
+| Total bytes:                                            |N/A                  (*********)
 |-Comparison with bench_without_format for_comparison:("A very long string to see if the truncation of t...
 |-------- CALLGRIND
-| Instructions:                            |                     (-       %) [-       x]
+| Instructions:                                           |                     (-       %) [-       x]
 |-------- DHAT
-| Total bytes:                             |                     (-       %) [-       x]
+| Total bytes:                                            |                     (-       %) [-       x]
 
 Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s

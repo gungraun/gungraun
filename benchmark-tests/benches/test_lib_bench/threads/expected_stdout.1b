@@ -1,400 +1,400 @@
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread one:(1)
 Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 2 part: 1      |pid: <__PID__> thread: 2 part: 1
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
   Command: <__COMMAND__>
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ## Total
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= DRD ==========================================================================
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= MASSIF =======================================================================
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= DRD =========================================================================================
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= MASSIF ======================================================================================
   Command: <__COMMAND__>
-  ======= EXP-BBV ======================================================================
+  ======= EXP-BBV =====================================================================================
   Command: <__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:(2)
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 2 part: 1      |pid: <__PID__> thread: 2 part: 1
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
   Command: <__COMMAND__>
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 3 part: 1      |pid: <__PID__> thread: 3 part: 1
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 3 part: 1                     |pid: <__PID__> thread: 3 part: 1
   Command: <__COMMAND__>
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ## Total
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= DRD ==========================================================================
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= MASSIF =======================================================================
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= DRD =========================================================================================
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= MASSIF ======================================================================================
   Command: <__COMMAND__>
-  ======= EXP-BBV ======================================================================
+  ======= EXP-BBV =====================================================================================
   Command: <__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
 Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
-  Command:             target/release/thread 1
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 2 part: 1      |pid: <__PID__> thread: 2 part: 1
-  Command:             target/release/thread 1
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
+  Command: target/release/thread 1
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
+  Command: target/release/thread 1
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ## Total
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 1
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 1
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
   ## Total
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 1
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 1
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ## Total
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= DRD ==========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= DRD =========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 1
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 1
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ## Total
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= MASSIF =======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= MASSIF ======================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 1
-  ======= EXP-BBV ======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 1
+  ======= EXP-BBV =====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 1
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 1
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread one:(1)
   ------- CALLGRIND
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ------- DHAT
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (-       %) [-       x]
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (-       %) [-       x]
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
   ------- MEMCHECK
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ------- DRD
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
-  Command:             target/release/thread 2
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 2 part: 1      |pid: <__PID__> thread: 2 part: 1
-  Command:             target/release/thread 2
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 3 part: 1      |pid: <__PID__> thread: 3 part: 1
-  Command:             target/release/thread 2
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
+  Command: target/release/thread 2
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
+  Command: target/release/thread 2
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 3 part: 1                     |pid: <__PID__> thread: 3 part: 1
+  Command: target/release/thread 2
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ## Total
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 2
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 2
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
   ## Total
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (Tolerance)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (Tolerance)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 2
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 2
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ## Total
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= DRD ==========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= DRD =========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 2
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 2
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ## Total
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= MASSIF =======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= MASSIF ======================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 2
-  ======= EXP-BBV ======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 2
+  ======= EXP-BBV =====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/thread 2
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/thread 2
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread two:(2)
   ------- CALLGRIND
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ------- DHAT
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (-       %) [-       x]
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (-       %) [-       x]
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
   ------- MEMCHECK
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ------- DRD
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
 
 Gungraun result: Ok. 4 without regressions; 0 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s

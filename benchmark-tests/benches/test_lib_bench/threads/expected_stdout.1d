@@ -1,404 +1,404 @@
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread one:(1)
 Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
   Command: <__COMMAND__>
-  Baselines:                        default|default (old)
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 2 part: 1      |N/A
+  Baselines:                                       default|default (old)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 2 part: 1                     |N/A
   Command: <__COMMAND__>
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
   ## Total
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DRD ==========================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= MASSIF =======================================================================
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DRD =========================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= MASSIF ======================================================================================
   Command: <__COMMAND__>
-  ======= EXP-BBV ======================================================================
+  ======= EXP-BBV =====================================================================================
   Command: <__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:(2)
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
   Command: <__COMMAND__>
-  Baselines:                        default|default (old)
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 2 part: 1      |N/A
+  Baselines:                                       default|default (old)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 2 part: 1                     |N/A
   Command: <__COMMAND__>
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 3 part: 1      |N/A
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 3 part: 1                     |N/A
   Command: <__COMMAND__>
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
   ## Total
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DRD ==========================================================================
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= MASSIF =======================================================================
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DRD =========================================================================================
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= MASSIF ======================================================================================
   Command: <__COMMAND__>
-  ======= EXP-BBV ======================================================================
+  ======= EXP-BBV =====================================================================================
   Command: <__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
 Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
   Command: <__COMMAND__>
-  Baselines:                        default|default (old)
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
-  Command:             target/release/thread 1
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 2 part: 1      |N/A
-  Command:             target/release/thread 1
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Baselines:                                       default|default (old)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
+  Command: target/release/thread 1
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 2 part: 1                     |N/A
+  Command: target/release/thread 1
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
   ## Total
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 1
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 1
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 1
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 1
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DRD ==========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DRD =========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 1
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 1
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= MASSIF =======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= MASSIF ======================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 1
-  ======= EXP-BBV ======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 1
+  ======= EXP-BBV =====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 1
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 1
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread one:(1)
   ------- CALLGRIND
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ------- DHAT
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (-       %) [-       x]
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (-       %) [-       x]
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
   ------- MEMCHECK
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ------- DRD
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
   Command: <__COMMAND__>
-  Baselines:                        default|default (old)
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
-  Command:             target/release/thread 2
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 2 part: 1      |N/A
-  Command:             target/release/thread 2
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 3 part: 1      |N/A
-  Command:             target/release/thread 2
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Baselines:                                       default|default (old)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
+  Command: target/release/thread 2
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 2 part: 1                     |N/A
+  Command: target/release/thread 2
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 3 part: 1                     |N/A
+  Command: target/release/thread 2
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
   ## Total
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 2
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 2
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
   ## Total
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 2
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 2
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= DRD ==========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= DRD =========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 2
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 2
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
   ## Total
-  Errors:                                  |N/A                  (*********)
-  Contexts:                                |N/A                  (*********)
-  Suppressed Errors:                       |N/A                  (*********)
-  Suppressed Contexts:                     |N/A                  (*********)
-  ======= MASSIF =======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  Errors:                                                 |N/A                  (*********)
+  Contexts:                                               |N/A                  (*********)
+  Suppressed Errors:                                      |N/A                  (*********)
+  Suppressed Contexts:                                    |N/A                  (*********)
+  ======= MASSIF ======================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 2
-  ======= EXP-BBV ======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 2
+  ======= EXP-BBV =====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: <__COMMAND__>
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/thread 2
+  ## pid: <__PID__> ppid: <__PID__>                       |N/A
+  Command: target/release/thread 2
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread two:(2)
   ------- CALLGRIND
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
   ------- DHAT
-  Total bytes:                             |                     (Tolerance)
-  Total blocks:                            |                     (-       %) [-       x]
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (Tolerance)
-  At t-end blocks:                         |                     (Tolerance)
-  Reads bytes:                             |                     (Tolerance)
-  Writes bytes:                            |                     (Tolerance)
+  Total bytes:                                            |                     (Tolerance)
+  Total blocks:                                           |                     (-       %) [-       x]
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (Tolerance)
+  At t-end blocks:                                        |                     (Tolerance)
+  Reads bytes:                                            |                     (Tolerance)
+  Writes bytes:                                           |                     (Tolerance)
   ------- MEMCHECK
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ------- DRD
-  Errors:                                  |                     (Tolerance)
-  Contexts:                                |                     (Tolerance)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (Tolerance)
+  Contexts:                                               |                     (Tolerance)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
 
 Gungraun result: Ok. 4 without regressions; 0 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s

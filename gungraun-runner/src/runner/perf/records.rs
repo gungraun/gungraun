@@ -212,21 +212,19 @@ impl MetricsParser {
         }
 
         let key = PerfMetric(event.to_owned());
-
-        self.metrics.insert_or_add(
-            key,
-            AnnotatedMetric::new(
-                metric,
-                PerfQualities::new(
-                    event_runtime,
-                    pcnt_running,
-                    Some(variance / 100.0),
-                    Some(n),
-                    Some(mean),
-                ),
-                unit,
+        let annotated_metric = AnnotatedMetric::new(
+            metric,
+            PerfQualities::new(
+                event_runtime,
+                pcnt_running,
+                Some(variance / 100.0),
+                Some(n),
+                Some(mean),
             ),
+            unit,
         );
+        self.metrics
+            .insert_or_add(key, annotated_metric.normalize());
     }
 
     /// Shared validation and cold-start bookkeeping for new (non-base) perf records.
@@ -425,43 +423,34 @@ impl PerfStatRecords {
             .map_err(Into::into)
     }
 
-    /// Update each record with mean, variance and runtime from computed metrics.
-    pub fn update(&mut self, metrics: &Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>) {
-        for record in &mut self.0 {
-            if let Some(event) = &record.event {
-                if let Some(metric) = metrics.metric_by_kind(&PerfMetric(event.clone())) {
-                    record.event_runtime = metric.qualities.event_runtime;
-                    record.pcnt_running = metric.qualities.pcnt_running;
-                    record.variance = metric.qualities.rse.map(|rse| rse * 100.0);
-                    record.gungraun_mean = metric.qualities.mean;
-                    record.gungraun_n = metric.qualities.n;
-
-                    if let (Some(value), record_unit) =
-                        (&mut record.counter_value, &mut record.unit)
-                    {
-                        *value = match metric.metric {
-                            Metric::Int(int) => format!("{int}.000000"),
-                            Metric::Float(float) => format!("{float:.6}"),
-                        };
-
-                        *record_unit = metric.unit.map(|u| u.to_string());
-                    }
-                }
-            }
-        }
-    }
-
-    // FIXME: Write units like msec back with the original unit name, not our name (in this case ms)
-    /// Write the records back to a JSON file, deduplicating by event name.
-    pub fn write(&self, path: &Path) -> Result<()> {
-        let mut file = File::options().write(true).truncate(true).open(path)?;
+    /// Filter duplicates and update each record with mean, variance and other values from `metrics`
+    ///
+    /// This preserves the original unit string from each record. When the metric's unit differs
+    /// from the record's original unit, values are converted back to the original unit scale.
+    pub fn filter_and_update(
+        &mut self,
+        metrics: &Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>,
+    ) {
         let mut seen = HashSet::new();
 
-        for record in &self.0 {
-            if seen.insert(&record.event) {
-                serde_json::to_writer(&mut file, &record)?;
-                writeln!(file)?;
+        self.0.retain_mut(|record| {
+            if seen.contains(&record.event) {
+                false
+            } else {
+                seen.insert(record.event.clone());
+                record.update(metrics);
+                true
             }
+        });
+    }
+
+    /// Write the records back to a JSON file
+    pub fn write(&self, path: &Path) -> Result<()> {
+        let mut file = File::options().write(true).truncate(true).open(path)?;
+
+        for record in &self.0 {
+            serde_json::to_writer(&mut file, &record)?;
+            writeln!(file)?;
         }
 
         Ok(())
@@ -530,6 +519,7 @@ fn parse_perf_f64(value: &str) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
@@ -582,6 +572,43 @@ mod tests {
     }
 
     #[test]
+    fn test_records_filter_and_update_filters_second_and_updates_first() {
+        let first = perf_stat_record_f()
+            .instructions(1)
+            .runtime(1)
+            .pcnt_running(1.0)
+            .variance(1.0)
+            .fixture();
+        let second = perf_stat_record_f().instructions(10).fixture();
+
+        let metrics = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            AnnotatedMetric::new(
+                Metric::Int(200),
+                PerfQualities::new(300, 66.666_666_666_666_67, 0.5, 1, 400.0),
+                None,
+            ),
+        )]);
+
+        let expected = perf_stat_records_f()
+            .records([perf_stat_record_f()
+                .instructions(200)
+                .runtime(300)
+                .mean(400.0)
+                .n(1)
+                .pcnt_running(66.666_666_666_666_67)
+                .variance(50.0)
+                .fixture()])
+            .fixture();
+
+        let mut actual = perf_stat_records_f().records([first, second]).fixture();
+
+        actual.filter_and_update(&metrics);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn test_parse_records_reads_newline_delimited_perf_json() {
         let file = tempfile::NamedTempFile::new().unwrap();
         std::fs::write(
@@ -606,75 +633,6 @@ mod tests {
             .fixture();
 
         assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_update_records_rewrites_perf_quality_fields_and_units() {
-        let mut records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f()
-                    .instructions(1)
-                    .unit("msec")
-                    .runtime(1)
-                    .pcnt_running(1.0)
-                    .variance(1.0)
-                    .fixture(),
-                perf_stat_record_f()
-                    .task_clock(1.0)
-                    .unit("msec")
-                    .runtime(1)
-                    .pcnt_running(1.0)
-                    .variance(1.0)
-                    .fixture(),
-            ])
-            .fixture();
-
-        let expected_records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f()
-                    .event("instructions:u")
-                    .value("200.000000")
-                    .runtime(200)
-                    .mean(200.0)
-                    .n(1)
-                    .pcnt_running(66.666_666_666_666_67)
-                    .variance(50.0)
-                    .fixture(),
-                perf_stat_record_f()
-                    .task_clock(1.5)
-                    .unit("s")
-                    .runtime(300)
-                    .mean(300.0)
-                    .n(2)
-                    .pcnt_running(75.0)
-                    .variance(5.0)
-                    .fixture(),
-            ])
-            .fixture()
-            .0;
-
-        let metrics = Metrics::with_metric_kinds([
-            (
-                PerfMetric("instructions:u".to_owned()),
-                AnnotatedMetric::new(
-                    Metric::Int(200),
-                    PerfQualities::new(200, 66.666_666_666_666_67, 0.5, 1, 200.0),
-                    None,
-                ),
-            ),
-            (
-                PerfMetric("task-clock".to_owned()),
-                AnnotatedMetric::new(
-                    Metric::Float(1.5),
-                    PerfQualities::new(300, 75.0, 0.05, 2, 300.0),
-                    Unit::Seconds,
-                ),
-            ),
-        ]);
-
-        records.update(&metrics);
-
-        assert_eq!(records.0, expected_records);
     }
 
     #[test]

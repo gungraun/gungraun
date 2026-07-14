@@ -61,7 +61,7 @@ fn bench_perf_record(input: Vec<i32>) -> Vec<i32> {
 
 #[library_benchmark]
 #[bench::ten_thousand(
-    args = [10],
+    args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             // .alpha(0.001)

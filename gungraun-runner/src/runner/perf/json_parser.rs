@@ -113,7 +113,7 @@ impl JsonParser {
             (..) => match &mut parsed.metrics {
                 ToolMetrics::Perf(metrics) => {
                     metrics.normalize_by_repetitions(repetitions);
-                    records.update(metrics);
+                    records.filter_and_update(metrics);
                     records.write(path)?;
                 }
                 _ => {

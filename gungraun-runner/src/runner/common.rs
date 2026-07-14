@@ -7,7 +7,7 @@ mod defaults {
 }
 
 use std::collections::HashMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{Seek, Write, stderr, stdout};
@@ -18,6 +18,7 @@ use std::sync::{Arc, atomic};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow};
+use itertools::Itertools;
 use log::{Level, debug, log_enabled, warn};
 use tempfile::{TempDir, tempfile};
 
@@ -614,6 +615,12 @@ impl Assistant {
             }
             _ => {}
         }
+
+        debug!(
+            "Assistant command line: {} {}",
+            command.get_program().to_string_lossy(),
+            command.get_args().map(OsStr::to_string_lossy).join(" ")
+        );
 
         if force_parallel || self.is_parallel() {
             debug!("Spawning assistant '{}' in parallel", self.kind.id());

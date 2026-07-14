@@ -543,10 +543,20 @@ macro_rules! main {
                 .as_ref()
                 .map_or(false, |value| value == "--gungraun-run")
             {
-                let current = std::hint::black_box(
+                let mut current = std::hint::black_box(
+                    args_iter.next().expect("A mode should be present")
+                );
+
+                let mode = std::hint::black_box(
+                    $crate::__internal::InternalBenchRunMode::from_id(&current)
+                        .expect("The benchmark run mode should be valid")
+                );
+
+                current = std::hint::black_box(
                     args_iter.next().expect("Expecting a function type")
                 );
-                let next = std::hint::black_box(args_iter.next());
+
+                let mut next = std::hint::black_box(args_iter.next());
                 match current.as_str() {
                     "setup" if next.is_none() => {
                         __run_setup(true);
@@ -554,40 +564,29 @@ macro_rules! main {
                     "teardown" if next.is_none() => {
                         __run_teardown(true);
                     },
-                    mode => {
-                        let mode = $crate::__internal::InternalBenchRunMode::from_id(mode)
-                            .expect("A valid benchmark run mode should be present");
-
+                    _ => {
                         let main_index = std::hint::black_box(
-                            next.expect("A main index should be present")
-                            .parse::<usize>()
+                            current.parse::<usize>()
                             .expect("The main index should be a valid integer")
                         );
 
-                        let next = std::hint::black_box(args_iter.next());
-                        match std::hint::black_box(
-                            next
-                                .expect(
-                                    "An argument `setup`, `teardown` or an index should be present"
-                                )
-                                .as_str()
-                        ) {
-                            "setup" => {
+                        current = next.expect("A setup/teardown or group index should be present");
+                        next = std::hint::black_box(args_iter.next());
+                        match current.as_str() {
+                            "setup" if next.is_none() => {
                                 (GROUPS[main_index].0)(true);
                             },
-                            "teardown" => {
+                            "teardown" if next.is_none() => {
                                 (GROUPS[main_index].1)(true);
                             }
-                            value => {
+                            _ => {
                                 let group_index = std::hint::black_box(
-                                    value
+                                    current
                                         .parse::<usize>()
                                         .expect("Expecting a valid group index")
                                 );
                                 let bench_index = std::hint::black_box(
-                                    args_iter
-                                        .next()
-                                        .expect("A bench index should be present")
+                                    next.expect("A bench index should be present")
                                         .parse::<usize>()
                                         .expect("Expecting a valid bench index")
                                 );

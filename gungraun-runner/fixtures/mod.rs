@@ -21,8 +21,8 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{
-    CachegrindMetric, DhatMetric, DhatSpec, EntryPoint, ExitWith, PerfMetric, PerfRunMode,
-    PerfSpec, RawToolArgs, SanitizeOutput, Tool, ToolSpec, ToolSpecOptions, ToolSpecs,
+    CachegrindMetric, DhatMetric, DhatSpec, EntryPoint, ExitWith, PerfRunMode, PerfSpec,
+    RawToolArgs, SanitizeOutput, Tool, ToolSpec, ToolSpecOptions, ToolSpecs,
 };
 use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
 use crate::runner::cachegrind::args::CachegrindArgs;
@@ -33,17 +33,17 @@ use crate::runner::dhat::regression::DhatRegressionConfig;
 use crate::runner::format::OutputFormat;
 use crate::runner::meta::Metadata;
 use crate::runner::perf::args::{DEFAULT_PERF_EVENTS, PerfStatArgs};
-use crate::runner::perf::regression::PerfRegressionConfig;
 use crate::runner::tasks::ProcessHandler;
 use crate::runner::tool::args::{ToolArgs, ToolArgsLike, ValgrindArgs};
 use crate::runner::tool::config::{
     DEFAULT_PERF_ALPHA, DEFAULT_PERF_NON_ZERO_METRICS, DhatConfig, PerfConfig, ToolConfig,
     ToolConfigBuilder, ToolConfigOptions, ToolConfigs, ToolFlamegraphConfig,
 };
+use crate::runner::tool::parser::{Header, ParserOutput};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
 use crate::runner::tool::run::{RunOptions, ToolCommand, ToolCommandChild};
-use crate::summary::model::BaselineKind;
+use crate::summary::model::{BaselineKind, ToolMetrics};
 use crate::units::Unit;
 
 pub const DEFAULT_TOOL: Tool = Tool::Callgrind;
@@ -148,6 +148,22 @@ pub fn force_shutdown_f(yes: Option<bool>) -> Arc<AtomicBool> {
 }
 
 #[builder(finish_fn = "fixture")]
+pub fn header_f(
+    part: Option<u64>,
+    #[builder(into)] command: Option<String>,
+    pid: Option<i32>,
+) -> Header {
+    Header {
+        command: command.unwrap_or_else(|| "/some/command".to_owned()),
+        desc: vec![],
+        parent_pid: None,
+        part,
+        pid: pid.unwrap_or(1),
+        thread: None,
+    }
+}
+
+#[builder(finish_fn = "fixture")]
 pub fn metadata_f(raw_command_line_args: Option<&[&str]>, target: Option<&str>) -> Metadata {
     let args = raw_command_line_args
         .into_iter()
@@ -165,17 +181,16 @@ pub fn module_path_f() -> ModulePath {
 }
 
 #[builder(finish_fn = "fixture")]
-pub fn perf_regression_config_f(
-    soft_limits: Option<Vec<(PerfMetric, f64)>>,
-    hard_limits: Option<Vec<(PerfMetric, Option<Unit>, Metric)>>,
-    fail_fast: Option<bool>,
-    alpha: Option<f64>,
-) -> PerfRegressionConfig {
-    PerfRegressionConfig {
-        alpha: alpha.unwrap_or(DEFAULT_PERF_ALPHA),
-        soft_limits: soft_limits.unwrap_or_default(),
-        hard_limits: hard_limits.unwrap_or_default(),
-        fail_fast: fail_fast.unwrap_or(false),
+pub fn parser_output_f(
+    path: PathBuf,
+    header: Option<Header>,
+    tool_metrics: Option<ToolMetrics>,
+) -> ParserOutput {
+    ParserOutput {
+        details: vec![],
+        header: header.unwrap_or_else(|| header_f().fixture()),
+        metrics: tool_metrics.unwrap_or_else(|| ToolMetrics::None),
+        path,
     }
 }
 

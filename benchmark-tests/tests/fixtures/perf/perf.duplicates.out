@@ -1,0 +1,4 @@
+{"counter-value":"0","event":"event_dup_01","unit":"count","variance":1.0}
+{"counter-value":"100","event":"event_dup_01","unit":"count","variance":2.0}
+{"counter-value":"300","event":"event_dup_01","unit":"count","variance":3.0}
+{"counter-value":"900","event":"event_control_01","unit":"msec","variance":4.0}

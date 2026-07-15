@@ -342,7 +342,7 @@ mod tests {
     use super::PerfRegressionConfig;
     use crate::api::{self, Limit, PerfMetric};
     use crate::fixtures::api::perf_regression_config_f as api_perf_regression_config_f;
-    use crate::fixtures::perf_regression_config_f;
+    use crate::fixtures::perf::perf_regression_config_f;
     use crate::metrics::model::{
         AnnotatedMetric, Metric, MetricKind, Metrics, MetricsSummary, PerfQualities,
     };

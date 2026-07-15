@@ -1,7 +1,47 @@
 use bon::builder;
 
+use crate::api::{PerfMetric, Unit};
+use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
+use crate::runner::perf::json_parser::JsonParser;
 use crate::runner::perf::model::PerfStatRecord;
 use crate::runner::perf::records::PerfStatRecords;
+use crate::runner::perf::regression::PerfRegressionConfig;
+use crate::runner::tool::config::{DEFAULT_PERF_ALPHA, DEFAULT_PERF_MIN_PCNT_RUNNING};
+use crate::runner::tool::path::ToolOutputPath;
+use crate::summary::model::ToolMetrics;
+
+#[builder(finish_fn = "fixture")]
+pub fn json_parser_f(
+    output_path: ToolOutputPath,
+    min_pcnt_running: Option<f64>,
+    #[builder(default = vec![], with = FromIterator::from_iter)] non_zero_metrics: Vec<&str>,
+) -> JsonParser {
+    JsonParser {
+        min_pcnt_running: min_pcnt_running.unwrap_or(DEFAULT_PERF_MIN_PCNT_RUNNING),
+        non_zero_metrics: non_zero_metrics
+            .into_iter()
+            .map(ToOwned::to_owned)
+            .collect(),
+        output_path,
+    }
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn metric_perf_f(
+    #[builder(into)] event: Option<String>,
+    #[builder(into)] value: Option<Metric>,
+    qualities: Option<PerfQualities>,
+    unit: Option<Unit>,
+) -> (PerfMetric, AnnotatedMetric<PerfQualities>) {
+    (
+        PerfMetric(event.unwrap_or_else(|| "foo".to_owned())),
+        AnnotatedMetric::new(
+            value.unwrap_or(Metric::Int(1)),
+            qualities.unwrap_or_default(),
+            unit,
+        ),
+    )
+}
 
 #[builder(finish_fn = "fixture")]
 pub fn perf_stat_records_f(
@@ -100,4 +140,29 @@ pub fn perf_stat_record_f(
         unit: unit.map(ToOwned::to_owned),
         variance,
     }
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn perf_regression_config_f(
+    soft_limits: Option<Vec<(PerfMetric, f64)>>,
+    hard_limits: Option<Vec<(PerfMetric, Option<Unit>, Metric)>>,
+    fail_fast: Option<bool>,
+    alpha: Option<f64>,
+) -> PerfRegressionConfig {
+    PerfRegressionConfig {
+        alpha: alpha.unwrap_or(DEFAULT_PERF_ALPHA),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
+        fail_fast: fail_fast.unwrap_or(false),
+    }
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn tool_metrics_perf_f(
+    #[builder(default = vec![], with = FromIterator::from_iter)] metrics: Vec<(
+        PerfMetric,
+        AnnotatedMetric<PerfQualities>,
+    )>,
+) -> ToolMetrics {
+    ToolMetrics::Perf(Metrics::with_metric_kinds(metrics))
 }

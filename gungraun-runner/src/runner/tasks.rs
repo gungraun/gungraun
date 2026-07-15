@@ -233,6 +233,13 @@ impl ProcessChild {
         poll_interval: Duration,
         timeout: Option<Duration>,
     ) -> Result<Output> {
+        let send_sigterm = |id: u32| -> Result<()> {
+            let pid_t = i32::try_from(id)?;
+            let pid = Pid::from_raw(pid_t);
+            signal::kill(pid, signal::SIGTERM)?;
+            Ok(())
+        };
+
         let mut run_state = ProcessState::Running;
         // This should be enough time for a proper shutdown of any benchmark process
         let mut ticks = 100;
@@ -253,18 +260,13 @@ impl ProcessChild {
                 Ok(None) => {
                     match run_state {
                         ProcessState::Running if force_shutdown.load(atomic::Ordering::Acquire) => {
-                            let pid_t = i32::try_from(child.id())?;
-                            let pid = Pid::from_raw(pid_t);
-                            signal::kill(pid, signal::SIGTERM)?;
+                            send_sigterm(child.id())?;
 
                             run_state = ProcessState::Term;
                             interrupted = true;
                         }
-                        // TODO: Refactor. Both Running cases are very similar
                         ProcessState::Running if timeout.is_some_and(|t| start.elapsed() >= t) => {
-                            let pid_t = i32::try_from(child.id())?;
-                            let pid = Pid::from_raw(pid_t);
-                            signal::kill(pid, signal::SIGTERM)?;
+                            send_sigterm(child.id())?;
 
                             run_state = ProcessState::Term;
                         }

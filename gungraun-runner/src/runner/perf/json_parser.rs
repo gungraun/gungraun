@@ -126,7 +126,6 @@ impl JsonParser {
     }
 }
 
-// TODO: Add tests
 impl Parser for JsonParser {
     fn get_output_path(&self) -> &ToolOutputPath {
         &self.output_path

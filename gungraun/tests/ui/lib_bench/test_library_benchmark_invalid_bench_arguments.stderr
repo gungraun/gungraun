@@ -99,11 +99,30 @@ note: function defined here
    |              ^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:40:5
+  --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:37:17
    |
-39 | fn bench5(my: u8) -> String {
+37 | #[bench::id(42, "hello")]
+   |             --  ^^^^^^^ expected `u8`, found `&str`
+   |             |
+   |             arguments to this function are incorrect
+   |
+help: the return type of this call is `&'static str` due to the type of the argument passed
+  --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:37:13
+   |
+37 | #[bench::id(42, "hello")]
+   |             ^^  ------- this argument influences the return type of `std`
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:44:5
+   |
+43 | fn bench5(my: u8) -> String {
    |                      ------ expected `String` because of return type
-40 |     my
+44 |     my
    |     ^^- help: try using a conversion method: `.to_string()`
    |     |
    |     expected `String`, found `u8`
@@ -121,3 +140,15 @@ warning: unused variable: `my`
    |
 34 | fn bench45(my: u8) {}
    |            ^^ help: if this is intentional, prefix it with an underscore: `_my`
+
+warning: unused variable: `first`
+  --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:38:12
+   |
+38 | fn bench47(first: u8, second: u8) {}
+   |            ^^^^^ help: if this is intentional, prefix it with an underscore: `_first`
+
+warning: unused variable: `second`
+  --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:38:23
+   |
+38 | fn bench47(first: u8, second: u8) {}
+   |                       ^^^^^^ help: if this is intentional, prefix it with an underscore: `_second`

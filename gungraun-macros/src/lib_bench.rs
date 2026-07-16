@@ -738,7 +738,6 @@ impl Iter {
     }
 }
 
-// TODO: There are a lot of not spanned quotes in the perf render methods. Use span if possible
 impl LibraryBenchmark {
     fn extract_benches(
         &mut self,
@@ -1178,12 +1177,12 @@ impl PerfRenderer<'_> {
         let setup_output = self.setup_output_type();
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
-                quote! {{
+                quote_spanned! { self.setup.expr().span() => {
                     let __setup: #input_type = #inner_without_black_box;
                     (std::hint::black_box(__setup),)
                 }}
             } else {
-                quote! { (#inner,) }
+                quote_spanned! { self.setup.expr().span() => (#inner,) }
             };
 
             let shim_call = self.render_shim_call(&quote!(__input));
@@ -1203,7 +1202,7 @@ impl PerfRenderer<'_> {
                     let shim_call = self.render_shim_call(&quote!(__input));
 
                     (
-                        quote! { (#inner,) },
+                        quote_spanned! { args.span() => (#inner,) },
                         quote! { |(__input,)| std::hint::black_box(#shim_call) },
                     )
                 }
@@ -1214,7 +1213,7 @@ impl PerfRenderer<'_> {
                     let shim_call = self.render_shim_call(&quote!(#(#input_idents),*));
 
                     (
-                        quote! { (#inner) },
+                        quote_spanned! { args.span() => (#inner) },
                         quote! {
                             |__input| {
                                 let (#(#input_idents),*) = __input;
@@ -1269,13 +1268,13 @@ impl PerfRenderer<'_> {
     ) -> TokenStream {
         let (setup_stmt, work_call) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
-                quote! {
+                quote_spanned! { self.setup.expr().span() =>
                     #[allow(clippy::let_unit_value, clippy::useless_conversion)]
                     let __setup: #input_type  = #inner_without_black_box;
                     let __setup = std::hint::black_box(__setup);
                 }
             } else {
-                quote! {
+                quote_spanned! { self.setup.expr().span() =>
                     #[allow(clippy::let_unit_value, clippy::useless_conversion)]
                     let __setup = #inner;
                 }
@@ -1292,12 +1291,12 @@ impl PerfRenderer<'_> {
                 }
                 1 => {
                     let setup_stmt = if let Some(input_type) = self.single_input_type {
-                        quote! {
+                        quote_spanned! { args.span() =>
                             #[allow(clippy::let_unit_value, clippy::useless_conversion)]
                             let __arg: #input_type = #inner;
                         }
                     } else {
-                        quote! {
+                        quote_spanned! { args.span() =>
                             #[allow(clippy::let_unit_value, clippy::useless_conversion)]
                             let __arg = #inner;
                         }
@@ -1312,13 +1311,13 @@ impl PerfRenderer<'_> {
                         .collect::<Vec<_>>();
 
                     let setup_stmt = if self.has_generics {
-                        quote! {
+                        quote_spanned! { args.span() =>
                             #[allow(clippy::let_unit_value)]
                             let (#(#input_idents),*) = (#inner);
                         }
                     } else {
                         let tuple_ty = tuple_type(self.input_types);
-                        quote! {
+                        quote_spanned! { args.span() =>
                             #[allow(clippy::let_unit_value)]
                             let (#(#input_idents),*): #tuple_ty = (#inner);
                         }
@@ -1377,12 +1376,12 @@ impl PerfRenderer<'_> {
         let setup_output = self.setup_output_type();
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
-                quote! {{
+                quote_spanned! { self.setup.expr().span() => {
                     let __setup: #input_type = #inner_without_black_box;
                     (std::hint::black_box(__setup),)
                 }}
             } else {
-                quote! { (#inner,) }
+                quote_spanned! { self.setup.expr().span() => (#inner,) }
             };
 
             (
@@ -1398,7 +1397,7 @@ impl PerfRenderer<'_> {
                     quote! { |()| { let _ = std::hint::black_box(42); } },
                 ),
                 1 => (
-                    quote! { (#inner,) },
+                    quote_spanned! { args.span() => (#inner,) },
                     quote! {
                         |(__input,)| { let _ = std::hint::black_box(__input); }
                     },
@@ -1409,7 +1408,7 @@ impl PerfRenderer<'_> {
                         .collect::<Vec<_>>();
 
                     (
-                        quote! { (#inner) },
+                        quote_spanned! { args.span() => (#inner) },
                         quote! {
                             |__input| {
                                 let (#(#input_idents),*) = __input;
@@ -1440,14 +1439,18 @@ impl PerfRenderer<'_> {
     fn render_iter_batch(&self, iter: &Iter, count_ident: Option<&Ident>) -> TokenStream {
         let setup_output = self.setup_output_type();
         let setup_expr = iter.render_as_expr(self.setup, None);
+        let setup_span = self
+            .setup
+            .expr()
+            .map_or_else(|| iter.expr().span(), Spanned::span);
 
         let setup = if let Some(input_type) = self.single_input_type {
-            quote! {{
+            quote_spanned! { setup_span => {
                 let __setup: #input_type = #setup_expr;
                 (std::hint::black_box(__setup),)
             }}
         } else {
-            quote! { (#setup_expr,) }
+            quote_spanned! { setup_span => (#setup_expr,) }
         };
 
         let shim_call = self.render_shim_call(&quote!(__input));
@@ -1471,19 +1474,23 @@ impl PerfRenderer<'_> {
     /// This method dispatches to [`Self::render_once`] to render the shared one-shot perf section.
     fn render_iter_once(&self, iter: &Iter) -> TokenStream {
         let setup_expr = iter.render_as_expr(self.setup, None);
+        let setup_span = self
+            .setup
+            .expr()
+            .map_or_else(|| iter.expr().span(), Spanned::span);
 
         let setup = if let Some(input_type) = self.single_input_type {
-            quote! {{
+            quote_spanned! { setup_span => {
                 let __setup: #input_type = #setup_expr;
                 std::hint::black_box(__setup)
             }}
         } else {
-            quote! {
+            quote_spanned! { setup_span =>
                 std::hint::black_box(#setup_expr)
             }
         };
 
-        let setup = quote! {
+        let setup = quote_spanned! { setup_span =>
             #[allow(clippy::let_unit_value, clippy::useless_conversion)]
             let __setup = #setup;
         };
@@ -1510,14 +1517,18 @@ impl PerfRenderer<'_> {
     fn render_iter_overhead_batch(&self, iter: &Iter, repetitions_ident: &Ident) -> TokenStream {
         let setup_output = self.setup_output_type();
         let setup_expr = iter.render_as_expr(self.setup, None);
+        let setup_span = self
+            .setup
+            .expr()
+            .map_or_else(|| iter.expr().span(), Spanned::span);
 
         let setup = if let Some(input_type) = self.single_input_type {
-            quote! {{
+            quote_spanned! { setup_span => {
                 let __setup: #input_type = #setup_expr;
                 (std::hint::black_box(__setup),)
             }}
         } else {
-            quote! { (#setup_expr,) }
+            quote_spanned! { setup_span => (#setup_expr,) }
         };
 
         let work = quote! {
@@ -1561,13 +1572,13 @@ impl PerfRenderer<'_> {
         let setup_output = Some(tuple_type(self.input_types));
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
-                quote! {{
+                quote_spanned! { self.setup.expr().span() => {
                     let __setup: #input_type = #inner_without_black_box;
                     let __setup = (std::hint::black_box(__setup),);
                     __setup
                 }}
             } else {
-                quote! { (#inner,) }
+                quote_spanned! { self.setup.expr().span() => (#inner,) }
             };
 
             let shim_call = self.render_shim_call(&quote!(__input));
@@ -1603,13 +1614,13 @@ impl PerfRenderer<'_> {
     ) -> TokenStream {
         let (setup_stmt, work_call) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
-                quote! {
+                quote_spanned! { self.setup.expr().span() =>
                     #[allow(clippy::let_unit_value, clippy::useless_conversion)]
                     let __setup: #input_type = #inner_without_black_box;
                     let __setup = std::hint::black_box(__setup);
                 }
             } else {
-                quote! {
+                quote_spanned! { self.setup.expr().span() =>
                     #[allow(clippy::let_unit_value, clippy::useless_conversion)]
                     let __setup = #inner;
                 }
@@ -1648,13 +1659,13 @@ impl PerfRenderer<'_> {
         let setup_output = Some(tuple_type(self.input_types));
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
-                quote! {{
+                quote_spanned! { self.setup.expr().span() => {
                     let __setup: #input_type = #inner_without_black_box;
                     let __setup = (std::hint::black_box(__setup),);
                     __setup
                 }}
             } else {
-                quote! { (#inner,) }
+                quote_spanned! { self.setup.expr().span() => (#inner,) }
             };
 
             (

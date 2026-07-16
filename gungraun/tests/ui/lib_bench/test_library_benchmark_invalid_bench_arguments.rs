@@ -33,6 +33,10 @@ fn bench40(my: u8) {}
 #[benches::multi("hello")]
 fn bench45(my: u8) {}
 
+#[library_benchmark]
+#[bench::id(42, "hello")]
+fn bench47(first: u8, second: u8) {}
+
 // incorrect return type
 #[library_benchmark]
 #[bench::id(42)]

@@ -8,7 +8,7 @@ use std::io::{BufRead, Read, Write as IOWrite, stderr, stdout};
 use std::os::unix::process::ExitStatusExt;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
-use std::process::{Output, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::sync::LazyLock;
 
 use benchmark_tests::common::Summary;
@@ -289,6 +289,12 @@ struct ExpectedConfig {
     /// Example: `true` when cargo should not emit benchmark diagnostics.
     #[serde(default)]
     no_stderr: bool,
+    /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory
+    ///
+    /// For example this is the directory of the `test_something` benchmark in which the script is
+    /// executed: `project_root/target/benchmark-tests/test_something`
+    #[serde(default)]
+    script: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -555,7 +561,7 @@ impl Benchmark {
             std::fs::write(&setup_path, setup)
                 .expect("Preparing the file with the setup content should succeed");
             print_info("Running setup:");
-            let status = std::process::Command::new("bash")
+            let status = Command::new("bash")
                 .args(["-ex"])
                 .arg(setup_path)
                 .status()
@@ -574,7 +580,7 @@ impl Benchmark {
         std::fs::write(self.home_dir.join(CONTINUE_FILE_NAME), &self.config_name)
             .expect("Writing to the continue file should succeed");
 
-        let mut command = std::process::Command::new(env!("CARGO"));
+        let mut command = Command::new(env!("CARGO"));
         command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
         command.args(cargo_args);
 
@@ -610,7 +616,7 @@ impl Benchmark {
                 .expect("Preparing the file with the teardown content should succeed");
 
             print_info("Running teardown:");
-            let status = std::process::Command::new("bash")
+            let status = Command::new("bash")
                 .args(["-eux"])
                 .arg(teardown_path)
                 .status()
@@ -1505,6 +1511,29 @@ impl RunConfig {
             }
             output.assert_exit(expected.exit_code);
 
+            if let Some(script) = expected.script.as_ref() {
+                let dir = tempdir().expect(
+                    "Creating a temporary directory for the assertion script should succeed",
+                );
+
+                let base_dir = home_dir.join(PACKAGE).join(bench_name);
+
+                let assert_path = dir.path().join("assert");
+                std::fs::write(&assert_path, script)
+                    .expect("Preparing the file with the script content should succeed");
+                print_info("Running assertion script:");
+                let status = Command::new("bash")
+                    .current_dir(base_dir)
+                    .args(["-ex"])
+                    .arg(assert_path)
+                    .status()
+                    .expect("Spawning the assertion script should succeed");
+
+                if !status.success() {
+                    panic!("Running assertion script failed with {status:?}");
+                }
+            }
+
             if let Some(files) = &expected.files {
                 let expected_runs: ExpectedRuns = serde_yaml::from_reader(
                     File::open(bench_dir.join(files)).expect("File should exist"),
@@ -1571,7 +1600,7 @@ impl RunConfig {
 
 fn build_gungraun_runner() {
     print_info("Building gungraun-runner");
-    let status = std::process::Command::new(env!("CARGO"))
+    let status = Command::new(env!("CARGO"))
         .args(["build", "--package", "gungraun-runner", "--release"])
         .status()
         .unwrap();

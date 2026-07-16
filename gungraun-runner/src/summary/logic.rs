@@ -19,9 +19,11 @@ use crate::api::{ErrorMetric, EventKind, Tool};
 use crate::error::Error;
 use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
 use crate::runner::args::NoCapture;
-use crate::runner::common::{Baselines, CapturedOutput, Config, ModulePath};
+use crate::runner::common::{
+    Baselines, CapturedOutput, Config, ModulePath, PerfOutputConfig, PostProcessingConfig,
+};
 use crate::runner::format::{
-    Formatter, Header, OutputFormat, OutputFormatKind, VerticalFormatter, print_no_capture_footer,
+    Formatter, OutputFormat, OutputFormatKind, VerticalFormatter, print_no_capture_footer,
     print_regressions,
 };
 use crate::runner::tool::parser::ParserOutput;
@@ -92,12 +94,11 @@ impl BenchmarkSummary {
     fn print_default(
         &self,
         config: &Config,
-        header: &Header,
         output_format: &OutputFormat,
         mut captured_output: CapturedOutput,
-        alpha: Option<f64>,
+        post_processing_config: &PostProcessingConfig,
     ) -> Result<()> {
-        header.print();
+        post_processing_config.header.print();
 
         if config.meta.args.load_baseline.is_none() {
             match config.meta.args.nocapture {
@@ -134,7 +135,7 @@ impl BenchmarkSummary {
                 baselines,
                 &profile.summaries,
                 is_default,
-                alpha,
+                post_processing_config.perf_config.as_ref(),
             );
             print_regressions(&profile.summaries.total.regressions);
         }
@@ -175,14 +176,18 @@ impl BenchmarkSummary {
     pub fn print_and_save(
         &self,
         config: &Config,
-        header: &Header,
         output_format: &OutputFormat,
         captured_output: CapturedOutput,
-        alpha: Option<f64>,
+        post_processing_config: &PostProcessingConfig,
     ) -> Result<()> {
         match output_format.kind {
             OutputFormatKind::Default => self
-                .print_default(config, header, output_format, captured_output, alpha)
+                .print_default(
+                    config,
+                    output_format,
+                    captured_output,
+                    post_processing_config,
+                )
                 .and_then(|()| {
                     if let Some(output) = &self.summary_output {
                         serde_json::to_value(self)
@@ -231,7 +236,7 @@ impl BenchmarkSummary {
         id: &str,
         other: &Self,
         output_format: &OutputFormat,
-        alpha: Option<f64>,
+        perf_processing_config: Option<&PerfOutputConfig>,
     ) {
         let mut summaries = vec![];
 
@@ -254,7 +259,7 @@ impl BenchmarkSummary {
                 id,
                 self.details.as_deref(),
                 summaries,
-                alpha,
+                perf_processing_config,
             );
         }
     }

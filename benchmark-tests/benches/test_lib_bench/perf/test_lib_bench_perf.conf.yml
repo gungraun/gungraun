@@ -1,3 +1,17 @@
 groups:
   - runs:
       - args: []
+        expected:
+          script: |
+            jq -e -s --arg event 'cpu_core/instructions/u' '
+              [.[] | select(.event == $event)]
+              | if length == 1 then .[0]
+                else error("expected exactly one \($event) event")
+                end
+              | (
+                  (.["counter-value"] | tonumber? | isfinite)
+                  and
+                  (.["pcnt-running"] | tonumber? | . > 0 and . < 100)
+                )
+            ' \
+            with_sampling/thirty_events_sampled_then_multiplexing/perf.thirty_events_sampled_then_multiplexing.out

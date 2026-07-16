@@ -3,115 +3,117 @@ use std::time::Duration;
 
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use gungraun::prelude::*;
-use gungraun::{Callgrind, Perf, PerfRunMode, Tool};
+use gungraun::{Callgrind, Perf, Tool};
 
 #[library_benchmark]
-#[bench::multiple_event_sets(
+#[bench::default()]
+#[bench::one(
+    args = [],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .event_sets(["instructions"])
+            // to provoke a warning which tells us that the args are parsed but only if record is
+            // enabled
+            .record_args(["-D", "1000"])
+            .alpha(0.001)
+        )
+)]
+#[bench::same_twice(
+    args = [],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .event_sets(["instructions,instructions"])
+        )
+)]
+#[bench::two_sets_same_event(
     args = [],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             .event_sets(["instructions", "instructions"])
         )
 )]
-#[bench::default_calibrate(
+#[bench::two_sets_different_events(
     args = [],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .run_mode(PerfRunMode::DefaultCalibrate)
+            .event_sets(["instructions", "task-clock"])
+            // Testing:
+            // 1. that just adding `record_args` without enabling record doesn't do anything.
+            // 2. sadly, these arguments don't have any side-effects we can verify but at least we
+            //    can test that we don't provoke an error or panic when record is `true` or `false`
+            .record_args(["--call-graph=dwarf", "-F", "99"])
         )
 )]
-#[bench::calibrate_with_count(
+#[bench::ten_sets(
     args = [],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .run_mode(PerfRunMode::Calibrate(Duration::from_millis(100)))
+            .event_sets([
+                "instructions:u","cycles:u","ref-cycles","task-clock","cpu-clock","faults",
+                "context-switches","branches","branch-misses","cache-misses"
+            ])
         )
 )]
-#[bench::raw(
-    args = [],
-    config = LibraryBenchmarkConfig::default()
-        .tool(Perf::default()
-        .run_mode(PerfRunMode::Direct)
-        )
-)]
-fn bench_perf() -> Vec<i32> {
-    black_box(bubble_sort(setup_worst_case_array(black_box(1))))
+fn event_sets() -> Vec<i32> {
+    black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
 }
 
+// Far too many slots to succeed without multiplexing on a regular cpu when using sampling. The low
+// `min_pcnt_running` value ensures we still count all events which have a valid counter-value.
 #[library_benchmark(
-    config = LibraryBenchmarkConfig::default().tool(Callgrind::default().args(["--branch-sim=yes"]))
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .min_pcnt_running(0.0)
+            .event_sets([
+                "instructions,instructions,instructions,instructions,instructions,\
+                instructions,instructions,instructions,instructions,instructions,\
+                instructions,instructions,instructions,instructions,instructions,\
+                instructions,instructions,instructions,instructions,instructions,\
+                instructions,instructions,instructions,instructions,instructions,\
+                instructions,instructions,instructions,instructions,instructions"
+            ])
+        )
 )]
-#[bench::some(args = [100], setup = setup_worst_case_array)]
-fn bench_perf_more(input: Vec<i32>) -> Vec<i32> {
-    black_box(bubble_sort(black_box(input)))
+fn thirty_events_sampled_then_multiplexing() -> Vec<i32> {
+    black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
 }
 
 #[library_benchmark]
-#[bench::raw(
-    args = [10000],
-    config = LibraryBenchmarkConfig::default()
-        .tool(Perf::default()
-            .run_mode(PerfRunMode::Direct)
-        ),
-    setup = setup_worst_case_array
+#[bench::default_perf_with_callgrind(
+    args = [],
+    config = LibraryBenchmarkConfig::default().tool(Callgrind::default())
 )]
-fn bench_perf_record(input: Vec<i32>) -> Vec<i32> {
-    black_box(bubble_sort(black_box(input)))
-}
-
-#[library_benchmark]
-#[bench::ten_thousand(
-    args = [1000],
-    config = LibraryBenchmarkConfig::default()
-        .tool(Perf::default()
-            // .alpha(0.001)
-            // .run_mode(PerfRunMode::Calibrate(Duration::from_secs(1)))
-            // .event_set("faults,instructions:u,cycles:u,task-clock,cpu-clock,context-switches,branch-misses,cache-misses")
-            // .event_set("instructions,ocr.demand_data_rd.l3_hit.snoop_hit_with_fwd")
-            // .record(true)
-            // .record_args(["--verbose"])
-            // .args(["--per-socket"])
-            .sample_duration(Duration::from_secs(2))
-            // .soft_limits([("*instructions*", 1.0), ("task-clock*", 10.0)])
-            // .hard_limits([("*instructions*", None, 500)])
-        ),
-        // .tool(Callgrind::default().args(["branch-sim=yes"])),
-    setup = setup_worst_case_array
+#[bench::default_callgrind_with_perf(
+    args = [],
+    config = LibraryBenchmarkConfig::default().default_tool(Tool::Callgrind).tool(Perf::default())
 )]
-fn bench_perf_samples(input: Vec<i32>) -> Vec<i32> {
-    black_box(bubble_sort(black_box(input)))
+fn with_other_tool() -> Vec<i32> {
+    black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
 }
-
-// fn setup() -> String {
-//     format!("h")
-// }
-//
-// #[library_benchmark(setup = setup)]
-// fn bench_perf_standalone<T>(num: T) -> T
-// where
-//     T: std::fmt::Display,
-// {
-//     black_box(num)
-// }
 
 library_benchmark_group!(
-    name = my_group,
-    // benchmarks = [bench_perf, bench_perf_more, bench_perf_record]
-    benchmarks = [bench_perf_samples]
+    name = without_sampling,
+    benchmarks = [event_sets, with_other_tool]
+);
+
+library_benchmark_group!(
+    name = with_sampling,
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default().sample_duration(Duration::from_secs(1))),
+    benchmarks = [
+        event_sets,
+        with_other_tool,
+        thirty_events_sampled_then_multiplexing
+    ]
+);
+
+library_benchmark_group!(
+    name = record,
+    config = LibraryBenchmarkConfig::default().tool(Perf::default().record(true)),
+    benchmarks = event_sets
 );
 
 main!(
-    config = LibraryBenchmarkConfig::default()
-        .default_tool(Tool::Perf)
-        .tool(Perf::default()),
-    library_benchmark_groups = my_group
+    config = LibraryBenchmarkConfig::default().default_tool(Tool::Perf),
+    library_benchmark_groups = [without_sampling, with_sampling, record]
 );
-
-// use gungraun::Callgrind;
-// main!(
-//     config = LibraryBenchmarkConfig::default()
-//         .default_tool(Tool::Perf)
-//         .tool(Perf::default())
-//         .tool(Callgrind::default()),
-//     library_benchmark_groups = my_group
-// );

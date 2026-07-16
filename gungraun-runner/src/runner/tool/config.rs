@@ -65,7 +65,9 @@ use crate::api::{
     ToolSpecs,
 };
 use crate::runner::callgrind::flamegraph::Config as FlamegraphConfig;
-use crate::runner::common::{Analyzer, Assistant, CapturedOutput, Config, ModulePath, Sandbox};
+use crate::runner::common::{
+    Analyzer, Assistant, CapturedOutput, Config, ModulePath, PerfOutputConfig, Sandbox,
+};
 use crate::runner::format::OutputFormat;
 use crate::runner::meta::Metadata;
 use crate::runner::perf::args::DEFAULT_PERF_EVENTS;
@@ -834,30 +836,33 @@ impl ToolConfigs {
         Ok(tool_configs)
     }
 
-    /// Returns the common perf significance level (`alpha`) shared by all perf configs.
+    /// Returns the common perf output configuration shared by all perf configs.
     ///
     /// All [`ToolConfigOptions::Perf`] variants in this collection are expected to have the same
-    /// `alpha` value.
+    /// `alpha` and `min_pcnt_running` values.
     ///
     /// Returns `None` if there are no perf configs.
     ///
     /// # Panics
     ///
-    /// If not all alpha values have the exact same value.
+    /// If not all `alpha` and `min_pcnt_running` values have the exact same value.
     #[expect(clippy::float_cmp)]
-    pub fn alpha(&self) -> Option<f64> {
-        let mut alphas = self.0.iter().filter_map(|t| match &t.options {
-            ToolConfigOptions::Perf(perf_config) => Some(perf_config.alpha),
+    pub fn perf_output_config(&self) -> Option<PerfOutputConfig> {
+        let mut values = self.0.iter().filter_map(|t| match &t.options {
+            ToolConfigOptions::Perf(perf_config) => {
+                Some((perf_config.alpha, perf_config.min_pcnt_running))
+            }
             _ => None,
         });
 
-        let first = alphas.next()?;
+        let (first_alpha, first_min_pcnt_running) = values.next()?;
         assert!(
-            alphas.all(|alpha| alpha == first),
-            "all alpha values should have the exact same value"
+            values.all(|(alpha, min_pcnt_running)| alpha == first_alpha
+                && min_pcnt_running == first_min_pcnt_running),
+            "all alpha and min_pcnt_running values should have the exact same value"
         );
 
-        Some(first)
+        Some((first_alpha, first_min_pcnt_running).into())
     }
 
     /// Returns `true` if there are any [`Tool`]s enabled.

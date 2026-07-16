@@ -14,7 +14,7 @@ use indexmap::{IndexSet, indexset};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::common::{Baselines, BenchmarkSummaries, Config, ModulePath};
+use super::common::{Baselines, BenchmarkSummaries, Config, ModulePath, PerfOutputConfig};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use crate::api::{
@@ -23,7 +23,6 @@ use crate::api::{
 };
 use crate::metrics::logic::MetricValue;
 use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsDiff, PerfQualities};
-use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
 use crate::stats::runner::DiffStats;
 use crate::summary::model::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
 use crate::units::Unit;
@@ -180,7 +179,7 @@ pub trait Formatter {
         baselines: &Baselines,
         data: &ProfileData,
         is_default_tool: bool,
-        alpha: Option<f64>,
+        perf_config: Option<&PerfOutputConfig>,
     );
 
     /// Format a line in free form as is
@@ -194,7 +193,7 @@ pub trait Formatter {
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
         is_default_tool: bool,
-        alpha: Option<f64>,
+        perf_config: Option<&PerfOutputConfig>,
     );
 
     /// Print the formatted output of the whole [`ProfileData`]
@@ -205,11 +204,11 @@ pub trait Formatter {
         baselines: &Baselines,
         data: &ProfileData,
         is_default_tool: bool,
-        alpha: Option<f64>,
+        perf_config: Option<&PerfOutputConfig>,
     ) where
         Self: std::fmt::Display,
     {
-        self.format(tool, config, baselines, data, is_default_tool, alpha);
+        self.format(tool, config, baselines, data, is_default_tool, perf_config);
 
         print!("{self}");
 
@@ -223,7 +222,7 @@ pub trait Formatter {
         id: &str,
         details: Option<&str>,
         summaries: Vec<(Tool, ToolMetricSummary)>,
-        alpha: Option<f64>,
+        perf_config: Option<&PerfOutputConfig>,
     );
 }
 
@@ -1009,11 +1008,11 @@ impl VerticalFormatter {
         field: &str,
         metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
         diffs: Option<Diffs>,
-        alpha: Option<f64>,
+        perf_config: &PerfOutputConfig,
     ) {
         self.write_metric(field, &metrics, diffs);
         // The second line is only printed if at least one rse is present
-        self.write_perf_significance_line(metrics, alpha);
+        self.write_perf_significance_line(metrics, perf_config);
         // The third line is only printed if at least one samples count is present
         self.write_perf_samples_line(metrics);
     }
@@ -1021,7 +1020,7 @@ impl VerticalFormatter {
     fn write_perf_significance_line(
         &mut self,
         metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
-        alpha: Option<f64>,
+        perf_config: &PerfOutputConfig,
     ) {
         let field = "  rse% (sig.thr) [sig.fact]".bright_black();
         match metrics.map(|a| (a, a.qualities.rse)) {
@@ -1066,8 +1065,7 @@ impl VerticalFormatter {
                 let new_rse_string = Metric::Float(new_rse * 100.0).to_string_without_unit();
                 let old_rse_string = Metric::Float(old_rse * 100.0).to_string_without_unit();
 
-                let diff_stats =
-                    DiffStats::from_metrics(new, old, alpha.unwrap_or(DEFAULT_PERF_ALPHA));
+                let diff_stats = DiffStats::from_metrics(new, old, perf_config.alpha());
 
                 let right = if let Some(diff_stats) = diff_stats {
                     let significance_threshold = format!(
@@ -1225,14 +1223,14 @@ impl VerticalFormatter {
 
     fn format_perf_metrics<'a, K>(
         &mut self,
-        alpha: Option<f64>,
+        perf_config: &PerfOutputConfig,
         metrics: impl Iterator<Item = (K, &'a MetricsDiff<AnnotatedMetric<PerfQualities>>)>,
     ) where
         K: Display,
     {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
-            self.write_perf_metric(&description, diff.metrics.as_ref(), diff.diffs, alpha);
+            self.write_perf_metric(&description, diff.metrics.as_ref(), diff.diffs, perf_config);
         }
     }
 
@@ -1353,7 +1351,7 @@ impl Formatter for VerticalFormatter {
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
         is_default_tool: bool,
-        alpha: Option<f64>,
+        perf_config: Option<&PerfOutputConfig>,
     ) {
         if is_default_tool {
             self.format_baseline(baselines);
@@ -1428,8 +1426,10 @@ impl Formatter for VerticalFormatter {
                 );
             }
             ToolMetricSummary::Perf(summary) => {
+                let default_perf_config = PerfOutputConfig::default();
+                // TODO: IMPLEMENT showing alpha and min_pcnt_running
                 self.format_perf_metrics(
-                    alpha,
+                    perf_config.unwrap_or(&default_perf_config),
                     summary
                         .all_diffs()
                         .map(|(perf_metric, diff)| (perf_metric.display(), diff)),
@@ -1445,7 +1445,7 @@ impl Formatter for VerticalFormatter {
         baselines: &Baselines,
         data: &ProfileData,
         is_default_tool: bool,
-        alpha: Option<f64>,
+        perf_config: Option<&PerfOutputConfig>,
     ) {
         if self.output_format.show_only_comparison {
             // no usual data to show
@@ -1466,7 +1466,7 @@ impl Formatter for VerticalFormatter {
                         Some(&part.details),
                         &part.metrics_summary,
                         is_default_tool,
-                        alpha,
+                        perf_config,
                     );
                     first = false;
                 } else {
@@ -1476,7 +1476,7 @@ impl Formatter for VerticalFormatter {
                         Some(&part.details),
                         &part.metrics_summary,
                         is_default_tool,
-                        alpha,
+                        perf_config,
                     );
                 }
             }
@@ -1489,7 +1489,7 @@ impl Formatter for VerticalFormatter {
                     None,
                     &data.total.summary,
                     is_default_tool,
-                    alpha,
+                    perf_config,
                 );
             }
         } else if data.total.is_some() {
@@ -1499,7 +1499,7 @@ impl Formatter for VerticalFormatter {
                 None,
                 &data.total.summary,
                 is_default_tool,
-                alpha,
+                perf_config,
             );
         } else if !data.is_empty() && tool == Tool::Perf {
             self.format_single(
@@ -1508,7 +1508,7 @@ impl Formatter for VerticalFormatter {
                 None,
                 &data.parts[0].metrics_summary,
                 is_default_tool,
-                alpha,
+                perf_config,
             );
         } else if data.total.is_none() && !data.parts.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
@@ -1534,7 +1534,7 @@ impl Formatter for VerticalFormatter {
         id: &str,
         details: Option<&str>,
         summaries: Vec<(Tool, ToolMetricSummary)>,
-        alpha: Option<f64>,
+        perf_config: Option<&PerfOutputConfig>,
     ) {
         if self.output_format.is_default() {
             ComparisonHeader::new(function_name, id, details, &self.output_format).print();
@@ -1552,7 +1552,7 @@ impl Formatter for VerticalFormatter {
                         tool.to_string().to_uppercase()
                     ));
                 }
-                self.format_single(*tool, &(None, None), None, summary, false, alpha);
+                self.format_single(*tool, &(None, None), None, summary, false, perf_config);
             }
             self.print_buffer();
         }

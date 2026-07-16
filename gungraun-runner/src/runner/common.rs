@@ -40,7 +40,9 @@ use crate::runner::format::{
 };
 use crate::runner::lib_bench::{self, LibBench};
 use crate::runner::tasks::ThreadPool;
-use crate::runner::tool::config::ToolFlamegraphConfig;
+use crate::runner::tool::config::{
+    DEFAULT_PERF_ALPHA, DEFAULT_PERF_MIN_PCNT_RUNNING, ToolFlamegraphConfig,
+};
 use crate::runner::tool::parser::{Parser, ParserOutput};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
@@ -171,20 +173,16 @@ pub struct Groups(pub Vec<Group>);
 /// Result payload returned by worker jobs when running a benchmark group.
 #[derive(Debug)]
 pub struct JobResult {
-    /// The perf alpha value to compute the p-value, significance threshold and factor
-    pub alpha: Option<f64>,
     /// Final benchmark summary produced by the executed job.
     pub benchmark_summary: BenchmarkSummary,
     /// Captured stdout/stderr output associated with this job.
     pub captured_output: CapturedOutput,
     /// Data processor used to parse and finalize tool outputs.
     pub data_processor: Box<dyn BenchmarkDataProcessor>,
-    /// Whether regressions in this job should immediately fail the run.
-    pub fail_fast: bool,
-    /// Header metadata used for formatting benchmark output.
-    pub header: Header,
     /// Output formatting configuration used when printing this job result.
     pub output_format: OutputFormat,
+    /// Configuration controlling how benchmark results are processed and formatted.
+    pub post_processing_config: PostProcessingConfig,
 }
 
 /// Data processor used when loading and comparing against an existing baseline.
@@ -197,6 +195,58 @@ pub struct LoadBaselineDataProcessor {
 /// A helper struct similar to a file path but for module paths with the `::` delimiter
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
+
+/// Configuration controlling how benchmark results are processed and formatted for output.
+#[derive(Debug, PartialEq, Clone)]
+pub struct PostProcessingConfig {
+    /// Whether to compare benchmarks by their id.
+    pub compare_by_id: bool,
+    /// Whether to stop after the first failing benchmark.
+    pub fail_fast: bool,
+    /// The header to print at the start of benchmark output.
+    pub header: Header,
+    /// Optional perf-specific output configuration. When [`None`], defaults are used.
+    pub perf_config: Option<PerfOutputConfig>,
+}
+
+/// Configuration for perf-specific output formatting and significance thresholds.
+#[derive(Debug, PartialEq, Clone)]
+pub struct PerfOutputConfig {
+    /// The alpha threshold used for statistical significance testing.
+    alpha: f64,
+    /// The minimum percentage of time the benchmark must be running.
+    min_pcnt_running: f64,
+}
+
+impl PerfOutputConfig {
+    /// Returns the alpha threshold for statistical significance testing.
+    pub fn alpha(&self) -> f64 {
+        self.alpha
+    }
+
+    /// Returns the minimum percentage of time the benchmark must be running.
+    pub fn min_pcnt_running(&self) -> f64 {
+        self.min_pcnt_running
+    }
+}
+
+impl From<(f64, f64)> for PerfOutputConfig {
+    fn from((alpha, min_pcnt_running): (f64, f64)) -> Self {
+        Self {
+            alpha,
+            min_pcnt_running,
+        }
+    }
+}
+
+impl Default for PerfOutputConfig {
+    fn default() -> Self {
+        Self {
+            alpha: DEFAULT_PERF_ALPHA,
+            min_pcnt_running: DEFAULT_PERF_MIN_PCNT_RUNNING,
+        }
+    }
+}
 
 /// The `Sandbox` in which benchmarks should be runs
 ///
@@ -883,6 +933,7 @@ impl Group {
     }
 
     fn start_bin_benches(
+        compare_by_id: bool,
         config: &Arc<Config>,
         module_path: &Arc<ModulePath>,
         thread_pool: &mut ThreadPool<Result<JobResult>>,
@@ -890,7 +941,7 @@ impl Group {
     ) {
         for bench in benches {
             let fail_fast = bench.is_fail_fast();
-            let alpha = bench.tools.alpha();
+            let perf_config = bench.tools.perf_output_config();
             let benchmark: Arc<dyn bin_bench::Benchmark> = bin_bench::benchmark_factory(config);
             let header = BinaryBenchmarkHeader::new(&config.meta, &bench);
 
@@ -915,10 +966,13 @@ impl Group {
                     output_path.clone(),
                 ) {
                     Ok(benchmark_summary) => Ok(JobResult {
-                        alpha,
                         benchmark_summary,
-                        fail_fast,
-                        header: header.into(),
+                        post_processing_config: PostProcessingConfig {
+                            compare_by_id,
+                            fail_fast,
+                            header: header.into(),
+                            perf_config,
+                        },
                         output_format,
                         captured_output,
                         data_processor,
@@ -935,6 +989,7 @@ impl Group {
     }
 
     fn start_lib_benches(
+        compare_by_id: bool,
         main_index: usize,
         config: &Arc<Config>,
         module_path: &Arc<ModulePath>,
@@ -943,7 +998,7 @@ impl Group {
     ) {
         for bench in benches {
             let fail_fast = bench.is_fail_fast();
-            let alpha = bench.tools.alpha();
+            let perf_config = bench.tools.perf_output_config();
             let benchmark: Arc<dyn lib_bench::Benchmark> = lib_bench::benchmark_factory(config);
             let header = LibraryBenchmarkHeader::new(&bench);
 
@@ -969,13 +1024,16 @@ impl Group {
                     output_path.clone(),
                 ) {
                     Ok(benchmark_summary) => Ok(JobResult {
-                        alpha,
                         benchmark_summary,
-                        fail_fast,
-                        header: header.into(),
                         output_format,
                         captured_output,
                         data_processor,
+                        post_processing_config: PostProcessingConfig {
+                            compare_by_id,
+                            fail_fast,
+                            header: header.into(),
+                            perf_config,
+                        },
                     }),
                     Err(error) => Err(anyhow::Error::from(Error::JobError(
                         Box::new(error),
@@ -1035,6 +1093,7 @@ impl Group {
         match self.benches {
             Benches::LibBenches(lib_benches) => {
                 Self::start_lib_benches(
+                    compare_by_id,
                     main_index,
                     config,
                     &module_path,
@@ -1043,7 +1102,13 @@ impl Group {
                 );
             }
             Benches::BinBenches(bin_benches) => {
-                Self::start_bin_benches(config, &module_path, &mut thread_pool, bin_benches);
+                Self::start_bin_benches(
+                    compare_by_id,
+                    config,
+                    &module_path,
+                    &mut thread_pool,
+                    bin_benches,
+                );
             }
         }
 
@@ -1107,7 +1172,7 @@ impl Group {
 
                 for bench in lib_benches {
                     let fail_fast = bench.is_fail_fast();
-                    let alpha = bench.tools.alpha();
+                    let perf_config = bench.tools.perf_output_config();
                     let benchmark: Arc<dyn lib_bench::Benchmark> =
                         lib_bench::benchmark_factory(config);
 
@@ -1147,14 +1212,19 @@ impl Group {
                         }
                     };
 
+                    let post_processing_config = PostProcessingConfig {
+                        compare_by_id,
+                        fail_fast,
+                        header,
+                        perf_config,
+                    };
+
                     let job_result = JobResult {
-                        alpha,
                         benchmark_summary,
                         captured_output,
                         data_processor,
-                        fail_fast,
-                        header,
                         output_format,
+                        post_processing_config,
                     };
 
                     job_result.process_data(
@@ -1171,7 +1241,7 @@ impl Group {
 
                 for bench in bin_benches {
                     let fail_fast = bench.is_fail_fast();
-                    let alpha = bench.tools.alpha();
+                    let perf_config = bench.tools.perf_output_config();
                     let benchmark: Arc<dyn bin_bench::Benchmark> =
                         bin_bench::benchmark_factory(config);
 
@@ -1209,13 +1279,16 @@ impl Group {
                     };
 
                     let job_result = JobResult {
-                        alpha,
                         benchmark_summary,
                         captured_output,
                         data_processor,
-                        fail_fast,
-                        header,
                         output_format,
+                        post_processing_config: PostProcessingConfig {
+                            compare_by_id,
+                            fail_fast,
+                            header,
+                            perf_config,
+                        },
                     };
 
                     job_result.process_data(
@@ -1305,13 +1378,11 @@ impl JobResult {
         comparison_summaries: &mut HashMap<String, Vec<BenchmarkSummary>>,
     ) -> Result<()> {
         let Self {
-            alpha,
             mut benchmark_summary,
-            fail_fast,
-            header,
             output_format,
             captured_output,
             mut data_processor,
+            post_processing_config,
         } = self;
 
         if !data_processor.has_benchmarks() {
@@ -1319,24 +1390,32 @@ impl JobResult {
         }
 
         data_processor
-            .finalize(&mut benchmark_summary, config, &header)
+            .finalize(
+                &mut benchmark_summary,
+                config,
+                &post_processing_config.header,
+            )
             .and_then(|()| {
                 benchmark_summary.print_and_save(
                     config,
-                    &header,
                     &output_format,
                     captured_output,
-                    alpha,
+                    &post_processing_config,
                 )
             })
-            .and_then(|()| benchmark_summary.check_regression(fail_fast))?;
+            .and_then(|()| benchmark_summary.check_regression(post_processing_config.fail_fast))?;
 
         benchmark_summaries.add_summary(benchmark_summary.clone());
         if compare_by_id && output_format.is_default() {
             if let Some(id) = &benchmark_summary.id {
                 if let Some(sums) = comparison_summaries.get_mut(id) {
                     for sum in sums.iter() {
-                        sum.compare_and_print(id, &benchmark_summary, &output_format, alpha);
+                        sum.compare_and_print(
+                            id,
+                            &benchmark_summary,
+                            &output_format,
+                            post_processing_config.perf_config.as_ref(),
+                        );
                     }
                     sums.push(benchmark_summary);
                 } else {

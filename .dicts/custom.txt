@@ -400,3 +400,8 @@ fundu
 MILLI
 graphify
 destructures
+dcache
+dtlb
+itlb
+tonumber
+isfinite

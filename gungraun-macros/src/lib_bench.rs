@@ -76,6 +76,17 @@ struct LibraryBenchmark {
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct LibraryBenchmarkConfig(common::BenchConfig);
 
+struct PerfRenderer<'a> {
+    has_generics: bool,
+    input_types: &'a [Type],
+    output_type: Option<&'a Type>,
+    setup: &'a Setup,
+    shim_func_call: &'a TokenStream,
+    shim_mod: &'a Ident,
+    single_input_type: Option<&'a Type>,
+    teardown: &'a Teardown,
+}
+
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct Setup(common::Setup);
 
@@ -89,503 +100,6 @@ impl ToTokens for Args {
 }
 
 impl Bench {
-    /// Emits code that chooses the number of perf repetitions for this benchmark.
-    ///
-    /// An omitted `perf` attribute is represented as [`None`] and defaults to dynamic calibration.
-    /// A fixed value emits that count directly.
-    fn render_perf_repetitions(repetitions: common::PerfRepetition) -> TokenStream {
-        match repetitions {
-            common::PerfRepetition::Dynamic => quote! {
-                let __repetitions = gungraun::__internal::stats::calibrate_linear(
-                    std::time::Duration::from_millis(50),
-                    &__setup,
-                    &__work,
-                    &__teardown,
-                );
-            },
-            common::PerfRepetition::Fixed(ident) => quote! {
-                let __repetitions = #ident;
-            },
-        }
-    }
-
-    // TODO: Refactor all these perf methods into a Renderer, PerfRenderer, ...
-    /// Emits the common batched perf measurement body.
-    ///
-    /// The generated code creates all setup inputs before enabling perf, runs the work closure for
-    /// the full batch while perf is enabled, and runs teardown after perf is disabled. When
-    /// present, `setup_output` annotates the setup closure return type so Rust performs normal
-    /// argument coercions before calibration unifies the setup output with the work input.
-    fn render_perf_batch(
-        setup: &TokenStream,
-        setup_output: Option<TokenStream>,
-        work: &TokenStream,
-        teardown: &TokenStream,
-        count_ident: Option<&Ident>,
-    ) -> TokenStream {
-        let setup = if let Some(setup_output) = setup_output {
-            quote! {
-                #[allow(clippy::unused_unit, clippy::useless_conversion)]
-                let __setup = || -> #setup_output { #setup };
-            }
-        } else {
-            quote! {
-                #[allow(clippy::unused_unit, clippy::useless_conversion)]
-                let __setup = || { #setup };
-            }
-        };
-
-        let repetitions = if let Some(count_ident) = count_ident {
-            Self::render_perf_repetitions(common::PerfRepetition::Fixed(count_ident.clone()))
-        } else {
-            Self::render_perf_repetitions(common::PerfRepetition::Dynamic)
-        };
-
-        quote! {
-            {
-                #setup
-                let __work = #work;
-                let __teardown = #teardown;
-
-                #repetitions
-
-                gungraun::perf_log!(
-                    "{} {}", gungraun::__internal::PERF_REPETITIONS_MARKER, __repetitions
-                );
-
-                let __inputs = (0..__repetitions).map(|_| __setup()).collect::<Vec<_>>();
-
-                let __lock = gungraun::perf_enable!();
-                #[allow(clippy::useless_conversion)]
-                let __results = __inputs.into_iter().map(__work).collect::<Vec<_>>();
-                gungraun::perf_disable!(__lock);
-
-                for __result in __results {
-                    __teardown(__result);
-                }
-            }
-        }
-    }
-
-    /// Emits the teardown/drop statement that runs **after** `perf_disable` in `PerfOnce` mode.
-    fn render_perf_once_after(&self) -> TokenStream {
-        if let Some(teardown) = self.teardown.0.0.as_ref() {
-            quote_spanned! { teardown.span() =>
-                let _ = std::hint::black_box(#teardown(__result));
-            }
-        } else {
-            quote! { let _ = __result; }
-        }
-    }
-
-    fn render_perf_overhead_batch(
-        setup: &TokenStream,
-        setup_output: Option<TokenStream>,
-        work: &TokenStream,
-        repetitions_ident: &Ident,
-    ) -> TokenStream {
-        let setup = if let Some(setup_output) = setup_output {
-            quote! {
-                #[allow(clippy::unused_unit, clippy::useless_conversion)]
-                let __setup = || -> #setup_output { #setup };
-            }
-        } else {
-            quote! {
-                #[allow(clippy::unused_unit, clippy::useless_conversion)]
-                let __setup = || { #setup };
-            }
-        };
-
-        quote! {
-            {
-                #setup
-                let __work = #work;
-                let __repetitions = #repetitions_ident;
-
-                gungraun::perf_log!(
-                    "{} {}", gungraun::__internal::PERF_REPETITIONS_MARKER, __repetitions
-                );
-
-                let __inputs = (0..__repetitions).map(|_| __setup()).collect::<Vec<_>>();
-
-                let __lock = gungraun::perf_enable!();
-                #[allow(clippy::useless_conversion)]
-                let __results = __inputs.into_iter().map(__work).collect::<Vec<_>>();
-                gungraun::perf_disable!(__lock);
-
-                let _ = __results;
-            }
-        }
-    }
-
-    /// Emits teardown as a closure used by calibration and by the measured batch.
-    ///
-    /// Keeping teardown as a separate closure guarantees it runs after the timed work section and
-    /// lets dynamic calibration exclude teardown cost from the selected repetition count.
-    fn render_perf_teardown(&self) -> TokenStream {
-        if let Some(teardown) = self.teardown.0.0.as_ref() {
-            let type_annotation = if self.generics.params.is_empty() {
-                if let Some(ty) = &self.output_type {
-                    quote_spanned! { teardown.span() => : #ty }
-                } else {
-                    quote_spanned! { teardown.span() => : () }
-                }
-            } else {
-                quote! {}
-            };
-
-            quote_spanned! { teardown.span() => |__result #type_annotation| {
-                    let _ = std::hint::black_box(#teardown(__result));
-                }
-            }
-        } else {
-            quote! { |__result| { let _ = __result; } }
-        }
-    }
-
-    /// Adapts `args` benchmarks to the common batched perf model.
-    ///
-    /// The setup expression produces one owned batch input per repetition and the work closure
-    /// calls the perf wrapper without enabling or disabling perf itself. Tuple wrapping is
-    /// intentional: it gives no-arg, single-arg, and multi-arg benchmarks a uniform owned input
-    /// shape without requiring `Clone`.
-    fn render_args_perf_batch(
-        &self,
-        args: &Args,
-        inner: &TokenStream,
-        inner_without_black_box: &TokenStream,
-        input_types: &[Type],
-        shim_mod: &Ident,
-        shim_func_call: &TokenStream,
-        count_ident: Option<&Ident>,
-        single_input_type: Option<&Type>,
-    ) -> TokenStream {
-        let setup_output = self.setup_output_type(input_types);
-        let (setup, work) = if self.setup.is_some() {
-            let setup_stmt = if let Some(input_type) = single_input_type {
-                quote! {{
-                    let __setup: #input_type = #inner_without_black_box;
-                    (std::hint::black_box(__setup),)
-                }}
-            } else {
-                quote! { (#inner,) }
-            };
-
-            (
-                setup_stmt,
-                quote! {
-                    |(__input,)| std::hint::black_box(#shim_mod::#shim_func_call(__input))
-                },
-            )
-        } else {
-            match args.len() {
-                0 => (
-                    quote! {},
-                    quote! { |()| std::hint::black_box(#shim_mod::#shim_func_call()) },
-                ),
-                1 => (
-                    quote! { (#inner,) },
-                    quote! {
-                        |(__input,)| std::hint::black_box(#shim_mod::#shim_func_call(__input))
-                    },
-                ),
-                len => {
-                    let input_idents = (0..len)
-                        .map(|index| format_ident!("__input_{index}"))
-                        .collect::<Vec<_>>();
-
-                    (
-                        quote! { (#inner) },
-                        quote! {
-                            |__input| {
-                                let (#(#input_idents),*) = __input;
-                                std::hint::black_box(
-                                    #shim_mod::#shim_func_call(#(#input_idents),*)
-                                )
-                            }
-                        },
-                    )
-                }
-            }
-        };
-        let teardown = self.render_perf_teardown();
-
-        Self::render_perf_batch(&setup, setup_output, &work, &teardown, count_ident)
-    }
-
-    fn render_args_perf_overhead_batch(
-        &self,
-        args: &Args,
-        inner: &TokenStream,
-        inner_without_black_box: &TokenStream,
-        input_types: &[Type],
-        repetitions_ident: &Ident,
-        single_input_type: Option<&Type>,
-    ) -> TokenStream {
-        let setup_output = self.setup_output_type(input_types);
-        let (setup, work) = if self.setup.is_some() {
-            let setup_stmt = if let Some(input_type) = single_input_type {
-                quote! {{
-                    let __setup: #input_type = #inner_without_black_box;
-                    (std::hint::black_box(__setup),)
-                }}
-            } else {
-                quote! { (#inner,) }
-            };
-
-            (
-                setup_stmt,
-                quote! {
-                    |(__input,)| { let _ = std::hint::black_box(__input); }
-                },
-            )
-        } else {
-            match args.len() {
-                0 => (
-                    quote! {},
-                    quote! { |()| { let _ = std::hint::black_box(42); } },
-                ),
-                1 => (
-                    quote! { (#inner,) },
-                    quote! {
-                        |(__input,)| { let _ = std::hint::black_box(__input); }
-                    },
-                ),
-                len => {
-                    let input_idents = (0..len)
-                        .map(|index| format_ident!("__input_{index}"))
-                        .collect::<Vec<_>>();
-
-                    (
-                        quote! { (#inner) },
-                        quote! {
-                            |__input| {
-                                let (#(#input_idents),*) = __input;
-                                let _ = std::hint::black_box((#(#input_idents),*));
-                            }
-                        },
-                    )
-                }
-            }
-        };
-
-        Self::render_perf_overhead_batch(&setup, setup_output, &work, repetitions_ident)
-    }
-
-    /// Adapts runtime `iter` benchmarks to the common batched perf model.
-    ///
-    /// Each setup call evaluates a fresh iterator expression and selects the requested index. The
-    /// outer iterator used for counting is consumed elsewhere, so repeated perf inputs must not
-    /// rely on reusing it or cloning its elements.
-    fn render_iter_perf_batch(
-        &self,
-        iter: &Iter,
-        input_types: &[Type],
-        shim_mod: &Ident,
-        shim_func_call: &TokenStream,
-        count_ident: Option<&Ident>,
-        single_input_type: Option<&Type>,
-    ) -> TokenStream {
-        let setup_output = self.setup_output_type(input_types);
-        let setup_expr = iter.render_as_expr(&self.setup, None);
-
-        let setup = if let Some(input_type) = single_input_type {
-            quote! {{
-                let __setup: #input_type = #setup_expr;
-                (std::hint::black_box(__setup),)
-            }}
-        } else {
-            quote! { (#setup_expr,) }
-        };
-
-        let work = quote! {
-            |(__input,)| std::hint::black_box(#shim_mod::#shim_func_call(__input))
-        };
-        let teardown = self.render_perf_teardown();
-
-        Self::render_perf_batch(&setup, setup_output, &work, &teardown, count_ident)
-    }
-
-    fn render_iter_perf_overhead_batch(
-        &self,
-        iter: &Iter,
-        input_types: &[Type],
-        repetitions_ident: &Ident,
-        single_input_type: Option<&Type>,
-    ) -> TokenStream {
-        let setup_output = self.setup_output_type(input_types);
-        let setup_expr = iter.render_as_expr(&self.setup, None);
-
-        let setup = if let Some(input_type) = single_input_type {
-            quote! {{
-                let __setup: #input_type = #setup_expr;
-                (std::hint::black_box(__setup),)
-            }}
-        } else {
-            quote! { (#setup_expr,) }
-        };
-
-        let work = quote! {
-            |(__input,)| { let _ = std::hint::black_box(__input); }
-        };
-
-        Self::render_perf_overhead_batch(&setup, setup_output, &work, repetitions_ident)
-    }
-
-    /// Adapts runtime `iter` benchmarks to the single-invocation perf model (`PerfOnce`).
-    ///
-    /// Setup runs outside the perf fence, the benchmark function is called exactly once inside the
-    /// fence, and teardown/drop runs outside the fence. No closures, no vector, no repetition
-    /// count.
-    fn render_iter_perf_once(
-        &self,
-        iter: &Iter,
-        shim_mod: &Ident,
-        shim_func_call: &TokenStream,
-        single_input_type: Option<&Type>,
-    ) -> TokenStream {
-        let setup_expr = iter.render_as_expr(&self.setup, None);
-
-        let setup = if let Some(input_type) = single_input_type {
-            quote! {{
-                let __setup: #input_type = #setup_expr;
-                std::hint::black_box(__setup)
-            }}
-        } else {
-            quote! {
-                std::hint::black_box(#setup_expr)
-            }
-        };
-
-        let after_perf = self.render_perf_once_after();
-
-        quote! {
-            {
-                #[allow(clippy::let_unit_value, clippy::useless_conversion)]
-                let __setup = #setup;
-                let __lock = gungraun::perf_enable!();
-                let __result = std::hint::black_box(#shim_mod::#shim_func_call(__setup));
-                gungraun::perf_disable!(__lock);
-                #after_perf
-            }
-        }
-    }
-
-    /// Adapts `args` benchmarks to the single-invocation perf model (`PerfOnce`).
-    ///
-    /// Setup runs outside the perf fence, the benchmark function is called exactly once inside the
-    /// fence, and teardown/drop runs outside the fence. No closures, no vector, no repetition
-    /// count.
-    fn render_args_perf_once(
-        &self,
-        args: &Args,
-        inner: &TokenStream,
-        inner_without_black_box: &TokenStream,
-        shim_mod: &Ident,
-        shim_func_call: &TokenStream,
-        input_types: &[Type],
-        single_input_type: Option<&Type>,
-    ) -> TokenStream {
-        let (setup_stmt, work_call) = if self.setup.is_some() {
-            let setup_stmt = if let Some(input_type) = single_input_type {
-                quote! {
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
-                    let __setup: #input_type  = #inner_without_black_box;
-                    let __setup = std::hint::black_box(__setup);
-                }
-            } else {
-                quote! {
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
-                    let __setup = #inner;
-                }
-            };
-
-            (
-                setup_stmt,
-                quote! {
-                    std::hint::black_box(#shim_mod::#shim_func_call(__setup))
-                },
-            )
-        } else {
-            match args.len() {
-                0 => (
-                    quote! {},
-                    quote! { std::hint::black_box(#shim_mod::#shim_func_call()) },
-                ),
-                1 => {
-                    let setup_stmt = if let Some(input_type) = single_input_type {
-                        quote! {
-                            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
-                            let __arg: #input_type = #inner;
-                        }
-                    } else {
-                        quote! {
-                            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
-                            let __arg = #inner;
-                        }
-                    };
-                    (
-                        setup_stmt,
-                        quote! {
-                            std::hint::black_box(#shim_mod::#shim_func_call(__arg))
-                        },
-                    )
-                }
-                len => {
-                    let input_idents = (0..len)
-                        .map(|index| format_ident!("__arg_{index}"))
-                        .collect::<Vec<_>>();
-
-                    let setup_stmt = if self.generics.params.is_empty() {
-                        let tuple_ty = tuple_type(input_types);
-                        quote! {
-                            #[allow(clippy::let_unit_value)]
-                            let (#(#input_idents),*): #tuple_ty = (#inner);
-                        }
-                    } else {
-                        quote! {
-                            #[allow(clippy::let_unit_value)]
-                            let (#(#input_idents),*) = (#inner);
-                        }
-                    };
-
-                    (
-                        setup_stmt,
-                        quote! {
-                            std::hint::black_box(
-                                #shim_mod::#shim_func_call(#(#input_idents),*)
-                            )
-                        },
-                    )
-                }
-            }
-        };
-        let after_perf = self.render_perf_once_after();
-
-        quote! {
-            {
-                #setup_stmt
-                let __lock = gungraun::perf_enable!();
-                let __result = #work_call;
-                gungraun::perf_disable!(__lock);
-                #after_perf
-            }
-        }
-    }
-
-    /// Returns an explicit setup-output tuple type for non-generic benchmarks.
-    ///
-    /// The type annotation forces normal argument coercions, such as `&[T; N]` to `&[T]`, before
-    /// `calibrate_linear` unifies the setup output with the work input. Generic benchmark
-    /// signatures are left to inference because the generated run function cannot name their type
-    /// or lifetime parameters.
-    fn setup_output_type(&self, input_types: &[Type]) -> Option<TokenStream> {
-        self.generics
-            .params
-            .is_empty()
-            .then(|| tuple_type(input_types))
-    }
-
     fn parse_bench_attribute(
         item_fn: &ItemFn,
         attr: &Attribute,
@@ -642,7 +156,6 @@ impl Bench {
             syn::ReturnType::Default => None,
             syn::ReturnType::Type(_, ty) => Some(*ty.clone()),
         };
-
         Ok(Self {
             id,
             mode: BenchMode::Args(args),
@@ -756,6 +269,20 @@ impl Bench {
 
         let input_types = callee.input_types();
         let single_input_type = callee.single_input_type();
+        let (bench_func_call, shim_func_call) =
+            self.consts
+                .to_function_calls(&self.generics, callee_ident, Some(bench_id));
+
+        let perf_renderer = PerfRenderer {
+            has_generics: !self.generics.params.is_empty(),
+            input_types: &input_types,
+            output_type: self.output_type.as_ref(),
+            setup: &self.setup,
+            shim_func_call: &shim_func_call,
+            shim_mod: &shim_mod,
+            single_input_type: single_input_type.as_ref(),
+            teardown: &self.teardown,
+        };
 
         let func = match &self.mode {
             // The amount of input arguments of the benchmark function is already verified to be
@@ -769,53 +296,25 @@ impl Bench {
                 let (iter_count, iter_elem) =
                     iter.render_as_code(&self.setup, &elem_ident, single_input_type.as_ref());
 
-                let (bench_func_call, shim_func_call) =
-                    self.consts
-                        .to_function_calls(&self.generics, callee_ident, Some(bench_id));
-
                 let call_bench_func = quote_spanned! { callee_ident.span() =>
                     std::hint::black_box(
                         #bench_wrapper_mod::#bench_func_call(#(#pats),*)
                     )
                 };
 
+                let shim_call = perf_renderer.render_shim_call(&quote!(#elem_ident));
                 let call_shim_func = self.teardown.render_as_code(quote_spanned! {
-                    bench_id.span() => std::hint::black_box(
-                        #shim_mod::#shim_func_call(#elem_ident)
-                    )
+                    bench_id.span() => std::hint::black_box(#shim_call)
                 });
 
-                let run_perf_dynamic = self.render_iter_perf_batch(
-                    iter,
-                    &input_types,
-                    &shim_mod,
-                    &shim_func_call,
-                    None,
-                    single_input_type.as_ref(),
-                );
+                let run_perf_dynamic = perf_renderer.render_iter_batch(iter, None);
 
-                let run_perf_repeat = self.render_iter_perf_batch(
-                    iter,
-                    &input_types,
-                    &shim_mod,
-                    &shim_func_call,
-                    Some(&count_ident),
-                    single_input_type.as_ref(),
-                );
+                let run_perf_repeat = perf_renderer.render_iter_batch(iter, Some(&count_ident));
 
-                let run_perf_overhead = self.render_iter_perf_overhead_batch(
-                    iter,
-                    &input_types,
-                    &count_ident,
-                    single_input_type.as_ref(),
-                );
+                let run_perf_overhead =
+                    perf_renderer.render_iter_overhead_batch(iter, &count_ident);
 
-                let run_perf_once = self.render_iter_perf_once(
-                    iter,
-                    &shim_mod,
-                    &shim_func_call,
-                    single_input_type.as_ref(),
-                );
+                let run_perf_once = perf_renderer.render_iter_once(iter);
 
                 quote!(
                     mod #shim_mod {
@@ -873,12 +372,9 @@ impl Bench {
                 let inner = self.setup.render_as_code(args);
                 let inner_without_black_box = self.setup.render_without_black_box(args);
 
-                let (bench_func_call, shim_func_call) =
-                    self.consts
-                        .to_function_calls(&self.generics, callee_ident, Some(bench_id));
-
                 // There is a difference to allow the clippy let_unit_value lint
                 let call_shim_func = if self.setup.is_some() {
+                    let shim_call = perf_renderer.render_shim_call(&quote!(__setup));
                     // Specify the type early for better error messages
                     if let Some(input_type) = single_input_type.as_ref() {
                         self.teardown.render_as_code(quote_spanned! {
@@ -886,7 +382,7 @@ impl Bench {
                                 #[allow(clippy::let_unit_value)]
                                 let __setup: #input_type = #inner_without_black_box;
                                 let __setup = std::hint::black_box(__setup);
-                                std::hint::black_box(#shim_mod::#shim_func_call(__setup))
+                                std::hint::black_box(#shim_call)
                             }
                         })
                     } else {
@@ -894,7 +390,7 @@ impl Bench {
                             bench_id.span() => {
                                 #[allow(clippy::let_unit_value)]
                                 let __setup = #inner;
-                                std::hint::black_box(#shim_mod::#shim_func_call(__setup))
+                                std::hint::black_box(#shim_call)
                             }
                         })
                     }
@@ -903,18 +399,20 @@ impl Bench {
                     let arg_idents = (0..input_types.len())
                         .map(|index| format_ident!("__arg_{index}"))
                         .collect::<Vec<_>>();
+                    let shim_call = perf_renderer.render_shim_call(&quote!(#(#arg_idents),*));
 
                     self.teardown
                         .render_as_code(quote_spanned! { bench_id.span() => {
                             #[allow(clippy::let_unit_value, clippy::useless_conversion)]
                             let (#(#arg_idents),*,): #tuple_ty = (#inner,);
 
-                            std::hint::black_box(#shim_mod::#shim_func_call(#(#arg_idents),*))
+                            std::hint::black_box(#shim_call)
                         }})
                 } else {
+                    let shim_call = perf_renderer.render_shim_call(&quote!(#inner));
                     self.teardown
                         .render_as_code(quote_spanned! { bench_id.span() =>
-                            std::hint::black_box(#shim_mod::#shim_func_call(#inner))
+                            std::hint::black_box(#shim_call)
                         })
                 };
 
@@ -924,46 +422,25 @@ impl Bench {
                         )
                 };
 
-                let run_perf_dynamic = self.render_args_perf_batch(
-                    args,
-                    &inner,
-                    &inner_without_black_box,
-                    &input_types,
-                    &shim_mod,
-                    &shim_func_call,
-                    None,
-                    single_input_type.as_ref(),
-                );
+                let run_perf_dynamic =
+                    perf_renderer.render_args_batch(args, &inner, &inner_without_black_box, None);
 
-                let run_perf_repeat = self.render_args_perf_batch(
+                let run_perf_repeat = perf_renderer.render_args_batch(
                     args,
                     &inner,
                     &inner_without_black_box,
-                    &input_types,
-                    &shim_mod,
-                    &shim_func_call,
                     Some(&count_ident),
-                    single_input_type.as_ref(),
                 );
 
-                let run_perf_overhead = self.render_args_perf_overhead_batch(
+                let run_perf_overhead = perf_renderer.render_args_overhead_batch(
                     args,
                     &inner,
                     &inner_without_black_box,
-                    &input_types,
                     &count_ident,
-                    single_input_type.as_ref(),
                 );
 
-                let run_perf_once = self.render_args_perf_once(
-                    args,
-                    &inner,
-                    &inner_without_black_box,
-                    &shim_mod,
-                    &shim_func_call,
-                    &input_types,
-                    single_input_type.as_ref(),
-                );
+                let run_perf_once =
+                    perf_renderer.render_args_once(args, &inner, &inner_without_black_box);
 
                 quote!(
                     mod #shim_mod {
@@ -1177,14 +654,6 @@ impl Callee<'_> {
     }
 }
 
-fn tuple_type(types: &[Type]) -> TokenStream {
-    match types {
-        [] => quote! { () },
-        [ty] => quote! { (#ty,) },
-        types => quote! { (#(#types),*) },
-    }
-}
-
 impl From<common::Consts> for Consts {
     fn from(value: common::Consts) -> Self {
         Self(value)
@@ -1271,234 +740,6 @@ impl Iter {
 
 // TODO: There are a lot of not spanned quotes in the perf render methods. Use span if possible
 impl LibraryBenchmark {
-    /// Emits the batched perf measurement body standalone benchmarks.
-    ///
-    /// Standalone benchmarks have no per-benchmark `perf` attribute, so they always use dynamic
-    /// calibration. The generated code still follows the same ordering as attributed benchmarks:
-    /// setup inputs before perf, work batch while perf is enabled, teardown after perf is disabled.
-    fn render_perf_batch(
-        setup: &TokenStream,
-        setup_output: Option<TokenStream>,
-        work: &TokenStream,
-        teardown: &TokenStream,
-        count_ident: Option<&Ident>,
-    ) -> TokenStream {
-        let setup = if let Some(setup_output) = setup_output {
-            quote! {
-                #[allow(clippy::unused_unit, clippy::useless_conversion)]
-                let __setup = || -> #setup_output { #setup };
-            }
-        } else {
-            quote! {
-                #[allow(clippy::unused_unit, clippy::useless_conversion)]
-                let __setup = || { #setup };
-            }
-        };
-
-        let repetitions = if let Some(count_ident) = count_ident {
-            Bench::render_perf_repetitions(common::PerfRepetition::Fixed(count_ident.clone()))
-        } else {
-            Bench::render_perf_repetitions(common::PerfRepetition::Dynamic)
-        };
-
-        quote! {
-            {
-                #setup
-                let __work = #work;
-                let __teardown = #teardown;
-
-                #repetitions
-
-                let __inputs = (0..__repetitions).map(|_| __setup()).collect::<Vec<_>>();
-                gungraun::perf_log!(
-                    "{} {}", gungraun::__internal::PERF_REPETITIONS_MARKER, __repetitions
-                );
-
-                let __lock = gungraun::perf_enable!();
-                #[allow(clippy::useless_conversion)]
-                let __results = __inputs.into_iter().map(__work).collect::<Vec<_>>();
-                gungraun::perf_disable!(__lock);
-
-                for __result in __results {
-                    __teardown(__result);
-                }
-            }
-        }
-    }
-
-    /// Emits standalone teardown as a closure used by calibration and measured batches.
-    ///
-    /// The closure form keeps teardown outside the timed perf section and mirrors the attributed
-    /// benchmark path.
-    fn render_perf_teardown(&self, output_type: Option<&Type>, has_generics: bool) -> TokenStream {
-        if let Some(teardown) = self.teardown.0.0.as_ref() {
-            let type_annotation = if has_generics {
-                quote! {}
-            } else if let Some(ty) = output_type {
-                quote_spanned! { teardown.span() => : #ty }
-            } else {
-                quote_spanned! { teardown.span() => : () }
-            };
-
-            quote_spanned! { teardown.span() => |__result #type_annotation| {
-                    let _ = std::hint::black_box(#teardown(__result));
-                }
-            }
-        } else {
-            quote! { |__result| { let _ = __result; } }
-        }
-    }
-
-    /// Adapts standalone library benchmarks to the batched perf model.
-    ///
-    /// Standalone benchmarks only have the top-level optional setup/teardown attributes. The input
-    /// shape is therefore either a one-tuple containing setup output or unit for no-argument
-    /// benchmarks, and the work closure calls the standalone perf wrapper directly.
-    fn render_standalone_perf_batch(
-        &self,
-        shim_mod: &Ident,
-        shim_func_ident: &Ident,
-        inner: &TokenStream,
-        inner_without_black_box: &TokenStream,
-        input_types: &[Type],
-        single_input_type: Option<&Type>,
-        count_ident: Option<&Ident>,
-        output_type: Option<&Type>,
-        has_generics: bool,
-    ) -> TokenStream {
-        let setup_output = Some(tuple_type(input_types));
-        let (setup, work) = if self.setup.is_some() {
-            let setup_stmt = if let Some(input_type) = single_input_type {
-                quote! {{
-                    let __setup: #input_type = #inner_without_black_box;
-                    let __setup = (std::hint::black_box(__setup),);
-                    __setup
-                }}
-            } else {
-                quote! { (#inner,) }
-            };
-
-            (
-                setup_stmt,
-                quote! {
-                    |(__input,)| std::hint::black_box(
-                        #shim_mod::#shim_func_ident(__input)
-                    )
-                },
-            )
-        } else {
-            (
-                quote! {},
-                quote! {
-                    |()| std::hint::black_box(#shim_mod::#shim_func_ident())
-                },
-            )
-        };
-        let teardown = self.render_perf_teardown(output_type, has_generics);
-
-        Self::render_perf_batch(&setup, setup_output, &work, &teardown, count_ident)
-    }
-
-    /// Emits the standalone teardown statement that runs after `perf_disable` in `PerfOnce` mode.
-    fn render_perf_once_after(&self) -> TokenStream {
-        if let Some(teardown) = self.teardown.0.0.as_ref() {
-            quote_spanned! { teardown.span() =>
-                let _ = std::hint::black_box(#teardown(__result));
-            }
-        } else {
-            quote! { let _ = __result; }
-        }
-    }
-
-    /// Adapts standalone library benchmarks to the single-invocation perf model (`PerfOnce`).
-    ///
-    /// Setup runs outside the perf fence, the function is called exactly once inside the fence,
-    /// and teardown/drop runs outside the fence. No closures, no vector, no repetition count.
-    fn render_standalone_perf_once(
-        &self,
-        shim_mod: &Ident,
-        shim_func_ident: &Ident,
-        inner: &TokenStream,
-        inner_without_black_box: &TokenStream,
-        single_input_type: Option<&Type>,
-    ) -> TokenStream {
-        let (setup_stmt, work_call) = if self.setup.is_some() {
-            let setup_stmt = if let Some(input_type) = single_input_type {
-                quote! {
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
-                    let __setup: #input_type = #inner_without_black_box;
-                    let __setup = std::hint::black_box(__setup);
-                }
-            } else {
-                quote! {
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
-                    let __setup = #inner;
-                }
-            };
-
-            (
-                setup_stmt,
-                quote! {
-                    std::hint::black_box(#shim_mod::#shim_func_ident(__setup))
-                },
-            )
-        } else {
-            (
-                quote! {},
-                quote! {
-                    std::hint::black_box(#shim_mod::#shim_func_ident())
-                },
-            )
-        };
-        let after_perf = self.render_perf_once_after();
-
-        quote! {
-            {
-                #setup_stmt
-                let __lock = gungraun::perf_enable!();
-                let __result = #work_call;
-                gungraun::perf_disable!(__lock);
-                #after_perf
-            }
-        }
-    }
-
-    fn render_standalone_perf_overhead_batch(
-        &self,
-        inner: &TokenStream,
-        inner_without_black_box: &TokenStream,
-        input_types: &[Type],
-        single_input_type: Option<&Type>,
-        repetitions_ident: &Ident,
-    ) -> TokenStream {
-        let setup_output = Some(tuple_type(input_types));
-        let (setup, work) = if self.setup.is_some() {
-            let setup_stmt = if let Some(input_type) = single_input_type {
-                quote! {{
-                    let __setup: #input_type = #inner_without_black_box;
-                    let __setup = (std::hint::black_box(__setup),);
-                    __setup
-                }}
-            } else {
-                quote! { (#inner,) }
-            };
-
-            (
-                setup_stmt,
-                quote! {
-                    |(__input,)| { let _ = std::hint::black_box(__input); }
-                },
-            )
-        } else {
-            (
-                quote! {},
-                quote! { |()| { let _ = std::hint::black_box(42); } },
-            )
-        };
-
-        Bench::render_perf_overhead_batch(&setup, setup_output, &work, repetitions_ident)
-    }
-
     fn extract_benches(
         &mut self,
         item_fn: &ItemFn,
@@ -1611,6 +852,18 @@ impl LibraryBenchmark {
             syn::ReturnType::Default => None,
             syn::ReturnType::Type(_, ty) => Some(*ty.clone()),
         };
+        let shim_func_call = quote!(#wrapper_ident);
+
+        let perf_renderer = PerfRenderer {
+            has_generics,
+            input_types: &input_types,
+            output_type: output_type.as_ref(),
+            setup: &self.setup,
+            shim_func_call: &shim_func_call,
+            shim_mod: &shim_mod,
+            single_input_type: single_input_type.as_ref(),
+            teardown: &self.teardown,
+        };
 
         let inner = self.setup.render_as_code(&Args::default());
         // Render without "black_box", too so the compiler points to the setup function in error
@@ -1620,28 +873,32 @@ impl LibraryBenchmark {
         let call_shim_func = if self.setup.is_some() {
             // If possible add the input type for better error messages
             if let Some(input_type) = single_input_type.as_ref() {
+                let shim_call =
+                    perf_renderer.render_shim_call(&quote!(std::hint::black_box(__setup)));
                 self.teardown.render_as_code(quote_spanned! {
                     self.setup.expr().span() => {
                         #[allow(clippy::let_unit_value)]
                         let __setup: #input_type = #inner_without_black_box;
                         std::hint::black_box(
-                            #shim_mod::#wrapper_ident(std::hint::black_box(__setup))
+                            #shim_call
                         )
                     }
                 })
             } else {
+                let shim_call = perf_renderer.render_shim_call(&quote!(__setup));
                 self.teardown.render_as_code(quote_spanned! {
                     self.setup.expr().span() => {
                         #[allow(clippy::let_unit_value)]
                         let __setup = #inner;
-                        std::hint::black_box(#shim_mod::#wrapper_ident(__setup))
+                        std::hint::black_box(#shim_call)
                     }
                 })
             }
         } else {
+            let shim_call = perf_renderer.render_shim_call(&inner);
             self.teardown.render_as_code(quote_spanned! {
                 inner.span() =>
-                    std::hint::black_box(#shim_mod::#wrapper_ident(#inner))
+                    std::hint::black_box(#shim_call)
             })
         };
 
@@ -1656,43 +913,20 @@ impl LibraryBenchmark {
             gungraun::__internal::InternalLibFunctionKind::Default(#run_func_ident)
         };
 
-        let run_perf_once = self.render_standalone_perf_once(
-            &shim_mod,
-            &wrapper_ident,
-            &inner,
-            &inner_without_black_box,
-            single_input_type.as_ref(),
-        );
+        let run_perf_once = perf_renderer.render_standalone_once(&inner, &inner_without_black_box);
 
-        let run_perf_dynamic = self.render_standalone_perf_batch(
-            &shim_mod,
-            &wrapper_ident,
-            &inner,
-            &inner_without_black_box,
-            &input_types,
-            single_input_type.as_ref(),
-            None,
-            output_type.as_ref(),
-            has_generics,
-        );
+        let run_perf_dynamic =
+            perf_renderer.render_standalone_batch(&inner, &inner_without_black_box, None);
 
-        let run_perf_repeat = self.render_standalone_perf_batch(
-            &shim_mod,
-            &wrapper_ident,
+        let run_perf_repeat = perf_renderer.render_standalone_batch(
             &inner,
             &inner_without_black_box,
-            &input_types,
-            single_input_type.as_ref(),
             Some(&count_ident),
-            output_type.as_ref(),
-            has_generics,
         );
 
-        let run_perf_overhead = self.render_standalone_perf_overhead_batch(
+        let run_perf_overhead = perf_renderer.render_standalone_overhead_batch(
             &inner,
             &inner_without_black_box,
-            &input_types,
-            single_input_type.as_ref(),
             &count_ident,
         );
 
@@ -1900,6 +1134,778 @@ impl LibraryBenchmarkConfig {
     }
 }
 
+impl PerfRenderer<'_> {
+    /// Emits the batched perf body for an `args` benchmark.
+    ///
+    /// A supplied `setup` creates one owned batch input per repetition; without it, the benchmark
+    /// arguments themselves form that input. The shape therefore depends on whether setup is
+    /// present and, otherwise, on `args.len()`.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// // Setup present: its output is always one batch input.
+    /// let __setup = || -> (Input,) {
+    ///     let __setup: Input = setup_expression;
+    ///     (std::hint::black_box(__setup),)
+    /// };
+    /// let __work = |(__input,)| std::hint::black_box(shim(__input));
+    ///
+    /// // No setup, zero arguments: use Rust's unit value.
+    /// let __setup = || {};
+    /// let __work = |()| std::hint::black_box(shim());
+    ///
+    /// // No setup, one argument: preserve the one-element tuple.
+    /// let __setup = || (argument,);
+    /// let __work = |(__input,)| std::hint::black_box(shim(__input));
+    ///
+    /// // No setup, multiple arguments: store and destructure an argument tuple.
+    /// let __setup = || (arg_a, arg_b);
+    /// let __work = |__input| {
+    ///     let (arg_a, arg_b) = __input;
+    ///     std::hint::black_box(shim(arg_a, arg_b))
+    /// };
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_batch`] to render the remainder.
+    fn render_args_batch(
+        &self,
+        args: &Args,
+        inner: &TokenStream,
+        inner_without_black_box: &TokenStream,
+        count_ident: Option<&Ident>,
+    ) -> TokenStream {
+        let setup_output = self.setup_output_type();
+        let (setup, work) = if self.setup.is_some() {
+            let setup_stmt = if let Some(input_type) = self.single_input_type {
+                quote! {{
+                    let __setup: #input_type = #inner_without_black_box;
+                    (std::hint::black_box(__setup),)
+                }}
+            } else {
+                quote! { (#inner,) }
+            };
+
+            let shim_call = self.render_shim_call(&quote!(__input));
+
+            (
+                setup_stmt,
+                quote! { |(__input,)| std::hint::black_box(#shim_call) },
+            )
+        } else {
+            match args.len() {
+                0 => {
+                    let shim_call = self.render_shim_call(&TokenStream::new());
+
+                    (quote! {}, quote! { |()| std::hint::black_box(#shim_call) })
+                }
+                1 => {
+                    let shim_call = self.render_shim_call(&quote!(__input));
+
+                    (
+                        quote! { (#inner,) },
+                        quote! { |(__input,)| std::hint::black_box(#shim_call) },
+                    )
+                }
+                len => {
+                    let input_idents = (0..len)
+                        .map(|index| format_ident!("__input_{index}"))
+                        .collect::<Vec<_>>();
+                    let shim_call = self.render_shim_call(&quote!(#(#input_idents),*));
+
+                    (
+                        quote! { (#inner) },
+                        quote! {
+                            |__input| {
+                                let (#(#input_idents),*) = __input;
+                                std::hint::black_box(#shim_call)
+                            }
+                        },
+                    )
+                }
+            }
+        };
+
+        self.render_batch(&setup, setup_output, &work, count_ident)
+    }
+
+    /// Emits the one-shot perf body for an `args` benchmark.
+    ///
+    /// Setup and argument expressions are evaluated before perf is enabled; only the generated
+    /// shim call is inside the one-shot timing boundary. The setup and work shape depends on
+    /// whether setup is present and, otherwise, on `args.len()`.
+    ///
+    /// Unlike [`Self::render_args_batch`], no owned input collection or repeated work closure is
+    /// needed. For non-generic benchmarks, the generated bindings also receive an explicit tuple
+    /// type where available so Rust performs normal argument coercions early which improves and
+    /// deduplicates the compiler error messages in case of invalid arguments.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// // Setup present with one input: type-check setup early, then pass its value to the shim.
+    /// let __setup: Input = setup_expression;
+    /// let __setup = std::hint::black_box(__setup);
+    /// let __work = std::hint::black_box(shim(__setup));
+    ///
+    /// // No setup, zero arguments: call the shim without an input.
+    /// let __work = std::hint::black_box(shim());
+    ///
+    /// // No setup, one argument: bind the argument before timing.
+    /// let __arg = argument;
+    /// let __work = std::hint::black_box(shim(__arg));
+    ///
+    /// // No setup, multiple arguments: destructure the tuple before timing.
+    /// let (__arg_a, __arg_b) = (arg_a, arg_b);
+    /// let __work = std::hint::black_box(shim(__arg_a, __arg_b));
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_once`] to render the remainder.
+    fn render_args_once(
+        &self,
+        args: &Args,
+        inner: &TokenStream,
+        inner_without_black_box: &TokenStream,
+    ) -> TokenStream {
+        let (setup_stmt, work_call) = if self.setup.is_some() {
+            let setup_stmt = if let Some(input_type) = self.single_input_type {
+                quote! {
+                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    let __setup: #input_type  = #inner_without_black_box;
+                    let __setup = std::hint::black_box(__setup);
+                }
+            } else {
+                quote! {
+                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    let __setup = #inner;
+                }
+            };
+
+            let shim_call = self.render_shim_call(&quote!(__setup));
+            (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+        } else {
+            match args.len() {
+                0 => {
+                    let shim_call = self.render_shim_call(&TokenStream::new());
+
+                    (quote! {}, quote! { std::hint::black_box(#shim_call) })
+                }
+                1 => {
+                    let setup_stmt = if let Some(input_type) = self.single_input_type {
+                        quote! {
+                            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                            let __arg: #input_type = #inner;
+                        }
+                    } else {
+                        quote! {
+                            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                            let __arg = #inner;
+                        }
+                    };
+
+                    let shim_call = self.render_shim_call(&quote!(__arg));
+                    (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+                }
+                len => {
+                    let input_idents = (0..len)
+                        .map(|index| format_ident!("__arg_{index}"))
+                        .collect::<Vec<_>>();
+
+                    let setup_stmt = if self.has_generics {
+                        quote! {
+                            #[allow(clippy::let_unit_value)]
+                            let (#(#input_idents),*) = (#inner);
+                        }
+                    } else {
+                        let tuple_ty = tuple_type(self.input_types);
+                        quote! {
+                            #[allow(clippy::let_unit_value)]
+                            let (#(#input_idents),*): #tuple_ty = (#inner);
+                        }
+                    };
+                    let shim_call = self.render_shim_call(&quote!(#(#input_idents),*));
+
+                    (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+                }
+            }
+        };
+
+        self.render_once(&setup_stmt, &work_call)
+    }
+
+    /// Emits the setup/work overhead body for an `args` benchmark.
+    ///
+    /// It prepares inputs before the measurement and measures only their consumption.
+    ///
+    /// The shared overhead renderer supplies repetition selection, input collection, and the perf
+    /// boundary around `__work`; this method supplies only the setup and consumption shapes.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// // Setup present: consume the prepared one-element input.
+    /// let __setup = || -> (Input,) {
+    ///     let __setup: Input = setup_expression;
+    ///     (std::hint::black_box(__setup),)
+    /// };
+    /// let __work = |(__input,)| { let _ = std::hint::black_box(__input); };
+    ///
+    /// // No setup, zero arguments: consume unit without an input value.
+    /// let __setup = || {};
+    /// let __work = |()| { let _ = std::hint::black_box(42); };
+    ///
+    /// // No setup, one argument: consume the one-element tuple input.
+    /// let __setup = || (argument,);
+    /// let __work = |(__input,)| { let _ = std::hint::black_box(__input); };
+    ///
+    /// // No setup, multiple arguments: destructure and consume the argument tuple.
+    /// let __setup = || (arg_a, arg_b);
+    /// let __work = |__input| {
+    ///     let (arg_a, arg_b) = __input;
+    ///     let _ = std::hint::black_box((arg_a, arg_b));
+    /// };
+    /// ```
+    ///
+    /// Dispatches to [`Self::render_overhead_batch`] to render the remainder.
+    fn render_args_overhead_batch(
+        &self,
+        args: &Args,
+        inner: &TokenStream,
+        inner_without_black_box: &TokenStream,
+        repetitions_ident: &Ident,
+    ) -> TokenStream {
+        let setup_output = self.setup_output_type();
+        let (setup, work) = if self.setup.is_some() {
+            let setup_stmt = if let Some(input_type) = self.single_input_type {
+                quote! {{
+                    let __setup: #input_type = #inner_without_black_box;
+                    (std::hint::black_box(__setup),)
+                }}
+            } else {
+                quote! { (#inner,) }
+            };
+
+            (
+                setup_stmt,
+                quote! {
+                    |(__input,)| { let _ = std::hint::black_box(__input); }
+                },
+            )
+        } else {
+            match args.len() {
+                0 => (
+                    quote! {},
+                    quote! { |()| { let _ = std::hint::black_box(42); } },
+                ),
+                1 => (
+                    quote! { (#inner,) },
+                    quote! {
+                        |(__input,)| { let _ = std::hint::black_box(__input); }
+                    },
+                ),
+                len => {
+                    let input_idents = (0..len)
+                        .map(|index| format_ident!("__input_{index}"))
+                        .collect::<Vec<_>>();
+
+                    (
+                        quote! { (#inner) },
+                        quote! {
+                            |__input| {
+                                let (#(#input_idents),*) = __input;
+                                let _ = std::hint::black_box((#(#input_idents),*));
+                            }
+                        },
+                    )
+                }
+            }
+        };
+
+        Self::render_overhead_batch(&setup, setup_output, &work, repetitions_ident)
+    }
+
+    /// Emits the batched perf body for an iterator benchmark.
+    ///
+    /// The selected iterator element becomes a one-item setup tuple and is passed to the shared
+    /// batch renderer.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup = || (std::hint::black_box(iter_element),);
+    /// let __work = |(__input,)| std::hint::black_box(shim(__input));
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_batch`] to render the shared batched perf section.
+    fn render_iter_batch(&self, iter: &Iter, count_ident: Option<&Ident>) -> TokenStream {
+        let setup_output = self.setup_output_type();
+        let setup_expr = iter.render_as_expr(self.setup, None);
+
+        let setup = if let Some(input_type) = self.single_input_type {
+            quote! {{
+                let __setup: #input_type = #setup_expr;
+                (std::hint::black_box(__setup),)
+            }}
+        } else {
+            quote! { (#setup_expr,) }
+        };
+
+        let shim_call = self.render_shim_call(&quote!(__input));
+        let work = quote! { |(__input,)| std::hint::black_box(#shim_call) };
+
+        self.render_batch(&setup, setup_output, &work, count_ident)
+    }
+
+    /// Emits the one-shot perf body for an iterator benchmark.
+    ///
+    /// One iterator element is prepared before the single measured shim call.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup: Input = iter_element;
+    /// let __setup = std::hint::black_box(__setup);
+    /// let __work = std::hint::black_box(shim(__setup));
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_once`] to render the shared one-shot perf section.
+    fn render_iter_once(&self, iter: &Iter) -> TokenStream {
+        let setup_expr = iter.render_as_expr(self.setup, None);
+
+        let setup = if let Some(input_type) = self.single_input_type {
+            quote! {{
+                let __setup: #input_type = #setup_expr;
+                std::hint::black_box(__setup)
+            }}
+        } else {
+            quote! {
+                std::hint::black_box(#setup_expr)
+            }
+        };
+
+        let setup = quote! {
+            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+            let __setup = #setup;
+        };
+        let shim_call = self.render_shim_call(&quote!(__setup));
+        let work = quote! { std::hint::black_box(#shim_call) };
+
+        self.render_once(&setup, &work)
+    }
+
+    /// Emits the setup/work overhead body for an iterator benchmark.
+    ///
+    /// It prepares iterator elements and measures only their `black_box` consumption.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup = || -> (Input,) {
+    ///     (std::hint::black_box(iter_element),)
+    /// };
+    /// let __work = |(__input,)| { let _ = std::hint::black_box(__input); };
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_overhead_batch`] to render the remainder.
+    fn render_iter_overhead_batch(&self, iter: &Iter, repetitions_ident: &Ident) -> TokenStream {
+        let setup_output = self.setup_output_type();
+        let setup_expr = iter.render_as_expr(self.setup, None);
+
+        let setup = if let Some(input_type) = self.single_input_type {
+            quote! {{
+                let __setup: #input_type = #setup_expr;
+                (std::hint::black_box(__setup),)
+            }}
+        } else {
+            quote! { (#setup_expr,) }
+        };
+
+        let work = quote! {
+            |(__input,)| { let _ = std::hint::black_box(__input); }
+        };
+
+        Self::render_overhead_batch(&setup, setup_output, &work, repetitions_ident)
+    }
+
+    /// Helper method which emits the generated wrapper-module call used by benchmark bodies.
+    ///
+    /// ```rust,ignore
+    /// shim_mod::shim_func(arguments)
+    /// ```
+    fn render_shim_call(&self, arguments: &TokenStream) -> TokenStream {
+        let shim_func_call = self.shim_func_call;
+        let shim_mod = self.shim_mod;
+
+        quote!(#shim_mod::#shim_func_call(#arguments))
+    }
+
+    /// Emits the batched perf body for a standalone library benchmark.
+    ///
+    /// Standalone setup produces the typed input, then the shared batch renderer supplies
+    /// repetition selection and the perf timing boundary.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup = || (standalone_setup(),);
+    /// let __work = |(__input,)| std::hint::black_box(shim(__input));
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_batch`] to render the remainder.
+    fn render_standalone_batch(
+        &self,
+        inner: &TokenStream,
+        inner_without_black_box: &TokenStream,
+        count_ident: Option<&Ident>,
+    ) -> TokenStream {
+        let setup_output = Some(tuple_type(self.input_types));
+        let (setup, work) = if self.setup.is_some() {
+            let setup_stmt = if let Some(input_type) = self.single_input_type {
+                quote! {{
+                    let __setup: #input_type = #inner_without_black_box;
+                    let __setup = (std::hint::black_box(__setup),);
+                    __setup
+                }}
+            } else {
+                quote! { (#inner,) }
+            };
+
+            let shim_call = self.render_shim_call(&quote!(__input));
+
+            (
+                setup_stmt,
+                quote! { |(__input,)| std::hint::black_box(#shim_call) },
+            )
+        } else {
+            let shim_call = self.render_shim_call(&TokenStream::new());
+
+            (quote! {}, quote! { |()| std::hint::black_box(#shim_call) })
+        };
+
+        self.render_batch(&setup, setup_output, &work, count_ident)
+    }
+
+    /// Emits the one-shot perf body for a standalone library benchmark.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup: Input = standalone_setup();
+    /// let __setup = std::hint::black_box(__setup);
+    /// let __work = std::hint::black_box(shim(__setup));
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_once`] to render the remainder.
+    fn render_standalone_once(
+        &self,
+        inner: &TokenStream,
+        inner_without_black_box: &TokenStream,
+    ) -> TokenStream {
+        let (setup_stmt, work_call) = if self.setup.is_some() {
+            let setup_stmt = if let Some(input_type) = self.single_input_type {
+                quote! {
+                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    let __setup: #input_type = #inner_without_black_box;
+                    let __setup = std::hint::black_box(__setup);
+                }
+            } else {
+                quote! {
+                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    let __setup = #inner;
+                }
+            };
+
+            let shim_call = self.render_shim_call(&quote!(__setup));
+
+            (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+        } else {
+            let shim_call = self.render_shim_call(&TokenStream::new());
+
+            (quote! {}, quote! { std::hint::black_box(#shim_call) })
+        };
+
+        self.render_once(&setup_stmt, &work_call)
+    }
+
+    /// Emits the setup/work overhead body for a standalone library benchmark.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup = || -> (Input,) {
+    ///     (std::hint::black_box(standalone_setup()),)
+    /// };
+    /// let __work = |(__input,)| { let _ = std::hint::black_box(__input); };
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_overhead_batch`] to render the remainder.
+    fn render_standalone_overhead_batch(
+        &self,
+        inner: &TokenStream,
+        inner_without_black_box: &TokenStream,
+        repetitions_ident: &Ident,
+    ) -> TokenStream {
+        let setup_output = Some(tuple_type(self.input_types));
+        let (setup, work) = if self.setup.is_some() {
+            let setup_stmt = if let Some(input_type) = self.single_input_type {
+                quote! {{
+                    let __setup: #input_type = #inner_without_black_box;
+                    let __setup = (std::hint::black_box(__setup),);
+                    __setup
+                }}
+            } else {
+                quote! { (#inner,) }
+            };
+
+            (
+                setup_stmt,
+                quote! {
+                    |(__input,)| { let _ = std::hint::black_box(__input); }
+                },
+            )
+        } else {
+            (
+                quote! {},
+                quote! { |()| { let _ = std::hint::black_box(42); } },
+            )
+        };
+
+        Self::render_overhead_batch(&setup, setup_output, &work, repetitions_ident)
+    }
+
+    /// Helper method which emits code that chooses the number of perf repetitions for this
+    /// benchmark.
+    ///
+    /// An omitted `perf` attribute is represented as [`None`] and defaults to dynamic calibration.
+    /// A fixed value emits that count directly.
+    ///
+    /// Emits code that selects the number of repetitions used by a perf batch.
+    ///
+    ///
+    ///
+    /// ```rust,ignore
+    /// let __repetitions = supplied_count_or_calibrated_count;
+    /// ```
+    fn render_perf_repetitions(repetitions: common::PerfRepetition) -> TokenStream {
+        match repetitions {
+            common::PerfRepetition::Dynamic => quote! {
+                let __repetitions = gungraun::__internal::stats::calibrate_linear(
+                    std::time::Duration::from_millis(50),
+                    &__setup,
+                    &__work,
+                    &__teardown,
+                );
+            },
+            common::PerfRepetition::Fixed(ident) => quote! {
+                let __repetitions = #ident;
+            },
+        }
+    }
+
+    /// Emits the common batched perf measurement body.
+    ///
+    /// The generated code creates all setup inputs before enabling perf, runs the work closure for
+    /// the full batch while perf is enabled, and runs teardown after perf is disabled. When
+    /// present, `setup_output` annotates the setup closure return type so Rust performs normal
+    /// argument coercions before calibration unifies the setup output with the work input.
+    ///
+    /// Emits the shared batched perf section used by args, iterator, and standalone renderers.
+    ///
+    /// Setup and input collection happen before perf is enabled; only the work closure is timed.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup = || -> SetupOutput { setup_expression };
+    /// let __work = |__input| work_expression(__input);
+    /// let __teardown = |__result| teardown_expression(__result);
+    ///
+    /// let __repetitions = /* selected repetition count */;
+    /// gungraun::perf_log!(
+    ///     "{} {}", gungraun::__internal::PERF_REPETITIONS_MARKER, __repetitions
+    /// );
+    ///
+    /// let __inputs = (0..__repetitions).map(|_| __setup()).collect::<Vec<_>>();
+    ///
+    /// let __lock = gungraun::perf_enable!();
+    /// let __results = __inputs.into_iter().map(__work).collect::<Vec<_>>();
+    /// gungraun::perf_disable!(__lock);
+    ///
+    /// for __result in __results {
+    ///     __teardown(__result);
+    /// }
+    /// ```
+    fn render_batch(
+        &self,
+        setup: &TokenStream,
+        setup_output: Option<TokenStream>,
+        work: &TokenStream,
+        count_ident: Option<&Ident>,
+    ) -> TokenStream {
+        let setup = if let Some(setup_output) = setup_output {
+            quote! {
+                #[allow(clippy::unused_unit, clippy::useless_conversion)]
+                let __setup = || -> #setup_output { #setup };
+            }
+        } else {
+            quote! {
+                #[allow(clippy::unused_unit, clippy::useless_conversion)]
+                let __setup = || { #setup };
+            }
+        };
+
+        let repetitions = if let Some(count_ident) = count_ident {
+            Self::render_perf_repetitions(common::PerfRepetition::Fixed(count_ident.clone()))
+        } else {
+            Self::render_perf_repetitions(common::PerfRepetition::Dynamic)
+        };
+
+        let teardown = {
+            if let Some(teardown) = self.teardown.0.0.as_ref() {
+                let type_annotation = if self.has_generics {
+                    quote! {}
+                } else if let Some(ty) = self.output_type {
+                    quote_spanned! { teardown.span() => : #ty }
+                } else {
+                    quote_spanned! { teardown.span() => : () }
+                };
+
+                quote_spanned! { teardown.span() => |__result #type_annotation| {
+                        let _ = std::hint::black_box(#teardown(__result));
+                    }
+                }
+            } else {
+                quote! { |__result| { let _ = __result; } }
+            }
+        };
+
+        quote! {
+            {
+                #setup
+                let __work = #work;
+                let __teardown = #teardown;
+
+                #repetitions
+
+                gungraun::perf_log!(
+                    "{} {}", gungraun::__internal::PERF_REPETITIONS_MARKER, __repetitions
+                );
+
+                let __inputs = (0..__repetitions).map(|_| __setup()).collect::<Vec<_>>();
+
+                let __lock = gungraun::perf_enable!();
+                #[allow(clippy::useless_conversion)]
+                let __results = __inputs.into_iter().map(__work).collect::<Vec<_>>();
+                gungraun::perf_disable!(__lock);
+
+                for __result in __results {
+                    __teardown(__result);
+                }
+            }
+        }
+    }
+
+    /// Emits the shared batched overhead section used to measure setup and collection costs.
+    ///
+    /// Schematic generated code:
+    ///
+    /// ```rust,ignore
+    /// let __setup = || -> SetupOutput { setup_expression };
+    /// let __work = |__input| work_expression(__input);
+    ///
+    /// let __repetitions = repetitions;
+    /// gungraun::perf_log!(
+    ///     "{} {}", gungraun::__internal::PERF_REPETITIONS_MARKER, __repetitions
+    /// );
+    ///
+    /// let __inputs = (0..__repetitions).map(|_| __setup()).collect::<Vec<_>>();
+    ///
+    /// let __lock = gungraun::perf_enable!();
+    /// let __results = __inputs.into_iter().map(__work).collect::<Vec<_>>();
+    /// gungraun::perf_disable!(__lock);
+    ///
+    /// let _ = __results;
+    /// ```
+    fn render_overhead_batch(
+        setup: &TokenStream,
+        setup_output: Option<TokenStream>,
+        work: &TokenStream,
+        repetitions_ident: &Ident,
+    ) -> TokenStream {
+        let setup = if let Some(setup_output) = setup_output {
+            quote! {
+                #[allow(clippy::unused_unit, clippy::useless_conversion)]
+                let __setup = || -> #setup_output { #setup };
+            }
+        } else {
+            quote! {
+                #[allow(clippy::unused_unit, clippy::useless_conversion)]
+                let __setup = || { #setup };
+            }
+        };
+
+        quote! {
+            {
+                #setup
+                let __work = #work;
+                let __repetitions = #repetitions_ident;
+
+                gungraun::perf_log!(
+                    "{} {}", gungraun::__internal::PERF_REPETITIONS_MARKER, __repetitions
+                );
+
+                let __inputs = (0..__repetitions).map(|_| __setup()).collect::<Vec<_>>();
+
+                let __lock = gungraun::perf_enable!();
+                #[allow(clippy::useless_conversion)]
+                let __results = __inputs.into_iter().map(__work).collect::<Vec<_>>();
+                gungraun::perf_disable!(__lock);
+
+                let _ = __results;
+            }
+        }
+    }
+
+    /// Emits the shared one-shot perf section used by args, iterator, and standalone renderers.
+    ///
+    /// ```rust,ignore
+    /// #setup
+    ///
+    /// let __lock = gungraun::perf_enable!();
+    /// let __result = #work;
+    /// gungraun::perf_disable!(__lock);
+    ///
+    /// #after_perf
+    /// ```
+    ///
+    /// This method dispatches to [`Self::render_once_after`] after the measured work.
+    fn render_once(&self, setup: &TokenStream, work: &TokenStream) -> TokenStream {
+        let after_perf = if let Some(teardown) = self.teardown.0.0.as_ref() {
+            quote_spanned! { teardown.span() =>
+                let _ = std::hint::black_box(#teardown(__result));
+            }
+        } else {
+            quote! { let _ = __result; }
+        };
+
+        quote! {
+            {
+                #setup
+
+                let __lock = gungraun::perf_enable!();
+                let __result = #work;
+                gungraun::perf_disable!(__lock);
+
+                #after_perf
+            }
+        }
+    }
+
+    fn setup_output_type(&self) -> Option<TokenStream> {
+        (!self.has_generics).then(|| tuple_type(self.input_types))
+    }
+}
+
 impl Setup {
     fn is_some(&self) -> bool {
         self.0.0.is_some()
@@ -1986,5 +1992,13 @@ pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream>
         Ok(library_benchmark.render_standalone(&item_fn))
     } else {
         Ok(library_benchmark.render_benches(&item_fn))
+    }
+}
+
+fn tuple_type(types: &[Type]) -> TokenStream {
+    match types {
+        [] => quote! { () },
+        [ty] => quote! { (#ty,) },
+        types => quote! { (#(#types),*) },
     }
 }

@@ -1,14 +1,14 @@
 use std::hint::black_box;
 use std::time::Duration;
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
+use benchmark_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 use gungraun::prelude::*;
-use gungraun::{Callgrind, Perf, Tool};
+use gungraun::{Callgrind, Perf, PerfRunMode, Tool, perf_disable, perf_enable};
 
 #[library_benchmark]
-#[bench::default()]
+#[bench::default(1000)]
 #[bench::one(
-    args = [],
+    args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             .event_sets(["instructions"])
@@ -18,22 +18,26 @@ use gungraun::{Callgrind, Perf, Tool};
             .alpha(0.001)
         )
 )]
+#[bench::one_low_n(
+    args = [1],
+    config = LibraryBenchmarkConfig::default().tool(Perf::default().event_sets(["instructions"]))
+)]
 #[bench::same_twice(
-    args = [],
+    args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             .event_sets(["instructions,instructions"])
         )
 )]
 #[bench::two_sets_same_event(
-    args = [],
+    args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             .event_sets(["instructions", "instructions"])
         )
 )]
 #[bench::two_sets_different_events(
-    args = [],
+    args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             .event_sets(["instructions", "task-clock"])
@@ -45,7 +49,7 @@ use gungraun::{Callgrind, Perf, Tool};
         )
 )]
 #[bench::ten_sets(
-    args = [],
+    args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             .event_sets([
@@ -54,8 +58,43 @@ use gungraun::{Callgrind, Perf, Tool};
             ])
         )
 )]
-fn event_sets() -> Vec<i32> {
-    black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
+// dummy always has zero counter-value
+#[bench::dummy(
+    args = [1000],
+    config = LibraryBenchmarkConfig::default().tool(Perf::default().event_sets(["dummy"]))
+)]
+// Since dummy is always zero this should result in an empty data set
+#[bench::dummy_non_zero(
+    args = [1000],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .event_sets(["dummy"])
+            .non_zero_metrics(["dummy*"])
+        )
+)]
+#[bench::default_calibrate(
+    args = [1000],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .run_mode(PerfRunMode::DefaultCalibrate)
+        )
+)]
+#[bench::default_calibrate_low_n(
+    args = [1],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .run_mode(PerfRunMode::DefaultCalibrate)
+        )
+)]
+#[bench::calibrate_1_secs(
+    args = [1000],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .run_mode(PerfRunMode::Calibrate(Duration::from_secs(1)))
+        )
+)]
+fn event_sets(n: i32) -> Vec<i32> {
+    black_box(bubble_sort(setup_worst_case_array(black_box(n))))
 }
 
 // Far too many slots to succeed without multiplexing on a regular cpu when using sampling. The low
@@ -74,8 +113,36 @@ fn event_sets() -> Vec<i32> {
             ])
         )
 )]
-fn thirty_events_sampled_then_multiplexing() -> Vec<i32> {
+fn thirty_events_then_multiplexing() -> Vec<i32> {
     black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
+}
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .disable_entry_point(true)
+        )
+)]
+#[bench::with_arg(20)]
+fn disabled_entry_point(n: u64) -> u64 {
+    println!("This println shouldn't be measured");
+
+    let lock = perf_enable!();
+    let x = black_box(fibonacci(black_box(n)));
+    perf_disable!(lock);
+
+    x
+}
+
+// This is expected to produce an empty data set but no errors/panics
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .disable_entry_point(true)
+        )
+)]
+fn disabled_entry_point_without_measurement() -> u64 {
+    black_box(fibonacci(black_box(20)))
 }
 
 #[library_benchmark]
@@ -83,9 +150,22 @@ fn thirty_events_sampled_then_multiplexing() -> Vec<i32> {
     args = [],
     config = LibraryBenchmarkConfig::default().tool(Callgrind::default())
 )]
+#[bench::default_perf_with_callgrind_disable_perf(
+    args = [],
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Callgrind::default())
+        .tool(Perf::default().enable(false))
+)]
 #[bench::default_callgrind_with_perf(
     args = [],
     config = LibraryBenchmarkConfig::default().default_tool(Tool::Callgrind).tool(Perf::default())
+)]
+#[bench::default_callgrind_disable_perf(
+    args = [],
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Callgrind)
+        .tool(Perf::default().enable(false))
 )]
 fn with_other_tool() -> Vec<i32> {
     black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
@@ -93,7 +173,13 @@ fn with_other_tool() -> Vec<i32> {
 
 library_benchmark_group!(
     name = without_sampling,
-    benchmarks = [event_sets, with_other_tool]
+    benchmarks = [
+        event_sets,
+        with_other_tool,
+        thirty_events_then_multiplexing,
+        disabled_entry_point,
+        disabled_entry_point_without_measurement
+    ]
 );
 
 library_benchmark_group!(
@@ -103,14 +189,21 @@ library_benchmark_group!(
     benchmarks = [
         event_sets,
         with_other_tool,
-        thirty_events_sampled_then_multiplexing
+        thirty_events_then_multiplexing,
+        disabled_entry_point,
+        disabled_entry_point_without_measurement
     ]
 );
 
 library_benchmark_group!(
     name = record,
     config = LibraryBenchmarkConfig::default().tool(Perf::default().record(true)),
-    benchmarks = event_sets
+    benchmarks = [
+        event_sets,
+        thirty_events_then_multiplexing,
+        disabled_entry_point,
+        disabled_entry_point_without_measurement
+    ]
 );
 
 main!(

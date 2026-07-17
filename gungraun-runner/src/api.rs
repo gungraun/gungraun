@@ -3047,22 +3047,31 @@ impl ToolSpec {
 
             self.sanitize_output = update_option(&self.sanitize_output, &other.sanitize_output);
 
-            match (&mut self.options, &other.options) {
-                (ToolSpecOptions::Perf(this), ToolSpecOptions::Perf(other)) => {
-                    this.events = update_option(&this.events, &other.events);
-                    this.record = update_option(&this.record, &other.record);
-                    this.record_args.update(&other.record_args);
-                    this.run_mode = update_option(&this.run_mode, &other.run_mode);
-                    this.sample_duration =
-                        update_option(&this.sample_duration, &other.sample_duration);
-                    this.min_pcnt_running =
-                        update_option(&this.min_pcnt_running, &other.min_pcnt_running);
-                }
-                (ToolSpecOptions::Dhat(this), ToolSpecOptions::Dhat(other)) => {
-                    this.frames = update_option(&this.frames, &other.frames);
-                }
-                _ => {}
+            self.options.update(&other.options);
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl ToolSpecOptions {
+    fn update(&mut self, other: &Self) {
+        match (self, &other) {
+            (Self::Perf(this), Self::Perf(other)) => {
+                this.alpha = update_option(&this.alpha, &other.alpha);
+                this.events = update_option(&this.events, &other.events);
+                this.min_pcnt_running =
+                    update_option(&this.min_pcnt_running, &other.min_pcnt_running);
+                this.non_zero_metrics =
+                    update_option(&this.non_zero_metrics, &other.non_zero_metrics);
+                this.record = update_option(&this.record, &other.record);
+                this.record_args.update(&other.record_args);
+                this.run_mode = update_option(&this.run_mode, &other.run_mode);
+                this.sample_duration = update_option(&this.sample_duration, &other.sample_duration);
             }
+            (Self::Dhat(this), Self::Dhat(other)) => {
+                this.frames = update_option(&this.frames, &other.frames);
+            }
+            _ => {}
         }
     }
 }
@@ -3481,6 +3490,57 @@ mod tests {
 
         raw_args.prepend_ignore_flag(&other);
         assert_eq!(raw_args, expected);
+    }
+
+    #[test]
+    fn test_tool_spec_options_update_when_dhat() {
+        let mut base = ToolSpecOptions::Dhat(DhatSpec { frames: None });
+        let other = ToolSpecOptions::Dhat(DhatSpec {
+            frames: Some(vec!["123".to_owned()]),
+        });
+
+        let expected = other.clone();
+        base.update(&other);
+        assert_eq!(base, expected);
+    }
+
+    #[test]
+    fn test_tool_spec_options_update_when_perf() {
+        let mut base = ToolSpecOptions::Perf(PerfSpec {
+            alpha: None,
+            events: None,
+            min_pcnt_running: None,
+            non_zero_metrics: None,
+            record: None,
+            record_args: RawToolArgs::default(),
+            run_mode: None,
+            sample_duration: None,
+        });
+
+        let other = ToolSpecOptions::Perf(PerfSpec {
+            alpha: Some(0.5),
+            events: Some(vec!["foo".to_owned()]),
+            min_pcnt_running: Some(0.2),
+            non_zero_metrics: Some(vec!["bar".to_owned()]),
+            record: Some(false),
+            record_args: RawToolArgs(vec!["baz".to_owned()]),
+            run_mode: Some(PerfRunMode::DefaultCalibrate),
+            sample_duration: Some(Duration::from_secs(1)),
+        });
+
+        let expected = other.clone();
+        base.update(&other);
+        assert_eq!(base, expected);
+    }
+
+    #[rstest]
+    fn test_tool_spec_options_update_when_none() {
+        let mut base = ToolSpecOptions::None;
+        let other = ToolSpecOptions::None;
+        let expected = base.clone();
+
+        base.update(&other);
+        assert_eq!(base, expected);
     }
 
     #[test]

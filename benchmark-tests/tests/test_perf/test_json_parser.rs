@@ -8,6 +8,7 @@ use gungraun_runner::fixtures::{header_f, parser_output_f, tool_output_path_f};
 use gungraun_runner::metrics::model::PerfQualities;
 use gungraun_runner::runner::tool::parser::Parser;
 use gungraun_runner::runner::tool::path::ToolOutputPath;
+use gungraun_runner::summary::model::ToolMetrics;
 use pretty_assertions::assert_eq;
 use serde_json::{Value, json};
 use tempfile::{TempDir, tempdir};
@@ -439,46 +440,41 @@ fn test_perf_adjustment_priority() {
 }
 
 #[test]
-fn test_perf_filtered_rejection_min_running() {
+fn test_perf_filtered_empty_min_running() {
     let fixture_path = Fixtures::get_path().join("perf/perf.filtered.out");
     let original = fs::read(fixture_path.clone()).unwrap();
     let (temp_dir, output_path) = copy_perf_fixtures("filtered");
-    let out_path = output_path.dest_dir().join("perf.filtered.out");
     let parser = json_parser_f()
         .min_pcnt_running(50.0)
         .output_path(output_path.clone())
         .fixture();
-    let expected_error = format!("No usable perf metrics found in '{}'", out_path.display());
 
-    let error = parser.parse_with(&output_path).unwrap_err();
+    let outputs = parser.parse_with(&output_path).unwrap();
 
-    let error_message = error.to_string();
-    assert_eq!(error_message, expected_error);
-    assert!(error_message.contains("No usable perf metrics found in"));
-    assert!(error_message.contains(&out_path.display().to_string()));
+    assert_eq!(outputs.len(), 1);
+    let output = &outputs[0];
+    assert!(matches!(output.metrics, ToolMetrics::Perf(ref m) if m.is_empty()));
     assert_eq!(fs::read(&fixture_path).unwrap(), original);
 
     temp_dir.close().unwrap()
 }
 
 #[test]
-fn test_perf_filtered_rejection_non_zero() {
+fn test_perf_filtered_empty_non_zero() {
     let fixture_path = Fixtures::get_path().join("perf/perf.filtered.out");
     let original = fs::read(fixture_path.clone()).unwrap();
     let (temp_dir, output_path) = copy_perf_fixtures("filtered");
-    let out_path = output_path.dest_dir().join("perf.filtered.out");
     let parser = json_parser_f()
         .min_pcnt_running(0.0)
         .non_zero_metrics(["event_filtered_01"])
         .output_path(output_path.clone())
         .fixture();
-    let expected_error = "No usable perf metrics found";
 
-    let error = parser.parse_with(&output_path).unwrap_err();
+    let outputs = parser.parse_with(&output_path).unwrap();
 
-    let error_message = error.to_string();
-    assert!(error_message.contains(expected_error));
-    assert!(error_message.contains(&out_path.display().to_string()));
+    assert_eq!(outputs.len(), 1);
+    let output = &outputs[0];
+    assert!(matches!(output.metrics, ToolMetrics::Perf(ref m) if m.is_empty()));
     assert_eq!(fs::read(&fixture_path).unwrap(), original);
 
     temp_dir.close().unwrap();

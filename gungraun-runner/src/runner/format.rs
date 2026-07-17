@@ -1374,6 +1374,12 @@ impl Formatter for VerticalFormatter {
             self.format_baseline(baselines);
         }
 
+        if metrics_summary.is_empty() {
+            self.write_indent(&IndentKind::Normal);
+            writeln!(self, "{}", "Empty data".bright_black()).unwrap();
+            return;
+        }
+
         match metrics_summary {
             ToolMetricSummary::None => {
                 if let Some(info) = info {
@@ -1463,7 +1469,7 @@ impl Formatter for VerticalFormatter {
         is_default_tool: bool,
         perf_config: Option<&PerfOutputConfig>,
     ) {
-        if matches!(tool, Tool::Perf) {
+        if matches!(tool, Tool::Perf) && data.has_data(Tool::Perf) {
             self.format_perf_config(perf_config);
         }
 

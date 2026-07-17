@@ -57,16 +57,6 @@ impl JsonParser {
             )
         })?;
 
-        // This error can happen if the measured workload is small and with for example `-r 100`. A
-        // single perf run with trash data can contaminate the whole benchmark run with the 100
-        // samples (As of perf version 7.0.10).
-        if metrics.is_empty() {
-            return Err(anyhow!(
-                "No usable perf metrics found in '{}'",
-                path.display()
-            ));
-        }
-
         Ok((
             ParserOutput {
                 details: vec![],

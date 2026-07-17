@@ -301,6 +301,36 @@ impl ProfileData {
         self.parts.is_empty()
     }
 
+    /// Returns `true` if any `ProfilePart` has a non-empty [`MetricsSummary`]
+    pub fn has_data<T>(&self, tool: T) -> bool
+    where
+        T: Into<Option<Tool>>,
+    {
+        match tool.into() {
+            Some(tool) => !self.parts.iter().all(|p| match (tool, &p.metrics_summary) {
+                (
+                    Tool::Helgrind | Tool::DRD | Tool::Memcheck,
+                    ToolMetricSummary::ErrorTool(metrics_summary),
+                ) => metrics_summary.is_empty(),
+                (Tool::DHAT, ToolMetricSummary::Dhat(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Callgrind, ToolMetricSummary::Callgrind(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Cachegrind, ToolMetricSummary::Cachegrind(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Perf, ToolMetricSummary::Perf(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Massif | Tool::BBV, ToolMetricSummary::None) => true,
+                (..) => unreachable!(),
+            }),
+            None => !self.parts.iter().all(|p| p.metrics_summary.is_empty()),
+        }
+    }
+
     /// Returns `true` if the total and only the total has regressed.
     pub fn is_regressed(&self) -> bool {
         self.total.is_regressed()
@@ -631,6 +661,20 @@ impl SummaryOutput {
 }
 
 impl ToolMetricSummary {
+    /// Returns `true` if this summary is a typed variant with no metric diffs present.
+    ///
+    /// `ToolMetricSummary::None` is not considered empty and returns `false`.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::None => false,
+            Self::ErrorTool(summary) => summary.is_empty(),
+            Self::Dhat(summary) => summary.is_empty(),
+            Self::Callgrind(summary) => summary.is_empty(),
+            Self::Cachegrind(summary) => summary.is_empty(),
+            Self::Perf(summary) => summary.is_empty(),
+        }
+    }
+
     /// Sum up another summary metrics to these metrics
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {

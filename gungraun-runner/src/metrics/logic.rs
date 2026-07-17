@@ -1079,18 +1079,12 @@ where
 {
     /// Creates a new `MetricsSummary` calculating the differences between new and old (if any).
     /// [`Metrics`]
-    ///
-    /// # Panics
-    ///
-    /// If one of the [`Metrics`] is empty
     pub fn new(metrics: EitherOrBoth<Metrics<K, V>>) -> Self {
-        let summarized = metrics
-            .inspect(|metrics| assert!(!metrics.is_empty()))
-            .map(|metrics| {
-                let mut summarized = Cow::Owned(metrics);
-                K::summarize(&mut summarized);
-                summarized
-            });
+        let summarized = metrics.map(|metrics| {
+            let mut summarized = Cow::Owned(metrics);
+            K::summarize(&mut summarized);
+            summarized
+        });
 
         let diffs = match summarized {
             EitherOrBoth::Left(new) => new
@@ -1126,6 +1120,11 @@ where
     /// Return an iterator over all [`MetricsDiff`]s
     pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff<V>)> {
         self.0.iter()
+    }
+
+    /// Returns `true` if there are no metric diffs present.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Extract the [`Metrics`] from this summary

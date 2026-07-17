@@ -651,11 +651,7 @@ impl SummaryFormatter {
                                 println!(
                                     "    {}: {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
                                     tool.capitalized(),
-                                    regression_display_name(
-                                        metric,
-                                        display.as_deref(),
-                                        unit.as_ref()
-                                    ),
+                                    regression_display_name(metric, display.as_deref()),
                                     old,
                                     new.bold(),
                                     to_string_signed_short(*diff_pct).bright_red().bold(),
@@ -678,11 +674,7 @@ impl SummaryFormatter {
                                 println!(
                                     "    {0}: {1} ({2}): {2} exceeds limit of {3} by {4}",
                                     tool.capitalized(),
-                                    regression_display_name(
-                                        metric,
-                                        display.as_deref(),
-                                        unit.as_ref()
-                                    ),
+                                    regression_display_name(metric, display.as_deref()),
                                     new.bold(),
                                     limit.bright_black(),
                                     diff.bright_red().bold()
@@ -1712,7 +1704,7 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                 diff_pct,
                 limit,
             } => {
-                let display = regression_display_name(metric, display.as_deref(), unit.as_ref());
+                let display = regression_display_name(metric, display.as_deref());
                 let old = format_metric_with_unit(old, unit.as_ref());
                 let new = format_metric_with_unit(new, unit.as_ref());
 
@@ -1750,7 +1742,7 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                 diff,
                 limit,
             } => {
-                let display = regression_display_name(metric, display.as_deref(), unit.as_ref());
+                let display = regression_display_name(metric, display.as_deref());
                 let new = format_metric_with_unit(new, unit.as_ref());
                 let diff = format_metric_with_unit(diff, unit.as_ref());
                 let limit = format_metric_with_unit(limit, unit.as_ref());
@@ -1768,11 +1760,7 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
     }
 }
 
-fn regression_display_name<'a>(
-    metric: &MetricKind,
-    display: Option<&'a str>,
-    unit: Option<&Unit>,
-) -> Cow<'a, str> {
+fn regression_display_name<'a>(metric: &MetricKind, display: Option<&'a str>) -> Cow<'a, str> {
     let display = display.map_or_else(
         || {
             let name = match metric {
@@ -1792,15 +1780,16 @@ fn regression_display_name<'a>(
         Cow::Borrowed,
     );
 
-    if let Some(unit) = unit {
-        if display.is_empty() {
-            Cow::Owned(format!("[{unit}]"))
-        } else {
-            Cow::Owned(format!("{display} [{unit}]"))
-        }
-    } else {
-        display
-    }
+    // if let Some(unit) = unit {
+    //     if display.is_empty() {
+    //         Cow::Owned(format!("[{unit}]"))
+    //     } else {
+    //         Cow::Owned(format!("{display} [{unit}]"))
+    //     }
+    // } else {
+    //     display
+    // }
+    display
 }
 
 fn format_metric_with_unit(metric: &Metric, unit: Option<&Unit>) -> String {

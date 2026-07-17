@@ -2298,6 +2298,20 @@ impl Perf {
         self
     }
 
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
     /// Adds a single perf event selector to measure.
     ///
     /// The event selector is passed directly to `perf` and determines which hardware or software

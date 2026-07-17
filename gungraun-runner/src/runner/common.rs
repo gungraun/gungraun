@@ -210,12 +210,12 @@ pub struct PostProcessingConfig {
 }
 
 /// Configuration for perf-specific output formatting and significance thresholds.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct PerfOutputConfig {
     /// The alpha threshold used for statistical significance testing.
-    alpha: f64,
+    pub alpha: f64,
     /// The minimum percentage of time the benchmark must be running.
-    min_pcnt_running: f64,
+    pub min_pcnt_running: f64,
 }
 
 impl PerfOutputConfig {

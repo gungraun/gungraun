@@ -1335,6 +1335,23 @@ impl VerticalFormatter {
         )
         .unwrap();
     }
+
+    fn format_perf_config(&mut self, perf_config: Option<&PerfOutputConfig>) {
+        self.write_indent(&IndentKind::Normal);
+
+        let PerfOutputConfig {
+            alpha,
+            min_pcnt_running,
+        } = perf_config.copied().unwrap_or_default();
+
+        let values = format!(
+            ">> alpha: {}, min_pcnt_running: {}",
+            Metric::from(alpha).to_string_without_unit(),
+            Metric::from(min_pcnt_running).to_string_without_unit()
+        );
+
+        writeln!(self, "{}", values.bright_black()).unwrap();
+    }
 }
 
 impl Display for VerticalFormatter {
@@ -1427,7 +1444,6 @@ impl Formatter for VerticalFormatter {
             }
             ToolMetricSummary::Perf(summary) => {
                 let default_perf_config = PerfOutputConfig::default();
-                // TODO: IMPLEMENT showing alpha and min_pcnt_running
                 self.format_perf_metrics(
                     perf_config.unwrap_or(&default_perf_config),
                     summary
@@ -1447,6 +1463,10 @@ impl Formatter for VerticalFormatter {
         is_default_tool: bool,
         perf_config: Option<&PerfOutputConfig>,
     ) {
+        if matches!(tool, Tool::Perf) {
+            self.format_perf_config(perf_config);
+        }
+
         if self.output_format.show_only_comparison {
             // no usual data to show
         } else if data.has_multiple()

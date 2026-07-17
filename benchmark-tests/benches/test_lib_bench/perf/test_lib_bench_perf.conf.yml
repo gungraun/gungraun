@@ -14,4 +14,4 @@ groups:
                   (.["pcnt-running"] | tonumber? | . > 0 and . < 100)
                 )
             ' \
-            with_sampling/thirty_events_sampled_then_multiplexing/perf.thirty_events_sampled_then_multiplexing.out
+            with_sampling/thirty_events_then_multiplexing/perf.thirty_events_then_multiplexing.out

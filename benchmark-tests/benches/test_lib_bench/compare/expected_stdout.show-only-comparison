@@ -6,69 +6,69 @@ test_lib_bench_compare::bubble_sort_compare_two::bench_bubble_sort_best_case mul
 test_lib_bench_compare::bubble_sort_compare_two::bench_bubble_sort_best_case multiple_1:(vec! [1, 2, 3, 4])
 test_lib_bench_compare::bubble_sort_compare_two::bench_bubble_sort_worst_case case_3:(vec! [3, 2, 1])
   Comparison with bench_bubble_sort_best_case case_3:(vec! [1, 2, 3])
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_two::bench_bubble_sort_worst_case multiple_0:(vec! [2, 1])
   Comparison with bench_bubble_sort_best_case multiple_0:(vec! [1, 2])
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_two::bench_bubble_sort_worst_case multiple_1:(vec! [4, 3, 2, 1])
   Comparison with bench_bubble_sort_best_case multiple_1:(vec! [1, 2, 3, 4])
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_best_case case_3:(vec! [1, 2, 3])
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_best_case multiple_0:(vec! [1, 2])
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_best_case multiple_1:(vec! [1, 2, 3, 4])
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_worst_case case_3:(vec! [3, 2, 1])
   Comparison with bench_bubble_sort_best_case case_3:(vec! [1, 2, 3])
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_worst_case multiple_0:(vec! [2, 1])
   Comparison with bench_bubble_sort_best_case multiple_0:(vec! [1, 2])
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_worst_case multiple_1:(vec! [4, 3, 2, 1])
   Comparison with bench_bubble_sort_best_case multiple_1:(vec! [1, 2, 3, 4])
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_mixed_case case_3:(vec! [2, 3, 1])
   Comparison with bench_bubble_sort_best_case case_3:(vec! [1, 2, 3])
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
   Comparison with bench_bubble_sort_worst_case case_3:(vec! [3, 2, 1])
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_mixed_case no_compare_multiple_0:(vec! [2, 1])
 test_lib_bench_compare::bubble_sort_compare_three::bench_bubble_sort_mixed_case no_compare_multiple_1:(vec! [2, 4, 3, 1])
@@ -78,11 +78,11 @@ test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_dhat ca
 test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_dhat_other case_3:(setup_best_case_array(3))
   Comparison with bench_bubble_sort_dhat case_3:(setup_worst_case_array(3))
   ------- CALLGRIND
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
   ------- DHAT
   Total bytes:                                            |                     (No change)
@@ -92,21 +92,21 @@ test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_dhat_ot
   At t-end bytes:                                         |                     (No change)
   At t-end blocks:                                        |                     (No change)
   Reads bytes:                                            |                     (No change)
-  Writes bytes:                                           |                     (+       %) [+       x]
+  Writes bytes:                                           |                     (        %) [        x]
 test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case case_3:(vec! [2, 3, 1])
   Comparison with bench_bubble_sort_dhat case_3:(setup_worst_case_array(3))
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
   Comparison with bench_bubble_sort_dhat_other case_3:(setup_best_case_array(3))
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case no_compare_multiple_0:(vec! [2, 1])
 test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case no_compare_multiple_1:(vec! [2, 4, 3, 1])

@@ -62,6 +62,7 @@ static PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: LazyLock<Regex> = LazyLock::new(|| 
     Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
         .expect("Regex should compile")
 });
+
 // Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)
 // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9
 static REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -75,11 +76,24 @@ static REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
     )
     .expect("Regex should compile")
 });
+
+// * Performance has regressed: Instructions (70021) exceeds limit by 69821 (>200)
+// * Performance has regressed: cpu_core/instructions/u [*instructions*] (7002804) exceeds limit by
+//   6997804 (>5000)
+// * Performance has regressed: task-clock:u [*task-clock*] (601.931 [us]) exceeds limit by 501.931
+//   [us] (>100 [us])
+// $1<__NUM__>$3<__NUM__>$5<__NUM__>$7
 static REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"^(Performance has regressed:\s*[^0-9]+\()([0-9]+)",
-        r"(\)\s*exceeds limit by\s*)([0-9.]+)(\s*\([><])([0-9.]+)(\)\s*)$"
-    ))
+    Regex::new(
+        r"(?x)
+            ^(Performance\s*has\s*regressed:\s*[^0-9]+\()
+            ([^)]+)
+            (\)\s*exceeds\s*limit\s*by\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*\([><])
+            ([^)]+)
+            (\))$",
+    )
     .expect("Regex should compile")
 });
 // Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
@@ -91,12 +105,25 @@ static SUMMARY_REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
     ))
     .expect("Regex should compile")
 });
-// Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
+// * Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
+// * Perf: cpu_core/instructions/u [*instructions*] (7002804): 7002804 exceeds limit of 5000 by
+//   6997804
+// * Perf: task-clock:u [*task-clock*] (602.920 [us]): 602.920 [us] exceeds limit of 100 [us] by
+//   502.920 [us]
+//
+// $1<__NUM__>$3<__NUM__>$5<__LIMIT__>$7<__DIFF__>$9
 static SUMMARY_REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"^(\s*[^0-9]+\()([0-9]+)(\):\s*)([0-9.]+)",
-        r"(\s*exceeds limit of\s*)([0-9.]+)(\s*by\s*)([0-9.]+)(\s*)$"
-    ))
+    Regex::new(
+        r"(?x)
+            ^(\s*[^0-9]+\()
+            ([0-9.]+(?:\s*\[[^)]+\])?)
+            (\):\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*exceeds\s*limit\s*of\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*by\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)$",
+    )
     .expect("Regex should compile")
 });
 // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
@@ -1109,17 +1136,15 @@ impl BenchmarkOutput {
                         let white1 = caps.name("white1").unwrap().as_str();
                         let percent = caps.name("percent").unwrap().as_str();
                         let num = &percent[1..percent.len() - 2];
-                        let pos = num.find(['+', '-']);
+                        let pos = num.find(['+', '-', '>']);
 
                         match pos {
-                            Some(pos) if num[pos + 1..].parse::<f64>().is_ok() => {
-                                write!(
-                                    string,
-                                    "{white1}({}{}%)",
-                                    &num[..pos + 1],
-                                    " ".repeat(num.len() - pos - 1)
-                                )
-                                .unwrap();
+                            Some(pos)
+                                if num[pos + 1..].parse::<f64>().is_ok()
+                                    || percent == "---inf---"
+                                    || percent == "+++inf+++" =>
+                            {
+                                write!(string, "{white1}(        %)").unwrap();
                             }
                             Some(_) | None if self.is_tolerance && percent == "(No change)" => {
                                 write!(string, "{white1}(Tolerance)").unwrap();
@@ -1133,16 +1158,15 @@ impl BenchmarkOutput {
                         let white2 = caps.name("white2").unwrap().as_str();
                         let factor = caps.name("factor").unwrap().as_str();
                         let num = &factor[1..factor.len() - 2];
-                        let pos = num.find(['+', '-']);
+                        let pos = num.find(['+', '-', ' ']);
+
                         match pos {
-                            Some(pos) if num[pos + 1..].parse::<f64>().is_ok() => {
-                                write!(
-                                    string,
-                                    "{white2}[{}{}x]",
-                                    &num[..pos + 1],
-                                    " ".repeat(num.len() - pos - 1)
-                                )
-                                .unwrap();
+                            Some(pos)
+                                if num[pos + 1..].parse::<f64>().is_ok()
+                                    || factor == "---inf---"
+                                    || factor == "+++inf+++" =>
+                            {
+                                write!(string, "{white2}[        x]").unwrap();
                             }
                             Some(_) | None => {
                                 write!(string, "{white2}{factor}").unwrap();
@@ -1734,6 +1758,36 @@ mod tests {
             ),
             replaced
         );
+    }
+
+    #[rstest]
+    #[case::callgrind(
+        "Performance has regressed: Instructions (70021) exceeds limit by 69821 (>200)"
+    )]
+    #[case::perf_no_unit(
+        "Performance has regressed: cpu_core/instructions/u [*instructions*] (7002804) exceeds \
+         limit by 6997804 (>5000)"
+    )]
+    #[case::perf_with_unit(
+        "Performance has regressed: task-clock:u [*task-clock*] (601.931 [us]) exceeds limit by \
+         501.931 [us] (>100 [us])"
+    )]
+    fn test_regression_hard_re(#[case] haystack: &str) {
+        assert!(REGRESSION_HARD_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::callgrind("Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821")]
+    #[case::perf_no_unit(
+        "Perf: cpu_core/instructions/u [*instructions*] (7002804): 7002804 exceeds limit of 5000 \
+         by 6997804"
+    )]
+    #[case::perf_with_unit(
+        "Perf: task-clock:u [*task-clock*] (632.461 [us]): 632.461 [us] exceeds limit of 100 [us] \
+         by 532.461 [us]"
+    )]
+    fn test_summary_hard_regression_re(#[case] haystack: &str) {
+        assert!(SUMMARY_REGRESSION_HARD_RE.is_match(haystack));
     }
 
     #[rstest]

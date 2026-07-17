@@ -231,7 +231,7 @@ Number of primes found in the range 0 to 10000: 1229
   Estimated Cycles:                                       |                     (         )
   ------- DHAT
   Total bytes:                                            |                     (Tolerance)
-  Total blocks:                                           |                     (-       %) [-       x]
+  Total blocks:                                           |                     (        %) [        x]
   At t-gmax bytes:                                        |                     (         )
   At t-gmax blocks:                                       |                     (         )
   At t-end bytes:                                         |                     (Tolerance)
@@ -379,7 +379,7 @@ Number of primes found in the range 0 to 20000: 2262
   Estimated Cycles:                                       |                     (         )
   ------- DHAT
   Total bytes:                                            |                     (Tolerance)
-  Total blocks:                                           |                     (-       %) [-       x]
+  Total blocks:                                           |                     (        %) [        x]
   At t-gmax bytes:                                        |                     (         )
   At t-gmax blocks:                                       |                     (         )
   At t-end bytes:                                         |                     (Tolerance)

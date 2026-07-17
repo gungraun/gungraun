@@ -8,7 +8,7 @@ test_lib_bench_cachegrind::my_group::bench_default_tool no_config:(vec! [3, 2, 1
   Estimated Cycles:                                       |N/A                  (*********)
 test_lib_bench_cachegrind::my_group::bench_default_tool cachegrind_config:(vec! [3, 2, 1])
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
 test_lib_bench_cachegrind::my_group::bench_default_tool callgrind_config:(vec! [3, 2, 1])
   ======= CACHEGRIND ==================================================================================
   Instructions:                                           |N/A                  (*********)
@@ -18,52 +18,52 @@ test_lib_bench_cachegrind::my_group::bench_default_tool callgrind_config:(vec! [
   Total read+write:                                       |N/A                  (*********)
   Estimated Cycles:                                       |N/A                  (*********)
   ======= CALLGRIND ===================================================================================
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
 test_lib_bench_cachegrind::my_group::test_config_overwrite default_config:(setup_best_case_array(10))
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
   ======= CALLGRIND ===================================================================================
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_cachegrind::my_group::test_config_overwrite overwrite_default_cachegrind_config:(setup_best_case_array(10))
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   ======= CALLGRIND ===================================================================================
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_lib_bench_cachegrind::my_group::test_config_overwrite overwrite_default_callgrind_config:(setup_best_case_array(10))
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
   ======= CALLGRIND ===================================================================================
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
 test_lib_bench_cachegrind::my_group::test_config_overwrite tool_override:(setup_best_case_array(10))
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
 test_lib_bench_cachegrind::my_group::manual_cachegrind_setup set_instr_at_start:(vec! [3, 2, 1])
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 
 Gungraun result: Ok. 8 without regressions; 0 regressed; 0 filtered; 8 benchmarks finished in <__SECONDS__>s

@@ -65,20 +65,20 @@ Number of primes found in the range 0 to 20000: 2262
 | Writes bytes:                                           |                     (Tolerance)
 |-Comparison with bench_without_format for_comparison:("A very long string to see if the truncation of t...
 |-------- CALLGRIND
-| Instructions:                                           |                     (-       %) [-       x]
+| Instructions:                                           |                     (        %) [        x]
 | L1 Hits:                                                |                     (         )
 | LL Hits:                                                |                     (         )
 | RAM Hits:                                               |                     (         )
-| Total read+write:                                       |                     (-       %) [-       x]
+| Total read+write:                                       |                     (        %) [        x]
 | Estimated Cycles:                                       |                     (         )
 |-------- DHAT
-| Total bytes:                                            |                     (-       %) [-       x]
-| Total blocks:                                           |                     (-       %) [-       x]
+| Total bytes:                                            |                     (        %) [        x]
+| Total blocks:                                           |                     (        %) [        x]
 | At t-gmax bytes:                                        |                     (         )
 | At t-gmax blocks:                                       |                     (         )
 | At t-end bytes:                                         |                     (Tolerance)
 | At t-end blocks:                                        |                     (Tolerance)
-| Reads bytes:                                            |                     (-       %) [-       x]
-| Writes bytes:                                           |                     (-       %) [-       x]
+| Reads bytes:                                            |                     (        %) [        x]
+| Writes bytes:                                           |                     (        %) [        x]
 
 Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s

@@ -228,7 +228,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
   Estimated Cycles:                                       |                     (         )
   ------- DHAT
   Total bytes:                                            |                     (Tolerance)
-  Total blocks:                                           |                     (-       %) [-       x]
+  Total blocks:                                           |                     (        %) [        x]
   At t-gmax bytes:                                        |                     (         )
   At t-gmax blocks:                                       |                     (         )
   At t-end bytes:                                         |                     (Tolerance)
@@ -375,7 +375,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
   Estimated Cycles:                                       |                     (         )
   ------- DHAT
   Total bytes:                                            |                     (Tolerance)
-  Total blocks:                                           |                     (-       %) [-       x]
+  Total blocks:                                           |                     (        %) [        x]
   At t-gmax bytes:                                        |                     (         )
   At t-gmax blocks:                                       |                     (         )
   At t-end bytes:                                         |                     (Tolerance)

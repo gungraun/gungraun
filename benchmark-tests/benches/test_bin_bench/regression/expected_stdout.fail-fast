@@ -1,8 +1,8 @@
 test_bench_template::bench_group::bench_bubble_sort regress_callgrind:(5) -> target/release/bubble-sort 5
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 

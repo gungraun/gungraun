@@ -7,13 +7,13 @@ test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_callgrin
   Estimated Cycles:                                       |                     (         )
 test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_cachegrind:(setup_worst_case_array(4))
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (        %) [        x]
+  Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (        %) [        x]
+  Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
-test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:(setup_worst_case_array(5))
+test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:(setup_worst_case_array(4))
   ======= DHAT ========================================================================================
   Total bytes:                                            |                     (        %) [        x]
   Total blocks:                                           |                     (No change)
@@ -23,4 +23,16 @@ test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:(se
   At t-end blocks:                                        |                     (No change)
   Reads bytes:                                            |                     (        %) [        x]
   Writes bytes:                                           |                     (        %) [        x]
+test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_perf:(setup_worst_case_array(100))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [us]:                                      |                     (        %) [        x]
+  cpu-clock/u [us]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 

@@ -24,6 +24,7 @@
 #   - `fail_fast=true`: Error output shows only first failure
 #   - `fail_fast=false`: Error output shows all failures
 
+# FIX: perf shows empty data
 template: test_bin_bench_regression.rs.j2
 groups:
   - runs:

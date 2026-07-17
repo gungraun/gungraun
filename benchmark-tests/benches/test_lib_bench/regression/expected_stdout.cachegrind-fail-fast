@@ -1,16 +1,16 @@
 test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_callgrind:(setup_worst_case_array(4))
-  Instructions:                                           |                     (-       %) [-       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (-       %) [-       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_cachegrind:(setup_worst_case_array(500))
   ======= CACHEGRIND ==================================================================================
-  Instructions:                                           |                     (+       %) [+       x]
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (+       %) [+       x]
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 

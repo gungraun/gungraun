@@ -1,10 +1,18 @@
-// TODO: Generics, iter
 use std::hint::black_box;
 use std::time::Duration;
 
 use benchmark_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 use gungraun::prelude::*;
 use gungraun::{Callgrind, Perf, PerfRunMode, Tool, perf_disable, perf_enable};
+
+fn print_debug<T>(input: T) -> usize
+where
+    T: std::fmt::Debug,
+{
+    let output = format!("BENCH: {input:?}");
+    println!("{output}");
+    output.len()
+}
 
 #[library_benchmark]
 #[bench::default(1000)]
@@ -23,6 +31,8 @@ use gungraun::{Callgrind, Perf, PerfRunMode, Tool, perf_disable, perf_enable};
     args = [1],
     config = LibraryBenchmarkConfig::default().tool(Perf::default().event_sets(["instructions"]))
 )]
+// The first one is discarded, so the result should be still only one measurement (without mean, rse
+// calculation, ...)
 #[bench::same_twice(
     args = [1000],
     config = LibraryBenchmarkConfig::default()
@@ -98,6 +108,32 @@ fn event_sets(n: i32) -> Vec<i32> {
     black_box(bubble_sort(setup_worst_case_array(black_box(n))))
 }
 
+#[library_benchmark]
+#[bench::default_perf_with_callgrind(
+    args = [],
+    config = LibraryBenchmarkConfig::default().tool(Callgrind::default())
+)]
+#[bench::default_perf_with_callgrind_disable_perf(
+    args = [],
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Callgrind::default())
+        .tool(Perf::default().enable(false))
+)]
+#[bench::default_callgrind_with_perf(
+    args = [],
+    config = LibraryBenchmarkConfig::default().default_tool(Tool::Callgrind).tool(Perf::default())
+)]
+#[bench::default_callgrind_disable_perf(
+    args = [],
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Callgrind)
+        .tool(Perf::default().enable(false))
+)]
+fn with_other_tool() -> Vec<i32> {
+    black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
+}
+
 // Far too many slots to succeed without multiplexing on a regular cpu when using sampling. The low
 // `min_pcnt_running` value ensures we still count all events which have a valid counter-value.
 #[library_benchmark(
@@ -144,29 +180,24 @@ fn disabled_entry_point_without_measurement() -> u64 {
 }
 
 #[library_benchmark]
-#[bench::default_perf_with_callgrind(
-    args = [],
-    config = LibraryBenchmarkConfig::default().tool(Callgrind::default())
-)]
-#[bench::default_perf_with_callgrind_disable_perf(
-    args = [],
-    config = LibraryBenchmarkConfig::default()
-        .default_tool(Tool::Perf)
-        .tool(Callgrind::default())
-        .tool(Perf::default().enable(false))
-)]
-#[bench::default_callgrind_with_perf(
-    args = [],
-    config = LibraryBenchmarkConfig::default().default_tool(Tool::Callgrind).tool(Perf::default())
-)]
-#[bench::default_callgrind_disable_perf(
-    args = [],
-    config = LibraryBenchmarkConfig::default()
-        .default_tool(Tool::Callgrind)
-        .tool(Perf::default().enable(false))
-)]
-fn with_other_tool() -> Vec<i32> {
-    black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
+#[bench::one_thousand(1000)]
+fn generic<T>(arg: T) -> usize
+where
+    T: std::fmt::Debug,
+{
+    black_box(print_debug(black_box(arg)))
+}
+
+#[library_benchmark]
+#[bench::one_thousand(args = [], consts = [1000])]
+fn with_consts<const FOO: usize>() -> usize {
+    black_box(print_debug(black_box(FOO)))
+}
+
+#[library_benchmark]
+#[benches::two_to_four(iter = 2..=4)]
+fn iter(arg: i32) -> Vec<i32> {
+    black_box(bubble_sort(setup_worst_case_array(black_box(arg))))
 }
 
 library_benchmark_group!(
@@ -176,7 +207,10 @@ library_benchmark_group!(
         with_other_tool,
         thirty_events_then_multiplexing,
         disabled_entry_point,
-        disabled_entry_point_without_measurement
+        disabled_entry_point_without_measurement,
+        generic,
+        with_consts,
+        iter
     ]
 );
 
@@ -189,7 +223,10 @@ library_benchmark_group!(
         with_other_tool,
         thirty_events_then_multiplexing,
         disabled_entry_point,
-        disabled_entry_point_without_measurement
+        disabled_entry_point_without_measurement,
+        generic,
+        with_consts,
+        iter
     ]
 );
 
@@ -200,7 +237,7 @@ library_benchmark_group!(
         event_sets,
         thirty_events_then_multiplexing,
         disabled_entry_point,
-        disabled_entry_point_without_measurement
+        disabled_entry_point_without_measurement,
     ]
 );
 

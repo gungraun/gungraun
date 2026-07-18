@@ -1761,7 +1761,7 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
 }
 
 fn regression_display_name<'a>(metric: &MetricKind, display: Option<&'a str>) -> Cow<'a, str> {
-    let display = display.map_or_else(
+    display.map_or_else(
         || {
             let name = match metric {
                 MetricKind::None => None,
@@ -1778,18 +1778,7 @@ fn regression_display_name<'a>(metric: &MetricKind, display: Option<&'a str>) ->
             Cow::Owned(name)
         },
         Cow::Borrowed,
-    );
-
-    // if let Some(unit) = unit {
-    //     if display.is_empty() {
-    //         Cow::Owned(format!("[{unit}]"))
-    //     } else {
-    //         Cow::Owned(format!("{display} [{unit}]"))
-    //     }
-    // } else {
-    //     display
-    // }
-    display
+    )
 }
 
 fn format_metric_with_unit(metric: &Metric, unit: Option<&Unit>) -> String {

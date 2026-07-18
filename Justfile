@@ -548,11 +548,11 @@ generate-expected-files benchmark path:
     #!/usr/bin/env -S bash -eu
 
     yaml="data:\n"
-    groups="$(find target/gungraun/benchmark-tests/{{ benchmark }} -mindepth 1 -maxdepth 1 -type d)"
+    groups="$(find target/gungraun/benchmark-tests/{{ benchmark }} -mindepth 1 -maxdepth 1 -type d | sort)"
     IFS=$'\n'
     for group in $groups; do
       pushd "$(pwd)/$group" >/dev/null
-      function_ids="$(find -mindepth 1 -maxdepth 1 -type d)"
+      function_ids="$(find -mindepth 1 -maxdepth 1 -type d | sort)"
       for function_id in $function_ids; do
           function_id="${function_id/\.\//}"
           IFS='.' read function id <<<"${function_id}"

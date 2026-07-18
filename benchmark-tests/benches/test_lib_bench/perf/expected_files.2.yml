@@ -1,0 +1,878 @@
+data:
+  - group: record
+    function: disabled_entry_point
+    id: with_arg
+    expected:
+      files:
+        - perf.disabled_entry_point.with_arg.data
+        - perf.disabled_entry_point.with_arg.data.old
+        - perf.disabled_entry_point.with_arg.log
+        - perf.disabled_entry_point.with_arg.log.old
+        - perf.disabled_entry_point.with_arg.out
+        - perf.disabled_entry_point.with_arg.out.old
+        - perf.disabled_entry_point.with_arg.record.log
+        - perf.disabled_entry_point.with_arg.record.log.old
+        - summary.json
+  - group: record
+    function: disabled_entry_point_without_measurement
+    expected:
+      files:
+        - perf.disabled_entry_point_without_measurement.data
+        - perf.disabled_entry_point_without_measurement.data.old
+        - perf.disabled_entry_point_without_measurement.log
+        - perf.disabled_entry_point_without_measurement.log.old
+        - perf.disabled_entry_point_without_measurement.out
+        - perf.disabled_entry_point_without_measurement.out.old
+        - perf.disabled_entry_point_without_measurement.record.log
+        - perf.disabled_entry_point_without_measurement.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: calibrate_1_secs
+    expected:
+      files:
+        - perf.event_sets.calibrate_1_secs.data
+        - perf.event_sets.calibrate_1_secs.data.old
+        - perf.event_sets.calibrate_1_secs.log
+        - perf.event_sets.calibrate_1_secs.log.old
+        - perf.event_sets.calibrate_1_secs.out
+        - perf.event_sets.calibrate_1_secs.out.old
+        - perf.event_sets.calibrate_1_secs.record.log
+        - perf.event_sets.calibrate_1_secs.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: default
+    expected:
+      files:
+        - perf.event_sets.default.data
+        - perf.event_sets.default.data.old
+        - perf.event_sets.default.log
+        - perf.event_sets.default.log.old
+        - perf.event_sets.default.out
+        - perf.event_sets.default.out.old
+        - perf.event_sets.default.record.log
+        - perf.event_sets.default.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: default_calibrate
+    expected:
+      files:
+        - perf.event_sets.default_calibrate.data
+        - perf.event_sets.default_calibrate.data.old
+        - perf.event_sets.default_calibrate.log
+        - perf.event_sets.default_calibrate.log.old
+        - perf.event_sets.default_calibrate.out
+        - perf.event_sets.default_calibrate.out.old
+        - perf.event_sets.default_calibrate.record.log
+        - perf.event_sets.default_calibrate.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: default_calibrate_low_n
+    expected:
+      files:
+        - perf.event_sets.default_calibrate_low_n.data
+        - perf.event_sets.default_calibrate_low_n.data.old
+        - perf.event_sets.default_calibrate_low_n.log
+        - perf.event_sets.default_calibrate_low_n.log.old
+        - perf.event_sets.default_calibrate_low_n.out
+        - perf.event_sets.default_calibrate_low_n.out.old
+        - perf.event_sets.default_calibrate_low_n.record.log
+        - perf.event_sets.default_calibrate_low_n.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: dummy
+    expected:
+      files:
+        - perf.event_sets.dummy.data
+        - perf.event_sets.dummy.data.old
+        - perf.event_sets.dummy.log
+        - perf.event_sets.dummy.log.old
+        - perf.event_sets.dummy.out
+        - perf.event_sets.dummy.out.old
+        - perf.event_sets.dummy.record.log
+        - perf.event_sets.dummy.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: dummy_non_zero
+    expected:
+      files:
+        - perf.event_sets.dummy_non_zero.data
+        - perf.event_sets.dummy_non_zero.data.old
+        - perf.event_sets.dummy_non_zero.log
+        - perf.event_sets.dummy_non_zero.log.old
+        - perf.event_sets.dummy_non_zero.out
+        - perf.event_sets.dummy_non_zero.out.old
+        - perf.event_sets.dummy_non_zero.record.log
+        - perf.event_sets.dummy_non_zero.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: one
+    expected:
+      files:
+        - perf.event_sets.one.data
+        - perf.event_sets.one.data.old
+        - perf.event_sets.one.log
+        - perf.event_sets.one.log.old
+        - perf.event_sets.one.out
+        - perf.event_sets.one.out.old
+        - perf.event_sets.one.record.log
+        - perf.event_sets.one.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: one_low_n
+    expected:
+      files:
+        - perf.event_sets.one_low_n.data
+        - perf.event_sets.one_low_n.data.old
+        - perf.event_sets.one_low_n.log
+        - perf.event_sets.one_low_n.log.old
+        - perf.event_sets.one_low_n.out
+        - perf.event_sets.one_low_n.out.old
+        - perf.event_sets.one_low_n.record.log
+        - perf.event_sets.one_low_n.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: same_twice
+    expected:
+      files:
+        - perf.event_sets.same_twice.data
+        - perf.event_sets.same_twice.data.old
+        - perf.event_sets.same_twice.log
+        - perf.event_sets.same_twice.log.old
+        - perf.event_sets.same_twice.out
+        - perf.event_sets.same_twice.out.old
+        - perf.event_sets.same_twice.record.log
+        - perf.event_sets.same_twice.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: ten_sets
+    expected:
+      files:
+        - perf.event_sets.ten_sets.p01.data
+        - perf.event_sets.ten_sets.p01.data.old
+        - perf.event_sets.ten_sets.p01.log
+        - perf.event_sets.ten_sets.p01.log.old
+        - perf.event_sets.ten_sets.p01.out
+        - perf.event_sets.ten_sets.p01.out.old
+        - perf.event_sets.ten_sets.p01.record.log
+        - perf.event_sets.ten_sets.p01.record.log.old
+        - perf.event_sets.ten_sets.p02.data
+        - perf.event_sets.ten_sets.p02.data.old
+        - perf.event_sets.ten_sets.p02.log
+        - perf.event_sets.ten_sets.p02.log.old
+        - perf.event_sets.ten_sets.p02.out
+        - perf.event_sets.ten_sets.p02.out.old
+        - perf.event_sets.ten_sets.p02.record.log
+        - perf.event_sets.ten_sets.p02.record.log.old
+        - perf.event_sets.ten_sets.p03.data
+        - perf.event_sets.ten_sets.p03.data.old
+        - perf.event_sets.ten_sets.p03.log
+        - perf.event_sets.ten_sets.p03.log.old
+        - perf.event_sets.ten_sets.p03.out
+        - perf.event_sets.ten_sets.p03.out.old
+        - perf.event_sets.ten_sets.p03.record.log
+        - perf.event_sets.ten_sets.p03.record.log.old
+        - perf.event_sets.ten_sets.p04.data
+        - perf.event_sets.ten_sets.p04.data.old
+        - perf.event_sets.ten_sets.p04.log
+        - perf.event_sets.ten_sets.p04.log.old
+        - perf.event_sets.ten_sets.p04.out
+        - perf.event_sets.ten_sets.p04.out.old
+        - perf.event_sets.ten_sets.p04.record.log
+        - perf.event_sets.ten_sets.p04.record.log.old
+        - perf.event_sets.ten_sets.p05.data
+        - perf.event_sets.ten_sets.p05.data.old
+        - perf.event_sets.ten_sets.p05.log
+        - perf.event_sets.ten_sets.p05.log.old
+        - perf.event_sets.ten_sets.p05.out
+        - perf.event_sets.ten_sets.p05.out.old
+        - perf.event_sets.ten_sets.p05.record.log
+        - perf.event_sets.ten_sets.p05.record.log.old
+        - perf.event_sets.ten_sets.p06.data
+        - perf.event_sets.ten_sets.p06.data.old
+        - perf.event_sets.ten_sets.p06.log
+        - perf.event_sets.ten_sets.p06.log.old
+        - perf.event_sets.ten_sets.p06.out
+        - perf.event_sets.ten_sets.p06.out.old
+        - perf.event_sets.ten_sets.p06.record.log
+        - perf.event_sets.ten_sets.p06.record.log.old
+        - perf.event_sets.ten_sets.p07.data
+        - perf.event_sets.ten_sets.p07.data.old
+        - perf.event_sets.ten_sets.p07.log
+        - perf.event_sets.ten_sets.p07.log.old
+        - perf.event_sets.ten_sets.p07.out
+        - perf.event_sets.ten_sets.p07.out.old
+        - perf.event_sets.ten_sets.p07.record.log
+        - perf.event_sets.ten_sets.p07.record.log.old
+        - perf.event_sets.ten_sets.p08.data
+        - perf.event_sets.ten_sets.p08.data.old
+        - perf.event_sets.ten_sets.p08.log
+        - perf.event_sets.ten_sets.p08.log.old
+        - perf.event_sets.ten_sets.p08.out
+        - perf.event_sets.ten_sets.p08.out.old
+        - perf.event_sets.ten_sets.p08.record.log
+        - perf.event_sets.ten_sets.p08.record.log.old
+        - perf.event_sets.ten_sets.p09.data
+        - perf.event_sets.ten_sets.p09.data.old
+        - perf.event_sets.ten_sets.p09.log
+        - perf.event_sets.ten_sets.p09.log.old
+        - perf.event_sets.ten_sets.p09.out
+        - perf.event_sets.ten_sets.p09.out.old
+        - perf.event_sets.ten_sets.p09.record.log
+        - perf.event_sets.ten_sets.p09.record.log.old
+        - perf.event_sets.ten_sets.p10.data
+        - perf.event_sets.ten_sets.p10.data.old
+        - perf.event_sets.ten_sets.p10.log
+        - perf.event_sets.ten_sets.p10.log.old
+        - perf.event_sets.ten_sets.p10.out
+        - perf.event_sets.ten_sets.p10.out.old
+        - perf.event_sets.ten_sets.p10.record.log
+        - perf.event_sets.ten_sets.p10.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: two_sets_different_events
+    expected:
+      files:
+        - perf.event_sets.two_sets_different_events.p1.data
+        - perf.event_sets.two_sets_different_events.p1.data.old
+        - perf.event_sets.two_sets_different_events.p1.log
+        - perf.event_sets.two_sets_different_events.p1.log.old
+        - perf.event_sets.two_sets_different_events.p1.out
+        - perf.event_sets.two_sets_different_events.p1.out.old
+        - perf.event_sets.two_sets_different_events.p1.record.log
+        - perf.event_sets.two_sets_different_events.p1.record.log.old
+        - perf.event_sets.two_sets_different_events.p2.data
+        - perf.event_sets.two_sets_different_events.p2.data.old
+        - perf.event_sets.two_sets_different_events.p2.log
+        - perf.event_sets.two_sets_different_events.p2.log.old
+        - perf.event_sets.two_sets_different_events.p2.out
+        - perf.event_sets.two_sets_different_events.p2.out.old
+        - perf.event_sets.two_sets_different_events.p2.record.log
+        - perf.event_sets.two_sets_different_events.p2.record.log.old
+        - summary.json
+  - group: record
+    function: event_sets
+    id: two_sets_same_event
+    expected:
+      files:
+        - perf.event_sets.two_sets_same_event.p1.data
+        - perf.event_sets.two_sets_same_event.p1.data.old
+        - perf.event_sets.two_sets_same_event.p1.log
+        - perf.event_sets.two_sets_same_event.p1.log.old
+        - perf.event_sets.two_sets_same_event.p1.out
+        - perf.event_sets.two_sets_same_event.p1.out.old
+        - perf.event_sets.two_sets_same_event.p1.record.log
+        - perf.event_sets.two_sets_same_event.p1.record.log.old
+        - perf.event_sets.two_sets_same_event.p2.data
+        - perf.event_sets.two_sets_same_event.p2.data.old
+        - perf.event_sets.two_sets_same_event.p2.log
+        - perf.event_sets.two_sets_same_event.p2.log.old
+        - perf.event_sets.two_sets_same_event.p2.out
+        - perf.event_sets.two_sets_same_event.p2.out.old
+        - perf.event_sets.two_sets_same_event.p2.record.log
+        - perf.event_sets.two_sets_same_event.p2.record.log.old
+        - summary.json
+  - group: record
+    function: thirty_events_then_multiplexing
+    expected:
+      files:
+        - perf.thirty_events_then_multiplexing.data
+        - perf.thirty_events_then_multiplexing.data.old
+        - perf.thirty_events_then_multiplexing.log
+        - perf.thirty_events_then_multiplexing.log.old
+        - perf.thirty_events_then_multiplexing.out
+        - perf.thirty_events_then_multiplexing.out.old
+        - perf.thirty_events_then_multiplexing.record.log
+        - perf.thirty_events_then_multiplexing.record.log.old
+        - summary.json
+  - group: without_sampling
+    function: disabled_entry_point
+    id: with_arg
+    expected:
+      files:
+        - perf.disabled_entry_point.with_arg.log
+        - perf.disabled_entry_point.with_arg.log.old
+        - perf.disabled_entry_point.with_arg.out
+        - perf.disabled_entry_point.with_arg.out.old
+        - summary.json
+  - group: without_sampling
+    function: disabled_entry_point_without_measurement
+    expected:
+      files:
+        - perf.disabled_entry_point_without_measurement.log
+        - perf.disabled_entry_point_without_measurement.log.old
+        - perf.disabled_entry_point_without_measurement.out
+        - perf.disabled_entry_point_without_measurement.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: calibrate_1_secs
+    expected:
+      files:
+        - perf.event_sets.calibrate_1_secs.log
+        - perf.event_sets.calibrate_1_secs.log.old
+        - perf.event_sets.calibrate_1_secs.out
+        - perf.event_sets.calibrate_1_secs.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: default
+    expected:
+      files:
+        - perf.event_sets.default.log
+        - perf.event_sets.default.log.old
+        - perf.event_sets.default.out
+        - perf.event_sets.default.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: default_calibrate
+    expected:
+      files:
+        - perf.event_sets.default_calibrate.log
+        - perf.event_sets.default_calibrate.log.old
+        - perf.event_sets.default_calibrate.out
+        - perf.event_sets.default_calibrate.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: default_calibrate_low_n
+    expected:
+      files:
+        - perf.event_sets.default_calibrate_low_n.log
+        - perf.event_sets.default_calibrate_low_n.log.old
+        - perf.event_sets.default_calibrate_low_n.out
+        - perf.event_sets.default_calibrate_low_n.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: dummy
+    expected:
+      files:
+        - perf.event_sets.dummy.log
+        - perf.event_sets.dummy.log.old
+        - perf.event_sets.dummy.out
+        - perf.event_sets.dummy.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: dummy_non_zero
+    expected:
+      files:
+        - perf.event_sets.dummy_non_zero.log
+        - perf.event_sets.dummy_non_zero.log.old
+        - perf.event_sets.dummy_non_zero.out
+        - perf.event_sets.dummy_non_zero.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: one
+    expected:
+      files:
+        - perf.event_sets.one.log
+        - perf.event_sets.one.log.old
+        - perf.event_sets.one.out
+        - perf.event_sets.one.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: one_low_n
+    expected:
+      files:
+        - perf.event_sets.one_low_n.log
+        - perf.event_sets.one_low_n.log.old
+        - perf.event_sets.one_low_n.out
+        - perf.event_sets.one_low_n.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: same_twice
+    expected:
+      files:
+        - perf.event_sets.same_twice.log
+        - perf.event_sets.same_twice.log.old
+        - perf.event_sets.same_twice.out
+        - perf.event_sets.same_twice.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: ten_sets
+    expected:
+      files:
+        - perf.event_sets.ten_sets.p01.log
+        - perf.event_sets.ten_sets.p01.log.old
+        - perf.event_sets.ten_sets.p01.out
+        - perf.event_sets.ten_sets.p01.out.old
+        - perf.event_sets.ten_sets.p02.log
+        - perf.event_sets.ten_sets.p02.log.old
+        - perf.event_sets.ten_sets.p02.out
+        - perf.event_sets.ten_sets.p02.out.old
+        - perf.event_sets.ten_sets.p03.log
+        - perf.event_sets.ten_sets.p03.log.old
+        - perf.event_sets.ten_sets.p03.out
+        - perf.event_sets.ten_sets.p03.out.old
+        - perf.event_sets.ten_sets.p04.log
+        - perf.event_sets.ten_sets.p04.log.old
+        - perf.event_sets.ten_sets.p04.out
+        - perf.event_sets.ten_sets.p04.out.old
+        - perf.event_sets.ten_sets.p05.log
+        - perf.event_sets.ten_sets.p05.log.old
+        - perf.event_sets.ten_sets.p05.out
+        - perf.event_sets.ten_sets.p05.out.old
+        - perf.event_sets.ten_sets.p06.log
+        - perf.event_sets.ten_sets.p06.log.old
+        - perf.event_sets.ten_sets.p06.out
+        - perf.event_sets.ten_sets.p06.out.old
+        - perf.event_sets.ten_sets.p07.log
+        - perf.event_sets.ten_sets.p07.log.old
+        - perf.event_sets.ten_sets.p07.out
+        - perf.event_sets.ten_sets.p07.out.old
+        - perf.event_sets.ten_sets.p08.log
+        - perf.event_sets.ten_sets.p08.log.old
+        - perf.event_sets.ten_sets.p08.out
+        - perf.event_sets.ten_sets.p08.out.old
+        - perf.event_sets.ten_sets.p09.log
+        - perf.event_sets.ten_sets.p09.log.old
+        - perf.event_sets.ten_sets.p09.out
+        - perf.event_sets.ten_sets.p09.out.old
+        - perf.event_sets.ten_sets.p10.log
+        - perf.event_sets.ten_sets.p10.log.old
+        - perf.event_sets.ten_sets.p10.out
+        - perf.event_sets.ten_sets.p10.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: two_sets_different_events
+    expected:
+      files:
+        - perf.event_sets.two_sets_different_events.p1.log
+        - perf.event_sets.two_sets_different_events.p1.log.old
+        - perf.event_sets.two_sets_different_events.p1.out
+        - perf.event_sets.two_sets_different_events.p1.out.old
+        - perf.event_sets.two_sets_different_events.p2.log
+        - perf.event_sets.two_sets_different_events.p2.log.old
+        - perf.event_sets.two_sets_different_events.p2.out
+        - perf.event_sets.two_sets_different_events.p2.out.old
+        - summary.json
+  - group: without_sampling
+    function: event_sets
+    id: two_sets_same_event
+    expected:
+      files:
+        - perf.event_sets.two_sets_same_event.p1.log
+        - perf.event_sets.two_sets_same_event.p1.log.old
+        - perf.event_sets.two_sets_same_event.p1.out
+        - perf.event_sets.two_sets_same_event.p1.out.old
+        - perf.event_sets.two_sets_same_event.p2.log
+        - perf.event_sets.two_sets_same_event.p2.log.old
+        - perf.event_sets.two_sets_same_event.p2.out
+        - perf.event_sets.two_sets_same_event.p2.out.old
+        - summary.json
+  - group: without_sampling
+    function: generic
+    id: one_thousand
+    expected:
+      files:
+        - perf.generic.one_thousand.log
+        - perf.generic.one_thousand.log.old
+        - perf.generic.one_thousand.out
+        - perf.generic.one_thousand.out.old
+        - summary.json
+  - group: without_sampling
+    function: iter
+    id: two_to_four_0
+    expected:
+      files:
+        - perf.iter.two_to_four_0.log
+        - perf.iter.two_to_four_0.log.old
+        - perf.iter.two_to_four_0.out
+        - perf.iter.two_to_four_0.out.old
+        - summary.json
+  - group: without_sampling
+    function: iter
+    id: two_to_four_1
+    expected:
+      files:
+        - perf.iter.two_to_four_1.log
+        - perf.iter.two_to_four_1.log.old
+        - perf.iter.two_to_four_1.out
+        - perf.iter.two_to_four_1.out.old
+        - summary.json
+  - group: without_sampling
+    function: iter
+    id: two_to_four_2
+    expected:
+      files:
+        - perf.iter.two_to_four_2.log
+        - perf.iter.two_to_four_2.log.old
+        - perf.iter.two_to_four_2.out
+        - perf.iter.two_to_four_2.out.old
+        - summary.json
+  - group: without_sampling
+    function: thirty_events_then_multiplexing
+    expected:
+      files:
+        - perf.thirty_events_then_multiplexing.log
+        - perf.thirty_events_then_multiplexing.log.old
+        - perf.thirty_events_then_multiplexing.out
+        - perf.thirty_events_then_multiplexing.out.old
+        - summary.json
+  - group: without_sampling
+    function: with_consts
+    id: one_thousand
+    expected:
+      files:
+        - perf.with_consts.one_thousand.log
+        - perf.with_consts.one_thousand.log.old
+        - perf.with_consts.one_thousand.out
+        - perf.with_consts.one_thousand.out.old
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_callgrind_disable_perf.log.old
+        - callgrind.with_other_tool.default_callgrind_disable_perf.out
+        - callgrind.with_other_tool.default_callgrind_disable_perf.out.old
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_callgrind_with_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_with_perf.log
+        - callgrind.with_other_tool.default_callgrind_with_perf.log.old
+        - callgrind.with_other_tool.default_callgrind_with_perf.out
+        - callgrind.with_other_tool.default_callgrind_with_perf.out.old
+        - perf.with_other_tool.default_callgrind_with_perf.log
+        - perf.with_other_tool.default_callgrind_with_perf.log.old
+        - perf.with_other_tool.default_callgrind_with_perf.out
+        - perf.with_other_tool.default_callgrind_with_perf.out.old
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind.log
+        - callgrind.with_other_tool.default_perf_with_callgrind.log.old
+        - callgrind.with_other_tool.default_perf_with_callgrind.out
+        - callgrind.with_other_tool.default_perf_with_callgrind.out.old
+        - perf.with_other_tool.default_perf_with_callgrind.log
+        - perf.with_other_tool.default_perf_with_callgrind.log.old
+        - perf.with_other_tool.default_perf_with_callgrind.out
+        - perf.with_other_tool.default_perf_with_callgrind.out.old
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.log.old
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out.old
+        - summary.json
+  - group: with_sampling
+    function: disabled_entry_point
+    id: with_arg
+    expected:
+      files:
+        - perf.disabled_entry_point.with_arg.log
+        - perf.disabled_entry_point.with_arg.log.old
+        - perf.disabled_entry_point.with_arg.out
+        - perf.disabled_entry_point.with_arg.out.old
+        - summary.json
+  - group: with_sampling
+    function: disabled_entry_point_without_measurement
+    expected:
+      files:
+        - perf.disabled_entry_point_without_measurement.log
+        - perf.disabled_entry_point_without_measurement.log.old
+        - perf.disabled_entry_point_without_measurement.out
+        - perf.disabled_entry_point_without_measurement.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: calibrate_1_secs
+    expected:
+      files:
+        - perf.event_sets.calibrate_1_secs.log
+        - perf.event_sets.calibrate_1_secs.log.old
+        - perf.event_sets.calibrate_1_secs.out
+        - perf.event_sets.calibrate_1_secs.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: default
+    expected:
+      files:
+        - perf.event_sets.default.log
+        - perf.event_sets.default.log.old
+        - perf.event_sets.default.out
+        - perf.event_sets.default.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: default_calibrate
+    expected:
+      files:
+        - perf.event_sets.default_calibrate.log
+        - perf.event_sets.default_calibrate.log.old
+        - perf.event_sets.default_calibrate.out
+        - perf.event_sets.default_calibrate.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: default_calibrate_low_n
+    expected:
+      files:
+        - perf.event_sets.default_calibrate_low_n.log
+        - perf.event_sets.default_calibrate_low_n.log.old
+        - perf.event_sets.default_calibrate_low_n.out
+        - perf.event_sets.default_calibrate_low_n.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: dummy
+    expected:
+      files:
+        - perf.event_sets.dummy.log
+        - perf.event_sets.dummy.log.old
+        - perf.event_sets.dummy.out
+        - perf.event_sets.dummy.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: dummy_non_zero
+    expected:
+      files:
+        - perf.event_sets.dummy_non_zero.log
+        - perf.event_sets.dummy_non_zero.log.old
+        - perf.event_sets.dummy_non_zero.out
+        - perf.event_sets.dummy_non_zero.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: one
+    expected:
+      files:
+        - perf.event_sets.one.log
+        - perf.event_sets.one.log.old
+        - perf.event_sets.one.out
+        - perf.event_sets.one.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: one_low_n
+    expected:
+      files:
+        - perf.event_sets.one_low_n.log
+        - perf.event_sets.one_low_n.log.old
+        - perf.event_sets.one_low_n.out
+        - perf.event_sets.one_low_n.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: same_twice
+    expected:
+      files:
+        - perf.event_sets.same_twice.log
+        - perf.event_sets.same_twice.log.old
+        - perf.event_sets.same_twice.out
+        - perf.event_sets.same_twice.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: ten_sets
+    expected:
+      files:
+        - perf.event_sets.ten_sets.p01.log
+        - perf.event_sets.ten_sets.p01.log.old
+        - perf.event_sets.ten_sets.p01.out
+        - perf.event_sets.ten_sets.p01.out.old
+        - perf.event_sets.ten_sets.p02.log
+        - perf.event_sets.ten_sets.p02.log.old
+        - perf.event_sets.ten_sets.p02.out
+        - perf.event_sets.ten_sets.p02.out.old
+        - perf.event_sets.ten_sets.p03.log
+        - perf.event_sets.ten_sets.p03.log.old
+        - perf.event_sets.ten_sets.p03.out
+        - perf.event_sets.ten_sets.p03.out.old
+        - perf.event_sets.ten_sets.p04.log
+        - perf.event_sets.ten_sets.p04.log.old
+        - perf.event_sets.ten_sets.p04.out
+        - perf.event_sets.ten_sets.p04.out.old
+        - perf.event_sets.ten_sets.p05.log
+        - perf.event_sets.ten_sets.p05.log.old
+        - perf.event_sets.ten_sets.p05.out
+        - perf.event_sets.ten_sets.p05.out.old
+        - perf.event_sets.ten_sets.p06.log
+        - perf.event_sets.ten_sets.p06.log.old
+        - perf.event_sets.ten_sets.p06.out
+        - perf.event_sets.ten_sets.p06.out.old
+        - perf.event_sets.ten_sets.p07.log
+        - perf.event_sets.ten_sets.p07.log.old
+        - perf.event_sets.ten_sets.p07.out
+        - perf.event_sets.ten_sets.p07.out.old
+        - perf.event_sets.ten_sets.p08.log
+        - perf.event_sets.ten_sets.p08.log.old
+        - perf.event_sets.ten_sets.p08.out
+        - perf.event_sets.ten_sets.p08.out.old
+        - perf.event_sets.ten_sets.p09.log
+        - perf.event_sets.ten_sets.p09.log.old
+        - perf.event_sets.ten_sets.p09.out
+        - perf.event_sets.ten_sets.p09.out.old
+        - perf.event_sets.ten_sets.p10.log
+        - perf.event_sets.ten_sets.p10.log.old
+        - perf.event_sets.ten_sets.p10.out
+        - perf.event_sets.ten_sets.p10.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: two_sets_different_events
+    expected:
+      files:
+        - perf.event_sets.two_sets_different_events.p1.log
+        - perf.event_sets.two_sets_different_events.p1.log.old
+        - perf.event_sets.two_sets_different_events.p1.out
+        - perf.event_sets.two_sets_different_events.p1.out.old
+        - perf.event_sets.two_sets_different_events.p2.log
+        - perf.event_sets.two_sets_different_events.p2.log.old
+        - perf.event_sets.two_sets_different_events.p2.out
+        - perf.event_sets.two_sets_different_events.p2.out.old
+        - summary.json
+  - group: with_sampling
+    function: event_sets
+    id: two_sets_same_event
+    expected:
+      files:
+        - perf.event_sets.two_sets_same_event.p1.log
+        - perf.event_sets.two_sets_same_event.p1.log.old
+        - perf.event_sets.two_sets_same_event.p1.out
+        - perf.event_sets.two_sets_same_event.p1.out.old
+        - perf.event_sets.two_sets_same_event.p2.log
+        - perf.event_sets.two_sets_same_event.p2.log.old
+        - perf.event_sets.two_sets_same_event.p2.out
+        - perf.event_sets.two_sets_same_event.p2.out.old
+        - summary.json
+  - group: with_sampling
+    function: generic
+    id: one_thousand
+    expected:
+      files:
+        - perf.generic.one_thousand.log
+        - perf.generic.one_thousand.log.old
+        - perf.generic.one_thousand.out
+        - perf.generic.one_thousand.out.old
+        - summary.json
+  - group: with_sampling
+    function: iter
+    id: two_to_four_0
+    expected:
+      files:
+        - perf.iter.two_to_four_0.log
+        - perf.iter.two_to_four_0.log.old
+        - perf.iter.two_to_four_0.out
+        - perf.iter.two_to_four_0.out.old
+        - summary.json
+  - group: with_sampling
+    function: iter
+    id: two_to_four_1
+    expected:
+      files:
+        - perf.iter.two_to_four_1.log
+        - perf.iter.two_to_four_1.log.old
+        - perf.iter.two_to_four_1.out
+        - perf.iter.two_to_four_1.out.old
+        - summary.json
+  - group: with_sampling
+    function: iter
+    id: two_to_four_2
+    expected:
+      files:
+        - perf.iter.two_to_four_2.log
+        - perf.iter.two_to_four_2.log.old
+        - perf.iter.two_to_four_2.out
+        - perf.iter.two_to_four_2.out.old
+        - summary.json
+  - group: with_sampling
+    function: thirty_events_then_multiplexing
+    expected:
+      files:
+        - perf.thirty_events_then_multiplexing.log
+        - perf.thirty_events_then_multiplexing.log.old
+        - perf.thirty_events_then_multiplexing.out
+        - perf.thirty_events_then_multiplexing.out.old
+        - summary.json
+  - group: with_sampling
+    function: with_consts
+    id: one_thousand
+    expected:
+      files:
+        - perf.with_consts.one_thousand.log
+        - perf.with_consts.one_thousand.log.old
+        - perf.with_consts.one_thousand.out
+        - perf.with_consts.one_thousand.out.old
+        - summary.json
+  - group: with_sampling
+    function: with_other_tool
+    id: default_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_callgrind_disable_perf.log.old
+        - callgrind.with_other_tool.default_callgrind_disable_perf.out
+        - callgrind.with_other_tool.default_callgrind_disable_perf.out.old
+        - summary.json
+  - group: with_sampling
+    function: with_other_tool
+    id: default_callgrind_with_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_with_perf.log
+        - callgrind.with_other_tool.default_callgrind_with_perf.log.old
+        - callgrind.with_other_tool.default_callgrind_with_perf.out
+        - callgrind.with_other_tool.default_callgrind_with_perf.out.old
+        - perf.with_other_tool.default_callgrind_with_perf.log
+        - perf.with_other_tool.default_callgrind_with_perf.log.old
+        - perf.with_other_tool.default_callgrind_with_perf.out
+        - perf.with_other_tool.default_callgrind_with_perf.out.old
+        - summary.json
+  - group: with_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind.log
+        - callgrind.with_other_tool.default_perf_with_callgrind.log.old
+        - callgrind.with_other_tool.default_perf_with_callgrind.out
+        - callgrind.with_other_tool.default_perf_with_callgrind.out.old
+        - perf.with_other_tool.default_perf_with_callgrind.log
+        - perf.with_other_tool.default_perf_with_callgrind.log.old
+        - perf.with_other_tool.default_perf_with_callgrind.out
+        - perf.with_other_tool.default_perf_with_callgrind.out.old
+        - summary.json
+  - group: with_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.log.old
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out.old
+        - summary.json
+

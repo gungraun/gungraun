@@ -2,6 +2,27 @@ groups:
   - runs:
       - args: []
         expected:
+          stderr: expected_stderr.1
+          stdout: expected_stdout.1
+          files: expected_files.1.yml
+          script: |
+            jq -e -s --arg event 'cpu_core/instructions/u' '
+              [.[] | select(.event == $event)]
+              | if length == 1 then .[0]
+                else error("expected exactly one \($event) event")
+                end
+              | (
+                  (.["counter-value"] | tonumber? | isfinite)
+                  and
+                  (.["pcnt-running"] | tonumber? | . > 0 and . < 100)
+                )
+            ' \
+            with_sampling/thirty_events_then_multiplexing/perf.thirty_events_then_multiplexing.out
+      - args: []
+        expected:
+          stderr: expected_stderr.2
+          stdout: expected_stdout.2
+          files: expected_files.2.yml
           script: |
             jq -e -s --arg event 'cpu_core/instructions/u' '
               [.[] | select(.event == $event)]

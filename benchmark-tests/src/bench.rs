@@ -45,7 +45,7 @@ static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::ne
 static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
-            (?<desc>.+:\s*)(?<comp1>[0-9.]+|N/A)\|(?<comp2>[0-9.]+|N/A)
+            (?<desc>.+?\s*)(?<comp1>[0-9.]+|N/A)\|(?<comp2>[0-9.]+|N/A)
             (?<diff>
                 (?<diff_percent>(?<white1>\s*)(?<percent>\(.*\)))
                 (?<diff_factor>(?<white2>\s*)(?<factor>\[.*\]))?
@@ -1742,6 +1742,41 @@ mod tests {
             ABSOLUTE_PATH_RE.replace_all(haystack, "$1<__ABS_PATH__>$2"),
             replaced
         );
+    }
+
+    #[rstest]
+    #[case::valgrind(
+        "Instructions:                                       1234|1234                 \
+         (12345678%) [1234.1234x]"
+    )]
+    #[case::valgrind_na(
+        "Instructions:                                        123|N/A                  (*********)"
+    )]
+    #[case::number_in_event(
+        "L1 Hits:                                             123|1                    \
+         (1.234567%) [2.3456789x]"
+    )]
+    #[case::valgrind_with_special(
+        "Total read+write:                                 123456|12345                \
+         (1.234567%) [123.45678%]"
+    )]
+    #[case::perf_without_unit(
+        "cpu_core/instructions/u:                             N/A|1234                 (*********)"
+    )]
+    #[case::perf_with_unit(
+        "task-clock/u [us]:                                 0.123|1.234                \
+         (123456.8%) [1234.1234x]"
+    )]
+    #[case::perf_rse(
+        "  rse% (sig.thr) [sig.fact]                        2.345|3.4567890            \
+         (9.876543%) [234.56789x]"
+    )]
+    #[case::perf_samples(
+        "  samples                                     1000000000|20000000000000000000 \
+         (3456.123%) [1234.1234x]"
+    )]
+    fn test_numbers_re(#[case] haystack: &str) {
+        assert!(NUMBERS_RE.is_match(haystack));
     }
 
     #[rstest]

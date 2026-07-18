@@ -13,9 +13,18 @@ test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:(4) -> ta
   RAM Hits:                                               |N/A                  (*********)
   Total read+write:                                       |N/A                  (*********)
   Estimated Cycles:                                       |N/A                  (*********)
-test_bench_template::bench_group::bench_bubble_sort regress_perf:(4) -> target/release/bubble-sort 4
+test_bench_template::bench_group::bench_bubble_sort regress_perf:(10000) -> target/release/bubble-sort 10000
   ======= PERF ========================================================================================
-  Empty data
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |N/A                  (*********)
+  cpu_atom/cycles/u:                                      |N/A                  (*********)
+  cpu_core/cycles/u:                                      |N/A                  (*********)
+  task-clock/u [ms]:                                      |N/A                  (*********)
+  cpu-clock/u [ms]:                                       |N/A                  (*********)
+  faults/u:                                               |N/A                  (*********)
+  context-switches/u:                                     |N/A                  (*********)
+  cpu_core/branch-misses/u:                               |N/A                  (*********)
+  cpu_core/cache-misses/u:                                |N/A                  (*********)
 test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regression:(10) -> target/release/bubble-sort 10
   Instructions:                                           |N/A                  (*********)
   L1 Hits:                                                |N/A                  (*********)

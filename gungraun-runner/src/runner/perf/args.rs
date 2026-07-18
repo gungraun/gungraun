@@ -31,7 +31,7 @@ pub enum PerfTool {
 pub struct PerfArgs {
     args_after_events: Vec<String>,
     control: String,
-    delay: String,
+    delay: Option<String>,
     events: Vec<String>,
     other: Vec<String>,
     output_path: Option<OsString>,
@@ -68,10 +68,7 @@ impl PerfArgs {
 
     /// Ignored arguments common between perf stat and perf record
     fn is_ignored_value_argument(arg: &str) -> bool {
-        matches!(
-            arg,
-            "--control" | "-p" | "--pid" | "-t" | "--tid" | "-D" | "--delay"
-        )
+        matches!(arg, "--control" | "-p" | "--pid" | "-t" | "--tid")
     }
 
     /// Ignored arguments common between perf stat and perf record
@@ -86,8 +83,7 @@ impl PerfArgs {
 
     /// Creates default arguments for a perf subcommand.
     ///
-    /// The defaults configure Gungraun's fixed control file descriptors and delay perf until it is
-    /// explicitly enabled by the runner.
+    /// The defaults configure Gungraun's fixed control file descriptors.
     pub fn new(tool: PerfTool) -> Self {
         Self {
             tool,
@@ -95,7 +91,7 @@ impl PerfArgs {
             events: vec![],
             output_path: None,
             control: format!("fd:{PERF_CTL_FD_READ},{PERF_ACK_FD_WRITE}"),
-            delay: "-1".to_owned(),
+            delay: None,
             args_after_events: Vec::default(),
         }
     }
@@ -105,7 +101,9 @@ impl PerfArgs {
         let mut vec: Vec<OsString> = vec![self.tool.to_string().into()];
 
         vec.push(format!("--control={}", self.control).into());
-        vec.push(format!("--delay={}", self.delay).into());
+        if let Some(delay) = self.delay.as_ref() {
+            vec.push(format!("--delay={delay}").into());
+        }
 
         vec.extend(self.events.iter().map(|e| format!("--event={e}").into()));
 
@@ -167,8 +165,8 @@ impl PerfArgs {
 
     /// Applies raw user arguments while dropping arguments managed by Gungraun.
     ///
-    /// Output paths, control file descriptors, delays, process IDs, and event selection are owned
-    /// by the runner. Unknown or unmanaged arguments are preserved in insertion order.
+    /// Output paths, control file descriptors, process IDs, and event selection are owned by the
+    /// runner. Unknown or unmanaged arguments are preserved in insertion order.
     fn update<'a, T>(&mut self, args: T)
     where
         T: Iterator<Item = &'a String>,
@@ -373,8 +371,6 @@ impl PerfStatArgs {
                 | "--tid"
                 | "-b"
                 | "--bpf-prog"
-                | "-D"
-                | "--delay"
                 | "-I"
                 | "--interval-print"
                 | "--interval-count"
@@ -504,7 +500,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case::delay_equals(&["--delay=10"])]
     #[case::control_equals(&["--control=fd:1,2"])]
     #[case::pid_long_equals(&["--pid=123"])]
     #[case::pid_short_equals(&["-p=123"])]
@@ -515,7 +510,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case::delay_space(&["--delay", "10"])]
     #[case::control_space(&["--control", "fd:1,2"])]
     #[case::pid_long_space(&["--pid", "123"])]
     #[case::pid_short_space(&["-p", "123"])]
@@ -606,7 +600,6 @@ mod tests {
             vec![
                 "record".to_owned(),
                 format!("--control=fd:{PERF_CTL_FD_READ},{PERF_ACK_FD_WRITE}"),
-                "--delay=-1".to_owned(),
                 "--event=cycles".to_owned(),
                 "--exclude-perf".to_owned(),
                 "--filter=pid == 1".to_owned(),

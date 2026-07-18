@@ -396,7 +396,10 @@ impl LibBench {
         // meta envs are already resolved
         envs.extend(meta.args.envs.iter().flatten().cloned());
 
-        let mut default_args = HashMap::new();
+        // Setting --delay=-1 for perf is only required for library benchmarks. This is applied no
+        // matter if the default entry point is used or not. The user can still override this
+        // setting if required.
+        let mut default_args = HashMap::from([(Tool::Perf, RawToolArgs::new(["--delay", "-1"]))]);
 
         // The Cachegrind client requests are not inserted into the benchmark function if the
         // default tool is not Cachegrind, so setting --instr-at-start to `no` is only required if

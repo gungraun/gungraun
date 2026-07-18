@@ -1,5 +1,4 @@
-// TODO: Generics, iter, binary benchmark (+regression +fix)
-// FIX: Update all system test fixtures because of change to exclude +,-
+// TODO: Generics, iter
 use std::hint::black_box;
 use std::time::Duration;
 
@@ -16,7 +15,7 @@ use gungraun::{Callgrind, Perf, PerfRunMode, Tool, perf_disable, perf_enable};
             .event_sets(["instructions"])
             // to provoke a warning which tells us that the args are parsed but only if record is
             // enabled
-            .record_args(["-D", "1000"])
+            .record_args(["-e", "foo"])
             .alpha(0.001)
         )
 )]
@@ -138,10 +137,7 @@ fn disabled_entry_point(n: u64) -> u64 {
 
 // This is expected to produce an empty data set but no errors/panics
 #[library_benchmark(
-    config = LibraryBenchmarkConfig::default()
-        .tool(Perf::default()
-            .disable_entry_point(true)
-        )
+    config = LibraryBenchmarkConfig::default().tool(Perf::default().disable_entry_point(true))
 )]
 fn disabled_entry_point_without_measurement() -> u64 {
     black_box(fibonacci(black_box(20)))

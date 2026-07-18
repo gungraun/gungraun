@@ -181,6 +181,7 @@ pub struct ToolConfig {
 /// two-phase construction design and why a single tool can produce multiple configs.
 #[derive(Debug)]
 pub struct ToolConfigBuilder {
+    default_args: RawToolArgs,
     entry_point: Option<EntryPoint>,
     flamegraph_config: ToolFlamegraphConfig,
     is_default: bool,
@@ -372,9 +373,14 @@ impl ToolConfigBuilder {
         Ok(configs)
     }
 
-    fn build_record_args(tool: Tool, record_args: &RawToolArgs) -> Result<ToolArgs> {
+    fn build_record_args(
+        tool: Tool,
+        default_args: &RawToolArgs,
+        record_args: &RawToolArgs,
+    ) -> Result<ToolArgs> {
         Ok(ToolArgs::Perf(
-            perf::args::PerfRecordArgs::try_from_raw_tool_args(tool, &[record_args])?.into(),
+            perf::args::PerfRecordArgs::try_from_raw_tool_args(tool, &[default_args, record_args])?
+                .into(),
         ))
     }
 
@@ -421,7 +427,8 @@ impl ToolConfigBuilder {
         );
 
         if self.record {
-            let record_args = Self::build_record_args(self.tool, &self.record_args)?;
+            let record_args =
+                Self::build_record_args(self.tool, &self.default_args, &self.record_args)?;
             let record_config = Self::build_record_config(&config, record_args, options.clone());
 
             Ok(vec![config, record_config])
@@ -651,7 +658,8 @@ impl ToolConfigBuilder {
             entry_point: Option::default(),
             flamegraph_config: ToolFlamegraphConfig::None,
             is_default,
-            raw_tool_args: default_args.get(&tool).cloned().unwrap_or_default(),
+            default_args: default_args.get(&tool).cloned().unwrap_or_default(),
+            raw_tool_args: RawToolArgs::default(),
             regression_config: ToolRegressionConfig::None,
             tool,
             sanitize_output: SanitizeOutput::No,
@@ -663,6 +671,7 @@ impl ToolConfigBuilder {
 
         // Since the construction sequence is currently always the same, the construction of the
         // `ToolConfig` can happen here in one go instead of having a separate director for it.
+        builder.default_args();
         builder.valgrind_args(valgrind_args);
         builder.entry_point(default_entry_point, module_path, id);
         builder.tool_args();
@@ -746,6 +755,10 @@ impl ToolConfigBuilder {
         if self.tool != Tool::Perf {
             self.raw_tool_args.update_ignore_flag(valgrind_args);
         }
+    }
+
+    fn default_args(&mut self) {
+        self.raw_tool_args.update(&self.default_args);
     }
 }
 
@@ -1712,8 +1725,12 @@ mod tests {
 
     #[test]
     fn test_build_record_args_parses_empty_args() {
-        let args =
-            ToolConfigBuilder::build_record_args(Tool::Perf, &RawToolArgs::default()).unwrap();
+        let args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
         assert!(matches!(args, ToolArgs::Perf(_)));
         assert!(args.is_perf_record());
     }
@@ -1775,8 +1792,12 @@ mod tests {
             Some(Duration::from_secs(30)),
         );
 
-        let record_args =
-            ToolConfigBuilder::build_record_args(Tool::Perf, &RawToolArgs::default()).unwrap();
+        let record_args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
         let record_config = ToolConfigBuilder::build_record_config(
             &base,
             record_args.clone(),
@@ -1818,8 +1839,12 @@ mod tests {
             Some(Duration::from_secs(30)),
         );
 
-        let record_args =
-            ToolConfigBuilder::build_record_args(Tool::Perf, &RawToolArgs::default()).unwrap();
+        let record_args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
         let record_config =
             ToolConfigBuilder::build_record_config(&base, record_args, base.options.clone());
 
@@ -1862,8 +1887,12 @@ mod tests {
             Some(Duration::from_secs(30)),
         );
 
-        let record_args =
-            ToolConfigBuilder::build_record_args(Tool::Perf, &RawToolArgs::default()).unwrap();
+        let record_args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
         let record_config =
             ToolConfigBuilder::build_record_config(&base, record_args, base.options.clone());
 

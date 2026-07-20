@@ -12,7 +12,7 @@ use crate::runner::tool::config::{DEFAULT_PERF_ALPHA, DEFAULT_PERF_MIN_PCNT_RUNN
 use crate::runner::tool::path::ToolOutputPath;
 use crate::summary::model::ToolMetrics;
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn json_parser_f(
     output_path: ToolOutputPath,
     min_pcnt_running: Option<f64>,
@@ -28,7 +28,7 @@ pub fn json_parser_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn metric_perf_f(
     #[builder(into)] event: Option<String>,
     #[builder(into)] value: Option<Metric>,
@@ -45,14 +45,14 @@ pub fn metric_perf_f(
     )
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn perf_stat_records_f(
     #[builder(default = vec![], with = FromIterator::from_iter)] records: Vec<PerfStatRecord>,
 ) -> PerfStatRecords {
     PerfStatRecords(records)
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn perf_stat_record_f(
     instructions: Option<u64>,
     task_clock: Option<f64>,
@@ -144,7 +144,7 @@ pub fn perf_stat_record_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn perf_regression_config_f(
     soft_limits: Option<Vec<(PerfMetric, f64)>>,
     hard_limits: Option<Vec<(PerfMetric, Option<Unit>, Metric)>>,
@@ -159,7 +159,7 @@ pub fn perf_regression_config_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn perf_config_f(
     alpha: f64,
     #[builder(into)] events: String,
@@ -181,7 +181,7 @@ pub fn perf_config_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn perf_spec_f(
     alpha: Option<f64>,
     #[builder(default = vec![], with = FromIterator::from_iter)] events: Vec<&str>,
@@ -209,7 +209,7 @@ pub fn perf_spec_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn tool_metrics_perf_f(
     #[builder(default = vec![], with = FromIterator::from_iter)] metrics: Vec<(
         PerfMetric,

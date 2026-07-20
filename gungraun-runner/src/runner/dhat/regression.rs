@@ -101,20 +101,20 @@ mod tests {
 
     #[rstest]
     #[case::fail_fast(
-        api_dhat_regression_config_f().fail_fast(true).fixture(),
-        dhat_regression_config_f().fail_fast(true).fixture(),
+        api_dhat_regression_config_f().fail_fast(true).fx(),
+        dhat_regression_config_f().fail_fast(true).fx(),
     )]
     #[case::soft_limit(
         api_dhat_regression_config_f()
             .soft_limits(vec![(DhatMetrics::from(TotalBytes), 5f64)])
-            .fixture(),
-        dhat_regression_config_f().soft_limits(vec![(TotalBytes, 5f64)]).fixture(),
+            .fx(),
+        dhat_regression_config_f().soft_limits(vec![(TotalBytes, 5f64)]).fx(),
     )]
     #[case::hard_limit(
         api_dhat_regression_config_f()
             .hard_limits(vec![(DhatMetrics::from(TotalBytes), Limit::Int(10))])
-            .fixture(),
-        dhat_regression_config_f().hard_limits(vec![(TotalBytes, Metric::Int(10))]).fixture(),
+            .fx(),
+        dhat_regression_config_f().hard_limits(vec![(TotalBytes, Metric::Int(10))]).fx(),
     )]
     fn test_try_from_regression_config(
         #[case] input: api::DhatRegressionConfig,

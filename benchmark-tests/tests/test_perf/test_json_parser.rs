@@ -23,7 +23,7 @@ fn copy_perf_fixtures(case: &str) -> (TempDir, ToolOutputPath) {
         .tool(Tool::Perf)
         .target_dir(temp_dir.path())
         .name(case)
-        .fixture();
+        .fx();
 
     for entry in fs::read_dir(Fixtures::get_path().join("perf")).unwrap() {
         let entry = entry.unwrap();
@@ -58,23 +58,23 @@ fn test_perf_one() {
 
     let file_path = output_path.dest_dir().join("perf.one.out");
     let original = fs::read(&file_path).unwrap();
-    let parser = json_parser_f().output_path(output_path.clone()).fixture();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
 
-    let expected_header = header_f().part(1).command("bench").pid(12345).fixture();
+    let expected_header = header_f().part(1).command("bench").pid(12345).fx();
     let expected_metrics = tool_metrics_perf_f()
         .metrics([metric_perf_f()
             .event("event_1")
             .value(42.0)
             .qualities(PerfQualities::new(None, 100.0, None, None, None))
             .unit(Unit::Unknown("count".to_owned()))
-            .fixture()])
-        .fixture();
+            .fx()])
+        .fx();
 
     let expected_parser_output = parser_output_f()
         .path(file_path.clone())
         .header(expected_header)
         .tool_metrics(expected_metrics)
-        .fixture();
+        .fx();
 
     let outputs = parser.parse_with(&output_path).unwrap();
 
@@ -95,32 +95,29 @@ fn test_perf_mixed() {
     let (temp_dir, output_path) = copy_perf_fixtures("mixed");
     let file_path = output_path.dest_dir().join("perf.mixed.out");
     let original = fs::read(file_path.clone()).unwrap();
-    let parser = json_parser_f().output_path(output_path.clone()).fixture();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
 
     let expected_header = header_f()
         .part(2)
         .command("full-schema-benchmark")
         .pid(23456)
-        .fixture();
+        .fx();
     let expected_metrics = tool_metrics_perf_f()
         .metrics(
             [
-                metric_perf_f().event("event_001").value(1).fixture(),
+                metric_perf_f().event("event_001").value(1).fx(),
                 metric_perf_f()
                     .event("event_002")
                     .value(2.0)
                     .unit(Unit::Unknown("foo".to_owned()))
-                    .fixture(),
-                metric_perf_f()
-                    .event("event_003_empty_unit")
-                    .value(3)
-                    .fixture(),
+                    .fx(),
+                metric_perf_f().event("event_003_empty_unit").value(3).fx(),
                 metric_perf_f()
                     .event("event_004")
                     .value(4.0)
                     .unit(Unit::Nanoseconds)
                     .qualities(PerfQualities::new(None, None, 0.025, None, None))
-                    .fixture(),
+                    .fx(),
                 // event_005 is filtered out due to low pcnt_running
                 metric_perf_f()
                     .event("event_006_all")
@@ -133,29 +130,24 @@ fn test_perf_mixed() {
                         Some(1),
                         Some(6.0),
                     ))
-                    .fixture(),
+                    .fx(),
                 metric_perf_f()
                     .event("event_007_fract_unit")
                     .value(7.12345)
                     .unit(Unit::Joules)
-                    .fixture(),
+                    .fx(),
                 // event_008 is filtered due to low pcnt_running
             ]
             .into_iter()
-            .chain((9..=100).map(|n| {
-                metric_perf_f()
-                    .event(format!("event_{n:03}"))
-                    .value(n)
-                    .fixture()
-            })),
+            .chain((9..=100).map(|n| metric_perf_f().event(format!("event_{n:03}")).value(n).fx())),
         )
-        .fixture();
+        .fx();
 
     let expected_parser_output = parser_output_f()
         .path(file_path.clone())
         .header(expected_header)
         .tool_metrics(expected_metrics)
-        .fixture();
+        .fx();
 
     let parser_outputs = parser.parse_with(&output_path).unwrap();
 
@@ -176,43 +168,43 @@ fn test_perf_parts_ordering() {
     let (temp_dir, output_path) = copy_perf_fixtures("parts");
     let p1_out_path = output_path.dest_dir().join("perf.parts.p1.out");
     let p2_out_path = output_path.dest_dir().join("perf.parts.p2.out");
-    let parser = json_parser_f().output_path(output_path.clone()).fixture();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
 
     let expected_header_part_2 = header_f()
         .part(2)
         .command("parts-benchmark")
         .pid(11111)
-        .fixture();
+        .fx();
     let expected_metrics_part_2 = tool_metrics_perf_f()
         .metrics([metric_perf_f()
             .event("event_parts_p2_01")
             .value(200.0)
             .unit(Unit::Unknown("count".to_owned()))
-            .fixture()])
-        .fixture();
+            .fx()])
+        .fx();
     let expected_part_2 = parser_output_f()
         .path(p2_out_path)
         .header(expected_header_part_2)
         .tool_metrics(expected_metrics_part_2)
-        .fixture();
+        .fx();
 
     let expected_header_part_1 = header_f()
         .part(1)
         .command("parts-benchmark")
         .pid(99999)
-        .fixture();
+        .fx();
     let expected_metrics_part_1 = tool_metrics_perf_f()
         .metrics([metric_perf_f()
             .event("event_parts_p1_01")
             .value(100.0)
             .unit(Unit::Unknown("count".to_owned()))
-            .fixture()])
-        .fixture();
+            .fx()])
+        .fx();
     let expected_part_1 = parser_output_f()
         .path(p1_out_path)
         .header(expected_header_part_1)
         .tool_metrics(expected_metrics_part_1)
-        .fixture();
+        .fx();
 
     let parser_outputs = parser.parse_with(&output_path).unwrap();
 
@@ -229,13 +221,13 @@ fn test_perf_repeated_event_records() {
     let parser = json_parser_f()
         .min_pcnt_running(90.0)
         .output_path(output_path.clone())
-        .fixture();
+        .fx();
 
     let expected_header = header_f()
         .part(3)
         .command("repeated-benchmark")
         .pid(34567)
-        .fixture();
+        .fx();
 
     let expected_metrics = tool_metrics_perf_f()
         .metrics((1..=10).map(|x| {
@@ -249,15 +241,15 @@ fn test_perf_repeated_event_records() {
                     None,
                     None,
                 ))
-                .fixture()
+                .fx()
         }))
-        .fixture();
+        .fx();
 
     let expected_parser_output = parser_output_f()
         .path(file_path.clone())
         .header(expected_header)
         .tool_metrics(expected_metrics)
-        .fixture();
+        .fx();
 
     let parser_outputs = parser.parse_with(&output_path).unwrap();
 
@@ -282,13 +274,13 @@ fn test_perf_duplicates_write_back() {
         let path: &Path = &out_path;
         fs::read(path).unwrap()
     };
-    let parser = json_parser_f().output_path(output_path.clone()).fixture();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
 
     let expected_header = header_f()
         .part(4)
         .command("duplicates-benchmark")
         .pid(45678)
-        .fixture();
+        .fx();
     let expected_metrics = tool_metrics_perf_f()
         .metrics([
             metric_perf_f()
@@ -296,20 +288,20 @@ fn test_perf_duplicates_write_back() {
                 .value(66.66666666666667)
                 .unit(Unit::Unknown("count".to_owned()))
                 .qualities(PerfQualities::new(None, None, 0.5, 2, 66.66666666666667))
-                .fixture(),
+                .fx(),
             metric_perf_f()
                 .event("event_control_01")
                 .value(300.0)
                 .unit(Unit::Milliseconds)
                 .qualities(PerfQualities::new(None, None, 0.04, None, None))
-                .fixture(),
+                .fx(),
         ])
-        .fixture();
+        .fx();
     let expected_parser_output = parser_output_f()
         .path(out_path.clone())
         .header(expected_header)
         .tool_metrics(expected_metrics)
-        .fixture();
+        .fx();
 
     let expected_records = [
         json!({
@@ -353,30 +345,30 @@ fn test_perf_calibration_adjustment() {
     let (temp_dir, output_path) = copy_perf_fixtures("calibration");
     let file_path = output_path.dest_dir().join("perf.calibration.out");
     let original = fs::read(file_path.clone()).unwrap();
-    let parser = json_parser_f().output_path(output_path.clone()).fixture();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
 
     let expected_header = header_f()
         .part(5)
         .command("calibration-benchmark")
         .pid(56789)
-        .fixture();
+        .fx();
     let expected_metrics = tool_metrics_perf_f()
         .metrics([
             metric_perf_f()
                 .event("event_calibration_01")
                 .value(100)
-                .fixture(),
+                .fx(),
             metric_perf_f()
                 .event("event_calibration_02")
                 .value(200)
-                .fixture(),
+                .fx(),
         ])
-        .fixture();
+        .fx();
     let expected_parser_output = parser_output_f()
         .path(file_path.clone())
         .header(expected_header)
         .tool_metrics(expected_metrics)
-        .fixture();
+        .fx();
 
     let outputs = parser.parse_with(&output_path).unwrap();
 
@@ -399,30 +391,24 @@ fn test_perf_adjustment_priority() {
     let (temp_dir, output_path) = copy_perf_fixtures("adjustment_priority");
     let file_path = output_path.dest_dir().join("perf.adjustment_priority.out");
     let original = fs::read(file_path.clone()).unwrap();
-    let parser = json_parser_f().output_path(output_path.clone()).fixture();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
 
     let expected_header = header_f()
         .part(6)
         .command("adjustment-priority-benchmark")
         .pid(67890)
-        .fixture();
+        .fx();
     let expected_metrics = tool_metrics_perf_f()
         .metrics([
-            metric_perf_f()
-                .event("event_priority_01")
-                .value(100)
-                .fixture(),
-            metric_perf_f()
-                .event("event_priority_02")
-                .value(200)
-                .fixture(),
+            metric_perf_f().event("event_priority_01").value(100).fx(),
+            metric_perf_f().event("event_priority_02").value(200).fx(),
         ])
-        .fixture();
+        .fx();
     let expected_parser_output = parser_output_f()
         .path(file_path.clone())
         .header(expected_header)
         .tool_metrics(expected_metrics)
-        .fixture();
+        .fx();
 
     let outputs = parser.parse_with(&output_path).unwrap();
 
@@ -447,7 +433,7 @@ fn test_perf_filtered_empty_min_running() {
     let parser = json_parser_f()
         .min_pcnt_running(50.0)
         .output_path(output_path.clone())
-        .fixture();
+        .fx();
 
     let outputs = parser.parse_with(&output_path).unwrap();
 
@@ -468,7 +454,7 @@ fn test_perf_filtered_empty_non_zero() {
         .min_pcnt_running(0.0)
         .non_zero_metrics(["event_filtered_01"])
         .output_path(output_path.clone())
-        .fixture();
+        .fx();
 
     let outputs = parser.parse_with(&output_path).unwrap();
 

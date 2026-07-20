@@ -607,8 +607,8 @@ mod tests {
             .init(true)
             .target_dir(temp_dir.path())
             .tool(Tool::Perf)
-            .fixture();
-        let config = tool_config_f().tool(Tool::Perf).fixture();
+            .fx();
+        let config = tool_config_f().tool(Tool::Perf).fx();
         let tool_runner_dest = Path::new("/runner/dest");
         let mut command = Command::new("perf");
 

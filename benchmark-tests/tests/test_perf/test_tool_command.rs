@@ -18,17 +18,17 @@ fn test_tool_command_basic_functionality() {
     let config = tool_config_f()
         .tool(Tool::Perf)
         .events(DEFAULT_PERF_EVENTS.to_owned())
-        .fixture();
+        .fx();
     let output_path = &tool_output_path_f()
         .init(true)
         .tool(Tool::Perf)
         .target_dir(temp_dir.path())
-        .fixture();
+        .fx();
     let tool_command = tool_command_f()
         .tool_config(&config)
-        .metadata(metadata_f().fixture())
+        .metadata(metadata_f().fx())
         .output_path(output_path)
-        .fixture();
+        .fx();
 
     let perf_bench = env!("CARGO_BIN_EXE_perf-bench");
     let executable_args: Vec<OsString> = vec![];
@@ -38,9 +38,9 @@ fn test_tool_command_basic_functionality() {
             &config,
             Path::new(perf_bench),
             &|_, _| Cow::Borrowed(executable_args.as_slice()),
-            &run_options_f().fixture(),
+            &run_options_f().fx(),
             output_path,
-            &module_path_f().fixture(),
+            &module_path_f().fx(),
             None,
             None,
             None,

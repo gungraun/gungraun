@@ -1381,9 +1381,9 @@ mod tests {
                     .record(true)
                     .run_mode(PerfRunMode::Direct)
                     .sample_duration(Duration::from_millis(5))
-                    .fixture(),
+                    .fx(),
             ))
-            .fixture();
+            .fx();
 
         let (options, is_enabled, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
@@ -1403,7 +1403,7 @@ mod tests {
                         .non_zero_metrics(vec!["a", "b"])
                         .run_mode(PerfRunMode::Direct)
                         .use_sampling(true)
-                        .fixture(),
+                        .fx(),
                 ),
                 ToolConfigOptions::Perf(
                     perf_config_f()
@@ -1413,7 +1413,7 @@ mod tests {
                         .non_zero_metrics(vec!["a", "b"])
                         .run_mode(PerfRunMode::Direct)
                         .use_sampling(true)
-                        .fixture(),
+                        .fx(),
                 ),
             ]
         );
@@ -1423,8 +1423,8 @@ mod tests {
     fn test_resolve_tool_spec_options_perf_events_none_uses_default_events() {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(perf_spec_f().fixture()))
-            .fixture();
+            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
+            .fx();
 
         let (options, is_enabled, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
@@ -1443,7 +1443,7 @@ mod tests {
                     .non_zero_metrics(DEFAULT_PERF_NON_ZERO_METRICS.to_vec())
                     .run_mode(PerfRunMode::Direct)
                     .use_sampling(false)
-                    .fixture(),
+                    .fx(),
             )]
         );
     }
@@ -1453,8 +1453,8 @@ mod tests {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
             .enable(false)
-            .options(ToolSpecOptions::Perf(perf_spec_f().fixture()))
-            .fixture();
+            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
+            .fx();
 
         let (_, is_enabled, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
@@ -1470,9 +1470,9 @@ mod tests {
         let spec = tool_spec_f()
             .tool(Tool::DHAT)
             .options(ToolSpecOptions::Dhat(
-                dhat_spec_f().frames(vec!["a", "b"]).fixture(),
+                dhat_spec_f().frames(vec!["a", "b"]).fx(),
             ))
-            .fixture();
+            .fx();
 
         let (options, is_enabled, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::DHAT, None).unwrap();
@@ -1491,7 +1491,7 @@ mod tests {
 
     #[test]
     fn test_resolve_tool_spec_options_none_for_callgrind_returns_callgrind() {
-        let spec = tool_spec_f().tool(Tool::Callgrind).fixture();
+        let spec = tool_spec_f().tool(Tool::Callgrind).fx();
 
         let (options, is_enabled, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Callgrind, None).unwrap();
@@ -1507,8 +1507,8 @@ mod tests {
     fn test_resolve_tool_spec_options_invalid_alpha_returns_error() {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(perf_spec_f().alpha(0.0).fixture()))
-            .fixture();
+            .options(ToolSpecOptions::Perf(perf_spec_f().alpha(0.0).fx()))
+            .fx();
 
         resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
     }
@@ -1518,9 +1518,9 @@ mod tests {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
             .options(ToolSpecOptions::Perf(
-                perf_spec_f().alpha(0.2).min_pcnt_running(-1.0).fixture(),
+                perf_spec_f().alpha(0.2).min_pcnt_running(-1.0).fx(),
             ))
-            .fixture();
+            .fx();
 
         resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
     }
@@ -1534,9 +1534,9 @@ mod tests {
                     .alpha(0.2)
                     .min_pcnt_running(50.0)
                     .sample_duration(Duration::ZERO)
-                    .fixture(),
+                    .fx(),
             ))
-            .fixture();
+            .fx();
 
         resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
     }
@@ -1546,7 +1546,7 @@ mod tests {
         let builder = tool_config_builder_f()
             .tool(Tool::Perf)
             .raw_command_line_args(["--perf-sampling=yes"])
-            .fixture();
+            .fx();
 
         let configs = builder.build().unwrap();
         assert_eq!(configs.len(), 1);
@@ -1562,16 +1562,14 @@ mod tests {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
             .options(ToolSpecOptions::Perf(
-                perf_spec_f()
-                    .sample_duration(Duration::from_secs(5))
-                    .fixture(),
+                perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
             ))
-            .fixture();
+            .fx();
         let builder = tool_config_builder_f()
             .tool(Tool::Perf)
             .tool_spec(spec)
             .raw_command_line_args(["--perf-sampling=no"])
-            .fixture();
+            .fx();
 
         let configs = builder.build().unwrap();
         assert_eq!(configs[0].timeout, None);
@@ -1586,15 +1584,13 @@ mod tests {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
             .options(ToolSpecOptions::Perf(
-                perf_spec_f()
-                    .sample_duration(Duration::from_secs(5))
-                    .fixture(),
+                perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
             ))
-            .fixture();
+            .fx();
         let builder = tool_config_builder_f()
             .tool(Tool::Perf)
             .tool_spec(spec)
-            .fixture();
+            .fx();
 
         let configs = builder.build().unwrap();
         assert_eq!(configs[0].timeout, Some(Duration::from_secs(5)));
@@ -1615,7 +1611,7 @@ mod tests {
             None,
             &metadata_f()
                 .raw_command_line_args(["--perf-sampling=0"])
-                .fixture(),
+                .fx(),
             &RawToolArgs::default(),
             &EntryPoint::Default,
             None,
@@ -1629,8 +1625,8 @@ mod tests {
     fn test_resolve_tool_spec_options_zero_calibration_duration_via_override_returns_error() {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(perf_spec_f().fixture()))
-            .fixture();
+            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
+            .fx();
 
         resolve_tool_spec_options(
             &spec,
@@ -1659,7 +1655,7 @@ mod tests {
                     .non_zero_metrics(DEFAULT_PERF_NON_ZERO_METRICS.to_vec())
                     .run_mode(PerfRunMode::Direct)
                     .use_sampling(false)
-                    .fixture(),
+                    .fx(),
             )]
         );
     }
@@ -1789,7 +1785,7 @@ mod tests {
     #[case::part_one(Some(1))]
     #[case::part_two(Some(2))]
     fn test_build_tool_configs(#[case] part: Option<usize>) {
-        let builder = tool_config_builder_f().tool(Tool::Perf).fixture();
+        let builder = tool_config_builder_f().tool(Tool::Perf).fx();
 
         let args = ToolConfigBuilder::build_tool_args(Tool::Perf, &RawToolArgs::default()).unwrap();
         let options = ToolConfigOptions::Perf(PerfConfig::default());
@@ -1822,10 +1818,10 @@ mod tests {
                     .non_zero_metrics(vec!["metric1"])
                     .run_mode(PerfRunMode::DynamicBatch)
                     .use_sampling(true)
-                    .fixture(),
+                    .fx(),
             ))
             .timeout(Duration::from_secs(30))
-            .fixture();
+            .fx();
 
         let record_args = ToolConfigBuilder::build_record_args(
             Tool::Perf,
@@ -1865,10 +1861,10 @@ mod tests {
                     .non_zero_metrics(vec!["metric1"])
                     .run_mode(PerfRunMode::DynamicBatch)
                     .use_sampling(false)
-                    .fixture(),
+                    .fx(),
             ))
             .timeout(Duration::from_secs(30))
-            .fixture();
+            .fx();
 
         let record_args = ToolConfigBuilder::build_record_args(
             Tool::Perf,
@@ -1906,10 +1902,10 @@ mod tests {
                     .non_zero_metrics(DEFAULT_PERF_NON_ZERO_METRICS.to_vec())
                     .run_mode(PerfRunMode::DynamicBatch)
                     .use_sampling(true)
-                    .fixture(),
+                    .fx(),
             ))
             .timeout(Duration::from_secs(30))
-            .fixture();
+            .fx();
 
         let record_args = ToolConfigBuilder::build_record_args(
             Tool::Perf,
@@ -1935,11 +1931,11 @@ mod tests {
                         perf_spec_f()
                             .events(vec!["cycles", "instructions"])
                             .record(true)
-                            .fixture(),
+                            .fx(),
                     ))
-                    .fixture(),
+                    .fx(),
             )
-            .fixture();
+            .fx();
 
         let configs = builder.build().unwrap();
         assert_eq!(configs.len(), 4);
@@ -1969,7 +1965,7 @@ mod tests {
 
     #[test]
     fn test_build_non_perf_tool_has_no_record() {
-        let builder = tool_config_builder_f().tool(Tool::Callgrind).fixture();
+        let builder = tool_config_builder_f().tool(Tool::Callgrind).fx();
 
         let configs = builder.build().unwrap();
         assert_eq!(configs.len(), 1);
@@ -1981,7 +1977,7 @@ mod tests {
         let builder = tool_config_builder_f()
             .tool(Tool::Callgrind)
             .valgrind_args(RawToolArgs::from_iter(&["--fair-sched=invalid"]))
-            .fixture();
+            .fx();
 
         builder.build().unwrap_err();
     }

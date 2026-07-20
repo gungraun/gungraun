@@ -3504,8 +3504,8 @@ mod tests {
 
     #[test]
     fn test_tool_spec_options_update_when_dhat() {
-        let mut base = ToolSpecOptions::Dhat(dhat_spec_f().fixture());
-        let other = ToolSpecOptions::Dhat(dhat_spec_f().frames(vec!["123"]).fixture());
+        let mut base = ToolSpecOptions::Dhat(dhat_spec_f().fx());
+        let other = ToolSpecOptions::Dhat(dhat_spec_f().frames(vec!["123"]).fx());
 
         let expected = other.clone();
         base.update(&other);
@@ -3514,7 +3514,7 @@ mod tests {
 
     #[test]
     fn test_tool_spec_options_update_when_perf() {
-        let mut base = ToolSpecOptions::Perf(perf_spec_f().fixture());
+        let mut base = ToolSpecOptions::Perf(perf_spec_f().fx());
 
         // do not use the tool spec/perf spec builder to enforce the usage of the constructor fields
         let other = ToolSpecOptions::Perf(PerfSpec {
@@ -3571,8 +3571,8 @@ mod tests {
             .tool(Tool::Perf)
             // This should stay `some` instead of becoming `--some` as it is done for valgrind tools
             .raw_tool_args(RawToolArgs::new_ignore_flag(["some"]))
-            .options(ToolSpecOptions::Perf(perf_spec_f().fixture()))
-            .fixture();
+            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
+            .fx();
         let expected = other.clone();
         base.update(&other);
         assert_eq!(base, expected);
@@ -3581,7 +3581,7 @@ mod tests {
     #[test]
     fn test_tool_update_when_tools_not_match() {
         let mut base = ToolSpec::new(Tool::Callgrind);
-        let other = tool_spec_f().tool(Tool::DRD).enable(true).fixture();
+        let other = tool_spec_f().tool(Tool::DRD).enable(true).fx();
 
         let expected = base.clone();
         base.update(&other);

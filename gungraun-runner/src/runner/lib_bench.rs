@@ -781,7 +781,7 @@ mod tests {
             .tool(Tool::Perf)
             .entry_point(EntryPoint::Default)
             .sanitize_output(SanitizeOutput::No)
-            .fixture();
+            .fx();
 
         let args = LibBench::bench_args(&config, Some(BenchRunMode::PerfCalibrate), 1, 2, 3, None);
 

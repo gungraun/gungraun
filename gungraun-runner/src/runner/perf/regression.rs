@@ -373,30 +373,30 @@ mod tests {
 
     #[rstest]
     #[case::fail_fast(
-        api_perf_regression_config_f().fail_fast(true).fixture(),
-        perf_regression_config_f().fail_fast(true).fixture(),
+        api_perf_regression_config_f().fail_fast(true).fx(),
+        perf_regression_config_f().fail_fast(true).fx(),
     )]
     #[case::alpha(
-        api_perf_regression_config_f().alpha(0.10).fixture(),
-        perf_regression_config_f().alpha(0.10).fixture(),
+        api_perf_regression_config_f().alpha(0.10).fx(),
+        perf_regression_config_f().alpha(0.10).fx(),
     )]
     #[case::soft_limit(
         api_perf_regression_config_f()
             .soft_limits(vec![("instructions".to_owned(), 5f64)])
-            .fixture(),
-        perf_regression_config_f().soft_limits(vec![(PerfMetric("instructions".to_owned()), 5f64)]).fixture(),
+            .fx(),
+        perf_regression_config_f().soft_limits(vec![(PerfMetric("instructions".to_owned()), 5f64)]).fx(),
     )]
     #[case::hard_limit(
         api_perf_regression_config_f()
             .hard_limits(vec![("instructions".to_owned(), Some(Unit::Seconds), Limit::Int(10))])
-            .fixture(),
+            .fx(),
         perf_regression_config_f()
             .hard_limits(vec![(
                 PerfMetric("instructions".to_owned()),
                 Some(Unit::Seconds),
                 Metric::Int(10),
             )])
-            .fixture(),
+            .fx(),
     )]
     fn test_try_from_regression_config(
         #[case] input: api::PerfRegressionConfig,

@@ -196,7 +196,7 @@ mod tests {
             .runtime(1)
             .pcnt_running(1.0)
             .variance(1.0)
-            .fixture(),
+            .fx(),
         (
             PerfMetric("instructions:u".to_owned()),
             AnnotatedMetric::new(
@@ -212,7 +212,7 @@ mod tests {
             .n(1)
             .pcnt_running(66.666_666_666_666_67)
             .variance(50.0)
-            .fixture()
+            .fx()
 
     )]
     #[case::unit_with_different_scale(
@@ -221,7 +221,7 @@ mod tests {
             .runtime(1)
             .pcnt_running(1.0)
             .variance(1.0)
-            .fixture(),
+            .fx(),
         (
             PerfMetric("task-clock".to_owned()),
             AnnotatedMetric::new(
@@ -237,7 +237,7 @@ mod tests {
             .n(2)
             .pcnt_running(75.0)
             .variance(5.0)
-            .fixture()
+            .fx()
     )]
     #[case::unit_with_same_scale(
         perf_stat_record_f()
@@ -245,7 +245,7 @@ mod tests {
             .runtime(1)
             .pcnt_running(1.0)
             .variance(1.0)
-            .fixture(),
+            .fx(),
         (
             PerfMetric("task-clock".to_owned()),
             AnnotatedMetric::new(
@@ -261,7 +261,7 @@ mod tests {
             .n(2)
             .pcnt_running(75.0)
             .variance(5.0)
-            .fixture()
+            .fx()
     )]
     #[case::unknown_unit(
         perf_stat_record_f()
@@ -270,7 +270,7 @@ mod tests {
             .runtime(1)
             .pcnt_running(1.0)
             .variance(1.0)
-            .fixture(),
+            .fx(),
         (
             PerfMetric("task-clock".to_owned()),
             AnnotatedMetric::new(
@@ -287,7 +287,7 @@ mod tests {
             .n(2)
             .pcnt_running(75.0)
             .variance(5.0)
-            .fixture()
+            .fx()
     )]
     fn test_update_record(
         #[case] mut record: PerfStatRecord,

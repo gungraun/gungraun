@@ -435,13 +435,13 @@ mod tests {
             .mean(new_mean)
             .n(new_n)
             .rse(rse)
-            .fixture();
+            .fx();
         let old = annotated_metric_perf_f()
             .metric(metric)
             .mean(100.0)
             .n(old_n)
             .rse(rse)
-            .fixture();
+            .fx();
 
         let diff_stats = DiffStats::from_metrics(&new, &old, DEFAULT_PERF_ALPHA).unwrap();
 
@@ -460,16 +460,16 @@ mod tests {
 
     #[rstest]
     #[case::missing_new_n(
-        annotated_metric_perf_f().metric(1.0).mean(1.0).rse(0.1).fixture(),
-        annotated_metric_perf_f().metric(2.0).mean(2.0).n(2).rse(0.1).fixture(),
+        annotated_metric_perf_f().metric(1.0).mean(1.0).rse(0.1).fx(),
+        annotated_metric_perf_f().metric(2.0).mean(2.0).n(2).rse(0.1).fx(),
     )]
     #[case::all_missing(
-        annotated_metric_perf_f().metric(0.0).fixture(),
-        annotated_metric_perf_f().metric(100.0).fixture()
+        annotated_metric_perf_f().metric(0.0).fx(),
+        annotated_metric_perf_f().metric(100.0).fx()
     )]
     #[case::old_mean_zero(
-        annotated_metric_perf_f().metric(1.0).mean(1.0).n(2).rse(0.1).fixture(),
-        annotated_metric_perf_f().metric(2.0).mean(0.0).n(2).rse(0.1).fixture(),
+        annotated_metric_perf_f().metric(1.0).mean(1.0).n(2).rse(0.1).fx(),
+        annotated_metric_perf_f().metric(2.0).mean(0.0).n(2).rse(0.1).fx(),
     )]
     fn test_diff_stats_from_metrics_when_invalid_input_then_none(
         #[case] new: AnnotatedMetric<PerfQualities>,
@@ -489,7 +489,7 @@ mod tests {
     #[case::nan(f64::NAN)]
     #[should_panic = "alpha should be in the range"]
     fn test_diff_stats_from_metrics_when_alpha_invalid_then_panics(#[case] alpha: f64) {
-        let metric = annotated_metric_perf_f().metric(0.0).fixture();
+        let metric = annotated_metric_perf_f().metric(0.0).fx();
 
         let _ = DiffStats::from_metrics(&metric, &metric, alpha);
     }

@@ -98,20 +98,20 @@ mod tests {
 
     #[rstest]
     #[case::fail_fast(
-        api_cachegrind_regression_config_f().fail_fast(true).fixture(),
-        cachegrind_regression_config_f().fail_fast(true).fixture(),
+        api_cachegrind_regression_config_f().fail_fast(true).fx(),
+        cachegrind_regression_config_f().fail_fast(true).fx(),
     )]
     #[case::soft_limit(
         api_cachegrind_regression_config_f()
             .soft_limits(vec![(CachegrindMetrics::from(Ir), 5f64)])
-            .fixture(),
-        cachegrind_regression_config_f().soft_limits(vec![(Ir, 5f64)]).fixture(),
+            .fx(),
+        cachegrind_regression_config_f().soft_limits(vec![(Ir, 5f64)]).fx(),
     )]
     #[case::hard_limit(
         api_cachegrind_regression_config_f()
             .hard_limits(vec![(CachegrindMetrics::from(Ir), Limit::Int(10))])
-            .fixture(),
-        cachegrind_regression_config_f().hard_limits(vec![(Ir, Metric::Int(10))]).fixture(),
+            .fx(),
+        cachegrind_regression_config_f().hard_limits(vec![(Ir, Metric::Int(10))]).fx(),
     )]
     fn test_try_from_regression_config(
         #[case] input: api::CachegrindRegressionConfig,

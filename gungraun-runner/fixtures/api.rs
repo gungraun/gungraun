@@ -8,7 +8,7 @@ use crate::api::{
 };
 use crate::units::Unit;
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn cachegrind_regression_config_f(
     soft_limits: Option<Vec<(CachegrindMetrics, f64)>>,
     hard_limits: Option<Vec<(CachegrindMetrics, Limit)>>,
@@ -21,7 +21,7 @@ pub fn cachegrind_regression_config_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn dhat_regression_config_f(
     soft_limits: Option<Vec<(DhatMetrics, f64)>>,
     hard_limits: Option<Vec<(DhatMetrics, Limit)>>,
@@ -34,7 +34,7 @@ pub fn dhat_regression_config_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn dhat_spec_f(
     #[builder(default = vec![], with = FromIterator::from_iter)] frames: Vec<&str>,
 ) -> DhatSpec {
@@ -43,7 +43,7 @@ pub fn dhat_spec_f(
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn perf_regression_config_f(
     soft_limits: Option<Vec<(String, f64)>>,
     hard_limits: Option<Vec<(String, Option<Unit>, Limit)>>,

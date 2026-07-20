@@ -112,7 +112,7 @@ fn test_clear_temp_files(
         .tool(tool)
         .init(true)
         .files(files.iter().map(|f| (*f, "")))
-        .fixture();
+        .fx();
 
     output_path
         .clear_temp_files(false)
@@ -196,7 +196,7 @@ fn test_sanitize_generic(
         .tool(tool)
         .init(true)
         .files(files.iter().map(|f| (*f, "something")))
-        .fixture();
+        .fx();
 
     output_path.sanitize().unwrap();
 
@@ -229,7 +229,7 @@ fn test_when_sanitize_bbv_has_multiple_threads_then_thread_modifier_is_added() {
             ("exp-bbv.function.bench.out.bb.#12345", "something"),
             ("exp-bbv.function.bench.out.bb.#12345.2", "something"),
         ])
-        .fixture();
+        .fx();
 
     output_path.sanitize().unwrap();
 
@@ -267,7 +267,7 @@ fn test_when_sanitize_callgrind_has_multiple_log_pids_then_pid_is_kept() {
             ("callgrind.function.bench.log.#12345", "something"),
             ("callgrind.function.bench.log.#54321", "something"),
         ])
-        .fixture();
+        .fx();
 
     output_path.sanitize().unwrap();
 
@@ -305,7 +305,7 @@ fn test_when_sanitize_perf_has_multiple_parts_then_part_is_moved_before_output_k
             ("perf.function.bench.out.p1", "something"),
             ("perf.function.bench.out.p2", "something"),
         ])
-        .fixture();
+        .fx();
 
     output_path.sanitize().unwrap();
 
@@ -337,7 +337,7 @@ fn test_when_sanitize_perf_matches_empty_file_then_empty_file_is_removed() {
         .tool(Perf)
         .init(true)
         .files([("perf.function.bench.out.p1", "")])
-        .fixture();
+        .fx();
 
     output_path.sanitize().unwrap();
 
@@ -384,7 +384,7 @@ fn test_sanitized_paths_with_modifier(
         .tool(Callgrind)
         .init(true)
         .files(files.iter().map(|f| (*f, "something")))
-        .fixture();
+        .fx();
 
     let mut actual = output_path
         .sanitized_paths_with_modifier()

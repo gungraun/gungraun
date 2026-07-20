@@ -621,7 +621,7 @@ mod tests {
         args.into_iter().map(str::to_owned).collect()
     }
 
-    #[builder(finish_fn = "fixture")]
+    #[builder(finish_fn = "fx")]
     pub fn valgrind_args_f(
         tool: Option<ValgrindTool>,
         error_exitcode: Option<&str>,
@@ -657,27 +657,27 @@ mod tests {
     #[rstest]
     #[case::error_exitcode(
         &["--error-exitcode=99"],
-        valgrind_args_f().error_exitcode("99").fixture()
+        valgrind_args_f().error_exitcode("99").fx()
     )]
     #[case::trace_children(
         &["--trace-children=no"],
-        valgrind_args_f().trace_children(false).fixture()
+        valgrind_args_f().trace_children(false).fx()
     )]
     #[case::fair_sched(
         &["--fair-sched=no"],
-        valgrind_args_f().fair_sched(FairSched::No).fixture()
+        valgrind_args_f().fair_sched(FairSched::No).fx()
     )]
-    #[case::long_verbose(&["--verbose"], valgrind_args_f().verbose(true).fixture())]
-    #[case::short_verbose(&["-v"], valgrind_args_f().verbose(true).fixture())]
-    #[case::vgdb(&["--vgdb=yes"], valgrind_args_f().vgdb(Vgdb::Yes).fixture())]
-    #[case::vgdb(&["--vgdb=no"], valgrind_args_f().vgdb(Vgdb::No).fixture())]
-    #[case::vgdb(&["--vgdb=full"], valgrind_args_f().vgdb(Vgdb::Full).fixture())]
-    #[case::outfile_is_ignored(&["--log-file=some"], valgrind_args_f().fixture())]
+    #[case::long_verbose(&["--verbose"], valgrind_args_f().verbose(true).fx())]
+    #[case::short_verbose(&["-v"], valgrind_args_f().verbose(true).fx())]
+    #[case::vgdb(&["--vgdb=yes"], valgrind_args_f().vgdb(Vgdb::Yes).fx())]
+    #[case::vgdb(&["--vgdb=no"], valgrind_args_f().vgdb(Vgdb::No).fx())]
+    #[case::vgdb(&["--vgdb=full"], valgrind_args_f().vgdb(Vgdb::Full).fx())]
+    #[case::outfile_is_ignored(&["--log-file=some"], valgrind_args_f().fx())]
     #[case::other(
         &["--some-arg=yes"],
         valgrind_args_f()
             .other(strings(["--some-arg=yes"]))
-            .fixture()
+            .fx()
     )]
     fn test_try_from_raw_tool_args(#[case] args: &[&str], #[case] expected: ValgrindArgs) {
         let actual =
@@ -702,7 +702,7 @@ mod tests {
             .error_exitcode("99")
             .fair_sched(FairSched::No)
             .trace_children(false)
-            .fixture();
+            .fx();
 
         let actual = args.to_vec();
 
@@ -723,7 +723,7 @@ mod tests {
         let args = valgrind_args_f()
             .verbose(true)
             .other(strings(["--some-arg=yes", "--another-some-arg"]))
-            .fixture();
+            .fx();
 
         let actual = args.to_vec();
 

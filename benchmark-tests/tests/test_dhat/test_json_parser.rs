@@ -52,7 +52,7 @@ fn test_json_parser_when_sanitize_yes() {
             .target_dir(temp_dir.path())
             .tool(Tool::DHAT)
             .name("dhat")
-            .fixture(),
+            .fx(),
         EntryPoint::Default,
         vec![],
         SanitizeOutput::Yes,
@@ -87,7 +87,7 @@ fn test_json_parser_when_sanitize_keep_orig() {
             .target_dir(temp_dir.path())
             .tool(Tool::DHAT)
             .name("dhat")
-            .fixture(),
+            .fx(),
         EntryPoint::Default,
         vec![],
         SanitizeOutput::KeepOrig,
@@ -113,7 +113,7 @@ fn test_json_parser_when_sanitize_no() {
             .target_dir(temp_dir.path())
             .tool(Tool::DHAT)
             .name("dhat")
-            .fixture(),
+            .fx(),
         EntryPoint::Default,
         vec![],
         SanitizeOutput::No,

@@ -27,6 +27,7 @@ use std::hash::Hash;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use std::time::Duration;
 
 use anyhow::Result;
 use clap::builder::{
@@ -55,6 +56,8 @@ use crate::units::Unit;
 use crate::util;
 
 const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
+
+const DEFAULT_PERF_SAMPLING_DURATION: Duration = Duration::from_secs(2);
 
 const DEFAULT_TIME_UNITS: [CustomTimeUnit<'static>; 4] = [
     CustomTimeUnit::with_default(TimeUnit::NanoSecond, &["ns", "nsec"]),
@@ -90,6 +93,15 @@ pub enum NoCapture {
     Stderr,
     /// Don't capture `stdout`
     Stdout,
+}
+
+/// The internal value of the `--perf-sampling` argument.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PerfSampling {
+    /// Disable perf sampling.
+    Disabled,
+    /// Enable perf sampling with the given timeout.
+    Enabled(Duration),
 }
 
 /// An internal enum for the value of the --truncate-description argument
@@ -1206,6 +1218,42 @@ pub struct CommandLineArgs {
     pub perf_run_mode: Option<PerfRunMode>,
 
     #[rustfmt::skip]
+    /// Enable, disable, or configure the duration for perf sampling
+    ///
+    /// This duration is a time limit for continuously repeated `perf stat` sampling to improve
+    /// measurement stability. `yes` enables sampling with the default duration of 2 seconds. `no`
+    /// disables sampling. Passing a duration such as `250ms` or `2s` enables sampling with that
+    /// duration.
+    ///
+    /// Supported duration units are nanoseconds (`ns`, `nsec`), microseconds (`us`, `usec`),
+    /// milliseconds (`ms`, `msec`), and seconds (`s`, `sec`, `secs`, `second`, `seconds`). A
+    /// missing unit defaults to seconds.
+    ///
+    /// The sampling duration affects only the main `perf stat` measurement, not the optional
+    /// companion `perf record` capture (see `--perf-record`). It is also independent from the
+    /// duration supplied with `--perf-run-mode=calibrate=<duration>`, which controls a separate
+    /// calibration pass.
+    ///
+    /// For more details, see the Gungraun guide and the API docs for `Perf::sample_duration` at
+    /// <https://docs.rs/gungraun/latest/gungraun>.
+    ///
+    /// Examples:
+    ///   * --perf-sampling
+    ///   * --perf-sampling=no
+    ///   * --perf-sampling=250ms
+    #[arg(
+        default_missing_value = "yes",
+        display_order = 500,
+        env = "GUNGRAUN_PERF_SAMPLING",
+        long = "perf-sampling",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = parse_perf_sampling,
+        verbatim_doc_comment,
+    )]
+    pub perf_sampling: Option<PerfSampling>,
+
+    #[rustfmt::skip]
     /// Fail the entire benchmark run on the first performance regression
     ///
     /// When enabled, this option causes Gungraun to stop immediately when a performance regression
@@ -2068,6 +2116,23 @@ fn parse_parallel(value: &str) -> Result<usize, String> {
     }
 }
 
+fn parse_path_resolved(value: PathBuf) -> Result<PathBuf, String> {
+    util::resolve_binary_path(value, None).map_err(|error| error.to_string())
+}
+
+fn parse_perf_duration(value: &str) -> Result<Duration, String> {
+    let parser = fundu::CustomDurationParser::builder()
+        .disable_infinity()
+        .default_unit(TimeUnit::Second)
+        .time_units(&DEFAULT_TIME_UNITS)
+        .build();
+
+    parser
+        .parse(value)
+        .map(SaturatingInto::saturating_into)
+        .map_err(|e| e.to_string())
+}
+
 fn parse_perf_hard_limit_value(value: &str) -> Result<(Option<Unit>, Limit), String> {
     let value = value.trim();
     if let Ok(metric) = value.parse::<Metric>() {
@@ -2161,24 +2226,23 @@ fn parse_perf_run_mode(value: &str) -> Result<PerfRunMode, String> {
                      calibrate=<duration>"
                 )
             })
-            .and_then(|duration| {
-                let parser = fundu::CustomDurationParser::builder()
-                    .disable_infinity()
-                    .default_unit(TimeUnit::Second)
-                    .time_units(&DEFAULT_TIME_UNITS)
-                    .build();
-
-                parser
-                    .parse(duration)
-                    .map(SaturatingInto::saturating_into)
-                    .map_err(|e| e.to_string())
-            })
+            .and_then(parse_perf_duration)
             .map(PerfRunMode::Calibrate),
     }
 }
 
-fn parse_path_resolved(value: PathBuf) -> Result<PathBuf, String> {
-    util::resolve_binary_path(value, None).map_err(|error| error.to_string())
+fn parse_perf_sampling(value: &str) -> Result<PerfSampling, String> {
+    let lower = value.to_ascii_lowercase();
+
+    match lower.as_str() {
+        "yes" => Ok(PerfSampling::Enabled(DEFAULT_PERF_SAMPLING_DURATION)),
+        "no" => Ok(PerfSampling::Disabled),
+        _ => parse_perf_duration(value)
+            .map(PerfSampling::Enabled)
+            .map_err(|error| {
+                format!("Invalid perf sampling '{value}': expected yes, no, or <duration>: {error}")
+            }),
+    }
 }
 
 /// This function parses a space separated list of raw argument strings into [`RawArgs`]
@@ -2650,6 +2714,80 @@ mod tests {
         let error = CommandLineArgs::try_parse_from(["--perf-run-mode=calibrate=1m"])
             .expect_err("minutes must not be accepted as calibration durations");
         assert!(error.to_string().contains("Invalid time unit"));
+    }
+
+    #[rstest]
+    #[case::bare_flag(
+        "--perf-sampling",
+        PerfSampling::Enabled(DEFAULT_PERF_SAMPLING_DURATION)
+    )]
+    #[case::yes("--perf-sampling=yes", PerfSampling::Enabled(Duration::from_secs(2)))]
+    #[case::no("--perf-sampling=no", PerfSampling::Disabled)]
+    #[case::default_seconds("--perf-sampling=2", PerfSampling::Enabled(Duration::from_secs(2)))]
+    #[case::duration(
+        "--perf-sampling=250ms",
+        PerfSampling::Enabled(Duration::from_millis(250))
+    )]
+    fn test_perf_sampling_cli(#[case] arg: &str, #[case] expected: PerfSampling) {
+        let actual = CommandLineArgs::parse_from([arg]);
+        assert_eq!(actual.perf_sampling, Some(expected));
+    }
+
+    #[test]
+    fn test_perf_sampling_cli_rejects_unsupported_duration_units() {
+        let error = CommandLineArgs::try_parse_from(["--perf-sampling=1m"])
+            .expect_err("minutes must not be accepted as sampling durations");
+        assert!(error.to_string().contains("Invalid time unit"));
+    }
+
+    #[test]
+    fn test_perf_sampling_cli_rejects_invalid_value() {
+        let error = CommandLineArgs::try_parse_from(["--perf-sampling=invalid"])
+            .expect_err("invalid values must not be accepted");
+        assert!(
+            error
+                .to_string()
+                .contains("expected yes, no, or <duration>")
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_perf_sampling_env() {
+        for (value, expected) in [
+            ("yes", PerfSampling::Enabled(Duration::from_secs(2))),
+            ("no", PerfSampling::Disabled),
+            ("250ms", PerfSampling::Enabled(Duration::from_millis(250))),
+        ] {
+            // SAFETY: This test is run serially.
+            unsafe {
+                std::env::set_var("GUNGRAUN_PERF_SAMPLING", value);
+            }
+            let actual = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+            assert_eq!(actual.perf_sampling, Some(expected));
+            // SAFETY: This test is run serially.
+            unsafe {
+                std::env::remove_var("GUNGRAUN_PERF_SAMPLING");
+            }
+        }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_perf_sampling_cli_takes_precedence_over_env() {
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::set_var("GUNGRAUN_PERF_SAMPLING", "no");
+        }
+        let actual = CommandLineArgs::parse_from(["--perf-sampling=yes"]);
+        assert_eq!(
+            actual.perf_sampling,
+            Some(PerfSampling::Enabled(Duration::from_secs(2)))
+        );
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::remove_var("GUNGRAUN_PERF_SAMPLING");
+        }
     }
 
     #[test]

@@ -164,11 +164,13 @@ pub fn header_f(
 }
 
 #[builder(finish_fn = "fixture")]
-pub fn metadata_f(raw_command_line_args: Option<&[&str]>, target: Option<&str>) -> Metadata {
+pub fn metadata_f(
+    #[builder(default = vec![], with = FromIterator::from_iter)] raw_command_line_args: Vec<&str>,
+    target: Option<&str>,
+) -> Metadata {
     let args = raw_command_line_args
         .into_iter()
-        .flatten()
-        .map(|s| String::from(*s))
+        .map(ToOwned::to_owned)
         .collect::<Vec<String>>();
     let target = target.unwrap_or("x86_64-unknown-linux-gnu");
 
@@ -430,14 +432,14 @@ pub fn tool_config_f(
 
 #[builder(finish_fn = "fixture")]
 pub fn tool_configs_f(
-    raw_command_line_args: Option<&[&str]>,
+    #[builder(default = vec![], with = FromIterator::from_iter)] raw_command_line_args: Vec<&str>,
     tool_specs: Option<ToolSpecs>,
     default_tool: Option<Tool>,
     valgrind_args: Option<RawToolArgs>,
     default_entry_point: Option<EntryPoint>,
 ) -> ToolConfigs {
     let meta = metadata_f()
-        .maybe_raw_command_line_args(raw_command_line_args)
+        .raw_command_line_args(raw_command_line_args)
         .fixture();
     let module_path = module_path_f().fixture();
     let mut output_format = OutputFormat::default();

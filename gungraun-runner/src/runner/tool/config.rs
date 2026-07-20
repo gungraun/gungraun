@@ -64,6 +64,7 @@ use crate::api::{
     self, BenchRunMode, EntryPoint, PerfRunMode, RawToolArgs, SanitizeOutput, Tool, ToolSpec,
     ToolSpecs,
 };
+use crate::runner::args::PerfSampling;
 use crate::runner::callgrind::flamegraph::Config as FlamegraphConfig;
 use crate::runner::common::{
     Analyzer, Assistant, CapturedOutput, Config, ModulePath, PerfOutputConfig, Sandbox,
@@ -589,6 +590,7 @@ impl ToolConfigBuilder {
             || (meta.args.perf_events.is_empty()
                 && meta.args.perf_record.is_none()
                 && meta.args.perf_record_args.is_none()
+                && meta.args.perf_sampling.is_none()
                 && meta.args.perf_run_mode.is_none())
         {
             return;
@@ -608,6 +610,12 @@ impl ToolConfigBuilder {
             }
             if let Some(record_args) = &meta.args.perf_record_args {
                 perf_spec.record_args = record_args.clone();
+            }
+            if let Some(sampling) = meta.args.perf_sampling {
+                perf_spec.sample_duration = match sampling {
+                    PerfSampling::Disabled => None,
+                    PerfSampling::Enabled(duration) => Some(duration),
+                };
             }
         }
     }
@@ -1342,6 +1350,7 @@ mod tests {
 
     use super::*;
     use crate::api::{DhatSpec, PerfSpec, ToolSpecOptions};
+    use crate::fixtures::metadata_f;
 
     fn tool_spec(tool: Tool, enable: Option<bool>, options: ToolSpecOptions) -> ToolSpec {
         ToolSpec {
@@ -1572,6 +1581,130 @@ mod tests {
         );
 
         resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
+    }
+
+    #[test]
+    fn test_cli_perf_sampling_enables_default_duration() {
+        let builder = ToolConfigBuilder::new(
+            Tool::Perf,
+            None,
+            true,
+            &HashMap::default(),
+            &ModulePath::new("foo::bar"),
+            None,
+            &metadata_f()
+                .raw_command_line_args(["--perf-sampling=yes"])
+                .fixture(),
+            &RawToolArgs::default(),
+            &EntryPoint::Default,
+            None,
+        )
+        .unwrap();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs.len(), 1);
+        assert_eq!(configs[0].timeout, Some(Duration::from_secs(2)));
+        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
+            unreachable!("expected perf config")
+        };
+        assert!(perf_config.use_sampling);
+    }
+
+    #[test]
+    fn test_cli_perf_sampling_no_overrides_spec_sample_duration() {
+        let spec = tool_spec(
+            Tool::Perf,
+            None,
+            ToolSpecOptions::Perf(perf_spec(
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(Duration::from_secs(5)),
+            )),
+        );
+        let builder = ToolConfigBuilder::new(
+            Tool::Perf,
+            Some(spec),
+            true,
+            &HashMap::default(),
+            &ModulePath::new("foo::bar"),
+            None,
+            &metadata_f()
+                .raw_command_line_args(["--perf-sampling=no"])
+                .fixture(),
+            &RawToolArgs::default(),
+            &EntryPoint::Default,
+            None,
+        )
+        .unwrap();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs[0].timeout, None);
+        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
+            unreachable!("expected perf config")
+        };
+        assert!(!perf_config.use_sampling);
+    }
+
+    #[test]
+    fn test_absent_cli_perf_sampling_preserves_spec_sample_duration() {
+        let spec = tool_spec(
+            Tool::Perf,
+            None,
+            ToolSpecOptions::Perf(perf_spec(
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(Duration::from_secs(5)),
+            )),
+        );
+        let builder = ToolConfigBuilder::new(
+            Tool::Perf,
+            Some(spec),
+            true,
+            &HashMap::default(),
+            &ModulePath::new("foo::bar"),
+            None,
+            &metadata_f().fixture(),
+            &RawToolArgs::default(),
+            &EntryPoint::Default,
+            None,
+        )
+        .unwrap();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs[0].timeout, Some(Duration::from_secs(5)));
+        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
+            unreachable!("expected perf config")
+        };
+        assert!(perf_config.use_sampling);
+    }
+
+    #[test]
+    fn test_cli_perf_sampling_zero_duration_returns_error() {
+        let result = ToolConfigBuilder::new(
+            Tool::Perf,
+            None,
+            true,
+            &HashMap::default(),
+            &ModulePath::new("foo::bar"),
+            None,
+            &metadata_f()
+                .raw_command_line_args(["--perf-sampling=0"])
+                .fixture(),
+            &RawToolArgs::default(),
+            &EntryPoint::Default,
+            None,
+        );
+
+        let error = result.expect_err("zero sampling duration must be rejected");
+        assert!(error.to_string().contains("perf sample duration was zero"));
     }
 
     #[test]

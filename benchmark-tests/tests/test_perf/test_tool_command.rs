@@ -62,7 +62,7 @@ fn test_tool_command_basic_functionality() {
     );
 
     assert_eq!(
-        "Events disabled\nEvents enabled\nEvents disabled\n",
+        "Events enabled\nEvents disabled\n",
         str::from_utf8(&output.stderr).unwrap()
     );
 

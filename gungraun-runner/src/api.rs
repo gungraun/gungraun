@@ -2570,7 +2570,6 @@ impl From<u64> for Limit {
     }
 }
 
-#[cfg(feature = "runner")]
 impl PerfMetric {
     /// Return the perf event name represented by this metric.
     pub fn name(&self) -> &str {
@@ -2732,6 +2731,7 @@ where
     }
 }
 
+#[cfg(feature = "runner")]
 impl Stdin {
     /// Applies this [`Stdin`] configuration to a [`Command`] for the selected [`Stream`].
     ///
@@ -2863,6 +2863,7 @@ impl From<&Path> for Stdin {
     }
 }
 
+#[cfg(feature = "runner")]
 impl Stdio {
     /// Applies this stdio configuration to the selected command stream.
     ///
@@ -3052,7 +3053,6 @@ impl ToolSpec {
     }
 }
 
-#[cfg(feature = "runner")]
 impl ToolSpecOptions {
     fn update(&mut self, other: &Self) {
         match (self, &other) {
@@ -3116,6 +3116,7 @@ impl ToolSpecs {
     }
 }
 
+#[cfg(feature = "runner")]
 impl Tool {
     /// Returns the id used by the tool invocation.
     pub fn id(&self) -> String {
@@ -3166,6 +3167,7 @@ impl Tool {
     }
 }
 
+#[cfg(feature = "runner")]
 impl Display for Tool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.id())

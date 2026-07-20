@@ -15,7 +15,7 @@ use gungraun_runner::units::Unit;
 #[test]
 fn test_tool_configs_apply_cli_valgrind_args_to_default_tool() {
     let tool_configs = tool_configs_f()
-        .raw_command_line_args(&["--valgrind-args='--trace-children=no --num-callers=50'"])
+        .raw_command_line_args(["--valgrind-args='--trace-children=no --num-callers=50'"])
         .fixture();
 
     let callgrind_config = tool_configs
@@ -32,7 +32,7 @@ fn test_tool_configs_apply_cli_valgrind_args_to_default_tool() {
 #[test]
 fn test_tool_configs_apply_cli_valgrind_args_to_additional_tool() {
     let tool_configs = tool_configs_f()
-        .raw_command_line_args(&["--valgrind-args=--trace-children=no"])
+        .raw_command_line_args(["--valgrind-args=--trace-children=no"])
         .tool_specs(ToolSpecs(vec![ToolSpec::new(Tool::Memcheck)]))
         .fixture();
 
@@ -54,7 +54,7 @@ fn test_tool_configs_apply_cli_valgrind_args_to_additional_tool() {
 #[test]
 fn test_tool_configs_cli_tool_args_override_cli_valgrind_args() {
     let tool_configs = tool_configs_f()
-        .raw_command_line_args(&[
+        .raw_command_line_args([
             "--valgrind-args=--trace-children=no",
             "--callgrind-args=--trace-children=yes",
         ])
@@ -129,7 +129,7 @@ fn test_test_configs_when_perf_multiple_events_expands_to_multiple_configs() {
 #[test]
 fn test_tool_configs_apply_cli_perf_options() {
     let tool_configs = tool_configs_f()
-        .raw_command_line_args(&[
+        .raw_command_line_args([
             "--tools=perf",
             "--perf-args=--all-user",
             "--perf-events=instructions,cycles",
@@ -201,6 +201,99 @@ fn test_tool_configs_apply_cli_perf_options() {
 }
 
 #[test]
+fn test_tool_configs_cli_perf_sampling_enables_sampling() {
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args(["--tools=perf", "--perf-sampling=250ms"])
+        .fixture();
+
+    let perf_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.tool() == Tool::Perf)
+        .expect("perf config should be present");
+    assert_eq!(perf_config.timeout, Some(Duration::from_millis(250)));
+    let ToolConfigOptions::Perf(options) = &perf_config.options else {
+        unreachable!("expected perf options")
+    };
+    assert!(options.use_sampling);
+}
+
+#[test]
+fn test_tool_configs_cli_perf_sampling_no_overrides_benchmark_sample_duration() {
+    let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
+    let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
+        unreachable!("perf tool specs must have perf options");
+    };
+    perf_spec.sample_duration = Some(Duration::from_secs(5));
+
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args(["--tools=perf", "--perf-sampling=no"])
+        .tool_specs(ToolSpecs(vec![perf_tool_spec]))
+        .fixture();
+
+    let perf_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.tool() == Tool::Perf)
+        .expect("perf config should be present");
+    assert_eq!(perf_config.timeout, None);
+    let ToolConfigOptions::Perf(options) = &perf_config.options else {
+        unreachable!("expected perf options")
+    };
+    assert!(!options.use_sampling);
+}
+
+#[test]
+fn test_tool_configs_absent_cli_perf_sampling_preserves_benchmark_sample_duration() {
+    let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
+    let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
+        unreachable!("perf tool specs must have perf options");
+    };
+    perf_spec.sample_duration = Some(Duration::from_secs(5));
+
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args(["--tools=perf"])
+        .tool_specs(ToolSpecs(vec![perf_tool_spec]))
+        .fixture();
+
+    let perf_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.tool() == Tool::Perf)
+        .expect("perf config should be present");
+    assert_eq!(perf_config.timeout, Some(Duration::from_secs(5)));
+    let ToolConfigOptions::Perf(options) = &perf_config.options else {
+        unreachable!("expected perf options")
+    };
+    assert!(options.use_sampling);
+}
+
+#[test]
+fn test_tool_configs_perf_record_clears_cli_sampling_timeout() {
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args(["--tools=perf", "--perf-record", "--perf-sampling=250ms"])
+        .fixture();
+
+    let stat_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.tool() == Tool::Perf && !config.is_perf_record())
+        .expect("perf stat config should be present");
+    let record_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.is_perf_record())
+        .expect("perf record config should be present");
+
+    assert_eq!(stat_config.timeout, Some(Duration::from_millis(250)));
+    assert_eq!(record_config.timeout, None);
+    let ToolConfigOptions::Perf(record_options) = &record_config.options else {
+        unreachable!("expected perf options")
+    };
+    assert!(!record_options.use_sampling);
+}
+
+#[test]
 fn test_tool_configs_cli_perf_record_options_override_benchmark_options() {
     let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
     let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
@@ -210,7 +303,7 @@ fn test_tool_configs_cli_perf_record_options_override_benchmark_options() {
     perf_spec.record_args = RawToolArgs::from_iter(["--old-record-arg"]);
 
     let tool_configs = tool_configs_f()
-        .raw_command_line_args(&[
+        .raw_command_line_args([
             "--tools=perf",
             "--perf-record",
             "--perf-record-args=--metric-only",

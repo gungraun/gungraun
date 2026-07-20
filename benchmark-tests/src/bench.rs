@@ -56,6 +56,9 @@ static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
 // Do not match (*********); those placeholder lines should stay unchanged.
 static NUMBERS_DIFF_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\([^)*]*\)(?:\s+\[[^\]]+\])?$").expect("Regex should compile"));
+static UNIT_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?<prefix>\[)(?<unit>[^\]]+)(?<suffix>\]:\s*)").expect("Regex should compile")
+});
 static RUNNING_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[ ]+Running .*$").expect("Regex should compile"));
 static PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -157,6 +160,17 @@ static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
 });
 static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[']([/][^/']+)+[']").expect("Regex should compile"));
+
+fn filter_unit(desc: &str) -> Cow<'_, str> {
+    UNIT_RE.replace(desc, |caps: &Captures| {
+        format!(
+            "{}{}{}",
+            &caps["prefix"],
+            " ".repeat(caps["unit"].len()),
+            &caps["suffix"]
+        )
+    })
+}
 
 /// Benchmark test case derived from a `.conf.yml` file.
 ///
@@ -1070,7 +1084,7 @@ impl BenchmarkOutput {
 
             if let Some(caps) = NUMBERS_RE.captures(line) {
                 let mut string = String::new();
-                let desc = caps.name("desc").unwrap().as_str();
+                let desc = filter_unit(caps.name("desc").unwrap().as_str());
                 let comp1 = {
                     let cap = caps.name("comp1").unwrap().as_str();
                     if cap.parse::<f64>().is_ok() {
@@ -1141,8 +1155,8 @@ impl BenchmarkOutput {
                         match pos {
                             Some(pos)
                                 if num[pos + 1..].parse::<f64>().is_ok()
-                                    || percent == "---inf---"
-                                    || percent == "+++inf+++" =>
+                                    || percent == "(---inf---)"
+                                    || percent == "(+++inf+++)" =>
                             {
                                 write!(string, "{white1}(        %)").unwrap();
                             }
@@ -1163,8 +1177,8 @@ impl BenchmarkOutput {
                         match pos {
                             Some(pos)
                                 if num[pos + 1..].parse::<f64>().is_ok()
-                                    || factor == "---inf---"
-                                    || factor == "+++inf+++" =>
+                                    || factor == "[---inf---]"
+                                    || factor == "[+++inf+++]" =>
                             {
                                 write!(string, "{white2}[        x]").unwrap();
                             }
@@ -1777,6 +1791,14 @@ mod tests {
     )]
     fn test_numbers_re(#[case] haystack: &str) {
         assert!(NUMBERS_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::perf_with_unit("task-clock/u [us]:", "task-clock/u [  ]:")]
+    #[case::perf_without_unit("cpu_core/instructions/u:", "cpu_core/instructions/u:")]
+    #[case::non_unit_brackets("rse% (sig.thr) [sig.fact]", "rse% (sig.thr) [sig.fact]")]
+    fn test_filter_unit(#[case] haystack: &str, #[case] replaced: &str) {
+        assert_eq!(filter_unit(haystack), replaced);
     }
 
     #[rstest]

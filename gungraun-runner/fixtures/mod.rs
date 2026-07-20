@@ -21,8 +21,8 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{
-    CachegrindMetric, DhatMetric, DhatSpec, EntryPoint, ExitWith, PerfRunMode, PerfSpec,
-    RawToolArgs, SanitizeOutput, Tool, ToolSpec, ToolSpecOptions, ToolSpecs,
+    CachegrindMetric, DhatMetric, EntryPoint, ExitWith, PerfRunMode, RawToolArgs, SanitizeOutput,
+    Tool, ToolOutputFormat, ToolSpec, ToolSpecOptions, ToolSpecs,
 };
 use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
 use crate::runner::cachegrind::args::CachegrindArgs;
@@ -349,6 +349,8 @@ pub fn tool_config_builder_f(
     tool: Option<Tool>,
     is_default: Option<bool>,
     tool_spec: Option<ToolSpec>,
+    #[builder(default = vec![], with = FromIterator::from_iter)] raw_command_line_args: Vec<&str>,
+    valgrind_args: Option<RawToolArgs>,
 ) -> ToolConfigBuilder {
     ToolConfigBuilder::new(
         tool.unwrap_or(DEFAULT_TOOL),
@@ -357,8 +359,10 @@ pub fn tool_config_builder_f(
         &HashMap::default(),
         &module_path_f().fixture(),
         Option::default(),
-        &metadata_f().fixture(),
-        &RawToolArgs::default(),
+        &metadata_f()
+            .raw_command_line_args(raw_command_line_args)
+            .fixture(),
+        &valgrind_args.unwrap_or_default(),
         &EntryPoint::Default,
         None,
     )
@@ -369,11 +373,14 @@ pub fn tool_config_builder_f(
 pub fn tool_config_f(
     tool: Option<Tool>,
     is_default: Option<bool>,
+    is_enabled: Option<bool>,
     events: Option<String>,
     entry_point: Option<EntryPoint>,
     part: Option<usize>,
     sanitize_output: Option<SanitizeOutput>,
     has_analyzer: Option<bool>,
+    options: Option<ToolConfigOptions>,
+    timeout: Option<Duration>,
 ) -> ToolConfig {
     let tool = tool.unwrap_or(DEFAULT_TOOL);
     let args = match tool {
@@ -391,7 +398,7 @@ pub fn tool_config_f(
         _ => ToolArgs::Valgrind(ValgrindArgs::try_from_raw_tool_args(tool, &[]).unwrap()),
     };
 
-    let options = match tool {
+    let options = options.unwrap_or_else(|| match tool {
         Tool::Perf => ToolConfigOptions::Perf(PerfConfig {
             alpha: DEFAULT_PERF_ALPHA,
             events: events.unwrap_or_else(|| DEFAULT_PERF_EVENTS.to_owned()),
@@ -413,10 +420,10 @@ pub fn tool_config_f(
         Tool::DRD => ToolConfigOptions::DRD,
         Tool::Massif => ToolConfigOptions::Massif,
         Tool::BBV => ToolConfigOptions::BBV,
-    };
+    });
 
     ToolConfig::new(
-        true,
+        is_enabled.unwrap_or(true),
         args,
         ToolRegressionConfig::None,
         ToolFlamegraphConfig::None,
@@ -426,7 +433,7 @@ pub fn tool_config_f(
         part,
         options,
         has_analyzer.unwrap_or(true),
-        None,
+        timeout,
     )
 }
 
@@ -497,34 +504,29 @@ pub fn tool_output_path_f(
 #[builder(finish_fn = "fixture")]
 pub fn tool_spec_f(
     tool: Option<Tool>,
-    events: Option<Vec<String>>,
+    enable: Option<bool>,
     entry_point: Option<EntryPoint>,
+    flamegraph_config: Option<crate::api::ToolFlamegraphConfig>,
+    options: Option<ToolSpecOptions>,
+    output_format: Option<ToolOutputFormat>,
+    raw_tool_args: Option<RawToolArgs>,
+    regression_config: Option<crate::api::ToolRegressionConfig>,
+    sanitize_output: Option<SanitizeOutput>,
+    show_log: Option<bool>,
 ) -> ToolSpec {
     let tool = tool.unwrap_or(DEFAULT_TOOL);
-    let options = match tool {
-        Tool::Perf => ToolSpecOptions::Perf(PerfSpec {
-            alpha: None,
-            events,
-            record: None,
-            non_zero_metrics: None,
-            record_args: RawToolArgs::default(),
-            run_mode: None,
-            sample_duration: None,
-            min_pcnt_running: None,
-        }),
-        Tool::DHAT => ToolSpecOptions::Dhat(DhatSpec { frames: None }),
-        _ => ToolSpecOptions::None,
-    };
+    let options = options.unwrap_or(ToolSpecOptions::None);
+
     ToolSpec {
-        enable: Option::default(),
+        enable,
         entry_point,
-        flamegraph_config: Option::default(),
+        flamegraph_config,
         tool,
-        output_format: Option::default(),
-        raw_tool_args: RawToolArgs::default(),
-        regression_config: Option::default(),
-        sanitize_output: Option::default(),
-        show_log: Option::default(),
+        output_format,
+        raw_tool_args: raw_tool_args.unwrap_or_default(),
+        regression_config,
+        sanitize_output,
+        show_log,
         options,
     }
 }

@@ -3216,6 +3216,9 @@ mod tests {
 
     use super::EventKind::*;
     use super::{CachegrindMetric as Cm, *};
+    use crate::fixtures::api::dhat_spec_f;
+    use crate::fixtures::perf::perf_spec_f;
+    use crate::fixtures::tool_spec_f;
 
     #[rstest]
     #[case::default("d:d:000000", Some(BenchRunMode::Default))]
@@ -3282,6 +3285,8 @@ mod tests {
     #[test]
     fn test_library_benchmark_config_update_from_all_when_no_tools_override() {
         let base = LibraryBenchmarkConfig::default();
+
+        // do not use fixture builders to force the usages of the constructors and their fields
         let other = LibraryBenchmarkConfig {
             current_dir: Some(PathBuf::from("/tmp")),
             env_clear: Some(true),
@@ -3315,6 +3320,8 @@ mod tests {
     #[test]
     fn test_library_benchmark_config_update_from_all_when_tools_override() {
         let base = LibraryBenchmarkConfig::default();
+
+        // do not use fixture builders to force the usages of the constructors and their fields
         let other = LibraryBenchmarkConfig {
             current_dir: Some(PathBuf::from("/tmp")),
             env_clear: Some(true),
@@ -3341,6 +3348,7 @@ mod tests {
             default_tool: Some(Tool::BBV),
             sandbox: Some(Sandbox::default()),
         };
+
         let expected = LibraryBenchmarkConfig {
             tool_specs: other.tool_specs_override.as_ref().unwrap().clone(),
             tool_specs_override: None,
@@ -3496,10 +3504,8 @@ mod tests {
 
     #[test]
     fn test_tool_spec_options_update_when_dhat() {
-        let mut base = ToolSpecOptions::Dhat(DhatSpec { frames: None });
-        let other = ToolSpecOptions::Dhat(DhatSpec {
-            frames: Some(vec!["123".to_owned()]),
-        });
+        let mut base = ToolSpecOptions::Dhat(dhat_spec_f().fixture());
+        let other = ToolSpecOptions::Dhat(dhat_spec_f().frames(vec!["123"]).fixture());
 
         let expected = other.clone();
         base.update(&other);
@@ -3508,17 +3514,9 @@ mod tests {
 
     #[test]
     fn test_tool_spec_options_update_when_perf() {
-        let mut base = ToolSpecOptions::Perf(PerfSpec {
-            alpha: None,
-            events: None,
-            min_pcnt_running: None,
-            non_zero_metrics: None,
-            record: None,
-            record_args: RawToolArgs::default(),
-            run_mode: None,
-            sample_duration: None,
-        });
+        let mut base = ToolSpecOptions::Perf(perf_spec_f().fixture());
 
+        // do not use the tool spec/perf spec builder to enforce the usage of the constructor fields
         let other = ToolSpecOptions::Perf(PerfSpec {
             alpha: Some(0.5),
             events: Some(vec!["foo".to_owned()]),
@@ -3548,6 +3546,7 @@ mod tests {
     #[test]
     fn test_tool_update_when_tools_match() {
         let mut base = ToolSpec::new(Tool::Callgrind);
+        // do not use the tool spec builder to enforce the usage of the constructor fields
         let other = ToolSpec {
             tool: Tool::Callgrind,
             enable: Some(true),
@@ -3568,19 +3567,12 @@ mod tests {
     #[test]
     fn test_tool_update_when_tool_is_perf_then_extends_without_flag() {
         let mut base = ToolSpec::new(Tool::Perf);
-        let other = ToolSpec {
-            tool: Tool::Perf,
-            enable: Some(true),
+        let other = tool_spec_f()
+            .tool(Tool::Perf)
             // This should stay `some` instead of becoming `--some` as it is done for valgrind tools
-            raw_tool_args: RawToolArgs::new_ignore_flag(["some"]),
-            show_log: Some(false),
-            regression_config: Some(ToolRegressionConfig::None),
-            flamegraph_config: Some(ToolFlamegraphConfig::None),
-            output_format: Some(ToolOutputFormat::None),
-            entry_point: Some(EntryPoint::Default),
-            sanitize_output: Some(SanitizeOutput::KeepOrig),
-            options: ToolSpecOptions::Perf(PerfSpec::default()),
-        };
+            .raw_tool_args(RawToolArgs::new_ignore_flag(["some"]))
+            .options(ToolSpecOptions::Perf(perf_spec_f().fixture()))
+            .fixture();
         let expected = other.clone();
         base.update(&other);
         assert_eq!(base, expected);
@@ -3589,18 +3581,7 @@ mod tests {
     #[test]
     fn test_tool_update_when_tools_not_match() {
         let mut base = ToolSpec::new(Tool::Callgrind);
-        let other = ToolSpec {
-            tool: Tool::DRD,
-            enable: Some(true),
-            raw_tool_args: RawToolArgs::new_ignore_flag(["--some"]),
-            show_log: Some(false),
-            regression_config: Some(ToolRegressionConfig::None),
-            flamegraph_config: Some(ToolFlamegraphConfig::None),
-            output_format: Some(ToolOutputFormat::None),
-            entry_point: Some(EntryPoint::Default),
-            sanitize_output: Some(SanitizeOutput::KeepOrig),
-            options: ToolSpecOptions::None,
-        };
+        let other = tool_spec_f().tool(Tool::DRD).enable(true).fixture();
 
         let expected = base.clone();
         base.update(&other);

@@ -759,14 +759,8 @@ pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<B
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::{PerfRunMode, SanitizeOutput};
-    use crate::runner::perf::args::{DEFAULT_PERF_EVENTS, PerfStatArgs};
-    use crate::runner::tool::args::ToolArgs;
-    use crate::runner::tool::config::{
-        DEFAULT_PERF_ALPHA, DEFAULT_PERF_NON_ZERO_METRICS, PerfConfig, ToolConfigOptions,
-        ToolFlamegraphConfig,
-    };
-    use crate::runner::tool::regression::ToolRegressionConfig;
+    use crate::api::SanitizeOutput;
+    use crate::fixtures::tool_config_f;
 
     #[test]
     fn test_baseline_and_save_benchmark_uses_different_display_baselines() {
@@ -783,29 +777,11 @@ mod tests {
 
     #[test]
     fn bench_args_uses_run_mode_override() {
-        let config = ToolConfig::new(
-            true,
-            ToolArgs::Perf(PerfStatArgs::default().into()),
-            ToolRegressionConfig::None,
-            ToolFlamegraphConfig::None,
-            EntryPoint::Default,
-            true,
-            SanitizeOutput::No,
-            Option::default(),
-            ToolConfigOptions::Perf(PerfConfig {
-                alpha: DEFAULT_PERF_ALPHA,
-                events: DEFAULT_PERF_EVENTS.to_owned(),
-                non_zero_metrics: DEFAULT_PERF_NON_ZERO_METRICS
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect(),
-                run_mode: PerfRunMode::Direct,
-                use_sampling: false,
-                min_pcnt_running: 100.0,
-            }),
-            true,
-            None,
-        );
+        let config = tool_config_f()
+            .tool(Tool::Perf)
+            .entry_point(EntryPoint::Default)
+            .sanitize_output(SanitizeOutput::No)
+            .fixture();
 
         let args = LibBench::bench_args(&config, Some(BenchRunMode::PerfCalibrate), 1, 2, 3, None);
 

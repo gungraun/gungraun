@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use gungraun::{EntryPoint, SanitizeOutput};
 use gungraun_runner::api::{PerfRunMode, RawToolArgs, Tool, ToolSpec, ToolSpecOptions, ToolSpecs};
+use gungraun_runner::fixtures::perf::{perf_config_f, perf_spec_f};
 use gungraun_runner::fixtures::{
     metadata_f, module_path_f, tool_config_builder_f, tool_config_f, tool_configs_f, tool_spec_f,
 };
@@ -117,7 +118,9 @@ fn test_test_configs_when_perf_multiple_events_expands_to_multiple_configs() {
             tool_spec_f()
                 .tool(Tool::Perf)
                 .entry_point(EntryPoint::Default)
-                .events(vec!["first".to_owned(), "second".to_owned()])
+                .options(ToolSpecOptions::Perf(
+                    perf_spec_f().events(vec!["first", "second"]).fixture(),
+                ))
                 .fixture(),
         )
         .fixture();
@@ -153,18 +156,16 @@ fn test_tool_configs_apply_cli_perf_options() {
         assert!(config.args.to_vec().iter().any(|arg| arg == "--all-user"));
         assert_eq!(
             config.options,
-            ToolConfigOptions::Perf(gungraun_runner::runner::tool::config::PerfConfig {
-                alpha: 0.05,
-                events: expected_events.to_owned(),
-                non_zero_metrics: vec![
-                    "task-clock*".to_owned(),
-                    "cpu-clock*".to_owned(),
-                    "*instructions*".to_owned(),
-                ],
-                min_pcnt_running: 100.0,
-                run_mode: PerfRunMode::Calibrate(Duration::from_millis(250)),
-                use_sampling: false,
-            })
+            ToolConfigOptions::Perf(
+                perf_config_f()
+                    .alpha(0.05)
+                    .events(expected_events)
+                    .min_pcnt_running(100.0)
+                    .non_zero_metrics(["task-clock*", "cpu-clock*", "*instructions*"])
+                    .run_mode(PerfRunMode::Calibrate(Duration::from_millis(250)))
+                    .use_sampling(false)
+                    .fixture()
+            )
         );
         assert_eq!(
             config.regression_config,
@@ -220,11 +221,14 @@ fn test_tool_configs_cli_perf_sampling_enables_sampling() {
 
 #[test]
 fn test_tool_configs_cli_perf_sampling_no_overrides_benchmark_sample_duration() {
-    let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
-    let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
-        unreachable!("perf tool specs must have perf options");
-    };
-    perf_spec.sample_duration = Some(Duration::from_secs(5));
+    let perf_tool_spec = tool_spec_f()
+        .tool(Tool::Perf)
+        .options(ToolSpecOptions::Perf(
+            perf_spec_f()
+                .sample_duration(Duration::from_secs(5))
+                .fixture(),
+        ))
+        .fixture();
 
     let tool_configs = tool_configs_f()
         .raw_command_line_args(["--tools=perf", "--perf-sampling=no"])
@@ -245,11 +249,14 @@ fn test_tool_configs_cli_perf_sampling_no_overrides_benchmark_sample_duration() 
 
 #[test]
 fn test_tool_configs_absent_cli_perf_sampling_preserves_benchmark_sample_duration() {
-    let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
-    let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
-        unreachable!("perf tool specs must have perf options");
-    };
-    perf_spec.sample_duration = Some(Duration::from_secs(5));
+    let perf_tool_spec = tool_spec_f()
+        .tool(Tool::Perf)
+        .options(ToolSpecOptions::Perf(
+            perf_spec_f()
+                .sample_duration(Duration::from_secs(5))
+                .fixture(),
+        ))
+        .fixture();
 
     let tool_configs = tool_configs_f()
         .raw_command_line_args(["--tools=perf"])
@@ -295,12 +302,15 @@ fn test_tool_configs_perf_record_clears_cli_sampling_timeout() {
 
 #[test]
 fn test_tool_configs_cli_perf_record_options_override_benchmark_options() {
-    let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
-    let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
-        unreachable!("perf tool specs must have perf options");
-    };
-    perf_spec.record = Some(false);
-    perf_spec.record_args = RawToolArgs::from_iter(["--old-record-arg"]);
+    let perf_tool_spec = tool_spec_f()
+        .tool(Tool::Perf)
+        .options(ToolSpecOptions::Perf(
+            perf_spec_f()
+                .record(false)
+                .record_args(RawToolArgs::from_iter(["--old-record-arg"]))
+                .fixture(),
+        ))
+        .fixture();
 
     let tool_configs = tool_configs_f()
         .raw_command_line_args([
@@ -333,11 +343,12 @@ fn test_tool_configs_cli_perf_record_options_override_benchmark_options() {
 
 #[test]
 fn test_tool_configs_reject_invalid_perf_min_pcnt_running() {
-    let mut perf_tool_spec = ToolSpec::new(Tool::Perf);
-    let ToolSpecOptions::Perf(perf_spec) = &mut perf_tool_spec.options else {
-        unreachable!("perf tool specs must have perf options");
-    };
-    perf_spec.min_pcnt_running = Some(f64::NAN);
+    let perf_tool_spec = tool_spec_f()
+        .tool(Tool::Perf)
+        .options(ToolSpecOptions::Perf(
+            perf_spec_f().min_pcnt_running(f64::NAN).fixture(),
+        ))
+        .fixture();
 
     let module_path = module_path_f().fixture();
     let mut output_format = OutputFormat::default();

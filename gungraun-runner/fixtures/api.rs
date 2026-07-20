@@ -3,10 +3,11 @@
 use bon::builder;
 
 use crate::api::{
-    CachegrindMetrics, CachegrindRegressionConfig, DhatMetrics, DhatRegressionConfig, Limit,
-    PerfRegressionConfig,
+    CachegrindMetrics, CachegrindRegressionConfig, DhatMetrics, DhatRegressionConfig, DhatSpec,
+    Limit, PerfRegressionConfig,
 };
 use crate::units::Unit;
+
 #[builder(finish_fn = "fixture")]
 pub fn cachegrind_regression_config_f(
     soft_limits: Option<Vec<(CachegrindMetrics, f64)>>,
@@ -30,6 +31,15 @@ pub fn dhat_regression_config_f(
         soft_limits: soft_limits.unwrap_or_default(),
         hard_limits: hard_limits.unwrap_or_default(),
         fail_fast,
+    }
+}
+
+#[builder(finish_fn = "fixture")]
+pub fn dhat_spec_f(
+    #[builder(default = vec![], with = FromIterator::from_iter)] frames: Vec<&str>,
+) -> DhatSpec {
+    DhatSpec {
+        frames: (!frames.is_empty()).then(|| frames.into_iter().map(ToOwned::to_owned).collect()),
     }
 }
 

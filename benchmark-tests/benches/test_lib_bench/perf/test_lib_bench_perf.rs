@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use benchmark_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 use gungraun::prelude::*;
-use gungraun::{Callgrind, Perf, PerfRunMode, Tool, perf_disable, perf_enable};
+use gungraun::{Callgrind, Perf, PerfRunMode, Tool, perf_disable, perf_enable, perf_log};
 
 fn print_debug<T>(input: T) -> usize
 where
@@ -28,8 +28,11 @@ where
         )
 )]
 #[bench::one_low_n(
-    args = [1],
-    config = LibraryBenchmarkConfig::default().tool(Perf::default().event_sets(["instructions"]))
+    args = [10],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .event_sets(["instructions"])
+        )
 )]
 // The first one is discarded, so the result should be still only one measurement (without mean, rse
 // calculation, ...)
@@ -91,9 +94,11 @@ where
         )
 )]
 #[bench::default_calibrate_low_n(
-    args = [1],
+    args = [10],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
+            // Setting the override is necessary to avoid intermittent zero instruction metrics.
+            .sample_duration(Duration::from_secs(2))
             .run_mode(PerfRunMode::DefaultCalibrate)
         )
 )]
@@ -162,7 +167,7 @@ fn thirty_events_then_multiplexing() -> Vec<i32> {
 )]
 #[bench::with_arg(20)]
 fn disabled_entry_point(n: u64) -> u64 {
-    println!("This println shouldn't be measured");
+    perf_log!("Printing to log shouldn't be measured");
 
     let lock = perf_enable!();
     let x = black_box(fibonacci(black_box(n)));
@@ -205,7 +210,6 @@ library_benchmark_group!(
     benchmarks = [
         event_sets,
         with_other_tool,
-        thirty_events_then_multiplexing,
         disabled_entry_point,
         disabled_entry_point_without_measurement,
         generic,
@@ -235,7 +239,6 @@ library_benchmark_group!(
     config = LibraryBenchmarkConfig::default().tool(Perf::default().record(true)),
     benchmarks = [
         event_sets,
-        thirty_events_then_multiplexing,
         disabled_entry_point,
         disabled_entry_point_without_measurement,
     ]

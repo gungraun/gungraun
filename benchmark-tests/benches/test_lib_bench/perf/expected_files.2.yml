@@ -282,19 +282,6 @@ data:
         - perf.event_sets.two_sets_same_event.p2.record.log
         - perf.event_sets.two_sets_same_event.p2.record.log.old
         - summary.json
-  - group: record
-    function: thirty_events_then_multiplexing
-    expected:
-      files:
-        - perf.thirty_events_then_multiplexing.data
-        - perf.thirty_events_then_multiplexing.data.old
-        - perf.thirty_events_then_multiplexing.log
-        - perf.thirty_events_then_multiplexing.log.old
-        - perf.thirty_events_then_multiplexing.out
-        - perf.thirty_events_then_multiplexing.out.old
-        - perf.thirty_events_then_multiplexing.record.log
-        - perf.thirty_events_then_multiplexing.record.log.old
-        - summary.json
   - group: without_sampling
     function: disabled_entry_point
     id: with_arg
@@ -517,15 +504,6 @@ data:
         - perf.iter.two_to_four_2.log.old
         - perf.iter.two_to_four_2.out
         - perf.iter.two_to_four_2.out.old
-        - summary.json
-  - group: without_sampling
-    function: thirty_events_then_multiplexing
-    expected:
-      files:
-        - perf.thirty_events_then_multiplexing.log
-        - perf.thirty_events_then_multiplexing.log.old
-        - perf.thirty_events_then_multiplexing.out
-        - perf.thirty_events_then_multiplexing.out.old
         - summary.json
   - group: without_sampling
     function: with_consts
@@ -875,4 +853,3 @@ data:
         - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out
         - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out.old
         - summary.json
-

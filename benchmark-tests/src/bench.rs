@@ -237,6 +237,8 @@ pub struct BenchmarkRunner {
 ///
 /// A group can gate all runs to Linux only.
 pub struct GroupConfig {
+    /// TODO: DOCS
+    expected: GroupExpected,
     /// Optional target triple include or exclude condition for the whole group.
     ///
     /// Example: `x86_64-unknown-linux-gnu`.
@@ -251,6 +253,12 @@ pub struct GroupConfig {
     ///
     /// Example: two runs comparing default output and `--show-grid=true` output.
     runs: Vec<RunConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupExpected {
+    /// TODO: DOCS
+    script: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -813,6 +821,7 @@ impl Benchmark {
                             schema,
                             &self.home_dir,
                             &self.bench_name,
+                            &group.expected,
                         )
                     }))
                     .is_ok()
@@ -834,6 +843,7 @@ impl Benchmark {
                         schema,
                         &self.home_dir,
                         &self.bench_name,
+                        &group.expected,
                     )
                 }
             }
@@ -1530,6 +1540,7 @@ impl Metadata {
 }
 
 impl RunConfig {
+    #[allow(clippy::too_many_arguments)]
     fn assert(
         &self,
         bench_dir: &Path,
@@ -1538,6 +1549,7 @@ impl RunConfig {
         schema: &ScopedSchema<'_>,
         home_dir: &Path,
         bench_name: &str,
+        group_expected: &GroupExpected,
     ) {
         if let Some(expected) = &self.expected {
             if expected.stdout.is_some()
@@ -1549,7 +1561,7 @@ impl RunConfig {
             }
             output.assert_exit(expected.exit_code);
 
-            if let Some(script) = expected.script.as_ref() {
+            if let Some(script) = expected.script.as_ref().or(group_expected.script.as_ref()) {
                 let dir = tempdir().expect(
                     "Creating a temporary directory for the assertion script should succeed",
                 );

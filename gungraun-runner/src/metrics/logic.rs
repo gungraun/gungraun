@@ -528,6 +528,15 @@ impl Metric {
             Self::Float(float) => float.is_sign_negative(),
         }
     }
+
+    /// Convert this `Metric` to a float value
+    #[expect(clippy::cast_precision_loss)]
+    pub fn to_float(&self) -> f64 {
+        match self {
+            Self::Int(int) => *int as f64,
+            Self::Float(float) => *float,
+        }
+    }
 }
 
 impl MetricValue for Metric {

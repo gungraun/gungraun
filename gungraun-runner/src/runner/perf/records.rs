@@ -312,11 +312,7 @@ impl MetricsParser {
             return;
         };
 
-        let Some(key) =
-            self.validate_record(non_zero_metrics, event, float, variance, pcnt_running)
-        else {
-            return;
-        };
+        let key = PerfMetric(event.to_owned());
 
         if let Some(adjustment) = adjustment {
             if let Some(metric) = adjustment.metric_by_kind(&key) {
@@ -338,6 +334,13 @@ impl MetricsParser {
                 int = new_int;
                 float = new_float;
             }
+        }
+
+        if self
+            .validate_record(non_zero_metrics, event, float, variance, pcnt_running)
+            .is_none()
+        {
+            return;
         }
 
         let new_metric = AnnotatedMetric::new(
@@ -376,12 +379,6 @@ impl MetricsParser {
             return;
         };
 
-        let Some(key) =
-            self.validate_record(non_zero_metrics, event, float, variance, pcnt_running)
-        else {
-            return;
-        };
-
         let mut new_metric = AnnotatedMetric::new(
             Metric::Float(float),
             PerfQualities::new(
@@ -394,10 +391,25 @@ impl MetricsParser {
             Unit::parse(unit),
         );
 
+        let key = PerfMetric(event.to_owned());
+
         if let Some(adjustment) = adjustment {
             if let Some(metric) = adjustment.metric_by_kind(&key) {
                 new_metric = new_metric.saturating_sub(&metric);
             }
+        }
+
+        if self
+            .validate_record(
+                non_zero_metrics,
+                event,
+                new_metric.metric.to_float(),
+                variance,
+                pcnt_running,
+            )
+            .is_none()
+        {
+            return;
         }
 
         trace!(

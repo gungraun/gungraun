@@ -1,10 +1,12 @@
 //! Fixtures for types from the api module
 
+use std::time::Duration;
+
 use bon::builder;
 
 use crate::api::{
-    CachegrindMetrics, CachegrindRegressionConfig, DhatMetrics, DhatRegressionConfig, DhatSpec,
-    Limit, PerfRegressionConfig,
+    CachegrindMetrics, CachegrindRegressionConfig, Delay, DelayKind, DhatMetrics,
+    DhatRegressionConfig, DhatSpec, Limit, PerfRegressionConfig,
 };
 use crate::units::Unit;
 
@@ -18,6 +20,15 @@ pub fn cachegrind_regression_config_f(
         soft_limits: soft_limits.unwrap_or_default(),
         hard_limits: hard_limits.unwrap_or_default(),
         fail_fast,
+    }
+}
+
+#[builder(finish_fn = "fx")]
+pub fn delay_f(poll: Option<u64>, timeout: Option<u64>, kind: DelayKind) -> Delay {
+    Delay {
+        kind,
+        poll: poll.map(Duration::from_millis),
+        timeout: timeout.map(Duration::from_millis),
     }
 }
 

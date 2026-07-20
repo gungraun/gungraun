@@ -21,10 +21,11 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{
-    CachegrindMetric, DhatMetric, EntryPoint, ExitWith, PerfRunMode, RawToolArgs, SanitizeOutput,
-    Tool, ToolOutputFormat, ToolSpec, ToolSpecOptions, ToolSpecs,
+    CachegrindMetric, DelayKind, DhatMetric, EntryPoint, ExitWith, PerfRunMode, RawToolArgs,
+    SanitizeOutput, Tool, ToolOutputFormat, ToolSpec, ToolSpecOptions, ToolSpecs,
 };
 use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
+use crate::runner::bin_bench::Delay;
 use crate::runner::cachegrind::args::CachegrindArgs;
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
 use crate::runner::callgrind::args::CallgrindArgs;
@@ -126,6 +127,15 @@ pub fn cachegrind_regression_config_f(
         soft_limits: soft_limits.unwrap_or_default(),
         hard_limits: hard_limits.unwrap_or_default(),
         fail_fast: fail_fast.unwrap_or(false),
+    }
+}
+
+#[builder(finish_fn = "fx")]
+pub fn delay_f(poll: Option<Duration>, timeout: Option<Duration>, kind: DelayKind) -> Delay {
+    Delay {
+        kind,
+        poll: poll.unwrap_or(Duration::from_millis(50)),
+        timeout: timeout.unwrap_or(Duration::from_secs(1)),
     }
 }
 

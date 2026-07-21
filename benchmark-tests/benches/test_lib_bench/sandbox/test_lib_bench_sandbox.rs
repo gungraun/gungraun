@@ -1,17 +1,25 @@
 use std::hint::black_box;
 use std::path::Path;
+use std::time::Duration;
 
-use gungraun::Sandbox;
 use gungraun::prelude::*;
+use gungraun::{Perf, Sandbox, Tool};
 
 fn check_file_exists(path: &str, should_exist: bool) {
     if should_exist {
         assert!(Path::new(path).is_file());
-        println!("File exists: '{path}'");
     } else {
         assert!(!Path::new(path).exists());
-        println!("File does not exist: '{path}'");
     }
+}
+
+fn create_dir(path: &str) -> &str {
+    std::fs::create_dir(path).unwrap();
+    path
+}
+
+fn remove_dir(dir: String) {
+    std::fs::remove_dir(&dir).unwrap();
 }
 
 #[library_benchmark]
@@ -59,9 +67,54 @@ fn current_dir() {
     check_file_exists(black_box("bar.txt"), black_box(true));
 }
 
-library_benchmark_group!(name = my_group, benchmarks = [sandbox, current_dir]);
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .sandbox(Sandbox::new(true)
+            .fixtures(["benchmark-tests/benches/fixtures/foo"])
+        )
+        .current_dir("foo"),
+    setup = create_dir,
+    teardown = remove_dir
+)]
+#[bench::sampling(
+    args = ["sampling_dir"],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .sample_duration(Duration::from_secs(2))
+        )
+)]
+#[bench::calibration(
+    args = ["calibration_dir"],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .run_mode(gungraun::PerfRunMode::DefaultCalibrate)
+        )
+)]
+#[bench::sampling_and_calibration(
+    args = ["sampling_and_calibration_dir"],
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .sample_duration(Duration::from_secs(2))
+            .run_mode(gungraun::PerfRunMode::DefaultCalibrate)
+        )
+)]
+fn bench_perf(control_dir: &str) -> String {
+    // Repeat to increase the benchmark metrics enough for the calibration run without sampling to
+    // have a verifiable terminal output.
+    for _ in 0..100 {
+        check_file_exists(black_box("bar.txt"), black_box(true));
+    }
+    control_dir.to_owned()
+}
+
+library_benchmark_group!(name = valgrind, benchmarks = [sandbox, current_dir]);
+library_benchmark_group!(
+    name = perf,
+    config = LibraryBenchmarkConfig::default().default_tool(Tool::Perf),
+    benchmarks = [sandbox, current_dir, bench_perf]
+);
 
 main!(
     config = LibraryBenchmarkConfig::default().sandbox(Sandbox::new(true)),
-    library_benchmark_groups = my_group
+    library_benchmark_groups = [valgrind, perf]
 );

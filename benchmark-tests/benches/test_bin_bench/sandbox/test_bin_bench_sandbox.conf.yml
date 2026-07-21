@@ -26,7 +26,7 @@
 #   - Setup/check functions execute correctly
 #   - Sandboxed perf in direct mode executes like valgrind tools
 #   - Perf when using sampling and calibration executes normally in a sandbox
-#     but setup is executed only once
+#     but unlike in library benchmarks, setup/teardown are executed only once
 
 groups:
   - runs:

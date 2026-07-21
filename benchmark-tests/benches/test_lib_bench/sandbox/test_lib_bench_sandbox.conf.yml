@@ -1,9 +1,10 @@
 # Test Case: `test_lib_bench_sandbox`
 #
 # Description:
-#   Tests `Sandbox` configuration for file isolation in library benchmarks.
-#   Validates sandbox creation, fixture handling, current directory changes, and
-#   sandbox-disabled execution.
+#   Tests `Sandbox` configuration for file isolation in library benchmarks for
+#   Valgrind and perf. Validates sandbox creation, fixture handling, current
+#   directory changes, setup/teardown execution per sample for perf sampling,
+#   and sandbox-disabled execution.
 #
 # Test Steps:
 #   1. Run benchmarks with `--nocapture` testing sandbox configurations
@@ -17,18 +18,23 @@
 #      copying fixtures
 #   - `current_dir` option to change working directory within sandbox and if no
 #      sandbox then in current benchmark directory
+#   - perf in direct and sampling/calibration mode
 #
 # Expected Outcomes:
 #   - Fixtures are copied into sandbox when specified
 #   - Missing fixtures are not visible in an empty sandbox
-#   - `current_dir` changes working directory correctly
+#   - `current_dir` changes working directory correctly for Valgrind and perf
 #   - With `Sandbox::new(false)`, files from the benchmark working directory are
 #     visible
+#   - Sandboxed perf in direct mode executes like Valgrind tools
+#   - Perf when using sampling and calibration executes normally in a sandbox
+#     and setup/teardown are executed once per sample
+
 groups:
   - runs:
-      - args: ["--nocapture", "--truncate-description=no"]
+      - args: ["--truncate-description=no"]
         expected:
           stdout: expected_stdout.1
-      - args: ["--nocapture", "--truncate-description=no"]
+      - args: ["--truncate-description=no"]
         expected:
           stdout: expected_stdout.2

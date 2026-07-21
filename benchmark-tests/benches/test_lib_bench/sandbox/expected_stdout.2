@@ -1,56 +1,188 @@
-test_lib_bench_sandbox::my_group::sandbox when_true_with_fixture:("one_line.fix", true)
-File exists: 'one_line.fix'
-- end of stdout/stderr
+test_lib_bench_sandbox::valgrind::sandbox when_true_with_fixture:("one_line.fix", true)
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
-test_lib_bench_sandbox::my_group::sandbox when_true_without_fixture:("one_line.fix", false)
-File does not exist: 'one_line.fix'
-- end of stdout/stderr
+test_lib_bench_sandbox::valgrind::sandbox when_true_without_fixture:("one_line.fix", false)
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
-test_lib_bench_sandbox::my_group::sandbox when_false_with_fixture:("one_line.fix", false)
-File does not exist: 'one_line.fix'
-- end of stdout/stderr
+test_lib_bench_sandbox::valgrind::sandbox when_false_with_fixture:("one_line.fix", false)
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
-test_lib_bench_sandbox::my_group::sandbox when_false_without_fixture:("benches/fixtures/one_line.fix", true)
-File exists: 'benches/fixtures/one_line.fix'
-- end of stdout/stderr
+test_lib_bench_sandbox::valgrind::sandbox when_false_without_fixture:("benches/fixtures/one_line.fix", true)
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
-test_lib_bench_sandbox::my_group::current_dir with_sandbox
-File exists: 'bar.txt'
-- end of stdout/stderr
+test_lib_bench_sandbox::valgrind::current_dir with_sandbox
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
-test_lib_bench_sandbox::my_group::current_dir without_sandbox
-File exists: 'bar.txt'
-- end of stdout/stderr
+test_lib_bench_sandbox::valgrind::current_dir without_sandbox
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
+test_lib_bench_sandbox::perf::sandbox when_true_with_fixture:("one_line.fix", true)
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+test_lib_bench_sandbox::perf::sandbox when_true_without_fixture:("one_line.fix", false)
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+test_lib_bench_sandbox::perf::sandbox when_false_with_fixture:("one_line.fix", false)
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+test_lib_bench_sandbox::perf::sandbox when_false_without_fixture:("benches/fixtures/one_line.fix", true)
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+test_lib_bench_sandbox::perf::current_dir with_sandbox
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+test_lib_bench_sandbox::perf::current_dir without_sandbox
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+test_lib_bench_sandbox::perf::bench_perf sampling:(create_dir("sampling_dir"))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
+    samples                                               |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+test_lib_bench_sandbox::perf::bench_perf calibration:(create_dir("calibration_dir"))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+test_lib_bench_sandbox::perf::bench_perf sampling_and_calibration:(create_dir("sampling_and_calibration_dir"))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
+    samples                                               |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
 
-Gungraun result: Ok. 6 without regressions; 0 regressed; 0 filtered; 6 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 15 without regressions; 0 regressed; 0 filtered; 15 benchmarks finished in <__SECONDS__>s

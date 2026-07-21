@@ -121,6 +121,7 @@ pub struct Header {
 pub struct LibraryBenchmarkHeader(Header);
 
 /// The `OutputFormat` of the Gungraun terminal output
+#[expect(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputFormat {
     /// The Cachegrind metrics to show
@@ -131,6 +132,8 @@ pub struct OutputFormat {
     pub dhat: IndexSet<DhatMetric>,
     /// The DRD error metrics to show
     pub drd: IndexSet<ErrorMetric>,
+    /// TODO: DOCS
+    pub filter_output: bool,
     /// The Helgrind error metrics to show
     pub helgrind: IndexSet<ErrorMetric>,
     /// The [`OutputFormatKind`]
@@ -590,6 +593,7 @@ impl Default for OutputFormat {
                 ErrorMetric::SuppressedErrors,
                 ErrorMetric::SuppressedContexts,
             ],
+            filter_output: false,
         }
     }
 }

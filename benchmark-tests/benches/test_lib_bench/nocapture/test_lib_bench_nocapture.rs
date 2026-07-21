@@ -1,5 +1,6 @@
 use std::hint::black_box;
 
+use gungraun::Tool;
 use gungraun::prelude::*;
 
 fn setup_to_stdout(value: u64) -> u64 {
@@ -37,5 +38,24 @@ fn bench(value: u64) -> u64 {
     value + black_box(100)
 }
 
-library_benchmark_group!(name = bench_fibonacci_group, benchmarks = bench);
-main!(library_benchmark_groups = bench_fibonacci_group);
+#[library_benchmark]
+#[bench::enabled_stdout("Events enabled", Box::new(std::io::stdout()))]
+#[bench::enabled_stderr("Events enabled", Box::new(std::io::stderr()))]
+#[bench::disabled_stdout("Events disabled", Box::new(std::io::stdout()))]
+#[bench::disabled_stderr("Events disabled", Box::new(std::io::stderr()))]
+fn print_events_line(line: &str, mut writer: Box<dyn std::io::Write>) -> std::io::Result<()> {
+    writeln!(writer, "{line}")
+}
+
+library_benchmark_group!(
+    name = bench_fibonacci_group,
+    benchmarks = [bench, print_events_line]
+);
+
+library_benchmark_group!(
+    name = perf,
+    config = LibraryBenchmarkConfig::default().default_tool(Tool::Perf),
+    benchmarks = [bench, print_events_line]
+);
+
+main!(library_benchmark_groups = [bench_fibonacci_group, perf]);

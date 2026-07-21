@@ -437,6 +437,11 @@ impl BinBench {
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
 
+        // The output is only captured for the default tool
+        if default_tool == Tool::Perf {
+            output_format.filter_output = true;
+        }
+
         let tool_configs = ToolConfigs::new(
             &mut output_format,
             config.tool_specs,

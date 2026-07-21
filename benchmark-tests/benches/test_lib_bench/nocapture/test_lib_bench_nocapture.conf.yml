@@ -2,26 +2,32 @@
 #
 # Description:
 #   Validates the `--nocapture` flag and its variants for controlling
-#   stdout/stderr output capture during benchmark execution.
+#   stdout/stderr output capture during benchmark execution. Verify that perf
+#   messages `Events enabled` and `Events disabled` are filtered but only if the
+#   default tool is perf.
 #
 # Test Steps:
 #   1. Run with no `--nocapture` (default: output captured)
 #   2. Run with `--nocapture=false` (explicit off)
 #   3. Run with `--nocapture` (implicit true)
 #   4. Run with `--nocapture=true` (explicit on)
-#   5. Run with `--nocapture=stdout` (capture only stderr)
-#   6. Run with `--nocapture=stderr` (capture only stdout)
+#   5. Run with `--nocapture=stdout` (discard only stderr)
+#   6. Run with `--nocapture=stderr` (discard only stdout)
 #
 # Test Inputs:
-#   - Benchmarks with setup/teardown functions that print to stdout and stderr -
+#   - Benchmarks with setup/teardown functions that print to stdout and stderr;
 #     Various `--nocapture` flag variations
+#   - Benchmarks printing perf messages to stdout/stderr when perf is the
+#     default tool and when it is not.
 #
 # Expected Outcomes:
 #   - No flag and `--nocapture=false`: Output is captured (not shown inline)
 #   - `--nocapture` and `--nocapture=true`: Both stdout and stderr shown inline
-#   - `--nocapture=stdout`: Only stdout shown inline, stderr captured
-#   - `--nocapture=stderr`: Only stderr shown inline, stdout captured
+#   - `--nocapture=stdout` exposes stdout and discards stderr.
+#   - `--nocapture=stderr` exposes stderr and discards stdout.
 #   - The correct nocapture footer is shown or absent if --nocapture=false
+#   - If perf is the default tool, Events enabled/disabled messages are filtered
+#   - If perf is not the default tool, these messages are not filtered
 
 groups:
   - runs:

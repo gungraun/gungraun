@@ -886,6 +886,11 @@ impl ToolConfigs {
         Some((first_alpha, first_min_pcnt_running).into())
     }
 
+    /// Returns `true` if this `tool` is present and enabled
+    pub fn has_tool_enabled(&self, tool: Tool) -> bool {
+        self.0.iter().any(|t| t.tool() == tool && t.is_enabled)
+    }
+
     /// Returns `true` if there are any [`Tool`]s enabled.
     pub fn has_tools_enabled(&self) -> bool {
         self.0.iter().any(|t| t.is_enabled)

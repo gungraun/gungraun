@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{Seek, Write, stderr, stdout};
+use std::io::{BufRead, BufReader, Seek, Write, stderr, stdout};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio as StdStdio};
 use std::sync::atomic::AtomicBool;
@@ -275,6 +275,8 @@ pub struct Runner {
 /// Temporary output files used to capture benchmark stdout and stderr.
 #[derive(Debug)]
 pub struct CapturedOutput {
+    /// TODO: DOCS
+    pub filter_output: bool,
     /// Temporary file receiving captured stderr output.
     pub stderr: File,
     /// Temporary file receiving captured stdout output.
@@ -951,7 +953,7 @@ impl Group {
             let output_format = bench.output_format.clone();
 
             thread_pool.execute(move |force_shutdown| {
-                let captured_output = CapturedOutput::new()?;
+                let captured_output = CapturedOutput::new(output_format.filter_output)?;
                 let output_path =
                     benchmark.default_output_path(&bench, &config, &module_path, true)?;
 
@@ -1008,7 +1010,7 @@ impl Group {
             let output_format = bench.output_format.clone();
 
             thread_pool.execute(move |force_shutdown| {
-                let captured_output = CapturedOutput::new()?;
+                let captured_output = CapturedOutput::new(output_format.filter_output)?;
                 let output_path =
                     benchmark.default_output_path(&bench, &config, &module_path, true)?;
 
@@ -1176,10 +1178,10 @@ impl Group {
                     let benchmark: Arc<dyn lib_bench::Benchmark> =
                         lib_bench::benchmark_factory(config);
 
-                    let captured_output = CapturedOutput::new()?;
-                    let header = LibraryBenchmarkHeader::new(&bench).into();
-
                     let output_format = bench.output_format.clone();
+
+                    let captured_output = CapturedOutput::new(output_format.filter_output)?;
+                    let header = LibraryBenchmarkHeader::new(&bench).into();
 
                     let force_shutdown = Arc::new(AtomicBool::new(false));
                     let output_path =
@@ -1245,10 +1247,10 @@ impl Group {
                     let benchmark: Arc<dyn bin_bench::Benchmark> =
                         bin_bench::benchmark_factory(config);
 
-                    let captured_output = CapturedOutput::new()?;
-                    let header = BinaryBenchmarkHeader::new(&config.meta, &bench).into();
-
                     let output_format = bench.output_format.clone();
+
+                    let captured_output = CapturedOutput::new(output_format.filter_output)?;
+                    let header = BinaryBenchmarkHeader::new(&config.meta, &bench).into();
 
                     let force_shutdown = Arc::new(AtomicBool::new(false));
                     let output_path =
@@ -2123,9 +2125,15 @@ impl CapturedOutput {
     /// # Errors
     ///
     /// Returns an error if creating temporary files fails.
-    pub fn new() -> Result<Self> {
+    pub fn new(filter_output: bool) -> Result<Self> {
         tempfile()
-            .and_then(|stdout| tempfile().map(|stderr| Self { stderr, stdout }))
+            .and_then(|stdout| {
+                tempfile().map(|stderr| Self {
+                    filter_output,
+                    stderr,
+                    stdout,
+                })
+            })
             .with_context(|| "Creating captured output failed")
     }
 
@@ -2138,9 +2146,11 @@ impl CapturedOutput {
         self.stdout
             .try_clone()
             .and_then(|stdout| {
-                self.stderr
-                    .try_clone()
-                    .map(|stderr| Self { stderr, stdout })
+                self.stderr.try_clone().map(|stderr| Self {
+                    filter_output: self.filter_output,
+                    stderr,
+                    stdout,
+                })
             })
             .with_context(|| "Cloning captured output failed")
     }
@@ -2179,10 +2189,19 @@ impl CapturedOutput {
             let mut stdout_lock = stdout().lock();
             let mut stderr_lock = stderr().lock();
 
-            std::io::copy(&mut self.stdout, &mut stdout_lock)
-                .and_then(|_| std::io::copy(&mut self.stderr, &mut stderr_lock))
-                .map(|_| ())
-                .with_context(|| "Dumping captured output failed")
+            if self.filter_output {
+                Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
+            } else {
+                std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+            }
+            .and_then(|()| {
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping captured output failed")
         })
     }
 
@@ -2192,15 +2211,24 @@ impl CapturedOutput {
     ///
     /// Returns an error if cloning, resetting, or copying stream data fails.
     pub fn dump_cloned(&self) -> Result<()> {
-        let mut captured_output = self.try_clone()?;
-        captured_output.reset().and_then(|()| {
+        let mut this = self.try_clone()?;
+        this.reset().and_then(|()| {
             let mut stdout_lock = stdout().lock();
             let mut stderr_lock = stderr().lock();
 
-            std::io::copy(&mut captured_output.stdout, &mut stdout_lock)
-                .and_then(|_| std::io::copy(&mut captured_output.stderr, &mut stderr_lock))
-                .map(|_| ())
-                .with_context(|| "Dumping cloned captured output failed")
+            if self.filter_output {
+                Self::dump_filtered(&mut BufReader::new(&mut this.stdout), &mut stdout_lock)
+            } else {
+                std::io::copy(&mut this.stdout, &mut stdout_lock).map(|_| ())
+            }
+            .and_then(|()| {
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut this.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut this.stderr, &mut stderr_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping cloned captured output failed")
         })
     }
 
@@ -2215,7 +2243,11 @@ impl CapturedOutput {
             .and_then(|()| self.stderr.rewind())
             .and_then(|()| {
                 let mut stderr_lock = stderr().lock();
-                std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                }
             })
             .with_context(|| "Dumping stderr failed")
     }
@@ -2231,9 +2263,45 @@ impl CapturedOutput {
             .and_then(|()| self.stdout.rewind())
             .and_then(|()| {
                 let mut stdout_lock = stdout().lock();
-                std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
+                } else {
+                    std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+                }
             })
             .with_context(|| "Dumping stdout failed")
+    }
+
+    /// Writes `reader` into `writer` filtering the reader line by line
+    ///
+    /// This function filters the `Events disabled`, `Events enabled` messages issued by perf. They
+    /// usually just clutter the nocapture output especially when using sampling. Bytes and line
+    /// endings are preserved.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if line-wise reading or writing into the `writer` fails
+    pub fn dump_filtered<R, W>(reader: &mut R, writer: &mut W) -> std::io::Result<()>
+    where
+        R: ?Sized + BufRead,
+        W: ?Sized + Write,
+    {
+        let is_perf_event_line = |line: &[u8]| -> bool {
+            let line = line.strip_suffix(b"\n").unwrap_or(line);
+            let line = line.strip_suffix(b"\r").unwrap_or(line);
+            matches!(line, b"Events enabled" | b"Events disabled")
+        };
+
+        let mut line = Vec::new();
+
+        while reader.read_until(b'\n', &mut line)? != 0 {
+            if !is_perf_event_line(&line) {
+                writer.write_all(&line)?;
+            }
+            line.clear(); // retain allocation for the next line
+        }
+
+        Ok(())
     }
 }
 

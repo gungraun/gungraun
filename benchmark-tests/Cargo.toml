@@ -405,6 +405,11 @@ path = "benches/test_lib_bench/perf/test_lib_bench_perf.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_perf_single"
+path = "benches/test_lib_bench/perf/test_lib_bench_perf_single.rs"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_readme_example_fibonacci"
 path = "benches/test_lib_bench/readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
 

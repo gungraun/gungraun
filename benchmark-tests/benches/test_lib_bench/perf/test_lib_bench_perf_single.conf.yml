@@ -1,0 +1,154 @@
+# Test Case: `test_lib_bench_perf_single`
+#
+# Description:
+#   Validates command-line configuration of the Perf tool for one library
+#   benchmark. The `my_group` benchmark sorts a worst-case 1,000-element array
+#   prepared by `setup_worst_case_array` before each invocation.
+#
+# --perf-limits is tested in test_lib_bench_regression
+#
+# Test Steps:
+#   1. Run Perf as the default tool and as an additional tool, comparing their
+#      successful stdout fixtures with no stderr.
+#   2. Forward invalid Perf stat and record arguments, verifying that record
+#      arguments are inert until recording is enabled and then produce usage
+#      errors.
+#   3. Use a temporary Perf wrapper to verify custom-binary forwarding and
+#      calibration run-mode selection, including its generated log output.
+#   4. Exercise two-second sampling and multiple Perf event selection.
+#
+# Test Inputs:
+#   - `--default-tool=perf` and `--tools=perf` for default and additional-tool
+#     configuration
+#   - `--perf-args`, `--perf-record`, and `--perf-record-args`, including
+#     deliberately invalid arguments
+#   - A temporary `--perf-bin` wrapper and `--perf-run-mode=calibrate` verifies
+#     the calibration run-mode argument passed through the Perf wrapper.
+#   - `--perf-sampling=2s` and repeated `--perf-events` for `instructions` and
+#     `task-clock`.
+#
+# Expected Outcomes:
+#   - Successful modes emit the declared stdout with no stderr
+#   - Invalid active Perf arguments emit the expected usage error and exit code
+#     1, while inactive record arguments do not change default output
+#   - The custom wrapper sees Perf but not Callgrind and validates the
+#     calibration mode in the `*.log.cal` log file
+#   - Sampling and multi-event output matches fixtures
+
+groups:
+  # 1: Verify running perf as default tool
+  - runs:
+      - args: ["--default-tool=perf"]
+        expected:
+          no_stderr: true
+          stdout: expected_stdout.default-tool-perf
+  # 2: Verify running perf as additional tool
+  - runs:
+      - args: ["--tools=perf"]
+        expected:
+          no_stderr: true
+          stdout: expected_stdout.tools-perf
+  # 3: Verify that arguments reach perf
+  - runs:
+      - args: ["--default-tool=perf", "--perf-args=--does-not-exist"]
+        expected:
+          stdout: expected_stdout.arg-does-not-exist
+          stderr_contains:
+            - "Error: unknown option `does-not-exist'"
+            - "Usage: perf stat"
+          exit_code: 1
+  # 4: perf record args without activating perf record does nothing
+  - runs:
+      - args: ["--default-tool=perf", "--perf-record-args=--does-not-exist"]
+        expected:
+          stdout: expected_stdout.default-tool-perf
+          no_stderr: true
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-record",
+            "--perf-record-args=--does-not-exist",
+          ]
+        expected:
+          stdout: expected_stdout.record-arg-does-not-exist
+          stderr_contains:
+            - "Error: unknown option `does-not-exist'"
+            - "Usage: perf record"
+          exit_code: 1
+  # 5: perf bin should be used for perf but not for callgrind
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--tools=callgrind",
+            "--perf-bin=/tmp/gungraun_perf_bin",
+            "--nocapture",
+          ]
+        setup: |
+          cat <<'EOF' >/tmp/gungraun_perf_bin
+          #!/usr/bin/env bash
+
+          echo "Running with perf bin script:"
+          printf 'perf %s\n' "$1"
+
+          exec perf "$@"
+          EOF
+
+          chmod +x /tmp/gungraun_perf_bin
+        expected:
+          stdout: expected_stdout.perf-bin
+          no_stderr: true
+  # 6: This time we use the perf bin script to verify the perf run mode
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-bin=/tmp/gungraun_perf_bin",
+            "--perf-run-mode=calibrate",
+          ]
+        setup: |
+          cat <<'EOF' >/tmp/gungraun_perf_bin
+          #!/usr/bin/env bash
+
+          echo "Running with perf bin script:"
+          found=0
+          for arg in "$@"; do
+            if grep -Fq -- '--gungraun-run p:c:000000 00000 00000 00000'; then
+              found=1
+              break
+            fi
+          done
+
+          if [[ $found -ne 1 ]]; then
+            echo Expected the run mode to be present and use calibration >&2
+            exit 1
+          fi
+
+          exec perf "$@"
+          EOF
+
+          chmod +x /tmp/gungraun_perf_bin
+        expected:
+          stdout: expected_stdout.perf-run-mode
+          stderr: expected_stderr.perf-run-mode
+          exit_code: 1
+          script: |
+            grep -Fx 'Expected the run mode to be present and use calibration' \
+              my_group/bench_bubble_sort.thousand/perf.bench_bubble_sort.thousand.log.cal
+  # 7: Verify perf sampling. The stdout shows the extra rse, samples lines
+  - runs:
+      - args: ["--default-tool=perf", "--perf-sampling=2s"]
+        expected:
+          stdout: expected_stdout.perf-sampling
+          no_stderr: true
+  # 8: Verify perf events
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-events=instructions",
+            "--perf-events=task-clock",
+          ]
+        expected:
+          stdout: expected_stdout.events
+          no_stderr: true

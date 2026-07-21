@@ -238,7 +238,7 @@ pub struct BenchmarkRunner {
 /// A group can gate all runs to Linux only.
 pub struct GroupConfig {
     /// TODO: DOCS
-    expected: GroupExpected,
+    expected: Option<GroupExpected>,
     /// Optional target triple include or exclude condition for the whole group.
     ///
     /// Example: `x86_64-unknown-linux-gnu`.
@@ -308,11 +308,21 @@ struct ExpectedConfig {
     /// Example: `expected.stdout`.
     #[serde(default)]
     stdout: Option<PathBuf>,
+    /// A string which should be contained in the stdout output
+    ///
+    /// Example: `stdout: expected.stdout`.
+    #[serde(default)]
+    stdout_contains: Vec<String>,
     /// Path to expected stderr relative to the benchmark config directory.
     ///
-    /// Example: `expected.stderr`.
+    /// Example: `stderr: expected.stderr`.
     #[serde(default)]
     stderr: Option<PathBuf>,
+    /// A string which should be contained in the stderr output
+    ///
+    /// Example: `stderr: expected.stderr`.
+    #[serde(default)]
+    stderr_contains: Vec<String>,
     /// Expected process exit code.
     ///
     /// Example: `101` for a benchmark expected to panic.
@@ -614,10 +624,7 @@ impl Benchmark {
                 .args(["-ex"])
                 .arg(setup_path)
                 .status()
-                .expect(
-                    "Spawning
-                    the setup process should succeed",
-                );
+                .expect("Spawning the setup process should succeed");
 
             if !status.success() {
                 panic!("Running setup failed with {status:?}");
@@ -780,10 +787,14 @@ impl Benchmark {
                     print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
                 }
 
-                let capture = run
-                    .expected
-                    .as_ref()
-                    .is_some_and(|e| e.stdout.is_some() || e.stderr.is_some());
+                let capture = run.expected.as_ref().is_some_and(|e| {
+                    e.stdout.is_some()
+                        || e.no_stdout
+                        || !e.stdout_contains.is_empty()
+                        || e.stderr.is_some()
+                        || e.no_stderr
+                        || !e.stderr_contains.is_empty()
+                });
 
                 let output = if let Some(template) = &self.config.template {
                     let output = self.run_template(
@@ -821,7 +832,7 @@ impl Benchmark {
                             schema,
                             &self.home_dir,
                             &self.bench_name,
-                            &group.expected,
+                            group.expected.as_ref(),
                         )
                     }))
                     .is_ok()
@@ -843,7 +854,7 @@ impl Benchmark {
                         schema,
                         &self.home_dir,
                         &self.bench_name,
-                        &group.expected,
+                        group.expected.as_ref(),
                     )
                 }
             }
@@ -873,6 +884,15 @@ impl BenchmarkOutput {
                 print_info("Verifying stderr successful: Expected no stderr");
             } else {
                 panic!("Assertion of stderr failed: Expected no stderr");
+            }
+        } else if !expected.stderr_contains.is_empty() {
+            for expected in &expected.stderr_contains {
+                let output_stderr: String = String::from_utf8_lossy(&output.stderr).into();
+                if output_stderr.contains(expected.as_str()) {
+                    print_info(format!("Verifying stderr contains '{expected}' succeeded"));
+                } else {
+                    panic!("Assertion of stderr failed: Expected stderr to contain '{expected}'");
+                }
             }
         } else if let Some(stderr) = &expected.stderr {
             let mut expected_stderr: Vec<u8> = Vec::new();
@@ -918,6 +938,15 @@ impl BenchmarkOutput {
                 print_info("Verifying stdout successful: Expected no stdout");
             } else {
                 panic!("Assertion of stdout failed: Expected no stdout");
+            }
+        } else if !expected.stdout_contains.is_empty() {
+            for expected in &expected.stdout_contains {
+                let output_stdout: String = String::from_utf8_lossy(&output.stdout).into();
+                if output_stdout.contains(expected.as_str()) {
+                    print_info(format!("Verifying stdout contains '{expected}' succeeded"));
+                } else {
+                    panic!("Assertion of stdout failed: Expected stdout to contain '{expected}'");
+                }
             }
         } else if let Some(stdout) = &expected.stdout {
             let mut expected_stdout: Vec<u8> = Vec::new();
@@ -1549,19 +1578,25 @@ impl RunConfig {
         schema: &ScopedSchema<'_>,
         home_dir: &Path,
         bench_name: &str,
-        group_expected: &GroupExpected,
+        group_expected: Option<&GroupExpected>,
     ) {
         if let Some(expected) = &self.expected {
             if expected.stdout.is_some()
                 || expected.no_stdout
+                || !expected.stdout_contains.is_empty()
                 || expected.stderr.is_some()
                 || expected.no_stderr
+                || !expected.stderr_contains.is_empty()
             {
                 output.assert(bench_dir, meta, expected);
             }
             output.assert_exit(expected.exit_code);
 
-            if let Some(script) = expected.script.as_ref().or(group_expected.script.as_ref()) {
+            if let Some(script) = expected
+                .script
+                .as_ref()
+                .or_else(|| group_expected.and_then(|g| g.script.as_ref()))
+            {
                 let dir = tempdir().expect(
                     "Creating a temporary directory for the assertion script should succeed",
                 );

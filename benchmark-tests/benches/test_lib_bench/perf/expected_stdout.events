@@ -1,0 +1,9 @@
+test_lib_bench_perf_single::my_group::bench_bubble_sort thousand:(setup_worst_case_array(1000))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  ## pid: <__PID__> part: 1                               |N/A
+  cpu_core/instructions/u:                                |N/A                  (*********)
+  ## pid: <__PID__> part: 2                               |N/A
+  task-clock/u [  ]:                                      |N/A                  (*********)
+
+Gungraun result: Ok. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in <__SECONDS__>s

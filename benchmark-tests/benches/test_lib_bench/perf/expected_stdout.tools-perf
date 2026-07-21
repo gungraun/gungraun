@@ -1,0 +1,21 @@
+test_lib_bench_perf_single::my_group::bench_bubble_sort thousand:(setup_worst_case_array(1000))
+  ======= CALLGRIND ===================================================================================
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |N/A                  (*********)
+  cpu_atom/cycles/u:                                      |N/A                  (*********)
+  cpu_core/cycles/u:                                      |N/A                  (*********)
+  task-clock/u [  ]:                                      |N/A                  (*********)
+  cpu-clock/u [  ]:                                       |N/A                  (*********)
+  faults/u:                                               |N/A                  (*********)
+  context-switches/u:                                     |N/A                  (*********)
+  cpu_core/branch-misses/u:                               |N/A                  (*********)
+  cpu_core/cache-misses/u:                                |N/A                  (*********)
+
+Gungraun result: Ok. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in <__SECONDS__>s

@@ -1,0 +1,1 @@
+test_lib_bench_perf_single::my_group::bench_bubble_sort thousand:(setup_worst_case_array(1000))

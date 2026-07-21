@@ -250,6 +250,11 @@ path = "benches/test_bin_bench/paths/test_bin_bench_paths.rs"
 
 [[bench]]
 harness = false
+name = "test_bin_bench_perf"
+path = "benches/test_bin_bench/perf/test_bin_bench_perf.rs"
+
+[[bench]]
+harness = false
 name = "test_bin_bench_sandbox"
 path = "benches/test_bin_bench/sandbox/test_bin_bench_sandbox.rs"
 

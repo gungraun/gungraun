@@ -1,8 +1,9 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use gungraun::prelude::*;
-use gungraun::{OutputFormat, Sandbox};
+use gungraun::{OutputFormat, Perf, PerfRunMode, Sandbox, Stdio, Tool};
 
 const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
 
@@ -84,8 +85,40 @@ fn with_current_dir() -> gungraun::Command {
         .build()
 }
 
+// This also verifies perf runs setup only once in sampling or calibration mode, the setup creates a
+// directory and if it would be executed repeatedly the directory creation would fail with an error.
+#[binary_benchmark(setup = setup_directory_and_file())]
+fn perf() -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
+        .current_dir("foo")
+        .arg("bar.txt")
+        .arg("true")
+        // The binary prints 1 line per sample and clutters the output. We only need it to exit
+        // successfully
+        .stdout(Stdio::Null)
+        .build()
+}
+
 binary_benchmark_group!(
-    name = my_group,
+    name = perf_direct,
+    config = BinaryBenchmarkConfig::default().default_tool(Tool::Perf),
+    benchmarks = [with_sandbox, without_sandbox, with_current_dir]
+);
+
+binary_benchmark_group!(
+    name = perf_sampling_and_calibration,
+    config = BinaryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(
+            Perf::default()
+                .sample_duration(Duration::from_secs(2))
+                .run_mode(PerfRunMode::Calibrate(Duration::from_secs(2)))
+        ),
+    benchmarks = perf
+);
+
+binary_benchmark_group!(
+    name = valgrind_tool,
     benchmarks = [with_sandbox, without_sandbox, with_current_dir]
 );
 
@@ -93,5 +126,5 @@ main!(
     config = BinaryBenchmarkConfig::default()
         .sandbox(Sandbox::new(true))
         .output_format(OutputFormat::default().truncate_description(None)),
-    binary_benchmark_groups = my_group
+    binary_benchmark_groups = [valgrind_tool, perf_direct, perf_sampling_and_calibration]
 );

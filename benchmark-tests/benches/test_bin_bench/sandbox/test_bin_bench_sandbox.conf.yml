@@ -1,12 +1,14 @@
 # Test Case: `test_bin_bench_sandbox`
 #
 # Description:
-#   Tests `Sandbox` configuration for file isolation in binary benchmarks.
-#   Validates sandbox creation, fixture handling, current directory changes, and
-#   automatic cleanup after benchmark execution.
+#   Tests `Sandbox` configuration for file isolation with the default valgrind
+#   tool and `perf` in binary benchmarks. Validates sandbox creation, fixture
+#   handling, current directory changes, single setup execution for perf
+#   sampling/calibration, and automatic cleanup after benchmark execution.
 #
 # Test Steps:
 #   1. Run benchmarks with `--nocapture` testing sandbox configurations
+#   2. Run benchmarks a second time to verify comparison output
 #
 # Test Inputs:
 #   - `Sandbox::new(true)` with fixtures: copies fixture files into sandbox
@@ -14,16 +16,23 @@
 #   - `Sandbox::new(false)`: no sandbox, runs in current directory
 #   - `current_dir` option to change working directory within sandbox
 #   - `truncate_description(None)` for full output
+#   - `perf` in direct and sampling/calibration mode
 #
 # Expected Outcomes:
 #   - Files created in sandbox are cleaned up after benchmark
 #   - Fixtures are copied into sandbox when specified
-#   - `current_dir` changes working directory correctly
+#   - `current_dir` changes working directory correctly for Valgrind and perf
 #   - With `Sandbox::new(false)`, files persist outside sandbox
 #   - Setup/check functions execute correctly
+#   - Sandboxed perf in direct mode executes like valgrind tools
+#   - Perf when using sampling and calibration executes normally in a sandbox
+#     but setup is executed only once
 
 groups:
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout
+          stdout: expected_stdout.1
+      - args: ["--nocapture"]
+        expected:
+          stdout: expected_stdout.2

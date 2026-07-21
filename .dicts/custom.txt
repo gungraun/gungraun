@@ -405,3 +405,4 @@ dtlb
 itlb
 tonumber
 isfinite
+Sandboxed

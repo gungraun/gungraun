@@ -74,7 +74,7 @@ shlex = { version = "2.0" }
 signal-hook = { version = "0.4" }
 simplematch = "0.3"
 strum = { version = "0.28" }
-syn = { version = "2.0.87", features = ["full", "extra-traits"] }
+syn = { version = "3.0.0", features = ["full", "extra-traits"] }
 tempfile = { version = "3.10.0" }
 thiserror = { version = "2.0.3" }
 trybuild = "1.0.18"

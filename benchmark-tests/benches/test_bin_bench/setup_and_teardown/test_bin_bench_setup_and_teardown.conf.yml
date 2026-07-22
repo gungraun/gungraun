@@ -2,9 +2,10 @@
 #
 # Description:
 #   Tests setup and teardown functions at the benchmark level, including
-#   function argument passing, inheritance from `#[binary_benchmark]` level,
-#   and override behavior. Also validates skipping setup/teardown when
-#   loading a baseline.
+#   function argument passing, inheritance from `#[binary_benchmark]` level, and
+#   override behavior. Also validates skipping setup/teardown when loading a
+#   baseline. perf executes setup/teardown only once for sampling or calibrate
+#   modes.
 #
 # Test Steps:
 #   1. Run with `--nocapture` to see all setup/teardown output
@@ -18,6 +19,7 @@
 #   - Bench-level setup/teardown that override global
 #   - Low-level API (`BinaryBenchmark`, `Bench`) setup/teardown
 #   - `--save-baseline` and `--load-baseline` flags
+#   - perf with different run modes and sampling
 #
 # Expected Outcomes:
 #   - Setup functions execute before command, teardown after
@@ -26,6 +28,8 @@
 #   - `--load-baseline` skips setup/teardown execution
 #   - Output files created with expected metrics
 #   - Stdout shows correct execution order
+#   - perf executes setup and teardown only once no matter the run mode and if
+#     sampling is configured
 
 groups:
   - runs:

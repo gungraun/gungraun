@@ -214,5 +214,85 @@ test_bin_bench_setup_and_teardown::low_level::bench_global_setup_and_teardown ov
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
+test_bin_bench_setup_and_teardown::perf_group::perf direct:(create_dir("some_dir")) -> target/release/file-ex...
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  Baselines:                                       default|default (old)
+  cpu_core/instructions/u:                                |                     (No change)
+  cpu_atom/cycles/u:                                      |                     (No change)
+  cpu_core/cycles/u:                                      |                     (No change)
+  task-clock/u [  ]:                                      |                     (No change)
+  cpu-clock/u [  ]:                                       |                     (No change)
+  context-switches/u:                                     |                     (No change)
+  cpu_core/branch-misses/u:                               |                     (No change)
+  cpu_core/cache-misses/u:                                |                     (No change)
+test_bin_bench_setup_and_teardown::perf_group::perf sampling:(create_dir("some_dir")) -> target/release/file-ex...
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  Baselines:                                       default|default (old)
+  cpu_core/instructions/u:                                |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
+    samples                                               |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+test_bin_bench_setup_and_teardown::perf_group::perf calibrate:(create_dir("some_dir")) -> target/release/file-ex...
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  Baselines:                                       default|default (old)
+  cpu_core/instructions/u:                                |                     (No change)
+  cpu_atom/cycles/u:                                      |                     (No change)
+  cpu_core/cycles/u:                                      |                     (No change)
+  task-clock/u [  ]:                                      |                     (No change)
+  cpu-clock/u [  ]:                                       |                     (No change)
+  context-switches/u:                                     |                     (No change)
+  cpu_core/branch-misses/u:                               |                     (No change)
+  cpu_core/cache-misses/u:                                |                     (No change)
+test_bin_bench_setup_and_teardown::perf_group::perf sampling_and_calibrate:(create_dir("some_dir")) -> target/release/file-ex...
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  Baselines:                                       default|default (old)
+  cpu_core/instructions/u:                                |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
+    samples                                               |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (No change)
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
 
-Gungraun result: Ok. 27 without regressions; 0 regressed; 0 filtered; 27 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 31 without regressions; 0 regressed; 0 filtered; 31 benchmarks finished in <__SECONDS__>s

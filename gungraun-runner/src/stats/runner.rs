@@ -419,6 +419,7 @@ mod tests {
         0.620_831_999_101_882_6,
         1.610_741_716_674_777
     )]
+    #[case::equal(100.0, 10, 10, 1.0, 0.297_115_244_279_731_46, 0.0)]
     fn test_diff_stats_from_metrics(
         #[case] new_mean: f64,
         #[case] new_n: u64,

@@ -891,6 +891,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "gungraun-common"
+version = "0.19.4"
+dependencies = [
+ "strum",
+]
+
+[[package]]
 name = "gungraun-macros"
 version = "0.9.1"
 dependencies = [
@@ -2564,6 +2571,7 @@ dependencies = [
  "cc",
  "cfg-if",
  "cty",
+ "gungraun-common",
  "regex",
  "rustc_version",
  "strum",

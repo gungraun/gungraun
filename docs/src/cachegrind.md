@@ -10,11 +10,7 @@ requests you need to turn them on in the `Cargo.toml` with the `act` feature
 
 ```toml
 [dev-dependencies]
-<<<<<<< HEAD
 gungraun = { version = "0.19.4", features = ["client_requests"] }
-=======
-gungraun = { version = "0.19.3", features = ["act"] }
->>>>>>> f1bf2db7 (feat(perf): Add perf tool support and improvements)
 ```
 
 ## The Cachegrind Feature

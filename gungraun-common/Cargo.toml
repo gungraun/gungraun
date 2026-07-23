@@ -20,7 +20,11 @@ version.workspace = true
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
 
+[features]
+strum = ["dep:strum"]
+
 [dependencies]
+strum = { workspace = true, optional = true, features = ["derive"] }
 
 [dev-dependencies]
 

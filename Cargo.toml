@@ -2,6 +2,7 @@
 [workspace]
 members = [
   "gungraun",
+  "gungraun-common",
   "gungraun-runner",
   "gungraun-macros",
   "gungraun-summary",

@@ -10,20 +10,11 @@ mod imp {
     use std::path::PathBuf;
 
     use bindgen::{Bindings, builder};
+    use gungraun_common::ValgrindSupport;
     use rustc_version::{Version, version};
     use strum::{EnumIter, IntoEnumIterator};
 
     use crate::BuildResult;
-
-    #[derive(Debug)]
-    struct Target {
-        abi: String,
-        arch: String,
-        env: String,
-        os: String,
-        triple: String,
-        vendor: String,
-    }
 
     #[derive(EnumIter, Debug, PartialEq, Eq)]
     enum Support {
@@ -34,9 +25,19 @@ mod imp {
         Riscv64,
         S390x,
         Powerpc,
-        Powerpc64, // little and big endian
+        Powerpc64,
         Native,
         No,
+    }
+
+    #[derive(Debug)]
+    struct Target {
+        abi: String,
+        arch: String,
+        env: String,
+        os: String,
+        triple: String,
+        vendor: String,
     }
 
     #[derive(Debug, PartialEq, Eq)]
@@ -67,6 +68,21 @@ mod imp {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let support = format!("{self:?}").to_lowercase();
             f.write_str(&support)
+        }
+    }
+
+    impl From<ValgrindSupport> for Support {
+        fn from(value: ValgrindSupport) -> Self {
+            match value {
+                ValgrindSupport::Arm => Self::Arm,
+                ValgrindSupport::Aarch64 => Self::Aarch64,
+                ValgrindSupport::X86 => Self::X86,
+                ValgrindSupport::X86_64 => Self::X86_64,
+                ValgrindSupport::Riscv64 => Self::Riscv64,
+                ValgrindSupport::S390x => Self::S390x,
+                ValgrindSupport::Powerpc => Self::Powerpc,
+                ValgrindSupport::Powerpc64 => Self::Powerpc64,
+            }
         }
     }
 
@@ -226,75 +242,52 @@ mod imp {
 
         let bindings = build_bindings(&target);
 
-        // Note this table uses Valgrind support as priority. For example some targets might not be
-        // supported by Rust like i686-unknown-illumos. They are added nonetheless to this table
-        // because Valgrind supports them and they might be added by Rust in the future.
-        let support = if target.arch == "x86_64"
-            && (((target.os == "linux" || target.os == "android") && target.abi != "x32")
-                || target.os == "freebsd"
-                || (target.vendor == "apple" && target.os == "macos")
-                || (target.os == "windows" && target.env == "gnu")
-                || target.os == "illumos"
-                || ((target.vendor == "sun" || target.vendor == "pc") && target.os == "solaris"))
-        {
-            Some(Support::X86_64)
-        } else if target.arch == "x86"
-            && (target.os == "linux"
-                || target.os == "freebsd"
-                || target.os == "android"
-                || (target.vendor == "apple" && target.os == "macos")
-                || (target.os == "windows" && target.env == "gnu")
-                || target.os == "illumos"
-                || ((target.vendor == "sun" || target.vendor == "pc") && target.os == "solaris"))
-        {
-            Some(Support::X86)
-        } else if target.arch == "arm" && (target.os == "linux" || target.os == "android") {
-            Some(Support::Arm)
-        } else if target.arch == "aarch64"
-            && ((target.os == "linux")
-                || target.os == "freebsd"
-                || target.os == "android"
-                || (target.vendor == "apple" && target.os == "macos"))
-        {
-            Some(Support::Aarch64)
-        } else if target.arch == "riscv64" && target.os == "linux" {
-            Some(Support::Riscv64)
-        } else if target.arch == "s390x" && target.os == "linux" {
-            Some(Support::S390x)
-        } else if target.arch == "powerpc"
-            && target.os == "linux"
-            && rust_version
-                .as_ref()
-                .is_some_and(|r| r.major >= 1 && r.minor >= 95)
-        {
-            Some(Support::Powerpc)
-            // Note target.arch matches both little and big endian
-        } else if target.arch == "powerpc64"
-            && target.os == "linux"
-            && rust_version.is_some_and(|r| r.major >= 1 && r.minor >= 95)
-        {
-            Some(Support::Powerpc64)
-        } else {
-            let re = regex::Regex::new(
-                r"VR_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)",
-            )
-            .expect("Regex should compile");
-            let reader = BufReader::new(Cursor::new(bindings.to_string()));
-            let mut support = None;
-            for line in reader.lines().map(Result::unwrap) {
-                if let Some(caps) = re.captures(&line) {
-                    let value = caps.name("value").unwrap().as_str();
-                    if value == "false" {
-                        support = Some(Support::No);
-                    } else if value == "true" {
-                        support = Some(Support::Native);
-                    } else {
-                        // do nothing
-                    }
-                    break;
-                }
+        // Note the `gungraun_common` table uses Valgrind support as priority. For example some
+        // targets might not be supported by Rust like i686-unknown-illumos.
+        let support = match ValgrindSupport::from_target(
+            &target.arch,
+            &target.os,
+            &target.env,
+            &target.vendor,
+            &target.abi,
+        ) {
+            Some(key @ (ValgrindSupport::Powerpc | ValgrindSupport::Powerpc64))
+                if rust_version
+                    .as_ref()
+                    .is_some_and(|r| r.major >= 1 && r.minor >= 95) =>
+            {
+                Some(key.into())
             }
-            support
+            Some(
+                key @ (ValgrindSupport::Arm
+                | ValgrindSupport::Aarch64
+                | ValgrindSupport::X86
+                | ValgrindSupport::X86_64
+                | ValgrindSupport::Riscv64
+                | ValgrindSupport::S390x),
+            ) => Some(key.into()),
+            None | Some(_) => {
+                let re = regex::Regex::new(
+                    r"VR_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)",
+                )
+                .expect("Regex should compile");
+                let reader = BufReader::new(Cursor::new(bindings.to_string()));
+                let mut support = None;
+                for line in reader.lines().map(Result::unwrap) {
+                    if let Some(caps) = re.captures(&line) {
+                        let value = caps.name("value").unwrap().as_str();
+                        if value == "false" {
+                            support = Some(Support::No);
+                        } else if value == "true" {
+                            support = Some(Support::Native);
+                        } else {
+                            // do nothing
+                        }
+                        break;
+                    }
+                }
+                support
+            }
         };
 
         match (strategy, support) {

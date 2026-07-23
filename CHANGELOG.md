@@ -21,11 +21,10 @@ number but is not a standalone package, so its changes are also listed here.
 
 With the `0.17.0` version the project was renamed to `Gungraun`. The packages
 were renamed from `iai-callgrind` to `gungraun`, `iai-callgrind-runner` to
-`gungraun-runner` and `iai-callgrind-macros` to `gungraun-macros`.
-
-The `valgrind-requests` package was extracted from the `gungraun` package and is
-now an independent package with an own
-[CHANGELOG](./valgrind-requests/CHANGELOG.md) file.
+`gungraun-runner` and `iai-callgrind-macros` to `gungraun-macros`. The
+`valgrind-requests` package was extracted from the `gungraun` package and is now
+an independent package with an own [CHANGELOG](./valgrind-requests/CHANGELOG.md)
+file.
 
 With the release of `0.19.3`, the `gungraun-summary` package was created as a
 separate package with an own [CHANGELOG](./gungraun-summary/CHANGELOG.md).
@@ -58,6 +57,8 @@ and this project adheres to
 - Changes to the json summary (and schema):
     - Add display field to `summary::model::ToolRegression`, `Soft` and `Hard`
       variants
+- Extract valgrind support table from valgrind-requests build script into new
+  gungraun-common crate.
 
 ## [0.19.4] - 2026-07-10
 

@@ -29,6 +29,7 @@ stubs = [
   "dep:cc",
   "dep:cfg-if",
   "dep:cty",
+  "dep:gungraun-common",
   "dep:regex",
   "dep:rustc_version",
   "dep:strum",
@@ -45,6 +46,7 @@ cty = { workspace = true, optional = true }
 [build-dependencies]
 bindgen = { workspace = true, optional = true }
 cc = { workspace = true, optional = true }
+gungraun-common = { path = "../gungraun-common", version = "=0.19.4", optional = true }
 regex = { workspace = true, optional = true }
 rustc_version = { workspace = true, optional = true }
 strum = { workspace = true, optional = true, features = ["derive"] }

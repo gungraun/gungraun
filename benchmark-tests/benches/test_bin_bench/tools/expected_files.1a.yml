@@ -29,6 +29,8 @@ data:
         - pattern: memcheck.bench_subprocess.trace_children.*.log
           count: 2
       files:
+        - perf.bench_subprocess.trace_children.log
+        - perf.bench_subprocess.trace_children.out
         - summary.json
   - group: bench_group
     function: bench_subprocess
@@ -47,4 +49,6 @@ data:
         - massif.bench_subprocess.no_trace_children.log
         - massif.bench_subprocess.no_trace_children.out
         - memcheck.bench_subprocess.no_trace_children.log
+        - perf.bench_subprocess.no_trace_children.log
+        - perf.bench_subprocess.no_trace_children.out
         - summary.json

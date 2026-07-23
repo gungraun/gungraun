@@ -1,5 +1,5 @@
 use gungraun::prelude::*;
-use gungraun::{Bbv, Dhat, Drd, Helgrind, Massif, Memcheck, OutputFormat};
+use gungraun::{Bbv, Dhat, Drd, Helgrind, Massif, Memcheck, OutputFormat, Perf};
 
 #[binary_benchmark]
 #[bench::trace_children()]
@@ -26,6 +26,7 @@ main!(
         .tool(Bbv::default())
         .tool(Memcheck::with_args(["--time-stamp=yes"]))
         .tool(Drd::default())
-        .tool(Helgrind::default()),
+        .tool(Helgrind::default())
+        .tool(Perf::default()),
     binary_benchmark_groups = bench_group
 );

@@ -2,8 +2,8 @@
 #
 # Description:
 #   Tests running multiple Valgrind tools (Dhat, Massif, Bbv, Memcheck, Drd,
-#   Helgrind) in a single benchmark run. Also validates the `trace-children`
-#   option for subprocess instrumentation.
+#   Helgrind, Perf) in a single benchmark run. Also validates the
+#   `trace-children` option for subprocess instrumentation for Valgrind tools.
 #
 # Test Steps:
 #   1. Run benchmarks with `--nocapture` and all tools enabled
@@ -16,14 +16,17 @@
 #   - `Memcheck` with `--time-stamp=yes` argument
 #   - `Drd` with default configuration
 #   - `Helgrind` with default configuration
+#   - `Perf` with default configuration
 #   - `trace-children=yes/no` option for subprocess handling
 #
 # Expected Outcomes:
 #   - All tools produce expected output files
 #   - Stdout matches expected format (platform-specific for FreeBSD)
 #   - No stderr output (clean execution)
-#   - Subprocess instrumentation works with `trace-children` option
+#   - Subprocess instrumentation works with `trace-children` option for Valgrind
+#     tools
 #   - FreeBSD platform has separate expected outputs
+#   - FreeBSD doesn't run perf and skips it silently
 
 groups:
   - runs_on: "!x86_64-unknown-freebsd"

@@ -189,11 +189,15 @@ mod imp {
     /// No-op disable macro when perf feature is disabled.
     #[macro_export]
     macro_rules! perf_disable {
-        ($control_token:expr) => {};
+        ($control_token:expr) => {{
+            let _lock = $control_token;
+        }};
     }
 
+    /// Lazily initialized process-global perf control state.
     pub static mut PERF_CONTROL: Option<PerfControl> = None;
 
+    /// Synchronizes writes to the inherited perf log file descriptor.
     pub struct PerfControl;
 
     /// Writes a single message line to the perf log file.
@@ -202,7 +206,6 @@ mod imp {
 }
 
 pub use imp::log;
-#[cfg(all(target_os = "linux", feature = "perf"))]
 #[doc(hidden)]
 pub use imp::{PERF_CONTROL, PerfControl};
 

@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 #[inline(never)]
 fn noop() -> u64 {
     std::hint::black_box(42)

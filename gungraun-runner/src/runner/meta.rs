@@ -7,6 +7,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::{Context, Result, anyhow};
 use gungraun_common::SupportedTools;
@@ -99,23 +100,27 @@ pub struct Cmd {
     pub bin: PathBuf,
 }
 
-/// `Metadata` contains all information that needs to be collected from cargo and the environment
+/// Information collected from Cargo, the environment, and command-line arguments for a benchmark
+/// run.
 ///
-/// More specifically, `Metadata` contains global constants, environment variables and command-line
-/// arguments, the basic valgrind [`Cmd`], ...
+/// Tool execution modes are resolved lazily when first requested. Cloned `Metadata` values share
+/// the execution-mode caches, so a mode resolved through one clone is available through the others.
 #[derive(Debug, Clone)]
 pub struct Metadata {
     /// A string describing the architecture of the CPU that is currently in use (e.g. "x86")
     pub arch: String,
     /// The command-line arguments parsed from the arguments to `cargo bench -- ARGS` as ARGS
     pub args: CommandLineArgs,
-    /// The mode for running perf, determined by ASLR settings, runner configuration, and CPU
-    /// topology.
+    /// The platform command used to disable ASLR for tool invocations.
     ///
-    /// See [`PerfExecMode`] for details on whether perf will be invoked directly, through an
-    /// ASLR-disabling wrapper, or through the custom tool runner. On supported hybrid CPU systems,
-    /// the selected mode can already include a `taskset` wrapper for P-core pinning.
-    pub perf_exec_mode: PerfExecMode,
+    /// This is `None` when ASLR is allowed, the platform has no supported wrapper, or the wrapper
+    /// executable cannot be resolved.
+    pub aslr_wrapper: Option<Cmd>,
+    /// The shared, lazily initialized cache for the perf execution mode.
+    ///
+    /// Use [`Metadata::perf_exec_mode`] to resolve and access the mode. The cache is shared by all
+    /// clones of this `Metadata` value.
+    pub perf_exec_mode: Arc<OnceLock<PerfExecMode>>,
     /// The path to the project top-level directory
     pub project_root: PathBuf,
     /// Tool families supported by the benchmark's compilation target.
@@ -131,10 +136,11 @@ pub struct Metadata {
     /// * `/home/my/workspace/my-project/target/gungraun/my-project` or
     /// * `/home/my/workspace/my-project/target/gungraun/x86_64-linux-unknown-gnu/my-project`
     pub target_dir: PathBuf,
-    /// The mode for running Valgrind, determined by ASLR settings and runner configuration
+    /// The shared, lazily initialized cache for the Valgrind execution mode.
     ///
-    /// See [`ValgrindExecMode`] for details on how Valgrind will be invoked.
-    pub valgrind_exec_mode: ValgrindExecMode,
+    /// Use [`Metadata::valgrind_exec_mode`] to resolve and access the mode. The cache is shared by
+    /// all clones of this `Metadata` value.
+    pub valgrind_exec_mode: Arc<OnceLock<ValgrindExecMode>>,
 }
 
 impl Cmd {
@@ -265,34 +271,82 @@ impl Metadata {
 
         let aslr_wrapper = detect_aslr_wrapper(&args, &arch);
 
-        let valgrind_exec_mode = if supported_tools.valgrind {
-            detect_valgrind_exec_mode(&args, aslr_wrapper.as_ref())?
-        } else {
-            // The exact value for the `Cmd` here doesn't matter, since we never execute it
-            ValgrindExecMode::Valgrind(Cmd::new("valgrind"))
-        };
-
-        let perf_exec_mode = if supported_tools.perf {
-            detect_perf_exec_mode_for(
-                &args,
-                aslr_wrapper.as_ref(),
-                Path::new("/sys/devices"),
-                CoreTopologyTarget::current(),
-            )?
-        } else {
-            // The exact value for the `Cmd` here doesn't matter, since we never execute it
-            PerfExecMode::Perf(Cmd::new("perf"))
-        };
-
         Ok(Self {
             arch,
             args,
-            perf_exec_mode,
+            aslr_wrapper,
+            perf_exec_mode: Arc::new(OnceLock::new()),
             project_root,
             supported_tools,
             target_dir,
-            valgrind_exec_mode,
+            valgrind_exec_mode: Arc::new(OnceLock::new()),
         })
+    }
+
+    /// Return the perf execution mode, resolving and caching it on first successful access.
+    ///
+    /// The selected [`PerfExecMode`] accounts for the configured perf binary, custom tool runner,
+    /// ASLR wrapper, and supported CPU topology. The cached mode is shared by all clones of this
+    /// `Metadata` value.
+    ///
+    /// # Concurrency and race safety
+    ///
+    /// When multiple threads or tasks (for example in a [`crate::runner::tasks::ThreadPool`]) call
+    /// this method before the cache is initialized, each one may run detection concurrently. Only
+    /// the first successful caller that completes [`OnceLock::set`](std::sync::OnceLock::set) wins;
+    /// every other caller discards its computed value and returns the shared cached result.
+    ///
+    /// This is safe because [`OnceLock`](std::sync::OnceLock) synchronizes initialization: it
+    /// prevents data races, guarantees safe publication of the stored value, and always leaves a
+    /// value in the cell when `set` returns. A detection failure affects only the failing caller
+    /// and never writes a partial or corrupt state into the cache.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configured custom tool runner cannot be resolved.
+    pub fn perf_exec_mode(&self) -> Result<&PerfExecMode> {
+        if let Some(mode) = self.perf_exec_mode.get() {
+            return Ok(mode);
+        }
+
+        let mode = detect_perf_exec_mode_for(
+            &self.args,
+            self.aslr_wrapper.as_ref(),
+            Path::new("/sys/devices"),
+            CoreTopologyTarget::current(),
+        )?;
+
+        let _ = self.perf_exec_mode.set(mode);
+        Ok(self
+            .perf_exec_mode
+            .get()
+            .expect("perf exec mode should be initialized"))
+    }
+
+    /// Return the Valgrind execution mode, resolving and caching it on first successful access.
+    ///
+    /// The selected [`ValgrindExecMode`] accounts for the configured Valgrind binary, custom tool
+    /// runner, and ASLR wrapper. The cached mode is shared by all clones of this `Metadata` value.
+    ///
+    /// # Concurrency and race safety
+    ///
+    /// See [`Metadata::perf_exec_mode`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configured custom tool runner cannot be resolved.
+    pub fn valgrind_exec_mode(&self) -> Result<&ValgrindExecMode> {
+        if let Some(mode) = self.valgrind_exec_mode.get() {
+            return Ok(mode);
+        }
+
+        let mode = detect_valgrind_exec_mode(&self.args, self.aslr_wrapper.as_ref())?;
+
+        let _ = self.valgrind_exec_mode.set(mode);
+        Ok(self
+            .valgrind_exec_mode
+            .get()
+            .expect("valgrind exec mode should be initialized"))
     }
 
     /// Construct a `Command` for running the Valgrind or perf tool
@@ -313,7 +367,7 @@ impl Metadata {
         run_options: &RunOptions,
     ) -> Result<Command> {
         let base_command = if tool_config.tool() == Tool::Perf {
-            let exec_mode: &PerfExecMode = &self.perf_exec_mode;
+            let exec_mode = self.perf_exec_mode()?;
             match exec_mode {
                 PerfExecMode::DisabledASLR(cmd) | PerfExecMode::Perf(cmd) => {
                     ToolBaseCommand::Direct(cmd)
@@ -327,7 +381,7 @@ impl Metadata {
                 }
             }
         } else {
-            let exec_mode: &ValgrindExecMode = &self.valgrind_exec_mode;
+            let exec_mode = self.valgrind_exec_mode()?;
             match exec_mode {
                 ValgrindExecMode::DisabledASLR(cmd) | ValgrindExecMode::Valgrind(cmd) => {
                     ToolBaseCommand::Direct(cmd)
@@ -661,7 +715,7 @@ pub fn detect_valgrind_exec_mode(
     Ok(valgrind_exec_mode)
 }
 
-// TODO: does perf needs specific env vars?
+// TODO: does perf need specific env vars?
 /// Clear the environment variables
 ///
 /// The `LD_PRELOAD` and `LD_LIBRARY_PATH` variables are skipped. If they are set there's

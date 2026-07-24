@@ -43,6 +43,14 @@ Gungraun uses `just` as a task runner. Always prefer `just` commands over direct
 - **Line Length:** 100 characters for comments (enforced by rustfmt).
 - **Newlines:** Unix style (`\n`).
 
+### Public API and Semantic Versioning
+
+Although much of `gungraun-runner` uses `pub`, most of its API is internal to
+the Gungraun project and changes to it are not considered semver-breaking. The
+exception is all items in modules exported through public feature flags, such as
+`api`, `summary`, and `schema`. Treat changes to these items as changes to the
+public API and preserve semantic versioning guarantees.
+
 ### Formatting & Imports
 
 - **Rustfmt:** Strictly adhere to `rustfmt.toml`.

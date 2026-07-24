@@ -11,6 +11,7 @@ pub mod stats {
     pub use gungraun_runner::api::{calibrate_linear, logistic};
 }
 
+use gungraun_common::supported_tools;
 // The runner api is not used directly in order to decouple the user interface and
 // documentation from the internal usage.
 //
@@ -181,6 +182,7 @@ impl Runner {
         cmd.arg(file);
         cmd.arg(module_path);
         cmd.arg(env!("__GUNGRAUN_BUILD_TARGET"));
+        cmd.arg(supported_tools().to_string());
         cmd.arg(bench_bin); // The executable benchmark binary
 
         Self {

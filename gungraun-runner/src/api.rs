@@ -108,6 +108,8 @@ use std::time::Duration;
 #[cfg(feature = "runner")]
 use anyhow::anyhow;
 #[cfg(feature = "runner")]
+use gungraun_common::SupportedTools;
+#[cfg(feature = "runner")]
 use indexmap::IndexSet;
 #[cfg(feature = "runner")]
 use indexmap::indexset;
@@ -1283,7 +1285,7 @@ pub enum ToolRegressionConfig {
     None,
 }
 
-/// The Valgrind tools which can be run in a benchmark
+/// The profiling tools which can be run in a benchmark.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum Tool {
@@ -1701,7 +1703,10 @@ pub struct Sandbox {
 /// The tool specification from the gungraun library side
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ToolSpec {
-    /// If true the tool is run. Ignored for the default tool which always runs
+    /// Whether this tool is enabled.
+    ///
+    /// A value of `false` prevents the tool from being run, including when this specification is
+    /// for the configured default tool.
     pub enable: Option<bool>,
     /// The entry point for the tool
     pub entry_point: Option<EntryPoint>,
@@ -3164,6 +3169,24 @@ impl Tool {
     /// Returns `true` if this tool supports xleak files.
     pub fn has_xleak_file(&self) -> bool {
         *self == Self::Memcheck
+    }
+
+    /// Returns whether this tool's family supports the benchmark compilation target.
+    ///
+    /// All Valgrind-based tools use the Valgrind support flag, while Perf uses the Perf support
+    /// flag. This does not check runtime availability of the corresponding executable.
+    pub fn is_supported(&self, supported_tools: SupportedTools) -> bool {
+        match self {
+            Self::Callgrind
+            | Self::Cachegrind
+            | Self::DHAT
+            | Self::Memcheck
+            | Self::Helgrind
+            | Self::DRD
+            | Self::Massif
+            | Self::BBV => supported_tools.valgrind,
+            Self::Perf => supported_tools.perf,
+        }
     }
 }
 

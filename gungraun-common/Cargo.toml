@@ -13,7 +13,7 @@ name = "gungraun-common"
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
-version.workspace = true
+version = "0.1.0"
 
 [lib]
 
@@ -27,6 +27,7 @@ strum = ["dep:strum"]
 strum = { workspace = true, optional = true, features = ["derive"] }
 
 [dev-dependencies]
+rstest = { workspace = true }
 
 [lints.rust]
 missing_docs = "warn"

@@ -45,11 +45,12 @@ Gungraun Cons:
 - Gungraun's measurements merely correlate with wall-clock time. Wall-clock time
   is an obvious choice in many cases because it corresponds to what users
   perceive and Criterion-rs measures it directly.
-- Gungraun can only be used on platforms supported by Valgrind. Notably, this
-  does not include Windows.
-- Gungraun needs additional binaries, `valgrind` and the `gungraun-runner`. The
-  version of the runner needs to be in sync with the `gungraun` library.
-  Criterion-rs is only a library and the installation is usually simpler.
+- Gungraun requires a target supported by either its Valgrind-based tools or
+  Linux perf. Notably, this does not include Windows.
+- Gungraun needs the `gungraun-runner` and the executable for each configured
+  tool, such as `valgrind` or `perf`. The version of the runner needs to be in
+  sync with the `gungraun` library. Criterion-rs is only a library and the
+  installation is usually simpler.
 
 Especially, due to the first point in the `Cons`, I think it is still required
 to run wall-clock time benchmarks and use `Criterion-rs` in conjunction with

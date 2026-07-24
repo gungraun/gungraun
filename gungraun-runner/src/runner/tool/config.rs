@@ -7,12 +7,11 @@
 //!    for the resolution phase and [`ToolConfigBuilder::build`] for the materialization phase,
 //!    which handles tool-specific expansion rules (perf event-set splitting, record sidecars,
 //!    etc.).
-//! 2. **Execution** — [`ToolConfigs::run`] iterates enabled [`ToolConfig`]s and drives the full
-//!    benchmark lifecycle for each: output-path derivation, sandbox setup, assistant launch, delay,
-//!    command construction and execution, optional perf-overhead measurement, teardown, and sandbox
-//!    reset. The [`ToolConfigs`] collection also provides shared helpers such as
-//!    [`analyzers`](ToolConfigs::analyzers), [`output_paths`](ToolConfigs::output_paths), and
-//!    [`alpha`](ToolConfigs::alpha).
+//! 2. **Execution** — [`ToolConfigs::run`] iterates the retained [`ToolConfig`]s and drives the
+//!    full benchmark lifecycle for each: output-path derivation, sandbox setup, assistant launch,
+//!    delay, command construction and execution, optional perf-overhead measurement, teardown, and
+//!    sandbox reset. The [`ToolConfigs`] collection also provides shared helpers such as
+//!    [`analyzers`](ToolConfigs::analyzers) and [`output_paths`](ToolConfigs::output_paths).
 //!
 //! # Why a single tool can produce multiple configs
 //!
@@ -153,8 +152,6 @@ pub struct ToolConfig {
     pub has_analyzer: bool,
     /// If true, this tool is the default tool for the benchmark run
     pub is_default: bool,
-    /// If true, this tool is enabled for this benchmark
-    pub is_enabled: bool,
     /// The tool-specific resolved options (e.g. [`PerfConfig`] for perf, [`DhatConfig`] for DHAT).
     pub options: ToolConfigOptions,
     /// Sequential part number when a tool emits multiple configs.
@@ -186,7 +183,6 @@ pub struct ToolConfigBuilder {
     entry_point: Option<EntryPoint>,
     flamegraph_config: ToolFlamegraphConfig,
     is_default: bool,
-    is_enabled: bool,
     options: Vec<ToolConfigOptions>,
     raw_tool_args: RawToolArgs,
     record: bool,
@@ -228,8 +224,8 @@ pub enum ToolConfigOptions {
 
 /// A collection of [`ToolConfig`]s that owns their execution and provides shared helpers.
 ///
-/// [`ToolConfigs::run`] iterates enabled configs and drives the full benchmark lifecycle for each.
-/// The collection also exposes helpers such as [`analyzers`](ToolConfigs::analyzers) and
+/// [`ToolConfigs::run`] iterates every retained config and drives the full benchmark lifecycle for
+/// each. The collection also exposes helpers such as [`analyzers`](ToolConfigs::analyzers) and
 /// [`output_paths`](ToolConfigs::output_paths) used by downstream code.
 #[derive(Debug, Clone)]
 pub struct ToolConfigs(pub Vec<ToolConfig>);
@@ -237,7 +233,6 @@ pub struct ToolConfigs(pub Vec<ToolConfig>);
 impl ToolConfig {
     /// Creates a new `ToolConfig`.
     pub fn new(
-        is_enabled: bool,
         args: ToolArgs,
         regression_config: ToolRegressionConfig,
         flamegraph_config: ToolFlamegraphConfig,
@@ -255,7 +250,6 @@ impl ToolConfig {
             flamegraph_config,
             has_analyzer,
             is_default,
-            is_enabled,
             options,
             part,
             regression_config,
@@ -414,7 +408,6 @@ impl ToolConfigBuilder {
         options: &ToolConfigOptions,
     ) -> Result<Vec<ToolConfig>> {
         let config = ToolConfig::new(
-            self.is_enabled,
             args,
             self.regression_config.clone(),
             self.flamegraph_config.clone(),
@@ -640,12 +633,11 @@ impl ToolConfigBuilder {
     ) -> Result<Self> {
         Self::apply_meta_perf_options(tool, &mut tool_spec, meta);
 
-        let (options, is_enabled, record, record_args, timeout) =
-            if let Some(tool_spec) = tool_spec.as_ref() {
-                resolve_tool_spec_options(tool_spec, tool, perf_mode_override)?
-            } else {
-                resolve_default_options(tool, perf_mode_override)?
-            };
+        let (options, record, record_args, timeout) = if let Some(tool_spec) = tool_spec.as_ref() {
+            resolve_tool_spec_options(tool_spec, tool, perf_mode_override)?
+        } else {
+            resolve_default_options(tool, perf_mode_override)?
+        };
 
         assert!(options.iter().all(|o| matches!(
             (tool, &o),
@@ -661,7 +653,6 @@ impl ToolConfigBuilder {
         )));
 
         let mut builder = Self {
-            is_enabled,
             tool_spec,
             entry_point: Option::default(),
             flamegraph_config: ToolFlamegraphConfig::None,
@@ -784,6 +775,11 @@ impl ToolConfigs {
     /// `valgrind_args` are from the in-benchmark configuration: `LibraryBenchmarkConfig` or
     /// `BinaryBenchmarkConfig`
     ///
+    /// Tool specifications are retained only when their tool is supported on the benchmark target
+    /// and they have not been disabled with [`ToolSpec::enable`]. If the configured default is not
+    /// retained, the first remaining configuration becomes the effective default. The returned
+    /// collection is empty when no configured tool is retained.
+    ///
     /// # Errors
     ///
     /// This function will return an error if the configs cannot be created
@@ -800,21 +796,29 @@ impl ToolConfigs {
         perf_mode_override: Option<PerfRunMode>,
     ) -> Result<Self> {
         let extracted_tool = tool_specs.consume(default_tool);
+        let default_tool_is_enabled = extracted_tool
+            .as_ref()
+            .is_none_or(|t| t.enable.unwrap_or(true));
 
-        output_format.update(extracted_tool.as_ref());
-        let default_tool_configs = ToolConfigBuilder::new(
-            default_tool,
-            extracted_tool,
-            true,
-            default_args,
-            module_path,
-            id,
-            meta,
-            valgrind_args,
-            default_entry_point,
-            perf_mode_override,
-        )?
-        .build()?;
+        let default_tool_configs =
+            if default_tool.is_supported(meta.supported_tools) && default_tool_is_enabled {
+                output_format.update(extracted_tool.as_ref());
+                ToolConfigBuilder::new(
+                    default_tool,
+                    extracted_tool,
+                    true,
+                    default_args,
+                    module_path,
+                    id,
+                    meta,
+                    valgrind_args,
+                    default_entry_point,
+                    perf_mode_override,
+                )?
+                .build()?
+            } else {
+                vec![]
+            };
 
         // The tool selection from the command line or env args overwrites the tool selection from
         // the benchmark file. However, any tool configurations from the benchmark files are
@@ -834,23 +838,31 @@ impl ToolConfigs {
         };
 
         let mut tool_configs = Self(default_tool_configs);
-        let iter = meta_tool_specs.into_iter().map(|tool_spec| {
-            output_format.update(Some(&tool_spec));
+        let mut is_default = tool_configs.is_empty();
 
-            ToolConfigBuilder::new(
-                tool_spec.tool,
-                Some(tool_spec),
-                false,
-                default_args,
-                module_path,
-                id,
-                meta,
-                valgrind_args,
-                default_entry_point,
-                perf_mode_override,
-            )?
-            .build()
-        });
+        let iter = meta_tool_specs
+            .into_iter()
+            .filter(|t| t.tool.is_supported(meta.supported_tools) && t.enable.unwrap_or(true))
+            .map(|tool_spec| {
+                output_format.update(Some(&tool_spec));
+
+                let configs = ToolConfigBuilder::new(
+                    tool_spec.tool,
+                    Some(tool_spec),
+                    is_default,
+                    default_args,
+                    module_path,
+                    id,
+                    meta,
+                    valgrind_args,
+                    default_entry_point,
+                    perf_mode_override,
+                )?
+                .build();
+
+                is_default = false;
+                configs
+            });
         tool_configs.extend(iter)?;
 
         output_format.update_from_meta(meta);
@@ -886,25 +898,26 @@ impl ToolConfigs {
         Some((first_alpha, first_min_pcnt_running).into())
     }
 
-    /// Returns `true` if this `tool` is present and enabled
-    pub fn has_tool_enabled(&self, tool: Tool) -> bool {
-        self.0.iter().any(|t| t.tool() == tool && t.is_enabled)
+    /// Returns the effective default tool, or `None` if this collection is empty.
+    pub fn default_tool(&self) -> Option<Tool> {
+        self.0
+            .iter()
+            .find_map(|t| (t.is_default).then_some(t.tool()))
     }
 
-    /// Returns `true` if there are any [`Tool`]s enabled.
-    pub fn has_tools_enabled(&self) -> bool {
-        self.0.iter().any(|t| t.is_enabled)
-    }
-
-    /// Returns `true` if there are multiple tools configured and are enabled.
+    /// Returns `true` if this collection contains configurations for multiple tools.
     pub fn has_multiple(&self) -> bool {
         self.0
             .iter()
-            .filter(|config| config.is_enabled)
             .map(ToolConfig::tool)
             .collect::<HashSet<_>>()
             .len()
             > 1
+    }
+
+    /// Returns `true` if no tool configuration was retained.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Returns the parser and configurations for each tool to be able to analyze the outputs.
@@ -916,7 +929,7 @@ impl ToolConfigs {
 
         self.0
             .iter()
-            .filter(|t| t.is_enabled && t.has_analyzer && seen.insert(t.tool()))
+            .filter(|t| t.has_analyzer && seen.insert(t.tool()))
             .map(|t| {
                 let tool_path = output_path.to_tool_output(t.tool());
                 (
@@ -930,13 +943,13 @@ impl ToolConfigs {
             .collect()
     }
 
-    /// Return all [`ToolOutputPath`]s of all enabled tools (once per tool)
+    /// Returns all [`ToolOutputPath`]s of the retained tools (once per tool).
     pub fn output_paths(&self, output_path: &ToolOutputPath) -> Vec<ToolOutputPath> {
         let mut seen = HashSet::new();
 
         self.0
             .iter()
-            .filter(|t| t.is_enabled && seen.insert(t.tool()))
+            .filter(|t| seen.insert(t.tool()))
             .map(|t| output_path.to_tool_output(t.tool()))
             .collect()
     }
@@ -953,15 +966,16 @@ impl ToolConfigs {
         Ok(())
     }
 
-    /// Run all enabled [`ToolConfig`]s and return the [`BenchmarkSummary`].
+    /// Runs all retained [`ToolConfig`]s and returns the [`BenchmarkSummary`].
     ///
     /// Each [`ToolConfig`] is executed in isolation and sequentially so that tools do not interfere
     /// with each other: [`ToolOutputPath`]s are scoped per tool and [`ToolConfig::part`], the
     /// [`Sandbox`] is set up and reset for each run, and setup/teardown [`Assistant`]s run only
     /// for the active `ToolConfig`. Only the default tool captures output for the
-    /// [`BenchmarkSummary`]; other enabled tools are run silently. Perf batch overhead is measured
-    /// only when [`PerfRunMode::FixedBatch`] or [`PerfRunMode::DynamicBatch`] is in use. Disabled
-    /// configs are skipped entirely.
+    /// [`BenchmarkSummary`]; other tools are run silently. Perf batch overhead is measured only
+    /// when [`PerfRunMode::FixedBatch`] or [`PerfRunMode::DynamicBatch`] is in use. Disabled
+    /// and target-unsupported specifications have already been filtered out during
+    /// construction.
     pub fn run<'args, F>(
         self,
         benchmark_summary: BenchmarkSummary,
@@ -977,7 +991,7 @@ impl ToolConfigs {
     where
         F: Fn(&ToolConfig, Option<BenchRunMode>) -> Cow<'args, [OsString]>,
     {
-        for tool_config in self.0.iter().filter(|t| t.is_enabled) {
+        for tool_config in self.0 {
             let output_path = tool_config.output_path(output_path);
 
             // We're implicitly applying the default here: In the absence of a user provided sandbox
@@ -999,7 +1013,7 @@ impl ToolConfigs {
                 sandbox.as_ref().and_then(Sandbox::path),
             );
 
-            let command = ToolCommand::new(tool_config, &config.meta, &output_path, run_options)?;
+            let command = ToolCommand::new(&tool_config, &config.meta, &output_path, run_options)?;
             let nocapture = command.nocapture;
             let captured_output = if tool_config.is_default {
                 captured_output
@@ -1029,7 +1043,7 @@ impl ToolConfigs {
             process_handler
                 .start_bench(
                     command,
-                    tool_config,
+                    &tool_config,
                     executable,
                     &executable_args,
                     run_options,
@@ -1047,7 +1061,7 @@ impl ToolConfigs {
                 ) {
                     measure_perf_overhead(
                         &config.meta,
-                        tool_config,
+                        &tool_config,
                         executable,
                         &executable_args,
                         run_options,
@@ -1102,26 +1116,17 @@ impl From<api::ToolFlamegraphConfig> for ToolFlamegraphConfig {
 
 /// Resolve the [`ToolConfigOptions`] and related state from an explicit [`ToolSpec`].
 ///
-/// Return a tuple with `(options, is_enabled, record, record_args, timeout)`.
+/// Return a tuple with `(options, record, record_args, timeout)`.
 ///
 /// # Errors
 ///
 /// Returns an error if any perf validation fails (invalid alpha, `min_pcnt_running`, sample
 /// duration, zero calibration duration, ...).
-#[expect(clippy::type_complexity)]
 fn resolve_tool_spec_options(
     tool_spec: &ToolSpec,
     tool: Tool,
     perf_mode_override: Option<PerfRunMode>,
-) -> Result<(
-    Vec<ToolConfigOptions>,
-    bool,
-    bool,
-    RawToolArgs,
-    Option<Duration>,
-)> {
-    let is_enabled = tool_spec.enable.unwrap_or(true);
-
+) -> Result<(Vec<ToolConfigOptions>, bool, RawToolArgs, Option<Duration>)> {
     let (options, record, record_args, timeout) = match &tool_spec.options {
         api::ToolSpecOptions::Perf(perf_spec) => {
             let alpha = resolve_perf_alpha(perf_spec.alpha).map_err(anyhow::Error::msg)?;
@@ -1132,31 +1137,35 @@ fn resolve_tool_spec_options(
 
             let options = perf_spec.events.as_ref().map_or_else(
                 || {
-                    vec![ToolConfigOptions::Perf(PerfConfig {
+                    Ok(vec![ToolConfigOptions::Perf(PerfConfig {
                         alpha,
                         events: DEFAULT_PERF_EVENTS.into(),
                         non_zero_metrics: non_zero_metrics.clone(),
                         run_mode,
                         use_sampling: perf_spec.sample_duration.is_some(),
                         min_pcnt_running,
-                    })]
+                    })])
                 },
                 |events| {
                     events
                         .iter()
                         .map(|e| {
-                            ToolConfigOptions::Perf(PerfConfig {
-                                alpha,
-                                events: e.clone(),
-                                non_zero_metrics: non_zero_metrics.clone(),
-                                run_mode,
-                                use_sampling: perf_spec.sample_duration.is_some(),
-                                min_pcnt_running,
-                            })
+                            if e.is_empty() {
+                                Err(anyhow!("perf: empty event set"))
+                            } else {
+                                Ok(ToolConfigOptions::Perf(PerfConfig {
+                                    alpha,
+                                    events: e.clone(),
+                                    non_zero_metrics: non_zero_metrics.clone(),
+                                    run_mode,
+                                    use_sampling: perf_spec.sample_duration.is_some(),
+                                    min_pcnt_running,
+                                }))
+                            }
                         })
-                        .collect()
+                        .collect::<Result<Vec<ToolConfigOptions>>>()
                 },
-            );
+            )?;
 
             (
                 options,
@@ -1191,28 +1200,21 @@ fn resolve_tool_spec_options(
         }
     };
 
-    Ok((options, is_enabled, record, record_args, timeout))
+    Ok((options, record, record_args, timeout))
 }
 
 /// Resolve the default [`ToolConfigOptions`] and related state when no [`ToolSpec`] is provided.
 ///
-/// Return a tuple with `(options, is_enabled, record, record_args, timeout)`.
+/// Return a tuple with `(options, record, record_args, timeout)`.
 ///
 /// # Errors
 ///
 /// Returns an error if the default perf run mode is [`PerfRunMode::Calibrate`] with a zero
 /// duration.
-#[expect(clippy::type_complexity)]
 fn resolve_default_options(
     tool: Tool,
     perf_mode_override: Option<PerfRunMode>,
-) -> Result<(
-    Vec<ToolConfigOptions>,
-    bool,
-    bool,
-    RawToolArgs,
-    Option<Duration>,
-)> {
+) -> Result<(Vec<ToolConfigOptions>, bool, RawToolArgs, Option<Duration>)> {
     let options = match tool {
         Tool::DHAT => vec![ToolConfigOptions::DHAT(DhatConfig {
             frames: Vec::default(),
@@ -1237,7 +1239,7 @@ fn resolve_default_options(
         Tool::BBV => vec![ToolConfigOptions::BBV],
     };
 
-    Ok((options, true, false, RawToolArgs::default(), None))
+    Ok((options, false, RawToolArgs::default(), None))
 }
 
 /// Resolves the configured perf significance level (`alpha`) to a concrete value.
@@ -1390,10 +1392,9 @@ mod tests {
             ))
             .fx();
 
-        let (options, is_enabled, record, record_args, timeout) =
+        let (options, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
 
-        assert!(is_enabled);
         assert!(record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, Some(Duration::from_millis(5)));
@@ -1431,10 +1432,9 @@ mod tests {
             .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
             .fx();
 
-        let (options, is_enabled, record, record_args, timeout) =
+        let (options, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
 
-        assert!(is_enabled);
         assert!(!record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, None);
@@ -1461,10 +1461,9 @@ mod tests {
             .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
             .fx();
 
-        let (_, is_enabled, record, record_args, timeout) =
+        let (_, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
 
-        assert!(!is_enabled);
         assert!(!record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, None);
@@ -1479,10 +1478,9 @@ mod tests {
             ))
             .fx();
 
-        let (options, is_enabled, record, record_args, timeout) =
+        let (options, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::DHAT, None).unwrap();
 
-        assert!(is_enabled);
         assert!(!record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, None);
@@ -1498,10 +1496,9 @@ mod tests {
     fn test_resolve_tool_spec_options_none_for_callgrind_returns_callgrind() {
         let spec = tool_spec_f().tool(Tool::Callgrind).fx();
 
-        let (options, is_enabled, record, record_args, timeout) =
+        let (options, record, record_args, timeout) =
             resolve_tool_spec_options(&spec, Tool::Callgrind, None).unwrap();
 
-        assert!(is_enabled);
         assert!(!record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, None);
@@ -1643,10 +1640,9 @@ mod tests {
 
     #[test]
     fn test_resolve_default_options_perf_returns_expected_defaults() {
-        let (options, is_enabled, record, record_args, timeout) =
+        let (options, record, record_args, timeout) =
             resolve_default_options(Tool::Perf, None).unwrap();
 
-        assert!(is_enabled);
         assert!(!record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, None);
@@ -1667,10 +1663,9 @@ mod tests {
 
     #[test]
     fn test_resolve_default_options_callgrind_returns_expected_defaults() {
-        let (options, is_enabled, record, record_args, timeout) =
+        let (options, record, record_args, timeout) =
             resolve_default_options(Tool::Callgrind, None).unwrap();
 
-        assert!(is_enabled);
         assert!(!record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, None);
@@ -1679,10 +1674,9 @@ mod tests {
 
     #[test]
     fn test_resolve_default_options_dhat_returns_empty_frames() {
-        let (options, is_enabled, record, record_args, timeout) =
+        let (options, record, record_args, timeout) =
             resolve_default_options(Tool::DHAT, None).unwrap();
 
-        assert!(is_enabled);
         assert!(!record);
         assert_eq!(record_args, RawToolArgs::default());
         assert_eq!(timeout, None);
@@ -1702,7 +1696,6 @@ mod tests {
         assert_eq!(base.1, overridden.1);
         assert_eq!(base.2, overridden.2);
         assert_eq!(base.3, overridden.3);
-        assert_eq!(base.4, overridden.4);
 
         let [ToolConfigOptions::Perf(base_perf)] = &base.0[..] else {
             unreachable!("expected one perf option")
@@ -1811,7 +1804,6 @@ mod tests {
     fn test_build_record_config_inherits_all_top_level_fields() {
         let base = tool_config_f()
             .tool(Tool::Perf)
-            .is_enabled(false)
             .entry_point(EntryPoint::Default)
             .sanitize_output(SanitizeOutput::Yes)
             .part(1)
@@ -1840,7 +1832,6 @@ mod tests {
             base.options.clone(),
         );
 
-        assert_eq!(record_config.is_enabled, base.is_enabled);
         assert_eq!(record_config.entry_point, base.entry_point);
         assert_eq!(record_config.regression_config, base.regression_config);
         assert_eq!(record_config.flamegraph_config, base.flamegraph_config);

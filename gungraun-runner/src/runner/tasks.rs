@@ -767,9 +767,9 @@ mod tests {
 
     use super::*;
     use crate::api::LibraryBenchmarkConfig;
+    use crate::fixtures::metadata_f;
     use crate::runner::common::ModulePath;
     use crate::runner::lib_bench::{self, LibBench};
-    use crate::runner::meta::Metadata;
     const DEFAULT_TARGET: &str = "x86_64-unknown-linux-gnu";
 
     #[rstest]
@@ -992,7 +992,10 @@ mod tests {
 
     #[test]
     fn test_thread_pool_with_lib_bench() {
-        let meta = Metadata::new(&[], DEFAULT_TARGET).unwrap();
+        let meta = metadata_f()
+            .raw_command_line_args([])
+            .target(DEFAULT_TARGET)
+            .fx();
         let bench = lib_bench::LibBench::new(
             None,
             None,

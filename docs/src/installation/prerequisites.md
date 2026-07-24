@@ -1,7 +1,13 @@
 # Prerequisites
 
-In order to use Gungraun, you must have [Valgrind] installed. This means that
-Gungraun cannot be used on platforms that are not supported by Valgrind.
+Gungraun requires at least one supported profiling tool for the benchmark
+target. Valgrind is required for the default `Callgrind` configuration and the
+other Valgrind tools. On Linux, Gungraun also supports `perf`, so a benchmark
+configured exclusively for perf does not require Valgrind.
+
+Target support and runtime availability are separate. A configured tool must be
+installed and executable in the environment where the benchmark runs. Perf may
+also require suitable kernel permissions for the requested events.
 
 The default benchmarking tool is `Callgrind` and is in most cases perfectly
 suited to do the job but if you want or need to use

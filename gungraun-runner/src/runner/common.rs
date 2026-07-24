@@ -275,7 +275,9 @@ pub struct Runner {
 /// Temporary output files used to capture benchmark stdout and stderr.
 #[derive(Debug)]
 pub struct CapturedOutput {
-    /// TODO: DOCS
+    /// Whether Perf control messages are removed when captured output is written to the terminal.
+    ///
+    /// Filtering preserves all other bytes and line endings.
     pub filter_output: bool,
     /// Temporary file receiving captured stderr output.
     pub stderr: File,

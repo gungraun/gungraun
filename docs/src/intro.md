@@ -50,7 +50,8 @@ not a good fit.
   estimation of cpu cycles merely correlates to wall-clock times but is not a
   replacement for wall-clock times. The cycles estimation is primarily designed
   to be a relative metric to be used for comparison.
-- Gungraun cannot be run on Windows and platforms not supported by Valgrind.
+- Gungraun cannot be run on Windows or targets that support neither the
+  Valgrind-based tools nor Linux perf.
 
 ## Pronunciation and Origin of the Word Gungraun
 

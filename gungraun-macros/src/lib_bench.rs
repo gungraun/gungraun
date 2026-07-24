@@ -1888,8 +1888,6 @@ impl PerfRenderer<'_> {
     ///
     /// #after_perf
     /// ```
-    ///
-    /// This method dispatches to [`Self::render_once_after`] after the measured work.
     fn render_once(&self, setup: &TokenStream, work: &TokenStream) -> TokenStream {
         let after_perf = if let Some(teardown) = self.teardown.0.0.as_ref() {
             quote_spanned! { teardown.span() =>

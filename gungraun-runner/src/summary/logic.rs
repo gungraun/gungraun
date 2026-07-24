@@ -24,7 +24,7 @@ use crate::runner::common::{
 };
 use crate::runner::format::{
     Formatter, OutputFormat, OutputFormatKind, VerticalFormatter, print_no_capture_footer,
-    print_regressions,
+    print_no_config, print_regressions,
 };
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
@@ -99,6 +99,11 @@ impl BenchmarkSummary {
         post_processing_config: &PostProcessingConfig,
     ) -> Result<()> {
         post_processing_config.header.print();
+
+        if self.profiles.is_empty() {
+            print_no_config();
+            return Ok(());
+        }
 
         if config.meta.args.load_baseline.is_none() {
             match config.meta.args.nocapture {
@@ -590,6 +595,11 @@ impl Profiles {
     /// Creates a new collection of [`Profile`]s.
     pub fn new(values: Vec<Profile>) -> Self {
         Self(values)
+    }
+
+    /// Returns `true` when no tool produced a profile for the benchmark.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Return an iterator over the contained [`Profile`]s

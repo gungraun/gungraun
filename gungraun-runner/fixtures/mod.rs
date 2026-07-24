@@ -19,6 +19,7 @@ use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use bon::builder;
+use gungraun_common::SupportedTools;
 
 use crate::api::{
     CachegrindMetric, DelayKind, DhatMetric, EntryPoint, ExitWith, PerfRunMode, RawToolArgs,
@@ -183,8 +184,12 @@ pub fn metadata_f(
         .map(ToOwned::to_owned)
         .collect::<Vec<String>>();
     let target = target.unwrap_or("x86_64-unknown-linux-gnu");
+    let supported_tools = SupportedTools {
+        perf: true,
+        valgrind: true,
+    };
 
-    Metadata::new(&args, target).expect("metadata should be valid")
+    Metadata::new(&args, target, supported_tools).expect("metadata should be valid")
 }
 
 #[builder(finish_fn = "fx")]
@@ -382,7 +387,6 @@ pub fn tool_config_builder_f(
 pub fn tool_config_f(
     tool: Option<Tool>,
     is_default: Option<bool>,
-    is_enabled: Option<bool>,
     events: Option<String>,
     entry_point: Option<EntryPoint>,
     part: Option<usize>,
@@ -432,7 +436,6 @@ pub fn tool_config_f(
     });
 
     ToolConfig::new(
-        is_enabled.unwrap_or(true),
         args,
         ToolRegressionConfig::None,
         ToolFlamegraphConfig::None,

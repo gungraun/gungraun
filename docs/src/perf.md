@@ -2,6 +2,12 @@
 
 # Benchmarking with Perf
 
+Perf is supported only when the benchmark is compiled for Linux. Target support
+is separate from runtime availability: the `perf` executable must be available
+in the execution environment, and kernel security settings must permit the
+requested events. Missing executables, insufficient permissions, and invalid
+events are reported as runtime errors.
+
 - Despite being centered in the past on Valgrind and on one-shot benchmark, Perf
   is a first-class citizen
 - Perf bridges the gap between synthetic cpu profiles to hardware counters
@@ -22,6 +28,12 @@
     - It is usually nicer to work with a time budget than fixed numbers which
       let's estimate the overall time consumption of the benchmarks. I want to
       spend 3 seconds per function for outlier detection
+- `perf` may additionally require suitable system permissions and setting for
+  /proc/sys/kernel/perf_event_paranoid. But user-space benchmarking works fine
+  without setting perf_event_paranoid
+- Links to
+    - <https://www.brendangregg.com/perf.html>
+    - <https://perfwiki.github.io/main/>
 
 `fp` and `dwarf` are two user-space stack unwinding methods for
 `perf record --call-graph`.

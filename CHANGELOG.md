@@ -59,6 +59,8 @@ and this project adheres to
       variants
 - Extract valgrind support table from valgrind-requests build script into new
   gungraun-common crate.
+- The default tool can be disabled
+- Only enabled tool configurations are validated
 
 ## [0.19.4] - 2026-07-10
 

@@ -45,7 +45,7 @@
 - [Cachegrind](./cachegrind.md)
 - [Heap Profiling with DHAT](./dhat.md)
 - [Perf](./perf.md)
-- [Other Valgrind Tools](./tools.md)
+- [Additional Tools](./tools.md)
 - [Valgrind Client Requests](./client_requests.md)
 - [Callgrind Flamegraphs](./flamegraphs.md)
 

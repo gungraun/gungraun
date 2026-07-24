@@ -780,7 +780,8 @@ impl Callgrind {
     ///
     /// This is mostly useful to disable a tool which has been enabled in a
     /// [`crate::LibraryBenchmarkConfig`] (or [`crate::BinaryBenchmarkConfig`]) at a higher level.
-    /// However, the default tool (usually Callgrind) cannot be disabled.
+    /// This also disables the tool when it is the configured default. In that case, the first
+    /// remaining retained tool becomes the effective default.
     ///
     /// ```rust
     /// use gungraun::Callgrind;

@@ -237,7 +237,9 @@ pub struct BenchmarkRunner {
 ///
 /// A group can gate all runs to Linux only.
 pub struct GroupConfig {
-    /// TODO: DOCS
+    /// Assertions shared by every run in this group.
+    ///
+    /// A run-level assertion script takes precedence over the group-level script.
     expected: Option<GroupExpected>,
     /// Optional target triple include or exclude condition for the whole group.
     ///
@@ -256,8 +258,11 @@ pub struct GroupConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Expected output checks shared by all runs ([`RunConfig`]) in a [`GroupConfig`].
 pub struct GroupExpected {
-    /// TODO: DOCS
+    /// Shell script run as a fallback when a run has no assertion script of its own.
+    ///
+    /// The script is executed with `bash -ex` in the benchmark output base directory.
     script: Option<String>,
 }
 

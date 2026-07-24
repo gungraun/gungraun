@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result, anyhow};
+use gungraun_common::SupportedTools;
 use log::debug;
 
 use super::args::CommandLineArgs;
@@ -117,6 +118,11 @@ pub struct Metadata {
     pub perf_exec_mode: PerfExecMode,
     /// The path to the project top-level directory
     pub project_root: PathBuf,
+    /// Tool families supported by the benchmark's compilation target.
+    ///
+    /// The benchmark harness detects and passes this value to the runner. It is distinct from the
+    /// runtime execution modes, which resolve tool binaries and wrappers on the host.
+    pub supported_tools: SupportedTools,
     /// The absolute path of the `HOME` (per default `$WORKSPACE_ROOT/target/gungraun`). Plus, if
     /// configured, the target of the host like `x86_64-linux-unknown-gnu`. The final component is
     /// the `CARGO_PKG_NAME`.
@@ -199,7 +205,18 @@ impl CoreTopologyTarget {
 
 impl Metadata {
     /// Create a `new` Metadata
-    pub fn new(raw_command_line_args: &[String], target: &str) -> Result<Self> {
+    pub fn new(
+        raw_command_line_args: &[String],
+        target: &str,
+        supported_tools: SupportedTools,
+    ) -> Result<Self> {
+        if !supported_tools.has_at_least_one() {
+            return Err(anyhow!(
+                "No tool ({}) is supported for this target '{target}'",
+                SupportedTools::tools_list()
+            ));
+        }
+
         let args = CommandLineArgs::parse_validated_from(raw_command_line_args);
 
         let arch = std::env::consts::ARCH.to_owned();
@@ -247,19 +264,32 @@ impl Metadata {
         debug!("Detected target directory: '{}'", target_dir.display());
 
         let aslr_wrapper = detect_aslr_wrapper(&args, &arch);
-        let valgrind_exec_mode = detect_valgrind_exec_mode(&args, aslr_wrapper.as_ref())?;
-        let perf_exec_mode = detect_perf_exec_mode_for(
-            &args,
-            aslr_wrapper.as_ref(),
-            Path::new("/sys/devices"),
-            CoreTopologyTarget::current(),
-        )?;
+
+        let valgrind_exec_mode = if supported_tools.valgrind {
+            detect_valgrind_exec_mode(&args, aslr_wrapper.as_ref())?
+        } else {
+            // The exact value for the `Cmd` here doesn't matter, since we never execute it
+            ValgrindExecMode::Valgrind(Cmd::new("valgrind"))
+        };
+
+        let perf_exec_mode = if supported_tools.perf {
+            detect_perf_exec_mode_for(
+                &args,
+                aslr_wrapper.as_ref(),
+                Path::new("/sys/devices"),
+                CoreTopologyTarget::current(),
+            )?
+        } else {
+            // The exact value for the `Cmd` here doesn't matter, since we never execute it
+            PerfExecMode::Perf(Cmd::new("perf"))
+        };
 
         Ok(Self {
             arch,
             args,
             perf_exec_mode,
             project_root,
+            supported_tools,
             target_dir,
             valgrind_exec_mode,
         })

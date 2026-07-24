@@ -132,7 +132,10 @@ pub struct OutputFormat {
     pub dhat: IndexSet<DhatMetric>,
     /// The DRD error metrics to show
     pub drd: IndexSet<ErrorMetric>,
-    /// TODO: DOCS
+    /// Whether Perf control messages are removed from captured benchmark output.
+    ///
+    /// This is enabled when Perf is the effective default tool so that its `Events enabled` and
+    /// `Events disabled` messages do not clutter benchmark stdout or stderr.
     pub filter_output: bool,
     /// The Helgrind error metrics to show
     pub helgrind: IndexSet<ErrorMetric>,
@@ -1687,6 +1690,14 @@ pub fn print_no_capture_footer(nocapture: NoCapture) {
     if let Some(footer) = no_capture_footer(nocapture) {
         println!("{footer}");
     }
+}
+
+/// Prints the status used when no configured tool is supported and enabled for a benchmark.
+pub fn print_no_config() {
+    println!(
+        "  {}",
+        "skipped: no supported configured tool".bright_black()
+    );
 }
 
 /// Print detected regressions to `stderr`

@@ -154,6 +154,18 @@ Options:
           [env: GUNGRAUN_PARALLEL=]
           [default: 1]
 
+      --perf-bin <PERF_BIN>
+          Specify the path to the `perf` executable
+
+          By default, Gungraun searches for `perf` in the system PATH. When used with
+          `--tool-runner`,
+          the path of --perf-bin is passed to the runner as the perf binary to invoke.
+
+          Examples:
+            * --perf-bin=/usr/local/bin/perf
+
+          [env: GUNGRAUN_PERF_BIN=]
+
       --separate-targets[=<SEPARATE_TARGETS>]
           Separate gungraun benchmark output files by target
 
@@ -220,8 +232,7 @@ Options:
           passed as an argument to the runner.
 
           When specified, the runner is invoked as:
-            `<RUNNER> [RUNNER_ARGS...] <TOOL_BIN> [TOOL_ARGS...] <BENCHMARK>
-            [BENCHMARK_ARGS...]`
+            `<RUNNER> [RUNNER_ARGS...] <TOOL_BIN> [TOOL_ARGS...] <BENCHMARK> [BENCHMARK_ARGS...]`
 
           The runner receives extra environment variables that provide context:
           - `GUNGRAUN_TR_DEST_DIR`: The destination directory for tool output files
@@ -238,16 +249,15 @@ Options:
 
           Examples:
             * --tool-runner=docker
-            * --tool-runner=/path/to/wrapper
-            --tool-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
+            * --tool-runner=/path/to/wrapper --tool-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
 
           [env: GUNGRAUN_TOOL_RUNNER=]
 
       --tool-runner-args <TOOL_RUNNER_ARGS>
           Additional arguments to pass to the tool runner executable
 
-          This option is only effective when `--tool-runner` is specified. The arguments are
-          passed to the runner executable after `--tool-runner` and before the tool path.
+          This option is only effective when `--tool-runner` is specified. The arguments are passed
+          to the runner executable after `--tool-runner` and before the tool path.
 
           Environment variable interpolation is supported using the `${VAR}` syntax. Variables are
           resolved in this order:
@@ -269,12 +279,12 @@ Options:
       --tool-runner-dest <TOOL_RUNNER_DEST>
           Override the destination directory path for tool runner output files
 
-          This option is only effective when `--tool-runner` is specified. By default, tool
-          output files are written to paths under the gungraun home directory or in temporary
-          directories. This option allows substituting this path with a custom directory.
+          This option is only effective when `--tool-runner` is specified. By default, tool output
+          files are written to paths under the gungraun home directory or in temporary directories.
+          This option allows substituting this path with a custom directory.
 
-          When specified, any occurrence of this path prefix in tool arguments will be replaced
-          with the directory path specified by `--tool-runner-dest`.
+          When specified, any occurrence of this path prefix in tool arguments will be replaced with
+          the directory path specified by `--tool-runner-dest`.
 
           WARNING: Make sure the directory of this argument exists, is empty and doesn't point to a
           directory with important files in it! This directory is managed by Gungraun and Gungraun
@@ -289,9 +299,8 @@ Options:
       --tool-runner-root <TOOL_RUNNER_ROOT>
           Override the workspace root path for the tool runner
 
-          This option is only effective when `--tool-runner` is specified. It allows substituting
-          the workspace root path prefix in the benchmark executable path and all other tool
-          arguments.
+          This option is only effective when `--tool-runner` is specified. It allows substituting the
+          workspace root path prefix in the benchmark executable path and all other tool arguments.
 
           This can be useful for container setups where the workspace is mounted at a different
           location inside the container.
@@ -539,7 +548,7 @@ Options:
 
           Examples:
             * --cachegrind-metrics='ir' to show only `Instructions`
-          * --cachegrind-metrics='@all' to show all possible Cachegrind metrics
+            * --cachegrind-metrics='@all' to show all possible Cachegrind metrics
             * --cachegrind-metrics='@default,@mr' to show cache miss rates in addition to the
             defaults
 
@@ -567,7 +576,7 @@ Options:
 
           Examples:
             * --callgrind-metrics='ir' to show only `Instructions`
-          * --callgrind-metrics='@all' to show all possible Callgrind metrics
+            * --callgrind-metrics='@all' to show all possible Callgrind metrics
             * --callgrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
 
           [env: GUNGRAUN_CALLGRIND_METRICS=]
@@ -588,7 +597,7 @@ Options:
 
           Examples:
             * --dhat-metrics='totalbytes' to show only `Total Bytes`
-          * --dhat-metrics='@all' to show all possible DHAT metrics
+            * --dhat-metrics='@all' to show all possible DHAT metrics
             * --dhat-metrics='@default,mb' to show maximum bytes in addition to the defaults
 
           [env: GUNGRAUN_DHAT_METRICS=]
@@ -658,7 +667,7 @@ Options:
           The default tool used to run the benchmarks
 
           The standard tool to run the benchmarks is Callgrind but can be overridden with this
-          option. Any Valgrind tool can be used:
+          option. Any supported tool can be used:
             * callgrind
             * cachegrind
             * dhat
@@ -667,6 +676,10 @@ Options:
             * drd
             * massif
             * exp-bbv
+            * perf
+
+          The selected tool must be supported on the benchmark target. A target-supported tool must
+          still be available in the execution environment when the benchmark runs.
 
           This argument matches the tool case-insensitive. Note that using Cachegrind with this
           option to benchmark library functions needs adjustments to the benchmarking functions with
@@ -677,16 +690,34 @@ Options:
 
           [env: GUNGRAUN_DEFAULT_TOOL=]
 
+      --perf-record[=<PERF_RECORD>]
+          Run `perf record` in addition to the `perf stat` benchmark run
+
+          This option does not enable running perf. Using this option without enabling perf (for
+          example with `--tools=perf` or in the benchmark within a `LibraryBenchmarkConfig` or
+          `BinaryBenchmarkConfig`) does nothing. Arguments to the perf record invocation can be
+          passed
+          with `--perf-record-args`.
+
+          Examples:
+            * --perf-record
+            * --perf-record=false
+
+          [env: GUNGRAUN_PERF_RECORD=]
+          [possible values: true, false]
+
       --tools <TOOLS>...
           A comma separated list of tools to run additionally to Callgrind or another default tool
 
-          The tools specified here take precedence over the tools in the benchmarks. The Valgrind
+          The tools specified here take precedence over the tools in the benchmarks. The supported
           tools which are allowed here are the same as the ones listed in the documentation of
           --default-tool.
+          Target-unsupported tools are omitted from a benchmark's resolved tool configurations.
 
           Examples
             * --tools dhat
             * --tools memcheck,drd
+            * --tools perf
 
           [env: GUNGRAUN_TOOLS=]
 
@@ -787,6 +818,93 @@ Options:
             * --memcheck-args='--leak-check=yes --show-leak-kinds=all'
 
           [env: GUNGRAUN_MEMCHECK_ARGS=]
+
+      --perf-args <PERF_ARGS>
+          The command-line arguments to pass through to `perf stat`
+
+          Gungraun controls output, event selection, and process execution. Not all perf arguments
+          are
+          allowed and arguments that change those settings are ignored with a warning. Note that
+          `--perf-args` is used for the perf stat invocation. To pass arguments to the perf record
+          invocation use `--perf-record-args`.
+
+          Examples:
+            * --perf-args='--all-cpus'
+
+          [env: GUNGRAUN_PERF_ARGS=]
+
+      --perf-events <PERF_EVENTS>
+          Add an event set for `perf` (for the `-e`, `--event` perf argument)
+
+          Each --perf-events occurrence creates a separate event set for the perf invocation. Each
+          event set is passed to perf with `-e`, `--event` as-is. So, comma-separated events within
+          one occurrence are measured together and you can use the same syntax as the perf
+          stat/record
+          `-e` event selector.
+
+          Examples:
+            * --perf-events=instructions,cycles
+            * --perf-events=instructions --perf-events=task-clock (creates two event sets)
+            * --perf-events='{instructions,cycles},task-clock' (perf `--event` special syntax)
+
+          [env: GUNGRAUN_PERF_EVENTS=]
+
+      --perf-record-args <PERF_RECORD_ARGS>
+          The command-line arguments to pass to `perf record`
+
+          If running perf record is enabled, these arguments are passed to the `perf record`
+          invocation. Note these arguments are independent of `perf-args` which are passed to `perf
+          stat`.
+
+          Examples:
+            * --perf-record-args=--all-cpus
+            * --perf-record-args='--all-cpus --freq=400' (multiple args space separated in quotes)
+
+          [env: GUNGRAUN_PERF_RECORD_ARGS=]
+
+      --perf-run-mode <PERF_RUN_MODE>
+          Select how perf runs the benchmark
+
+          `direct` runs the benchmark once without calibration. `calibrate` samples the default
+          calibration duration, while `calibrate=<duration>` uses a duration such as `250ms` or `2s`.
+
+          Supported duration units are nanoseconds (`ns`, `nsec`), microseconds (`us`, `usec`),
+          milliseconds (`ms`, `msec`), and seconds (`s`, `sec`, `secs`, `second`, `seconds`). A
+          missing unit defaults to seconds.
+
+          Examples:
+            * --perf-run-mode=direct
+            * --perf-run-mode=calibrate
+            * --perf-run-mode=calibrate=250ms
+
+          [env: GUNGRAUN_PERF_RUN_MODE=]
+
+      --perf-sampling[=<PERF_SAMPLING>]
+          Enable, disable, or configure the duration for perf sampling
+
+          This duration is a time limit for continuously repeated `perf stat` sampling to improve
+          measurement stability. `yes` enables sampling with the default duration of 2 seconds. `no`
+          disables sampling. Passing a duration such as `250ms` or `2s` enables sampling with that
+          duration.
+
+          Supported duration units are nanoseconds (`ns`, `nsec`), microseconds (`us`, `usec`),
+          milliseconds (`ms`, `msec`), and seconds (`s`, `sec`, `secs`, `second`, `seconds`). A
+          missing unit defaults to seconds.
+
+          The sampling duration affects only the main `perf stat` measurement, not the optional
+          companion `perf record` capture (see `--perf-record`). It is also independent from the
+          duration supplied with `--perf-run-mode=calibrate=<duration>`, which controls a separate
+          calibration pass.
+
+          For more details, see the Gungraun guide and the API docs for `Perf::sample_duration` at
+          <https://docs.rs/gungraun/latest/gungraun>.
+
+          Examples:
+            * --perf-sampling
+            * --perf-sampling=no
+            * --perf-sampling=250ms
+
+          [env: GUNGRAUN_PERF_SAMPLING=]
 
       --valgrind-args <VALGRIND_ARGS>
           The command-line arguments to pass through to all tools
@@ -910,6 +1028,28 @@ Options:
             * --dhat-limits='@all=10%,totalbytes=5000,totalblocks=5%'
 
           [env: GUNGRAUN_DHAT_LIMITS=]
+
+      --perf-limits <PERF_LIMITS>
+          Set perf regression limits
+
+          This is a comma-separated list of `pattern=limit` pairs. Patterns support wildcards:
+
+          - the basic wildcard * (matches any sequence of characters),
+          - ? (matches a single character)
+          - escaping \ of special characters
+          - character classes [...]. Character classes can be negated [!...] and contain ranges
+            [a-zA-Z].
+
+          A limit ending in `%` is a soft percentage limit. A bare number or a number with a perf
+          unit
+          such as `ms`, `s`, `B`, or `Hz` is a hard limit. Combine soft and hard limits for one
+          pattern with `|`.
+
+          Examples:
+            * --perf-limits='*instructions*=5%'
+            * --perf-limits='*instructions*=5%|1000000,task-clock*=40%|2.5ms'
+
+          [env: GUNGRAUN_PERF_LIMITS=]
 
       --regression-fail-fast[=<REGRESSION_FAIL_FAST>]
           Fail the entire benchmark run on the first performance regression

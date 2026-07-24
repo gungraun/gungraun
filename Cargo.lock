@@ -880,6 +880,7 @@ dependencies = [
  "cty",
  "derive_more",
  "fs_extra",
+ "gungraun-common",
  "gungraun-macros",
  "gungraun-runner",
  "rstest",
@@ -892,8 +893,9 @@ dependencies = [
 
 [[package]]
 name = "gungraun-common"
-version = "0.19.4"
+version = "0.1.0"
 dependencies = [
+ "rstest",
  "strum",
 ]
 
@@ -930,6 +932,7 @@ dependencies = [
  "env_logger",
  "fundu",
  "glob",
+ "gungraun-common",
  "indexmap",
  "inferno",
  "itertools 0.15.0",

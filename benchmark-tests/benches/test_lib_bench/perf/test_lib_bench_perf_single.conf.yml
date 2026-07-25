@@ -1,5 +1,7 @@
 # Test Case: `test_lib_bench_perf_single`
 #
+# TODO: UPDATE DOCS
+#
 # Description:
 #   Validates command-line configuration of the Perf tool for one library
 #   benchmark. The `my_group` benchmark sorts a worst-case 1,000-element array
@@ -41,27 +43,40 @@ groups:
       - args: ["--default-tool=perf"]
         expected:
           no_stderr: true
-          stdout: expected_stdout.default-tool-perf
+          stdout:
+            default: expected_stdout.default-tool-perf
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-summary
   # 2: Verify running perf as additional tool
   - runs:
       - args: ["--tools=perf"]
         expected:
           no_stderr: true
-          stdout: expected_stdout.tools-perf
+          stdout:
+            default: expected_stdout.tools-perf
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-callgrind
   # 3: Verify that arguments reach perf
   - runs:
       - args: ["--default-tool=perf", "--perf-args=--does-not-exist"]
         expected:
-          stdout: expected_stdout.arg-does-not-exist
-          stderr_contains:
-            - "Error: unknown option `does-not-exist'"
-            - "Usage: perf stat"
-          exit_code: 1
+          default:
+            stdout: expected_stdout.arg-does-not-exist
+            stderr_contains:
+              - "Error: unknown option `does-not-exist'"
+              - "Usage: perf stat"
+            exit_code: 1
+          # since perf is the only tool and it is not supported on freebsd the
+          # arguments are never checked
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_stderr: true
+            exit_code: 0
   # 4: perf record args without activating perf record does nothing
   - runs:
       - args: ["--default-tool=perf", "--perf-record-args=--does-not-exist"]
         expected:
-          stdout: expected_stdout.default-tool-perf
+          stdout:
+            default: expected_stdout.default-tool-perf
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-summary
           no_stderr: true
       - args:
           [
@@ -70,11 +85,18 @@ groups:
             "--perf-record-args=--does-not-exist",
           ]
         expected:
-          stdout: expected_stdout.record-arg-does-not-exist
-          stderr_contains:
-            - "Error: unknown option `does-not-exist'"
-            - "Usage: perf record"
-          exit_code: 1
+          default:
+            stdout: expected_stdout.record-arg-does-not-exist
+            stderr_contains:
+              - "Error: unknown option `does-not-exist'"
+              - "Usage: perf record"
+            exit_code: 1
+          # The same argumentation as in the group run with --perf-args applies
+          # here
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_stderr: true
+            exit_code: 0
   # 5: perf bin should be used for perf but not for callgrind
   - runs:
       - args:
@@ -96,7 +118,9 @@ groups:
 
           chmod +x /tmp/gungraun_perf_bin
         expected:
-          stdout: expected_stdout.perf-bin
+          stdout:
+            default: expected_stdout.perf-bin
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-callgrind-with-nocapture
           no_stderr: true
   # 6: This time we use the perf bin script to verify the perf run mode
   - runs:
@@ -129,17 +153,24 @@ groups:
 
           chmod +x /tmp/gungraun_perf_bin
         expected:
-          stdout: expected_stdout.perf-run-mode
-          stderr: expected_stderr.perf-run-mode
-          exit_code: 1
-          script: |
-            grep -Fx 'Expected the run mode to be present and use calibration' \
-              my_group/bench_bubble_sort.thousand/perf.bench_bubble_sort.thousand.log.cal
+          default:
+            stdout: expected_stdout.perf-run-mode
+            stderr: expected_stderr.perf-run-mode
+            exit_code: 1
+            script: |
+              grep -Fx 'Expected the run mode to be present and use calibration' \
+                my_group/bench_bubble_sort.thousand/perf.bench_bubble_sort.thousand.log.cal
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            exit_code: 0
+            no_stderr: true
   # 7: Verify perf sampling. The stdout shows the extra rse, samples lines
   - runs:
       - args: ["--default-tool=perf", "--perf-sampling=2s"]
         expected:
-          stdout: expected_stdout.perf-sampling
+          stdout:
+            default: expected_stdout.perf-sampling
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-summary
           no_stderr: true
   # 8: Verify perf events
   - runs:
@@ -150,5 +181,7 @@ groups:
             "--perf-events=task-clock",
           ]
         expected:
-          stdout: expected_stdout.events
+          stdout:
+            default: expected_stdout.events
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-summary
           no_stderr: true

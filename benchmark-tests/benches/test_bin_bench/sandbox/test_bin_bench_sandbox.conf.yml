@@ -1,5 +1,7 @@
 # Test Case: `test_bin_bench_sandbox`
 #
+#  TODO: UPDATE DOCS
+#
 # Description:
 #   Tests `Sandbox` configuration for file isolation with the default valgrind
 #   tool and `perf` in binary benchmarks. Validates sandbox creation, fixture
@@ -32,7 +34,11 @@ groups:
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout.2
+          stdout:
+            default: expected_stdout.2
+            x86_64-unknown-freebsd: expected_stdout.freebsd.2

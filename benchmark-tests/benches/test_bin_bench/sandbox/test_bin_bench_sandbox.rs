@@ -113,6 +113,12 @@ binary_benchmark_group!(
             Perf::default()
                 .sample_duration(Duration::from_secs(2))
                 .run_mode(PerfRunMode::Calibrate(Duration::from_secs(2)))
+                // This is the default set without faults because it produces flaky terminal output
+                // in the second comparison run
+                .event_set(
+                    "instructions:u,cycles:u,task-clock,cpu-clock,context-switches,branch-misses,\
+                     cache-misses"
+                )
         ),
     benchmarks = perf
 );

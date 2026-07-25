@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::LazyLock;
 
+use anyhow::Context;
 use benchmark_tests::common::Summary;
 use benchmark_tests::serde::runs_on::RunsOn;
 use colored::Colorize;
@@ -161,15 +162,49 @@ static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
 static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[']([/][^/']+)+[']").expect("Regex should compile"));
 
-fn filter_unit(desc: &str) -> Cow<'_, str> {
-    UNIT_RE.replace(desc, |caps: &Captures| {
-        format!(
-            "{}{}{}",
-            &caps["prefix"],
-            " ".repeat(caps["unit"].len()),
-            &caps["suffix"]
-        )
-    })
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetExpectedConfig {
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, ExpectedConfig>),
+    /// Backward-compatible scalar path
+    Scalar(Box<ExpectedConfig>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetI32 {
+    /// Backward-compatible scalar path
+    Scalar(i32),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Option<i32>>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetPath {
+    /// Backward-compatible scalar path
+    Scalar(PathBuf),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, PathBuf>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetString {
+    /// Backward-compatible scalar path
+    Scalar(String),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Option<String>>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetVecString {
+    /// Backward-compatible scalar path
+    Scalar(Vec<String>),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Vec<String>>),
 }
 
 /// Benchmark test case derived from a `.conf.yml` file.
@@ -263,7 +298,7 @@ pub struct GroupExpected {
     /// Shell script run as a fallback when a run has no assertion script of its own.
     ///
     /// The script is executed with `bash -ex` in the benchmark output base directory.
-    script: Option<String>,
+    script: Option<TargetString>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -302,37 +337,38 @@ struct Expected {
 /// Expected side effects and process result for a run.
 ///
 /// Example: compare stdout against `expected.stdout` and require exit code `0`.
+#[serde(deny_unknown_fields)]
 struct ExpectedConfig {
     /// Path to an expected files manifest relative to the benchmark config directory.
     ///
     /// Example: `expected/files.yml`.
     #[serde(default)]
-    files: Option<PathBuf>,
+    files: Option<TargetPath>,
     /// Path to expected stdout relative to the benchmark config directory.
     ///
     /// Example: `expected.stdout`.
     #[serde(default)]
-    stdout: Option<PathBuf>,
+    stdout: Option<TargetPath>,
     /// A string which should be contained in the stdout output
     ///
     /// Example: `stdout: expected.stdout`.
     #[serde(default)]
-    stdout_contains: Vec<String>,
+    stdout_contains: TargetVecString,
     /// Path to expected stderr relative to the benchmark config directory.
     ///
     /// Example: `stderr: expected.stderr`.
     #[serde(default)]
-    stderr: Option<PathBuf>,
+    stderr: Option<TargetPath>,
     /// A string which should be contained in the stderr output
     ///
     /// Example: `stderr: expected.stderr`.
     #[serde(default)]
-    stderr_contains: Vec<String>,
+    stderr_contains: TargetVecString,
     /// Expected process exit code.
     ///
     /// Example: `101` for a benchmark expected to panic.
     #[serde(default)]
-    exit_code: Option<i32>,
+    exit_code: Option<TargetI32>,
     /// Whether all-zero metrics are allowed in generated summaries.
     ///
     /// Example: `true` for a run that intentionally does not collect costs.
@@ -358,7 +394,7 @@ struct ExpectedConfig {
     /// For example this is the directory of the `test_something` benchmark in which the script is
     /// executed: `project_root/target/benchmark-tests/test_something`
     #[serde(default)]
-    script: Option<String>,
+    script: Option<TargetString>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -487,7 +523,7 @@ struct RunConfig {
     ///
     /// Example: compare stdout with `expected.stdout` and validate `summary.json`.
     #[serde(default)]
-    expected: Option<ExpectedConfig>,
+    expected: Option<TargetExpectedConfig>,
     /// Optional target triple include or exclude condition for this run.
     ///
     /// Example: skip a run on `aarch64-apple-darwin`.
@@ -532,9 +568,13 @@ struct RunConfig {
 
 impl Benchmark {
     pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
-        let config: Config = serde_yaml::from_reader(File::open(path).expect("File should exist"))
-            .map_err(|error| format!("Failed to deserialize '{}': {error}", path.display()))
-            .expect("File should be deserializable");
+        let config: Config = serde_yaml::from_reader(
+            File::open(path)
+                .with_context(|| format!("File should exist: '{}'", path.display()))
+                .unwrap(),
+        )
+        .map_err(|error| format!("Failed to deserialize '{}': {error}", path.display()))
+        .expect("File should be deserializable");
 
         let config_name = path.file_name().unwrap().to_string_lossy();
         let config_name = config_name.strip_suffix(".conf.yml").unwrap().to_owned();
@@ -710,7 +750,8 @@ impl Benchmark {
     ) -> BenchmarkOutput {
         let mut template_string = String::new();
         File::open(self.dir.join(template_path))
-            .expect("File should exist")
+            .with_context(|| format!("File should exist: '{}'", template_path.display()))
+            .unwrap()
             .read_to_string(&mut template_string)
             .expect("Reading to string should succeed");
 
@@ -733,11 +774,13 @@ impl Benchmark {
         meta: &Metadata,
         schema: &ScopedSchema<'_>,
     ) {
+        let triple = env!("GR_BUILD_TRIPLE");
+
         if !group.runs_on.as_ref().is_none_or(|(is_target, target)| {
             if *is_target {
-                target == env!("GR_BUILD_TRIPLE")
+                target == triple
             } else {
-                target != env!("GR_BUILD_TRIPLE")
+                target != triple
             }
         }) || !group
             .rust_version
@@ -756,9 +799,9 @@ impl Benchmark {
             .filter(|r| {
                 r.runs_on.as_ref().is_none_or(|(is_target, target)| {
                     if *is_target {
-                        target == env!("GR_BUILD_TRIPLE")
+                        target == triple
                     } else {
-                        target != env!("GR_BUILD_TRIPLE")
+                        target != triple
                     }
                 }) && r
                     .rust_version
@@ -792,13 +835,15 @@ impl Benchmark {
                     print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
                 }
 
-                let capture = run.expected.as_ref().is_some_and(|e| {
-                    e.stdout.is_some()
-                        || e.no_stdout
-                        || !e.stdout_contains.is_empty()
-                        || e.stderr.is_some()
-                        || e.no_stderr
-                        || !e.stderr_contains.is_empty()
+                let capture = run.expected.as_ref().is_some_and(|target_config| {
+                    target_config.resolve(triple).is_some_and(|e| {
+                        e.stdout.is_some()
+                            || e.no_stdout
+                            || !e.stdout_contains.resolve(triple).is_empty()
+                            || e.stderr.is_some()
+                            || e.no_stderr
+                            || !e.stderr_contains.resolve(triple).is_empty()
+                    })
                 });
 
                 let output = if let Some(template) = &self.config.template {
@@ -875,7 +920,7 @@ impl Benchmark {
 }
 
 impl BenchmarkOutput {
-    fn assert(&self, bench_dir: &Path, meta: &Metadata, expected: &ExpectedConfig) {
+    fn assert(&self, bench_dir: &Path, meta: &Metadata, expected: &ExpectedConfig, triple: &str) {
         let output = &self.output;
 
         print_info("STDERR:");
@@ -890,19 +935,20 @@ impl BenchmarkOutput {
             } else {
                 panic!("Assertion of stderr failed: Expected no stderr");
             }
-        } else if !expected.stderr_contains.is_empty() {
-            for expected in &expected.stderr_contains {
+        } else if !expected.stderr_contains.resolve(triple).is_empty() {
+            for expected in expected.stderr_contains.resolve(triple) {
                 let output_stderr: String = String::from_utf8_lossy(&output.stderr).into();
-                if output_stderr.contains(expected.as_str()) {
+                if output_stderr.contains(expected) {
                     print_info(format!("Verifying stderr contains '{expected}' succeeded"));
                 } else {
                     panic!("Assertion of stderr failed: Expected stderr to contain '{expected}'");
                 }
             }
-        } else if let Some(stderr) = &expected.stderr {
+        } else if let Some(stderr) = expected.stderr.as_ref().and_then(|s| s.resolve(triple)) {
             let mut expected_stderr: Vec<u8> = Vec::new();
             File::open(bench_dir.join(stderr))
-                .expect("File should exist")
+                .with_context(|| format!("File should exist: '{}'", stderr.display()))
+                .unwrap()
                 .read_to_end(&mut expected_stderr)
                 .expect("Reading file should succeed");
 
@@ -944,19 +990,20 @@ impl BenchmarkOutput {
             } else {
                 panic!("Assertion of stdout failed: Expected no stdout");
             }
-        } else if !expected.stdout_contains.is_empty() {
-            for expected in &expected.stdout_contains {
+        } else if !expected.stdout_contains.resolve(triple).is_empty() {
+            for expected in expected.stdout_contains.resolve(triple) {
                 let output_stdout: String = String::from_utf8_lossy(&output.stdout).into();
-                if output_stdout.contains(expected.as_str()) {
+                if output_stdout.contains(expected) {
                     print_info(format!("Verifying stdout contains '{expected}' succeeded"));
                 } else {
                     panic!("Assertion of stdout failed: Expected stdout to contain '{expected}'");
                 }
             }
-        } else if let Some(stdout) = &expected.stdout {
+        } else if let Some(stdout) = expected.stdout.as_ref().and_then(|s| s.resolve(triple)) {
             let mut expected_stdout: Vec<u8> = Vec::new();
             File::open(bench_dir.join(stdout))
-                .expect("File should exist")
+                .with_context(|| format!("File should exist: '{}'", stdout.display()))
+                .unwrap()
                 .read_to_end(&mut expected_stdout)
                 .expect("Reading file should succeed");
 
@@ -1364,7 +1411,7 @@ impl BenchmarkRunner {
 }
 
 impl ExpectedRun {
-    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) {
+    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) -> PathBuf {
         let mut env = Environment::default();
         env.add_template("function", &self.function).unwrap();
         let template = env.get_template("function").unwrap();
@@ -1464,6 +1511,8 @@ impl ExpectedRun {
             dir.display(),
             real_files
         );
+
+        dir
     }
 }
 
@@ -1585,23 +1634,26 @@ impl RunConfig {
         bench_name: &str,
         group_expected: Option<&GroupExpected>,
     ) {
-        if let Some(expected) = &self.expected {
+        let triple = env!("GR_BUILD_TRIPLE");
+        let expected = self.expected.as_ref().and_then(|e| e.resolve(triple));
+
+        if let Some(expected) = expected {
             if expected.stdout.is_some()
                 || expected.no_stdout
-                || !expected.stdout_contains.is_empty()
+                || !expected.stdout_contains.resolve(triple).is_empty()
                 || expected.stderr.is_some()
                 || expected.no_stderr
-                || !expected.stderr_contains.is_empty()
+                || !expected.stderr_contains.resolve(triple).is_empty()
             {
-                output.assert(bench_dir, meta, expected);
+                output.assert(bench_dir, meta, expected, triple);
             }
-            output.assert_exit(expected.exit_code);
+            output.assert_exit(expected.exit_code.as_ref().and_then(|e| e.resolve(triple)));
 
-            if let Some(script) = expected
-                .script
-                .as_ref()
-                .or_else(|| group_expected.and_then(|g| g.script.as_ref()))
-            {
+            // a run-local script takes precedence over a group script if present
+            if let Some(script) = expected.script.as_ref().map_or_else(
+                || group_expected.and_then(|g| g.script.as_ref().and_then(|s| s.resolve(triple))),
+                |s| s.resolve(triple),
+            ) {
                 let dir = tempdir().expect(
                     "Creating a temporary directory for the assertion script should succeed",
                 );
@@ -1624,9 +1676,11 @@ impl RunConfig {
                 }
             }
 
-            if let Some(files) = &expected.files {
+            if let Some(files) = expected.files.as_ref().and_then(|f| f.resolve(triple)) {
                 let expected_runs: ExpectedRuns = serde_yaml::from_reader(
-                    File::open(bench_dir.join(files)).expect("File should exist"),
+                    File::open(bench_dir.join(files))
+                        .with_context(|| format!("File should exist: '{}'", files.display()))
+                        .unwrap(),
                 )
                 .map_err(|error| format!("Failed to deserialize '{}': {error}", files.display()))
                 .expect("File should be deserializable");
@@ -1637,9 +1691,41 @@ impl RunConfig {
                     home_dir.join(PACKAGE).join(bench_name)
                 };
 
+                let mut dirs = HashMap::new();
+                let mut seen = HashMap::new();
+
                 for expected in expected_runs.data {
-                    expected.assert(&dest_dir, schema);
+                    dirs.entry(expected.group.clone()).or_insert_with(|| {
+                        glob(&format!("{}/{}/*/", dest_dir.display(), expected.group))
+                            .unwrap()
+                            .map(Result::unwrap)
+                            .collect::<HashSet<PathBuf>>()
+                    });
+
+                    let dir = expected.assert(&dest_dir, schema);
+                    seen.entry(expected.group)
+                        .and_modify(|s: &mut HashSet<PathBuf>| {
+                            s.insert(dir.clone());
+                        })
+                        .or_insert_with(|| HashSet::from([dir]));
                 }
+
+                let not_visited = dirs
+                    .into_iter()
+                    .flat_map(|(key, value)| {
+                        value
+                            .difference(seen.get(&key).unwrap())
+                            .cloned()
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<PathBuf>>();
+
+                assert!(
+                    not_visited.is_empty(),
+                    "Expected no other files in directory '{}' but found: {:#?}",
+                    dest_dir.display(),
+                    not_visited
+                );
             } else if expected.no_files {
                 let package_dir = home_dir.join(PACKAGE);
                 let base_dir = package_dir.join(bench_name);
@@ -1668,8 +1754,7 @@ impl RunConfig {
             }
         }
 
-        if self
-            .expected
+        if expected
             .as_ref()
             .is_some_and(|expected| !expected.zero_metrics)
         {
@@ -1688,6 +1773,69 @@ impl RunConfig {
     }
 }
 
+impl TargetExpectedConfig {
+    fn resolve(&self, triple: &str) -> Option<&ExpectedConfig> {
+        match self {
+            Self::Scalar(config) => Some(config),
+            Self::Targets(map) => map.get(triple).or_else(|| map.get("default")),
+        }
+    }
+}
+
+impl TargetI32 {
+    fn resolve(&self, triple: &str) -> Option<i32> {
+        match self {
+            Self::Scalar(scalar) => Some(*scalar),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .and_then(|p| *p),
+        }
+    }
+}
+
+impl TargetPath {
+    fn resolve(&self, triple: &str) -> Option<&Path> {
+        match self {
+            Self::Scalar(path) => Some(path.as_path()),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .map(|p| p.as_path()),
+        }
+    }
+}
+
+impl TargetString {
+    fn resolve(&self, triple: &str) -> Option<&str> {
+        match self {
+            Self::Scalar(string) => Some(string.as_str()),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .and_then(|p| p.as_deref()),
+        }
+    }
+}
+
+impl TargetVecString {
+    fn resolve(&self, triple: &str) -> &[String] {
+        match self {
+            Self::Scalar(strings) => strings.as_slice(),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .map_or_else(|| &[], Vec::as_slice),
+        }
+    }
+}
+
+impl Default for TargetVecString {
+    fn default() -> Self {
+        TargetVecString::Scalar(vec![])
+    }
+}
+
 fn build_gungraun_runner() {
     print_info("Building gungraun-runner");
     let status = Command::new(env!("CARGO"))
@@ -1695,6 +1843,17 @@ fn build_gungraun_runner() {
         .status()
         .unwrap();
     assert!(status.success());
+}
+
+fn filter_unit(desc: &str) -> Cow<'_, str> {
+    UNIT_RE.replace(desc, |caps: &Captures| {
+        format!(
+            "{}{}{}",
+            &caps["prefix"],
+            " ".repeat(caps["unit"].len()),
+            &caps["suffix"]
+        )
+    })
 }
 
 fn print_error<T>(message: T)

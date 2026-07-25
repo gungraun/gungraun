@@ -1,0 +1,50 @@
+data:
+  - group: bench_group
+    function: bench_subprocess
+    id: trace_children
+    expected:
+      globs:
+        - pattern: callgrind.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: callgrind.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: drd.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.bb.out
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.pc.out
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: helgrind.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: memcheck.bench_subprocess.trace_children.*.log
+          count: 2
+      files:
+        - summary.json
+  - group: bench_group
+    function: bench_subprocess
+    id: no_trace_children
+    expected:
+      files:
+        - callgrind.bench_subprocess.no_trace_children.log
+        - callgrind.bench_subprocess.no_trace_children.out
+        - dhat.bench_subprocess.no_trace_children.log
+        - dhat.bench_subprocess.no_trace_children.out
+        - drd.bench_subprocess.no_trace_children.log
+        - exp-bbv.bench_subprocess.no_trace_children.bb.out
+        - exp-bbv.bench_subprocess.no_trace_children.log
+        - exp-bbv.bench_subprocess.no_trace_children.pc.out
+        - helgrind.bench_subprocess.no_trace_children.log
+        - massif.bench_subprocess.no_trace_children.log
+        - massif.bench_subprocess.no_trace_children.out
+        - memcheck.bench_subprocess.no_trace_children.log
+        - summary.json

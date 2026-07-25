@@ -1,5 +1,7 @@
 # Test Case: `test_lib_bench_nocapture`
 #
+# TODO: UPDATE DOCS
+#
 # Description:
 #   Validates the `--nocapture` flag and its variants for controlling
 #   stdout/stderr output capture during benchmark execution. Verify that perf
@@ -33,30 +35,44 @@ groups:
   - runs:
       - args: []
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
   - runs:
       - args: ["--nocapture=false"]
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout.2
+          stdout:
+            default: expected_stdout.2
+            x86_64-unknown-freebsd: expected_stdout.freebsd.2
           no_stderr: true
   - runs:
       - args: ["--nocapture=true"]
         expected:
-          stdout: expected_stdout.2
+          stdout:
+            default: expected_stdout.2
+            x86_64-unknown-freebsd: expected_stdout.freebsd.2
           no_stderr: true
   - runs:
       - args: ["--nocapture=stdout"]
         expected:
-          stdout: expected_stdout.3
+          stdout:
+            default: expected_stdout.3
+            x86_64-unknown-freebsd: expected_stdout.freebsd.3
           no_stderr: true
   - runs:
       - args: ["--nocapture=stderr"]
         expected:
-          stdout: expected_stdout.4
-          stderr: expected_stderr.1
+          stdout:
+            default: expected_stdout.4
+            x86_64-unknown-freebsd: expected_stdout.freebsd.4
+          stderr:
+            default: expected_stderr.1
+            x86_64-unknown-freebsd: expected_stderr.freebsd.1

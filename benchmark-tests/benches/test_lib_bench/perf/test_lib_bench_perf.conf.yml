@@ -1,5 +1,7 @@
 # Test Case: `test_lib_bench_perf`
 #
+# TODO: UPDATE DOCS
+#
 # Description:
 #   Validates Perf measurements for library benchmarks across event sets,
 #   sampling, recording, calibration, multiplexing, selective measurement, and
@@ -42,41 +44,53 @@
 
 groups:
   - expected:
-      script: |
-        # Verify that `min_pcnt_running` is working
-        jq -e -s --arg event 'cpu_core/instructions/u' '
-          [.[] | select(.event == $event)]
-          | if length == 1 then .[0]
-            else error("expected exactly one \($event) event")
-            end
-          | (
-              (.["counter-value"] | tonumber? | isfinite)
-              and
-              (.["pcnt-running"] | tonumber? | . > 0 and . < 100)
-            )
-        ' \
-        with_sampling/thirty_events_then_multiplexing/perf.thirty_events_then_multiplexing.out
+      script:
+        default: |
+          # Verify that `min_pcnt_running` is working
+          jq -e -s --arg event 'cpu_core/instructions/u' '
+            [.[] | select(.event == $event)]
+            | if length == 1 then .[0]
+              else error("expected exactly one \($event) event")
+              end
+            | (
+                (.["counter-value"] | tonumber? | isfinite)
+                and
+                (.["pcnt-running"] | tonumber? | . > 0 and . < 100)
+              )
+          ' \
+          with_sampling/thirty_events_then_multiplexing/perf.thirty_events_then_multiplexing.out
 
-        # Verify that printing to the log file works and without sampling
-        # occurrence counts are one
-        [ $(grep -Fxc "Printing to log shouldn't be measured" \
-          without_sampling/disabled_entry_point.with_arg/perf.disabled_entry_point.with_arg.log) -eq 1 ]
+          # Verify that printing to the log file works and without sampling
+          # occurrence counts are one
+          [ $(grep -Fxc "Printing to log shouldn't be measured" \
+            without_sampling/disabled_entry_point.with_arg/perf.disabled_entry_point.with_arg.log) -eq 1 ]
 
-        [ $(grep -Fxc "Printing to log shouldn't be measured" \
-          record/disabled_entry_point.with_arg/perf.disabled_entry_point.with_arg.log) -eq 1 ]
+          [ $(grep -Fxc "Printing to log shouldn't be measured" \
+            record/disabled_entry_point.with_arg/perf.disabled_entry_point.with_arg.log) -eq 1 ]
 
-        # Verify that printing to the log file appends to the file when using
-        # sampling
-        [ $(grep -Fxc "Printing to log shouldn't be measured" \
-          with_sampling/disabled_entry_point.with_arg/perf.disabled_entry_point.with_arg.log) -gt 1 ]
+          # Verify that printing to the log file appends to the file when using
+          # sampling
+          [ $(grep -Fxc "Printing to log shouldn't be measured" \
+            with_sampling/disabled_entry_point.with_arg/perf.disabled_entry_point.with_arg.log) -gt 1 ]
+        x86_64-unknown-freebsd: null
     runs:
       - args: []
         expected:
-          stderr: expected_stderr.1
-          stdout: expected_stdout.1
-          files: expected_files.1.yml
+          default:
+            stderr: expected_stderr.1
+            stdout: expected_stdout.1
+            files: expected_files.1.yml
+          x86_64-unknown-freebsd:
+            no_stderr: true
+            stdout: freebsd/expected_stdout.1
+            files: freebsd/expected_files.1.yml
       - args: []
         expected:
-          stderr: expected_stderr.2
-          stdout: expected_stdout.2
-          files: expected_files.2.yml
+          default:
+            stderr: expected_stderr.2
+            stdout: expected_stdout.2
+            files: expected_files.2.yml
+          x86_64-unknown-freebsd:
+            no_stderr: true
+            stdout: freebsd/expected_stdout.2
+            files: freebsd/expected_files.2.yml

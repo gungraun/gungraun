@@ -5,9 +5,7 @@ data:
     expected:
       files:
         - dhat.bench_bubble_sort_soft_limits.regress_dhat.log
-        - dhat.bench_bubble_sort_soft_limits.regress_dhat.log.old
         - dhat.bench_bubble_sort_soft_limits.regress_dhat.out
-        - dhat.bench_bubble_sort_soft_limits.regress_dhat.out.old
         - summary.json
   - group: bench_group
     function: bench_bubble_sort_hard_limits
@@ -15,9 +13,7 @@ data:
     expected:
       files:
         - dhat.bench_bubble_sort_hard_limits.regress_dhat.log
-        - dhat.bench_bubble_sort_hard_limits.regress_dhat.log.old
         - dhat.bench_bubble_sort_hard_limits.regress_dhat.out
-        - dhat.bench_bubble_sort_hard_limits.regress_dhat.out.old
         - summary.json
   - group: bench_group
     function: bench_bubble_sort_hard_limits
@@ -25,9 +21,7 @@ data:
     expected:
       files:
         - callgrind.bench_bubble_sort_hard_limits.should_not_run_after_regression.log
-        - callgrind.bench_bubble_sort_hard_limits.should_not_run_after_regression.log.old
         - callgrind.bench_bubble_sort_hard_limits.should_not_run_after_regression.out
-        - callgrind.bench_bubble_sort_hard_limits.should_not_run_after_regression.out.old
         - summary.json
   - group: bench_group
     function: bench_bubble_sort_soft_limits
@@ -45,9 +39,7 @@ data:
     expected:
       files:
         - cachegrind.bench_bubble_sort_hard_limits.regress_cachegrind.log
-        - cachegrind.bench_bubble_sort_hard_limits.regress_cachegrind.log.old
         - cachegrind.bench_bubble_sort_hard_limits.regress_cachegrind.out
-        - cachegrind.bench_bubble_sort_hard_limits.regress_cachegrind.out.old
         - summary.json
   - group: bench_group
     function: bench_bubble_sort_soft_limits
@@ -55,9 +47,7 @@ data:
     expected:
       files:
         - callgrind.bench_bubble_sort_soft_limits.should_not_run_after_regression.log
-        - callgrind.bench_bubble_sort_soft_limits.should_not_run_after_regression.log.old
         - callgrind.bench_bubble_sort_soft_limits.should_not_run_after_regression.out
-        - callgrind.bench_bubble_sort_soft_limits.should_not_run_after_regression.out.old
         - summary.json
   - group: bench_group
     function: bench_bubble_sort_hard_limits
@@ -65,9 +55,7 @@ data:
     expected:
       files:
         - callgrind.bench_bubble_sort_hard_limits.regress_callgrind.log
-        - callgrind.bench_bubble_sort_hard_limits.regress_callgrind.log.old
         - callgrind.bench_bubble_sort_hard_limits.regress_callgrind.out
-        - callgrind.bench_bubble_sort_hard_limits.regress_callgrind.out.old
         - summary.json
   - group: bench_group
     function: bench_bubble_sort_soft_limits
@@ -75,17 +63,5 @@ data:
     expected:
       files:
         - cachegrind.bench_bubble_sort_soft_limits.regress_cachegrind.log
-        - cachegrind.bench_bubble_sort_soft_limits.regress_cachegrind.log.old
         - cachegrind.bench_bubble_sort_soft_limits.regress_cachegrind.out
-        - cachegrind.bench_bubble_sort_soft_limits.regress_cachegrind.out.old
-        - summary.json
-  - group: bench_group
-    function: bench_bubble_sort_soft_limits
-    id: regress_perf
-    expected:
-      files:
-        - perf.bench_bubble_sort_soft_limits.regress_perf.log
-        - perf.bench_bubble_sort_soft_limits.regress_perf.log.old
-        - perf.bench_bubble_sort_soft_limits.regress_perf.out
-        - perf.bench_bubble_sort_soft_limits.regress_perf.out.old
         - summary.json

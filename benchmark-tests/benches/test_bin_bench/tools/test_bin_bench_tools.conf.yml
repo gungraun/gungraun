@@ -1,5 +1,7 @@
 # Test Case: `test_bin_bench_tools`
 #
+# TODO: UPDATE DOCS, especially the new perf_override
+#
 # Description:
 #   Tests running multiple Valgrind tools (Dhat, Massif, Bbv, Memcheck, Drd,
 #   Helgrind, Perf) in a single benchmark run. Also validates the
@@ -25,31 +27,26 @@
 #   - No stderr output (clean execution)
 #   - Subprocess instrumentation works with `trace-children` option for Valgrind
 #     tools
-#   - FreeBSD platform has separate expected outputs
 #   - FreeBSD doesn't run perf and skips it silently
+#   - FreeBSD platform has separate expected outputs and files without perf
 
 groups:
-  - runs_on: "!x86_64-unknown-freebsd"
-    runs:
+  - runs:
       - args: ["--nocapture"]
         expected:
-          files: expected_files.1a.yml
-          stdout: expected_stdout.1a
+          files:
+            default: expected_files.1a.yml
+            x86_64-unknown-freebsd: expected_files.freebsd.1a.yml
+          stdout:
+            default: expected_stdout.1a
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1a
           no_stderr: true
       - args: ["--nocapture"]
         expected:
-          files: expected_files.1b.yml
-          stdout: expected_stdout.1b
-          no_stderr: true
-  - runs_on: "x86_64-unknown-freebsd"
-    runs:
-      - args: ["--nocapture"]
-        expected:
-          files: expected_files.1a.yml
-          stdout: expected_stdout.freebsd.1a
-          no_stderr: true
-      - args: ["--nocapture"]
-        expected:
-          files: expected_files.1b.yml
-          stdout: expected_stdout.freebsd.1b
+          files:
+            default: expected_files.1b.yml
+            x86_64-unknown-freebsd: expected_files.freebsd.1b.yml
+          stdout:
+            default: expected_stdout.1b
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1b
           no_stderr: true

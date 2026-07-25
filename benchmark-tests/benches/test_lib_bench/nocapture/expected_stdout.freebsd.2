@@ -1,0 +1,62 @@
+test_lib_bench_nocapture::bench_fibonacci_group::bench setup_stdout_teardown_stderr:(setup_to_stdout(1))
+setup: stdout: 1
+bench: stdout: 11
+bench: stderr: 11
+teardown: stderr: 111
+- end of stdout/stderr
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+test_lib_bench_nocapture::bench_fibonacci_group::bench setup_stderr_teardown_stdout:(setup_to_stderr(1))
+setup: stderr: 1
+bench: stdout: 21
+bench: stderr: 21
+teardown: stdout: 121
+- end of stdout/stderr
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+test_lib_bench_nocapture::bench_fibonacci_group::print_events_line enabled_stdout:("Events enabled", Box :: new(std :: io :: stdout(...
+Events enabled
+- end of stdout/stderr
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+test_lib_bench_nocapture::bench_fibonacci_group::print_events_line enabled_stderr:("Events enabled", Box :: new(std :: io :: stderr(...
+Events enabled
+- end of stdout/stderr
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+test_lib_bench_nocapture::bench_fibonacci_group::print_events_line disabled_stdout:("Events disabled", Box :: new(std :: io :: stdout...
+Events disabled
+- end of stdout/stderr
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+test_lib_bench_nocapture::bench_fibonacci_group::print_events_line disabled_stderr:("Events disabled", Box :: new(std :: io :: stderr...
+Events disabled
+- end of stdout/stderr
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+
+Gungraun result: Ok. 6 without regressions; 0 regressed; 0 filtered; 6 benchmarks finished in <__SECONDS__>s

@@ -182,5 +182,19 @@ test_bin_bench_tools::bench_group::bench_subprocess no_trace_children:() -> targ
   context-switches/u:                                     |N/A                  (*********)
   cpu_core/branch-misses/u:                               |N/A                  (*********)
   cpu_core/cache-misses/u:                                |N/A                  (*********)
+test_bin_bench_tools::bench_group::bench_subprocess perf_override:() -> target/release/subprocess <__ABS_PATH__>/sort
+1999000
+- end of stdout/stderr
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |N/A                  (*********)
+  cpu_atom/cycles/u:                                      |N/A                  (*********)
+  cpu_core/cycles/u:                                      |N/A                  (*********)
+  task-clock/u [  ]:                                      |N/A                  (*********)
+  cpu-clock/u [  ]:                                       |N/A                  (*********)
+  faults/u:                                               |N/A                  (*********)
+  context-switches/u:                                     |N/A                  (*********)
+  cpu_core/branch-misses/u:                               |N/A                  (*********)
+  cpu_core/cache-misses/u:                                |N/A                  (*********)
 
-Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 3 without regressions; 0 regressed; 0 filtered; 3 benchmarks finished in <__SECONDS__>s

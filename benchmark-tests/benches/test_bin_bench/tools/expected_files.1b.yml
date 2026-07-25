@@ -92,3 +92,13 @@ data:
         - perf.bench_subprocess.no_trace_children.out
         - perf.bench_subprocess.no_trace_children.out.old
         - summary.json
+  - group: bench_group
+    function: bench_subprocess
+    id: perf_override
+    expected:
+      files:
+        - perf.bench_subprocess.perf_override.log
+        - perf.bench_subprocess.perf_override.log.old
+        - perf.bench_subprocess.perf_override.out
+        - perf.bench_subprocess.perf_override.out.old
+        - summary.json

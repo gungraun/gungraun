@@ -1,5 +1,7 @@
 # Test Case: `test_lib_bench_regression`
 #
+# TODO: UPDATE DOCS
+#
 # Description:
 #   Validates soft- and hard-limit regression detection and fail-fast behavior
 #   for Callgrind, Cachegrind, DHAT, and Perf. Exercises limits configured in
@@ -68,15 +70,21 @@ groups:
       # 2.1
       - args: []
         expected:
-          files: expected_files.1.yml
-          stdout: expected_stdout.1
+          files:
+            default: expected_files.1.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.1.yml
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1
           no_stderr: true
           exit_code: 0
         template_data: {}
       # 2.2 regress callgrind fail fast
       - args: []
         expected:
-          files: expected_files.callgrind-fail-fast.yml
+          files:
+            default: expected_files.callgrind-fail-fast.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.callgrind-fail-fast.yml
           stdout: expected_stdout.callgrind-fail-fast
           stderr: expected_stderr.callgrind-fail-fast
           exit_code: 3
@@ -86,7 +94,9 @@ groups:
       # 2.3 regress cachegrind fail fast
       - args: []
         expected:
-          files: expected_files.cachegrind-fail-fast.yml
+          files:
+            default: expected_files.cachegrind-fail-fast.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.cachegrind-fail-fast.yml
           stdout: expected_stdout.cachegrind-fail-fast
           stderr: expected_stderr.cachegrind-fail-fast
           exit_code: 3
@@ -96,6 +106,9 @@ groups:
       # 2.4 regress dhat fail fast
       - args: []
         expected:
+          files:
+            default: expected_files.dhat-fail-fast.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.dhat-fail-fast.yml
           stdout: expected_stdout.dhat-fail-fast
           stderr: expected_stderr.dhat-fail-fast
           exit_code: 3
@@ -105,10 +118,17 @@ groups:
       # 2.5 regress perf fail fast
       - args: []
         expected:
-          files: expected_files.perf-fail-fast.yml
-          stdout: expected_stdout.perf-fail-fast
-          stderr: expected_stderr.perf-fail-fast
-          exit_code: 3
+          default:
+            files: expected_files.perf-fail-fast.yml
+            stdout: expected_stdout.perf-fail-fast
+            stderr: expected_stderr.perf-fail-fast
+            exit_code: 3
+          x86_64-unknown-freebsd:
+            files: freebsd/expected_files.no-fail-fast.yml
+            stdout: freebsd/expected_stdout.perf-fail-fast
+            no_stderr: true
+            exit_code: 0
+
         template_data:
           perf_array_length: 100
           perf_fail_fast: true
@@ -117,18 +137,28 @@ groups:
       # 3.1
       - args: []
         expected:
-          files: expected_files.1.yml
-          stdout: expected_stdout.1
+          files:
+            default: expected_files.1.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.1.yml
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1
           no_stderr: true
           exit_code: 0
         template_data: {}
       # 3.2
       - args: []
         expected:
-          files: expected_files.no-fail-fast.yml
-          stdout: expected_stdout.no-fail-fast
-          stderr: expected_stderr.no-fail-fast
-          exit_code: 3
+          default:
+            files: expected_files.no-fail-fast.yml
+            stdout: expected_stdout.no-fail-fast
+            stderr: expected_stderr.no-fail-fast
+            exit_code: 3
+          x86_64-unknown-freebsd:
+            files: freebsd/expected_files.no-fail-fast.yml
+            stdout: freebsd/expected_stdout.no-fail-fast
+            stderr: freebsd/expected_stderr.no-fail-fast
+            exit_code: 3
         template_data:
           callgrind_array_length: 100
           cachegrind_array_length: 500
@@ -139,8 +169,12 @@ groups:
       # 4.1
       - args: []
         expected:
-          files: expected_files.1.yml
-          stdout: expected_stdout.1
+          files:
+            default: expected_files.1.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.1.yml
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1
           no_stderr: true
           exit_code: 0
         template_data: {}
@@ -158,7 +192,9 @@ groups:
             "instructions=0.0%",
           ]
         expected:
-          files: expected_files.no-fail-fast.yml
+          files:
+            default: expected_files.no-fail-fast.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.no-fail-fast.yml
           stdout: expected_stdout.args
           stderr: expected_stderr.args
           exit_code: 3
@@ -170,7 +206,11 @@ groups:
       # 4.3
       - args: ["--regression-fail-fast"]
         expected:
-          files: expected_files.args-fail-fast.yml
+          files:
+            # There are no differences to the second run since the .old files
+            # were already created.
+            default: expected_files.no-fail-fast.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.no-fail-fast.yml
           stdout: expected_stdout.args.fail-fast
           stderr: expected_stderr.callgrind-fail-fast
           exit_code: 3

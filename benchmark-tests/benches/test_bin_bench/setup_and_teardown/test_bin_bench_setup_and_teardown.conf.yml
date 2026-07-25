@@ -1,5 +1,7 @@
 # Test Case: `test_bin_bench_setup_and_teardown`
 #
+# TODO: UPDATE DOCS
+#
 # Description:
 #   Tests setup and teardown functions at the benchmark level, including
 #   function argument passing, inheritance from `#[binary_benchmark]` level, and
@@ -35,12 +37,18 @@ groups:
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout.1
-          files: expected_files.1.yml
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
+          files:
+            default: expected_files.1.yml
+            x86_64-unknown-freebsd: expected_files.freebsd.1.yml
       # We're not testing the --save-baseline or --load-baseline options. We
       # just want to ensure that the setup and teardown functions aren't
       # executed if `--load-baseline` is given.
       - args: ["--save-baseline"]
       - args: ["--load-baseline", "--baseline", "--nocapture"]
         expected:
-          stdout: expected_stdout.2
+          stdout:
+            default: expected_stdout.2
+            x86_64-unknown-freebsd: expected_stdout.freebsd.2

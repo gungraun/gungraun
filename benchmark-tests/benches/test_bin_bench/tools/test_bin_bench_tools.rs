@@ -1,11 +1,16 @@
 use gungraun::prelude::*;
-use gungraun::{Bbv, Dhat, Drd, Helgrind, Massif, Memcheck, OutputFormat, Perf};
+use gungraun::{Bbv, Dhat, Drd, Helgrind, Massif, Memcheck, OutputFormat, Perf, Tool};
 
 #[binary_benchmark]
 #[bench::trace_children()]
 #[bench::no_trace_children(
     config = BinaryBenchmarkConfig::default()
         .valgrind_args(["trace-children=no"])
+)]
+#[bench::perf_override(
+    config = BinaryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool_override(Perf::default())
 )]
 fn bench_subprocess() -> Command {
     Command::new(env!("CARGO_BIN_EXE_subprocess"))

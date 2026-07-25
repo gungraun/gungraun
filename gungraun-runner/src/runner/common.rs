@@ -218,6 +218,7 @@ pub struct PerfOutputConfig {
     pub min_pcnt_running: f64,
 }
 
+// FIX: Sort structs, impls, ... in this module
 impl PerfOutputConfig {
     /// Returns the alpha threshold for statistical significance testing.
     pub fn alpha(&self) -> f64 {

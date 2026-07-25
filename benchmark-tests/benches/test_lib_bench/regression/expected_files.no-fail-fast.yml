@@ -50,6 +50,16 @@ data:
         - cachegrind.bench_bubble_sort_hard_limits.regress_cachegrind.out.old
         - summary.json
   - group: bench_group
+    function: bench_bubble_sort_hard_limits
+    id: regress_perf
+    expected:
+      files:
+        - perf.bench_bubble_sort_hard_limits.regress_perf.log
+        - perf.bench_bubble_sort_hard_limits.regress_perf.log.old
+        - perf.bench_bubble_sort_hard_limits.regress_perf.out
+        - perf.bench_bubble_sort_hard_limits.regress_perf.out.old
+        - summary.json
+  - group: bench_group
     function: bench_bubble_sort_soft_limits
     id: should_not_run_after_regression
     expected:

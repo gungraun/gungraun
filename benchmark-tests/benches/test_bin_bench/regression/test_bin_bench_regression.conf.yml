@@ -1,5 +1,7 @@
 # Test Case: `test_bin_bench_regression`
 #
+# TODO: UPDATE DOCS
+#
 # Description:
 #   Validates soft limits regression checking with the `fail_fast` option for
 #   Callgrind and Cachegrind tools. Tests that benchmarks can fail when metrics
@@ -29,7 +31,9 @@ groups:
   - runs:
       - args: []
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
           exit_code: 0
         template_data:
@@ -41,7 +45,9 @@ groups:
       - args: []
         expected:
           stdout: expected_stdout.fail-fast
-          stderr: expected_stderr.fail-fast
+          stderr:
+            default: expected_stderr.fail-fast
+            x86_64-unknown-freebsd: expected_stderr.freebsd.fail-fast
           exit_code: 3
         template_data:
           array_length: 5
@@ -50,7 +56,9 @@ groups:
   - runs:
       - args: []
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
           exit_code: 0
         template_data:
@@ -59,8 +67,12 @@ groups:
           fail_fast: false
       - args: []
         expected:
-          stdout: expected_stdout.no-fail-fast
-          stderr: expected_stderr.no-fail-fast
+          stdout:
+            default: expected_stdout.no-fail-fast
+            x86_64-unknown-freebsd: expected_stdout.freebsd.no-fail-fast
+          stderr:
+            default: expected_stderr.no-fail-fast
+            x86_64-unknown-freebsd: expected_stderr.freebsd.no-fail-fast
           exit_code: 3
         template_data:
           array_length: 5

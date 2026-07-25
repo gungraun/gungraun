@@ -1,9 +1,6 @@
 test_lib_bench_perf_single::my_group::bench_bubble_sort thousand:(setup_worst_case_array(1000))
 Running with perf bin script:
 perf stat
-Events disabled
-Events enabled
-Events disabled
 - end of stdout/stderr
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000

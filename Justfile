@@ -552,7 +552,7 @@ generate-expected-files benchmark path:
     IFS=$'\n'
     for group in $groups; do
       pushd "$(pwd)/$group" >/dev/null
-      function_ids="$(find -mindepth 1 -maxdepth 1 -type d | sort)"
+      function_ids="$(find . -mindepth 1 -maxdepth 1 -type d | sort)"
       for function_id in $function_ids; do
           function_id="${function_id/\.\//}"
           IFS='.' read function id <<<"${function_id}"
@@ -562,7 +562,7 @@ generate-expected-files benchmark path:
           fi
           yaml+="    expected:\n      files:\n"
           pushd "$function_id" >/dev/null
-          files="$(find -mindepth 1 -maxdepth 1 -type f | sort)"
+          files="$(find . -mindepth 1 -maxdepth 1 -type f | sort)"
           for file in $files; do
             file="${file/\.\//}"
             yaml+="        - ${file}\n"

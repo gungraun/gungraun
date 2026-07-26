@@ -26,6 +26,18 @@ test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:(se
   Reads bytes:                                            |                     (        %) [        x]
   Writes bytes:                                           |                     (        %) [        x]
 
+test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_perf:(setup_worst_case_array(1000))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_bench_template::bench_group::bench_bubble_sort_soft_limits should_not_run_after_regression:(setup_worst_case_array(10))
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
@@ -61,6 +73,18 @@ test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:(se
   Reads bytes:                                            |                     (        %) [        x]
   Writes bytes:                                           |                     (        %) [        x]
 
+test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_perf:(setup_worst_case_array(1000))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                                |                     (        %) [        x]
+  cpu_atom/cycles/u:                                      |                     (        %) [        x]
+  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_bench_template::bench_group::bench_bubble_sort_hard_limits should_not_run_after_regression:(setup_worst_case_array(10))
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
@@ -86,4 +110,4 @@ Regressions:
     DHAT: Reads bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
     DHAT: Total bytes (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
 
-Gungraun result: Regressed. 2 without regressions; 6 regressed; 0 filtered; 8 benchmarks finished in <__SECONDS__>s
+Gungraun result: Regressed. 4 without regressions; 6 regressed; 0 filtered; 10 benchmarks finished in <__SECONDS__>s

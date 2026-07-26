@@ -1,12 +1,11 @@
 data:
   - group: my_group
-    function: bench_with_xtree_no_leak
-    id: massif
+    function: bench_with_memcheck_when_leak
+    id: xleak
     expected:
       files:
-        - massif.bench_with_xtree_no_leak.massif.log.base@foo
-        - massif.bench_with_xtree_no_leak.massif.out.base@foo
-        - massif.bench_with_xtree_no_leak.massif.xtree.base@foo
+        - memcheck.bench_with_memcheck_when_leak.xleak.log.base@foo
+        - memcheck.bench_with_memcheck_when_leak.xleak.xleak.base@foo
         - summary.json
   - group: my_group
     function: bench_with_memcheck_when_leak
@@ -26,12 +25,34 @@ data:
         - memcheck.bench_with_memcheck_when_leak.xtree_and_xleak.xtree.base@foo
         - summary.json
   - group: my_group
-    function: bench_with_xtree_no_leak
-    id: memcheck_xtree
+    function: bench_with_xtree_in_subprocess
+    id: memcheck_multi_process
     expected:
       files:
-        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.log.base@foo
-        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.xtree.base@foo
+        - summary.json
+      globs:
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.log.base@foo
+          count: 2
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xleak.base@foo
+          count: 2
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xtree.base@foo
+          count: 2
+  - group: my_group
+    function: bench_with_xtree_no_leak
+    id: helgrind
+    expected:
+      files:
+        - helgrind.bench_with_xtree_no_leak.helgrind.log.base@foo
+        - helgrind.bench_with_xtree_no_leak.helgrind.xtree.base@foo
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_no_leak
+    id: massif
+    expected:
+      files:
+        - massif.bench_with_xtree_no_leak.massif.log.base@foo
+        - massif.bench_with_xtree_no_leak.massif.out.base@foo
+        - massif.bench_with_xtree_no_leak.massif.xtree.base@foo
         - summary.json
   - group: my_group
     function: bench_with_xtree_no_leak
@@ -43,39 +64,18 @@ data:
         - summary.json
   - group: my_group
     function: bench_with_xtree_no_leak
+    id: memcheck_xtree
+    expected:
+      files:
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.log.base@foo
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.xtree.base@foo
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_no_leak
     id: memcheck_xtree_and_xleak
     expected:
       files:
         - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.log.base@foo
         - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.xleak.base@foo
         - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.xtree.base@foo
-        - summary.json
-  - group: my_group
-    function: bench_with_xtree_no_leak
-    id: helgrind
-    expected:
-      files:
-        - helgrind.bench_with_xtree_no_leak.helgrind.log.base@foo
-        - helgrind.bench_with_xtree_no_leak.helgrind.xtree.base@foo
-        - summary.json
-  - group: my_group
-    function: bench_with_memcheck_when_leak
-    id: xleak
-    expected:
-      files:
-        - memcheck.bench_with_memcheck_when_leak.xleak.log.base@foo
-        - memcheck.bench_with_memcheck_when_leak.xleak.xleak.base@foo
-        - summary.json
-  - group: my_group
-    function: bench_with_xtree_in_subprocess
-    id: memcheck_multi_process
-    expected:
-      globs:
-        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.log.base@foo
-          count: 2
-        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xleak.base@foo
-          count: 2
-        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xtree.base@foo
-          count: 2
-      files:
         - summary.json

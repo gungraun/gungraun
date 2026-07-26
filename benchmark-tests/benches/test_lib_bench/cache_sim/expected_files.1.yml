@@ -4,16 +4,16 @@ data:
     id: with_10
     expected:
       files:
-        - callgrind.bench_with_cache_sim.with_10.total.Ir.flamegraph.svg
         - callgrind.bench_with_cache_sim.with_10.log
         - callgrind.bench_with_cache_sim.with_10.out
+        - callgrind.bench_with_cache_sim.with_10.total.Ir.flamegraph.svg
         - summary.json
   - group: bench_cache_sim
     function: bench_without_cache_sim
     id: with_10
     expected:
       files:
-        - callgrind.bench_without_cache_sim.with_10.total.Ir.flamegraph.svg
         - callgrind.bench_without_cache_sim.with_10.log
         - callgrind.bench_without_cache_sim.with_10.out
+        - callgrind.bench_without_cache_sim.with_10.total.Ir.flamegraph.svg
         - summary.json

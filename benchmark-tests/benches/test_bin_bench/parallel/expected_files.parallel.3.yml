@@ -1,4 +1,12 @@
 data:
+  - group: max_parallel_group
+    function: file_exists
+    expected:
+      globs:
+        - pattern: callgrind.file_exists.log.#*
+          count: 1
+        - pattern: callgrind.file_exists.out.#*
+          count: 2
   - group: no_max_parallel
     function: create_file
     expected:
@@ -13,11 +21,3 @@ data:
         - callgrind.file_exists.log
         - callgrind.file_exists.out
         - summary.json
-  - group: max_parallel_group
-    function: file_exists
-    expected:
-      globs:
-        - pattern: callgrind.file_exists.log.#*
-          count: 1
-        - pattern: callgrind.file_exists.out.#*
-          count: 2

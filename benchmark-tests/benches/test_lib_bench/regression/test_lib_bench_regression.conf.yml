@@ -195,7 +195,9 @@ groups:
           files:
             default: expected_files.no-fail-fast.yml
             x86_64-unknown-freebsd: freebsd/expected_files.no-fail-fast.yml
-          stdout: expected_stdout.args
+          stdout:
+            default: expected_stdout.args
+            x86_64-unknown-freebsd: freebsd/expected_stdout.args
           stderr: expected_stderr.args
           exit_code: 3
         template_data:

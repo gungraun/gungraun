@@ -1,5 +1,5 @@
 data:
-  - group: without_sampling
+  - group: with_sampling
     function: with_other_tool
     id: default_callgrind_disable_perf
     expected:
@@ -9,7 +9,7 @@ data:
         - callgrind.with_other_tool.default_callgrind_disable_perf.out
         - callgrind.with_other_tool.default_callgrind_disable_perf.out.old
         - summary.json
-  - group: without_sampling
+  - group: with_sampling
     function: with_other_tool
     id: default_callgrind_with_perf
     expected:
@@ -19,7 +19,7 @@ data:
         - callgrind.with_other_tool.default_callgrind_with_perf.out
         - callgrind.with_other_tool.default_callgrind_with_perf.out.old
         - summary.json
-  - group: without_sampling
+  - group: with_sampling
     function: with_other_tool
     id: default_perf_with_callgrind
     expected:
@@ -29,7 +29,7 @@ data:
         - callgrind.with_other_tool.default_perf_with_callgrind.out
         - callgrind.with_other_tool.default_perf_with_callgrind.out.old
         - summary.json
-  - group: without_sampling
+  - group: with_sampling
     function: with_other_tool
     id: default_perf_with_callgrind_disable_perf
     expected:
@@ -39,7 +39,7 @@ data:
         - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out
         - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out.old
         - summary.json
-  - group: with_sampling
+  - group: without_sampling
     function: with_other_tool
     id: default_callgrind_disable_perf
     expected:
@@ -49,7 +49,7 @@ data:
         - callgrind.with_other_tool.default_callgrind_disable_perf.out
         - callgrind.with_other_tool.default_callgrind_disable_perf.out.old
         - summary.json
-  - group: with_sampling
+  - group: without_sampling
     function: with_other_tool
     id: default_callgrind_with_perf
     expected:
@@ -59,7 +59,7 @@ data:
         - callgrind.with_other_tool.default_callgrind_with_perf.out
         - callgrind.with_other_tool.default_callgrind_with_perf.out.old
         - summary.json
-  - group: with_sampling
+  - group: without_sampling
     function: with_other_tool
     id: default_perf_with_callgrind
     expected:
@@ -69,7 +69,7 @@ data:
         - callgrind.with_other_tool.default_perf_with_callgrind.out
         - callgrind.with_other_tool.default_perf_with_callgrind.out.old
         - summary.json
-  - group: with_sampling
+  - group: without_sampling
     function: with_other_tool
     id: default_perf_with_callgrind_disable_perf
     expected:

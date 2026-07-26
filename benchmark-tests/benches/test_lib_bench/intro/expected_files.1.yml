@@ -40,16 +40,6 @@ data:
         - dhat.bench_bubble_sort.empty.out
         - summary.json
   - group: bubble_sort
-    function: bench_bubble_sort_empty
-    id: null
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_empty.log
-        - callgrind.bench_bubble_sort_empty.out
-        - dhat.bench_bubble_sort_empty.log
-        - dhat.bench_bubble_sort_empty.out
-        - summary.json
-  - group: bubble_sort
     function: bench_bubble_sort
     id: worst_case_4000
     expected:
@@ -69,6 +59,115 @@ data:
         - dhat.bench_bubble_sort.worst_case_6.log
         - dhat.bench_bubble_sort.worst_case_6.out
         - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_empty
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_empty.log
+        - callgrind.bench_bubble_sort_empty.out
+        - dhat.bench_bubble_sort_empty.log
+        - dhat.bench_bubble_sort_empty.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_benches_attribute
+    id: multiple_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_benches_attribute.multiple_0.log
+        - callgrind.bench_bubble_sort_with_benches_attribute.multiple_0.out
+        - dhat.bench_bubble_sort_with_benches_attribute.multiple_0.log
+        - dhat.bench_bubble_sort_with_benches_attribute.multiple_0.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_benches_attribute
+    id: multiple_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_benches_attribute.multiple_1.log
+        - callgrind.bench_bubble_sort_with_benches_attribute.multiple_1.out
+        - dhat.bench_bubble_sort_with_benches_attribute.multiple_1.log
+        - dhat.bench_bubble_sort_with_benches_attribute.multiple_1.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_benches_attribute
+    id: with_args_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_args_0.log
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_args_0.out
+        - dhat.bench_bubble_sort_with_benches_attribute.with_args_0.log
+        - dhat.bench_bubble_sort_with_benches_attribute.with_args_0.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_benches_attribute
+    id: with_args_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_args_1.log
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_args_1.out
+        - dhat.bench_bubble_sort_with_benches_attribute.with_args_1.log
+        - dhat.bench_bubble_sort_with_benches_attribute.with_args_1.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_benches_attribute
+    id: with_setup_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_setup_0.log
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_setup_0.out
+        - dhat.bench_bubble_sort_with_benches_attribute.with_setup_0.log
+        - dhat.bench_bubble_sort_with_benches_attribute.with_setup_0.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_benches_attribute
+    id: with_setup_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_setup_1.log
+        - callgrind.bench_bubble_sort_with_benches_attribute.with_setup_1.out
+        - dhat.bench_bubble_sort_with_benches_attribute.with_setup_1.log
+        - dhat.bench_bubble_sort_with_benches_attribute.with_setup_1.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_multiple_parameters
+    id: multiple_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_multiple_parameters.multiple_0.log
+        - callgrind.bench_bubble_sort_with_multiple_parameters.multiple_0.out
+        - dhat.bench_bubble_sort_with_multiple_parameters.multiple_0.log
+        - dhat.bench_bubble_sort_with_multiple_parameters.multiple_0.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_multiple_parameters
+    id: multiple_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_multiple_parameters.multiple_1.log
+        - callgrind.bench_bubble_sort_with_multiple_parameters.multiple_1.out
+        - dhat.bench_bubble_sort_with_multiple_parameters.multiple_1.log
+        - dhat.bench_bubble_sort_with_multiple_parameters.multiple_1.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_multiple_parameters
+    id: with_args_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_multiple_parameters.with_args_0.log
+        - callgrind.bench_bubble_sort_with_multiple_parameters.with_args_0.out
+        - dhat.bench_bubble_sort_with_multiple_parameters.with_args_0.log
+        - dhat.bench_bubble_sort_with_multiple_parameters.with_args_0.out
+        - summary.json
+  - group: bubble_sort
+    function: bench_bubble_sort_with_multiple_parameters
+    id: with_args_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_with_multiple_parameters.with_args_1.log
+        - callgrind.bench_bubble_sort_with_multiple_parameters.with_args_1.out
+        - dhat.bench_bubble_sort_with_multiple_parameters.with_args_1.log
+        - dhat.bench_bubble_sort_with_multiple_parameters.with_args_1.out
+        - summary.json
   - group: fibonacci
     function: bench_fibonacci_sum
     id: fib_30_plus_fib_20
@@ -87,7 +186,6 @@ data:
         - summary.json
   - group: fibonacci
     function: bench_fibonacci_with_config
-    id: null
     expected:
       files:
         - callgrind.bench_fibonacci_with_config.log
@@ -102,4 +200,36 @@ data:
         - callgrind.bench_fibonacci_with_config_at_bench_level.fib_with_config.out
         - massif.bench_fibonacci_with_config_at_bench_level.fib_with_config.log
         - massif.bench_fibonacci_with_config_at_bench_level.fib_with_config.out
+        - summary.json
+  - group: fibonacci
+    function: bench_fibonacci_with_iter
+    id: from_file_0
+    expected:
+      files:
+        - callgrind.bench_fibonacci_with_iter.from_file_0.log
+        - callgrind.bench_fibonacci_with_iter.from_file_0.out
+        - summary.json
+  - group: fibonacci
+    function: bench_fibonacci_with_iter
+    id: from_file_1
+    expected:
+      files:
+        - callgrind.bench_fibonacci_with_iter.from_file_1.log
+        - callgrind.bench_fibonacci_with_iter.from_file_1.out
+        - summary.json
+  - group: fibonacci
+    function: bench_fibonacci_with_iter
+    id: ranges_0
+    expected:
+      files:
+        - callgrind.bench_fibonacci_with_iter.ranges_0.log
+        - callgrind.bench_fibonacci_with_iter.ranges_0.out
+        - summary.json
+  - group: fibonacci
+    function: bench_fibonacci_with_iter
+    id: ranges_1
+    expected:
+      files:
+        - callgrind.bench_fibonacci_with_iter.ranges_1.log
+        - callgrind.bench_fibonacci_with_iter.ranges_1.out
         - summary.json

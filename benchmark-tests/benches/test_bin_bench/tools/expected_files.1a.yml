@@ -1,39 +1,6 @@
 data:
   - group: bench_group
     function: bench_subprocess
-    id: trace_children
-    expected:
-      globs:
-        - pattern: callgrind.bench_subprocess.trace_children.*.log
-          count: 2
-        - pattern: callgrind.bench_subprocess.trace_children.*.out
-          count: 2
-        - pattern: dhat.bench_subprocess.trace_children.*.log
-          count: 2
-        - pattern: dhat.bench_subprocess.trace_children.*.out
-          count: 2
-        - pattern: drd.bench_subprocess.trace_children.*.log
-          count: 2
-        - pattern: exp-bbv.bench_subprocess.trace_children.*.bb.out
-          count: 2
-        - pattern: exp-bbv.bench_subprocess.trace_children.*.pc.out
-          count: 2
-        - pattern: exp-bbv.bench_subprocess.trace_children.*.log
-          count: 2
-        - pattern: helgrind.bench_subprocess.trace_children.*.log
-          count: 2
-        - pattern: massif.bench_subprocess.trace_children.*.log
-          count: 2
-        - pattern: massif.bench_subprocess.trace_children.*.out
-          count: 2
-        - pattern: memcheck.bench_subprocess.trace_children.*.log
-          count: 2
-      files:
-        - perf.bench_subprocess.trace_children.log
-        - perf.bench_subprocess.trace_children.out
-        - summary.json
-  - group: bench_group
-    function: bench_subprocess
     id: no_trace_children
     expected:
       files:
@@ -60,3 +27,36 @@ data:
         - perf.bench_subprocess.perf_override.log
         - perf.bench_subprocess.perf_override.out
         - summary.json
+  - group: bench_group
+    function: bench_subprocess
+    id: trace_children
+    expected:
+      files:
+        - perf.bench_subprocess.trace_children.log
+        - perf.bench_subprocess.trace_children.out
+        - summary.json
+      globs:
+        - pattern: callgrind.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: callgrind.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: drd.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.bb.out
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.pc.out
+          count: 2
+        - pattern: helgrind.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: memcheck.bench_subprocess.trace_children.*.log
+          count: 2

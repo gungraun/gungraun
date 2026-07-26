@@ -1,35 +1,5 @@
 data:
   - group: my_group
-    function: with_output_in_bench
-    id: without_assists
-    expected:
-      files:
-        - callgrind.with_output_in_bench.without_assists.log
-        - callgrind.with_output_in_bench.without_assists.log.old
-        - callgrind.with_output_in_bench.without_assists.out
-        - callgrind.with_output_in_bench.without_assists.out.old
-        - summary.json
-  - group: my_group
-    function: with_output_in_bench
-    id: with_output_in_assists
-    expected:
-      files:
-        - callgrind.with_output_in_bench.with_output_in_assists.log
-        - callgrind.with_output_in_bench.with_output_in_assists.log.old
-        - callgrind.with_output_in_bench.with_output_in_assists.out
-        - callgrind.with_output_in_bench.with_output_in_assists.out.old
-        - summary.json
-  - group: my_group
-    function: with_output_in_bench
-    id: with_setup
-    expected:
-      files:
-        - callgrind.with_output_in_bench.with_setup.log
-        - callgrind.with_output_in_bench.with_setup.log.old
-        - callgrind.with_output_in_bench.with_setup.out
-        - callgrind.with_output_in_bench.with_setup.out.old
-        - summary.json
-  - group: my_group
     function: multiple_tools
     id: with_output_in_assists
     expected:
@@ -70,4 +40,34 @@ data:
         - dhat.multiple_tools.without_assists.log.old
         - dhat.multiple_tools.without_assists.out
         - dhat.multiple_tools.without_assists.out.old
+        - summary.json
+  - group: my_group
+    function: with_output_in_bench
+    id: with_output_in_assists
+    expected:
+      files:
+        - callgrind.with_output_in_bench.with_output_in_assists.log
+        - callgrind.with_output_in_bench.with_output_in_assists.log.old
+        - callgrind.with_output_in_bench.with_output_in_assists.out
+        - callgrind.with_output_in_bench.with_output_in_assists.out.old
+        - summary.json
+  - group: my_group
+    function: with_output_in_bench
+    id: with_setup
+    expected:
+      files:
+        - callgrind.with_output_in_bench.with_setup.log
+        - callgrind.with_output_in_bench.with_setup.log.old
+        - callgrind.with_output_in_bench.with_setup.out
+        - callgrind.with_output_in_bench.with_setup.out.old
+        - summary.json
+  - group: my_group
+    function: with_output_in_bench
+    id: without_assists
+    expected:
+      files:
+        - callgrind.with_output_in_bench.without_assists.log
+        - callgrind.with_output_in_bench.without_assists.log.old
+        - callgrind.with_output_in_bench.without_assists.out
+        - callgrind.with_output_in_bench.without_assists.out.old
         - summary.json

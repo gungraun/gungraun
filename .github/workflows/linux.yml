@@ -71,6 +71,13 @@ jobs:
       - uses: taiki-e/install-action@just
       - name: Build and install valgrind
         run: ./scripts/install_valgrind.sh "$VALGRIND_VERSION"
+      - name: Setup perf
+        run: |
+          set -x
+
+          echo 2 | sudo tee /proc/sys/kernel/perf_event_paranoid
+
+          scripts/perf_ci_info.sh
       - name: Build all tests with the feature powerset
         run: just build-tests-hack
       - name: Run the tests
@@ -132,6 +139,13 @@ jobs:
       - uses: taiki-e/install-action@just
       - name: Install valgrind
         run: ./scripts/install_valgrind.sh "$VALGRIND_VERSION"
+      - name: Setup perf
+        run: |
+          set -ex
+
+          echo 2 | sudo tee /proc/sys/kernel/perf_event_paranoid
+
+          scripts/perf_ci_info.sh
       - name: Run the system tests
         run: just full-bench-test-all --filter='${{ matrix.filter }}' --partition='${{ matrix.partition }}'
         env:

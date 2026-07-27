@@ -22,6 +22,8 @@ data:
   - group: bench_group
     function: bench_thread_in_thread_in_subprocess
     expected:
+      files:
+        - summary.json
       globs:
         - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.log
           count: 2
@@ -41,21 +43,19 @@ data:
           count: 2
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.bb.out
           count: 4
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out
+          count: 2
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.t1.bb.out
           count: 1
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.t2.bb.out
           count: 1
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.t3.bb.out
           count: 1
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out
-          count: 2
         - pattern: massif.bench_thread_in_thread_in_subprocess.*.log
           count: 2
         - pattern: massif.bench_thread_in_thread_in_subprocess.*.out
           count: 2
         - pattern: memcheck.bench_thread_in_thread_in_subprocess.*.log
           count: 2
-      files:
-        - summary.json

@@ -225,7 +225,7 @@ build-hack-valgrind-requests *args:
 [group('build')]
 build-tests-hack *args: (build-tests-hack-runner args) (build-tests-hack-valgrind-requests args)
     cargo hack --workspace --feature-powerset --exclude gungraun-runner \
-        --exclude valgrind-requests test --no-run {{ args }}
+        --exclude valgrind-requests --at-least-one-of perf,perf_stubs test --no-run {{ args }}
 
 # A build of the tests in the gungraun-runner package with `cargo hack` (Uses: 'cargo-hack')
 [group('build')]

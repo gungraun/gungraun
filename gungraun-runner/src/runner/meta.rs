@@ -296,10 +296,10 @@ impl Metadata {
     /// the first successful caller that completes [`OnceLock::set`](std::sync::OnceLock::set) wins;
     /// every other caller discards its computed value and returns the shared cached result.
     ///
-    /// This is safe because [`OnceLock`](std::sync::OnceLock) synchronizes initialization: it
-    /// prevents data races, guarantees safe publication of the stored value, and always leaves a
-    /// value in the cell when `set` returns. A detection failure affects only the failing caller
-    /// and never writes a partial or corrupt state into the cache.
+    /// This is safe because [`OnceLock`] synchronizes initialization: it prevents data races,
+    /// guarantees safe publication of the stored value, and always leaves a value in the cell when
+    /// `set` returns. A detection failure affects only the failing caller and never writes a
+    /// partial or corrupt state into the cache.
     ///
     /// # Errors
     ///

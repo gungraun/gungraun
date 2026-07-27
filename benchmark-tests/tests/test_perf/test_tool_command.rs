@@ -12,8 +12,9 @@ use gungraun_runner::runner::perf::args::DEFAULT_PERF_EVENTS;
 use serde_json::Value;
 use tempfile::tempdir;
 
+#[cfg(target_os = "linux")]
 #[test]
-fn test_tool_command_basic_functionality() {
+fn test_tool_command_perf_basic() {
     let temp_dir = tempdir().unwrap();
     let config = tool_config_f()
         .tool(Tool::Perf)

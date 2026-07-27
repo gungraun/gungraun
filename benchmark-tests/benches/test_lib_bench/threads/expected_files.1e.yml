@@ -365,8 +365,6 @@ data:
           count: 1
         - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t3.bb.out.base@default
           count: 1
-        - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t3.bb.out.base@foo
-          count: 1
         - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t3.bb.out.old
           count: 1
         - pattern: massif.bench_thread_in_subprocess.two.*.log

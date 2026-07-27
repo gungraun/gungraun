@@ -407,3 +407,4 @@ tonumber
 isfinite
 Sandboxed
 abspath
+endgroup

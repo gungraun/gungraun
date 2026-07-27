@@ -35,7 +35,7 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
 }
 "#;
 const SCHEMA_PATH: &str = "gungraun-summary/schemas";
-const SCHEMA_VERSION: &str = "6";
+const SCHEMA_VERSION: &str = "7";
 const CONTINUE_FILE_NAME: &str = "benchmark-tests.continue";
 const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
 

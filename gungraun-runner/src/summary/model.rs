@@ -22,8 +22,8 @@ use crate::metrics::model::{
 };
 use crate::units::Unit;
 
-/// The version string stored in version 6 summary JSON files.
-pub const SCHEMA_VERSION: &str = "6";
+/// The version string stored in version summary JSON files.
+pub const SCHEMA_VERSION: &str = "7";
 
 /// Describes which baseline a summary compares against.
 ///

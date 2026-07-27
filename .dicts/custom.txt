@@ -406,3 +406,4 @@ itlb
 tonumber
 isfinite
 Sandboxed
+abspath

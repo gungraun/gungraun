@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{BufRead, Read, Write as IOWrite, stderr, stdout};
 use std::os::unix::process::ExitStatusExt;
 use std::panic::{self, AssertUnwindSafe};
@@ -16,7 +16,8 @@ use benchmark_tests::common::Summary;
 use benchmark_tests::serde::runs_on::RunsOn;
 use colored::Colorize;
 use fs_extra::dir::CopyOptions;
-use glob::glob;
+use glob::{Pattern, glob};
+use indexmap::IndexMap;
 use minijinja::Environment;
 use once_cell::sync::OnceCell;
 use regex::{Captures, Regex};
@@ -316,8 +317,8 @@ struct Config {
     groups: Vec<GroupConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-/// Expected files for one benchmark output directory.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Expected files and globs for one benchmark output directory.
 ///
 /// Example: requires `summary.json` and one `callgrind.out.*` glob match.
 struct Expected {
@@ -325,11 +326,13 @@ struct Expected {
     ///
     /// Example: `["summary.json"]`.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     files: Vec<PathBuf>,
     /// Glob patterns with required match counts.
     ///
     /// Example: `callgrind.out.*` with `count = 1`.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     globs: Vec<ExpectedGlob>,
 }
 
@@ -339,7 +342,7 @@ struct Expected {
 /// Example: compare stdout against `expected.stdout` and require exit code `0`.
 #[serde(deny_unknown_fields)]
 struct ExpectedConfig {
-    /// Path to an expected files manifest relative to the benchmark config directory.
+    /// Path to an expected-files manifest relative to the benchmark config directory.
     ///
     /// Example: `expected/files.yml`.
     #[serde(default)]
@@ -397,46 +400,37 @@ struct ExpectedConfig {
     script: Option<TargetString>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Expected glob assertion for benchmark output files.
-///
-/// Example: require exactly one `callgrind.out.*` file.
 struct ExpectedGlob {
     /// Glob pattern relative to an expected run directory.
-    ///
-    /// Example: `callgrind.out.*`.
     pattern: String,
     /// Required number of files matching `pattern`.
-    ///
-    /// Example: `1`.
     count: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-/// Expected files for one benchmark function output directory.
-///
-/// Example: group `library_benchmark`, function `bench_sort`, id `small`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Expected files for one benchmark `function.id` or `function` output directory.
 struct ExpectedRun {
     /// Benchmark group directory below the benchmark output root.
-    ///
-    /// Example: `library_benchmark`.
     group: String,
     /// Benchmark function name or template string used to locate the output directory.
-    ///
-    /// Example: `bench_sort`.
     function: String,
     /// Optional benchmark id appended to the function directory name.
-    ///
-    /// Example: `small` for `bench_sort.small`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
-    /// Expected files and glob counts for the resolved function directory.
-    ///
-    /// Example: require `summary.json` and one callgrind output file.
+    /// Expected files and globs for the resolved function directory.
     expected: Expected,
 }
 
+impl ExpectedRun {
+    fn equals(&self, other: &Self) -> bool {
+        self.group == other.group && self.function == other.function && self.id == other.id
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-/// Expected files manifest referenced by an `ExpectedConfig`.
+/// Expected-files manifest referenced by an `ExpectedConfig`.
 ///
 /// Example: a YAML file listing all expected benchmark function output directories.
 struct ExpectedRuns {
@@ -444,6 +438,7 @@ struct ExpectedRuns {
     ///
     /// Example: a target-triple-specific output root.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     home_dir: Option<PathBuf>,
     /// Expected output directories and files to assert.
     ///
@@ -823,7 +818,10 @@ impl Benchmark {
                 ));
 
                 for r in run.rmdirs.iter().filter(|r| r.is_dir()) {
-                    print_info(format!("Removing directory: {}", r.display()));
+                    print_info(format!(
+                        "rmdirs is set: Removing directory '{}'",
+                        r.display()
+                    ));
                     std::fs::remove_dir_all(r).unwrap();
                 }
 
@@ -967,19 +965,29 @@ impl BenchmarkOutput {
                         .write_all(filtered.as_bytes())
                         .expect("Writing to expected stderr should succeed");
 
-                    print_info("Overwriting stderr successful");
+                    print_info(format!(
+                        "Overwriting stderr '{}' successful",
+                        stderr.display()
+                    ));
                 } else {
-                    print_info("Skip overwrite since verifying stderr was successful");
+                    print_info(format!(
+                        "Skip overwrite since verifying stderr '{}' was successful",
+                        stderr.display()
+                    ));
                 }
             } else {
                 if filtered != expected_string {
                     panic!(
-                        "Assertion of stderr failed: {}",
+                        "Assertion of stderr '{}' failed: {}",
+                        stderr.display(),
                         pretty_assertions::StrComparison::new(&filtered, &expected_string)
                     );
                 }
 
-                print_info("Verifying stderr successful");
+                print_info(format!(
+                    "Verifying stderr '{}' successful",
+                    stderr.display()
+                ));
             }
         }
 
@@ -1018,13 +1026,20 @@ impl BenchmarkOutput {
                     );
 
                     File::create(bench_dir.join(stdout))
+                        .with_context(|| format!("File: '{}'", stdout.display()))
                         .expect("Opening expected stdout for writing should succeed")
                         .write_all(filtered.as_bytes())
                         .expect("Writing to expected stdout should succeed");
 
-                    print_info("Overwriting stdout successful");
+                    print_info(format!(
+                        "Overwriting stdout '{}' successful",
+                        stdout.display()
+                    ));
                 } else {
-                    print_info("Skip overwrite since verifying stdout was successful");
+                    print_info(format!(
+                        "Skip overwrite since verifying stdout '{}' was successful",
+                        stdout.display()
+                    ));
                 }
             } else {
                 if meta.is_coverage_run {
@@ -1038,7 +1053,10 @@ impl BenchmarkOutput {
                         pretty_assertions::StrComparison::new(&filtered, &expected_string)
                     );
                 }
-                print_info("Verifying stdout successful");
+                print_info(format!(
+                    "Verifying stdout '{}' successful",
+                    stdout.display()
+                ));
             }
         }
     }
@@ -1411,17 +1429,22 @@ impl BenchmarkRunner {
 }
 
 impl ExpectedRun {
-    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) -> PathBuf {
+    fn expected_dir(&self, base_dir: &Path) -> PathBuf {
         let mut env = Environment::default();
         env.add_template("function", &self.function).unwrap();
         let template = env.get_template("function").unwrap();
         let function = template.render(TEMPLATE_DATA.get().unwrap()).unwrap();
 
-        let dir = if let Some(id) = &self.id {
+        if let Some(id) = &self.id {
             base_dir.join(&self.group).join(format!("{function}.{id}"))
         } else {
             base_dir.join(&self.group).join(&function)
-        };
+        }
+    }
+
+    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) -> PathBuf {
+        let dir = self.expected_dir(base_dir);
+
         print_info(format!(
             "Running assertions in directory '{}'",
             dir.display()
@@ -1485,7 +1508,7 @@ impl ExpectedRun {
         }
 
         if let Some(summary) = summary {
-            print_info(format!("Validating summary {}", summary.display()));
+            print_info(format!("Validating summary '{}'", summary.display()));
             let instance: serde_json::Value =
                 serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
             let result = schema.validate(&instance);
@@ -1513,6 +1536,192 @@ impl ExpectedRun {
         );
 
         dir
+    }
+}
+
+impl ExpectedRuns {
+    /// Regenerates an expected-files manifest from a benchmark's current output files.
+    ///
+    /// `output_dir` is the benchmark output root, such as
+    /// `<target-dir>/gungraun/benchmark-tests/test_...`. `manifest` is the manifest path relative
+    /// to the system-test directory as given in the system test configuration file, and
+    /// `manifest_path` is the absolute path to the manifest file to replace.
+    ///
+    /// This supports the `BENCH_OVERWRITE=yes` fixture-update workflow, keeping checked-in
+    /// expectations aligned with intentional output changes. Existing glob expectations are
+    /// retained when they still apply, but new globs are not inferred. Any needed glob coverage
+    /// needs to be added manually to the resulting files. Generated file and retained glob entries
+    /// are sorted, and an existing `home_dir` is preserved rather than added. The resulting
+    /// manifest is formatted with `npx prettier` when available.
+    ///
+    /// # Panics
+    ///
+    /// Panics when benchmark output cannot be enumerated as expected, a retained glob is invalid,
+    /// the output layout is unexpected, or the manifest cannot be created or serialized.
+    fn overwrite(
+        self,
+        output_dir: &Path,
+        old_manifest_content: String,
+        manifest: &str,
+        manifest_path: &Path,
+    ) {
+        let real_files = glob(&format!("{}/**/*", output_dir.display()))
+            .unwrap()
+            .map(Result::unwrap)
+            .filter(|p| !p.is_dir())
+            .map(|p| {
+                let file = p.file_name().expect("A file name should be present");
+                let benchmark_directory =
+                    p.parent().expect("A benchmark directory should be present");
+                let (function, id) = (
+                    benchmark_directory
+                        .file_stem()
+                        .expect("A file stem should be present"),
+                    benchmark_directory.extension(),
+                );
+
+                let group = benchmark_directory
+                    .parent()
+                    .expect("A group should be present");
+
+                assert_eq!(group.parent(), Some(output_dir));
+
+                (
+                    (
+                        group
+                            .file_name()
+                            .expect("group should have a file name")
+                            .to_string_lossy()
+                            .to_string(),
+                        function.to_string_lossy().to_string(),
+                        id.map(|i| i.to_string_lossy().to_string()),
+                    ),
+                    PathBuf::from(file),
+                )
+            })
+            .fold(IndexMap::new(), |mut acc, (key, value)| {
+                acc.entry(key)
+                    .and_modify(|v: &mut Vec<_>| v.push(value.clone()))
+                    .or_insert_with(|| vec![value]);
+                acc
+            });
+
+        let mut old_data = self.data;
+        let new_runs =
+            real_files
+                .into_iter()
+                .fold(Vec::new(), |mut acc, ((group, function, id), files)| {
+                    let mut run = ExpectedRun {
+                        group,
+                        function,
+                        id,
+                        expected: Expected {
+                            files,
+                            globs: vec![],
+                        },
+                    };
+
+                    let existing_index = old_data.iter().position(|e| e.equals(&run));
+                    if let Some(index) = existing_index {
+                        // The order of the old data doesn't matter since we use the order of the
+                        // new data
+                        let existing = old_data.swap_remove(index);
+                        // Multiple globs can match the same files, so we have to collect the
+                        // matched files first before removing them from `run.expected.files`
+                        let mut matched = HashSet::new();
+                        for ExpectedGlob { pattern, .. } in existing.expected.globs.iter() {
+                            let glob = Pattern::new(pattern).expect("The pattern should be valid");
+
+                            let num_matches = run
+                                .expected
+                                .files
+                                .iter()
+                                .filter(|f| glob.matches_path(f))
+                                .inspect(|f| {
+                                    matched.insert((*f).to_owned());
+                                })
+                                .count();
+
+                            if num_matches > 0 {
+                                let new_glob = ExpectedGlob {
+                                    pattern: pattern.clone(),
+                                    count: num_matches,
+                                };
+                                run.expected.globs.push(new_glob);
+                            }
+                        }
+
+                        run.expected.files.retain(|f| !matched.contains(f));
+
+                        run.expected.globs.sort_unstable();
+                        run.expected.globs.dedup();
+                    }
+
+                    acc.push(run);
+                    acc
+                });
+
+        let new_data = ExpectedRuns {
+            home_dir: self.home_dir,
+            data: new_runs,
+        };
+
+        serde_yaml::to_writer(
+            File::create(manifest_path)
+                .with_context(|| {
+                    format!(
+                        "Opening '{}' for files overwrite should succeed",
+                        manifest_path.display()
+                    )
+                })
+                .unwrap(),
+            &new_data,
+        )
+        .map_err(|error| format!("Failed to serialize '{}': {error}", manifest_path.display()))
+        .expect("File should be serializable");
+
+        let status = std::process::Command::new("npx")
+            .args(["-y", "prettier", "-w"])
+            .arg(manifest_path)
+            .stdout(Stdio::null())
+            .status();
+
+        let new_manifest_content = fs::read_to_string(manifest_path)
+            .with_context(|| format!("File should exists: '{}'", manifest_path.display()))
+            .expect("Reading new manifest to string should succeed");
+
+        if old_manifest_content != new_manifest_content {
+            print!(
+                "{}",
+                pretty_assertions::StrComparison::new(&old_manifest_content, &new_manifest_content)
+            );
+
+            if !status.is_ok_and(|s| s.success()) {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' successful"
+                ));
+                print_info(
+                    "Running `npx prettier` failed. This file needs to be manually formatted. \
+                     Continuing ...",
+                );
+            } else {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' successful. Formatting with \
+                     `npx prettier` succeeded.",
+                ));
+            }
+        } else {
+            if !status.is_ok_and(|s| s.success()) {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' did not change the manifest"
+                ));
+                print_info("Running `npx prettier` failed. Continuing ...");
+            } else {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' did not change the manifest",
+                ));
+            }
+        }
     }
 }
 
@@ -1676,34 +1885,47 @@ impl RunConfig {
                 }
             }
 
-            if let Some(files) = expected.files.as_ref().and_then(|f| f.resolve(triple)) {
-                let expected_runs: ExpectedRuns = serde_yaml::from_reader(
-                    File::open(bench_dir.join(files))
-                        .with_context(|| format!("File should exist: '{}'", files.display()))
-                        .unwrap(),
-                )
-                .map_err(|error| format!("Failed to deserialize '{}': {error}", files.display()))
-                .expect("File should be deserializable");
+            if let Some(manifest) = expected.files.as_ref().and_then(|f| f.resolve(triple)) {
+                let manifest_path = bench_dir.join(manifest);
 
-                let dest_dir = if let Some(home_dir) = expected_runs.home_dir {
+                let manifest_content = fs::read_to_string(&manifest_path)
+                    .with_context(|| format!("File should exist: '{}'", manifest.display()))
+                    .unwrap();
+                let expected_runs: ExpectedRuns = serde_yaml::from_str(&manifest_content)
+                    .map_err(|error| {
+                        format!("Failed to deserialize '{}': {error}", manifest.display())
+                    })
+                    .expect("File should be deserializable");
+
+                let dest_dir = if let Some(home_dir) = &expected_runs.home_dir {
                     home_dir.join(PACKAGE).join(bench_name)
                 } else {
                     home_dir.join(PACKAGE).join(bench_name)
                 };
 
+                if option_env!("BENCH_OVERWRITE").map_or(false, |s| s.eq_ignore_ascii_case("yes")) {
+                    expected_runs.overwrite(
+                        &dest_dir,
+                        manifest_content,
+                        &manifest.display().to_string(),
+                        &manifest_path,
+                    );
+                    return;
+                }
+
                 let mut dirs = HashMap::new();
                 let mut seen = HashMap::new();
 
-                for expected in expected_runs.data {
-                    dirs.entry(expected.group.clone()).or_insert_with(|| {
-                        glob(&format!("{}/{}/*/", dest_dir.display(), expected.group))
+                for expected_run in expected_runs.data {
+                    dirs.entry(expected_run.group.clone()).or_insert_with(|| {
+                        glob(&format!("{}/{}/*/", dest_dir.display(), expected_run.group))
                             .unwrap()
                             .map(Result::unwrap)
                             .collect::<HashSet<PathBuf>>()
                     });
 
-                    let dir = expected.assert(&dest_dir, schema);
-                    seen.entry(expected.group)
+                    let dir = expected_run.assert(&dest_dir, schema);
+                    seen.entry(expected_run.group)
                         .and_modify(|s: &mut HashSet<PathBuf>| {
                             s.insert(dir.clone());
                         })
@@ -1722,7 +1944,7 @@ impl RunConfig {
 
                 assert!(
                     not_visited.is_empty(),
-                    "Expected no other files in directory '{}' but found: {:#?}",
+                    "Expected no other benchmark in directory '{}' but found: {:#?}",
                     dest_dir.display(),
                     not_visited
                 );

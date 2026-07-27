@@ -154,6 +154,7 @@ dependencies = [
  "glob",
  "gungraun",
  "gungraun-runner",
+ "indexmap",
  "minijinja",
  "once_cell",
  "pretty_assertions",

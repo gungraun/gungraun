@@ -602,8 +602,31 @@ macro_rules! main {
                     }
                     name => panic!("function '{}' not found in this scope", name)
                 }
-            } else {
+            } else if std::env::args().skip(1).any(|arg| arg == "--bench") {
                 std::hint::black_box(__run());
+            } else {
+                __run_setup(true);
+                $(
+                    $group::__run_setup(true);
+                    for (_, _, benches) in $group::__BENCHES {
+                        for benchmark in *benches {
+                            match benchmark.func {
+                                $crate::__internal::InternalLibFunctionKind::Iter(function) => {
+                                    let mode =
+                                        $crate::__internal::InternalBenchRunMode::Default;
+                                    for index in 0..function(mode, None) {
+                                        function(mode, Some(index));
+                                    }
+                                }
+                                $crate::__internal::InternalLibFunctionKind::Default(function) => {
+                                    function($crate::__internal::InternalBenchRunMode::Default);
+                                }
+                            }
+                        }
+                    }
+                    $group::__run_teardown(true);
+                )+
+                __run_teardown(true);
             };
         }
     };

@@ -59,7 +59,7 @@ static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
 static NUMBERS_DIFF_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\([^)*]*\)(?:\s+\[[^\]]+\])?$").expect("Regex should compile"));
 static UNIT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?<prefix>\[)(?<unit>[^\]]+)(?<suffix>\]:\s*)").expect("Regex should compile")
+    Regex::new(r"(?<prefix>)(?<unit>\s*\[[^\]]+\])(?<suffix>:\s*)").expect("Regex should compile")
 });
 static RUNNING_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[ ]+Running .*$").expect("Regex should compile"));
@@ -68,16 +68,23 @@ static PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: LazyLock<Regex> = LazyLock::new(|| 
         .expect("Regex should compile")
 });
 
-// Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)
-// $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9
+// Performance has regressed: Instructions (123 -> 196) regressed by +47.3684% (>+0.00000%)
+// Performance has regressed: Some (123.4 [ms] -> 456.7 [ms]) regressed by +47.3684% (>+0.00000%)
 static REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
-                ^(Performance\ has\ regressed:\s*[^0-9]+\()
-                ([0-9]+)(\s*->\s*)([0-9]+)
-                (\)\s*regressed\s*by\s*[+-])
-                ([0-9.]+)(%\s*\([><][+-])([0-9.]+)(%\)\s*)
-              $",
+                ^(Performance\ has\ regressed:\s*[^0-9]+\() # 1: prefix
+                ([0-9.]+)                                   # first int/decimal
+                (?:\s*\[\S+\])?                             # ignore units
+                (\s*->\s*)                                  # 3: arrow with whitespace
+                ([0-9.]+)                                   # second int/decimal
+                (?:\s*\[\S+\])?                             # ignore units
+                (\)\s*regressed\s*by\s*[+-])                # 5: middle part
+                ([0-9.]+)                                   # third int/decimal
+                (%\s*\([><][+-])                            # 7: suffix start
+                ([0-9.]+)                                   # forth int/decimal
+                (%\)\s*)                                    # 9: suffix end
+                $",
     )
     .expect("Regex should compile")
 });
@@ -104,10 +111,19 @@ static REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
 // Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
 // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
 static SUMMARY_REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"^(\s*[^0-9]+\()([0-9]+)(\s*->\s*)([0-9]+)(\):\s*[+-])",
-        r"([0-9.]+)(%\s*exceeds limit of [+-])([0-9.]+)(%\s*)$"
-    ))
+    Regex::new(
+        r"(?x)
+            ^(\s*[^0-9]+\()
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*->\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\):\s*[+-])
+            ([0-9.]+)
+            (%\s*exceeds\s*limit\s*of\s*[+-])
+            ([0-9.]+)
+            (%\s*)
+            $",
+    )
     .expect("Regex should compile")
 });
 // * Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
@@ -2072,8 +2088,8 @@ fn filter_unit(desc: &str) -> Cow<'_, str> {
         format!(
             "{}{}{}",
             &caps["prefix"],
-            " ".repeat(caps["unit"].len()),
-            &caps["suffix"]
+            &caps["suffix"],
+            " ".repeat(caps["unit"].len())
         )
     })
 }
@@ -2227,7 +2243,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case::perf_with_unit("task-clock/u [us]:", "task-clock/u [  ]:")]
+    #[case::perf_with_unit("task-clock/u [us]:", "task-clock/u:     ")]
     #[case::perf_without_unit("cpu_core/instructions/u:", "cpu_core/instructions/u:")]
     #[case::non_unit_brackets("rse% (sig.thr) [sig.fact]", "rse% (sig.thr) [sig.fact]")]
     fn test_filter_unit(#[case] haystack: &str, #[case] replaced: &str) {
@@ -2235,12 +2251,23 @@ mod tests {
     }
 
     #[rstest]
-    #[case::instructions_positive_when_0_allowed(
+    #[case::no_decimal_and_unit(
         "Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)",
         "Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by \
          +<__PERCENT__>% (>+<__NUM__>%)"
     )]
-    fn test_regression_re(#[case] haystack: &str, #[case] replaced: &str) {
+    #[case::with_decimal(
+        "Performance has regressed: Some (1.234 -> 2.345) regressed by +47.3684% (>+0.00000%)",
+        "Performance has regressed: Some (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% \
+         (>+<__NUM__>%)"
+    )]
+    #[case::with_decimal_and_unit(
+        "Performance has regressed: Some (1.234 [ms] -> 2.345 [ms]) regressed by +47.3684% \
+         (>+0.00000%)",
+        "Performance has regressed: Some (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% \
+         (>+<__NUM__>%)"
+    )]
+    fn test_regression_soft_re(#[case] haystack: &str, #[case] replaced: &str) {
         assert_eq!(
             REGRESSION_SOFT_RE.replace(
                 haystack,
@@ -2278,6 +2305,20 @@ mod tests {
     )]
     fn test_summary_hard_regression_re(#[case] haystack: &str) {
         assert!(SUMMARY_REGRESSION_HARD_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::valgrind("Total bytes (16 -> 20): +25.0000% exceeds limit of +0.00000%")]
+    #[case::perf_no_unit(
+        "Perf: cpu_core/instructions/u [*instructions*] (1234 -> 4567): +1234% exceeds limit of \
+         +1.234%"
+    )]
+    #[case::perf_with_unit(
+        "Perf: task-clock:u [*task-clock*] (38.3450 [us] -> 74111.1 [us]): +193175% exceeds limit \
+         of +0.00000%"
+    )]
+    fn test_summary_soft_regression_re(#[case] haystack: &str) {
+        assert!(SUMMARY_REGRESSION_SOFT_RE.is_match(haystack));
     }
 
     #[rstest]

@@ -30,6 +30,7 @@ gungraun = { path = "../gungraun", features = ["act"] }
 gungraun-runner = { path = "../gungraun-runner", features = ["__fixtures"] }
 indexmap = { workspace = true }
 minijinja = { workspace = true }
+nix = { workspace = true }
 once_cell = { workspace = true }
 pretty_assertions = { workspace = true }
 regex = { workspace = true }

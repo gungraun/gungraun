@@ -408,3 +408,12 @@ isfinite
 Sandboxed
 abspath
 endgroup
+sysconf
+Uninit
+rusage
+getrusage
+munmap
+madvise
+MADV
+NOHUGEPAGE
+minflt

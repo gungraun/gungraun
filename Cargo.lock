@@ -156,6 +156,7 @@ dependencies = [
  "gungraun-runner",
  "indexmap",
  "minijinja",
+ "nix",
  "once_cell",
  "pretty_assertions",
  "regex",

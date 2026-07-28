@@ -2,6 +2,9 @@ pub mod assert;
 pub mod common;
 pub mod serde;
 
+#[cfg(target_os = "linux")]
+mod minor_page_faults;
+
 use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::io;
@@ -9,6 +12,13 @@ use std::process::Output;
 use std::rc::Rc;
 
 use gungraun::client_requests;
+#[cfg(target_os = "linux")]
+pub use minor_page_faults::cause_minor_page_faults;
+/// On non-linux targets this function is a no-op
+#[cfg(not(target_os = "linux"))]
+pub fn cause_minor_page_faults() -> io::Result<()> {
+    Ok(())
+}
 
 struct Left(Option<Rc<Right>>);
 #[expect(dead_code)]

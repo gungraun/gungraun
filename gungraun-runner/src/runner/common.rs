@@ -1053,39 +1053,38 @@ impl Group {
 
     /// Runs all benchmarks in this group and returns the [`BenchmarkSummaries`].
     ///
-    /// When [`MaxParallel::Serial`] is configured, benchmarks run one after another on the current
-    /// thread. Otherwise, benchmarks are executed in a [`ThreadPool`] using the configured or
-    /// derived number of threads. On [`Error::JobError`], the temporary files are copied to the
-    /// benchmark directory keeping their unsanitized file names which makes them distinguishable
-    /// from the normal output files, so error logs and output files can be easily inspected.
+    /// When the effective parallelism is `1`, benchmarks and their post-processing run serially one
+    /// after another on the current thread. Otherwise, benchmarks are executed in a [`ThreadPool`]
+    /// using the configured or derived number of workers. On [`Error::JobError`], the temporary
+    /// files are copied to the benchmark directory keeping their unsanitized file names which makes
+    /// them distinguishable from the normal output files, so error logs and output files can be
+    /// easily inspected.
     ///
     /// # Errors
     ///
     /// Returns an error if benchmark execution or result processing fails.
     pub fn run(self, config: &Arc<Config>) -> Result<BenchmarkSummaries> {
-        let num_threads = match self.max_parallel {
-            MaxParallel::Serial => {
-                let result = self.run_serial(config);
-                if let Err(error) = &result {
-                    if let Some(Error::JobError(_, _, _, path)) = error.downcast_ref::<Error>() {
-                        // Avoid an error within the error situation.
-                        let _ = path
-                            .init()
-                            .and_then(|()| path.clear_temp_files(true))
-                            .and_then(|()| path.copy_temp());
-                    }
+        let num_workers = self.max_parallel.num_workers(config.meta.args.parallel);
+
+        if let Some(num_workers) = num_workers {
+            self.run_parallel(config, num_workers)
+        } else {
+            let result = self.run_serial(config);
+            if let Err(error) = &result {
+                if let Some(Error::JobError(_, _, _, path)) = error.downcast_ref::<Error>() {
+                    // Avoid an error within the error situation.
+                    let _ = path
+                        .init()
+                        .and_then(|()| path.clear_temp_files(true))
+                        .and_then(|()| path.copy_temp());
                 }
-
-                return result;
             }
-            MaxParallel::NoMaximum => config.meta.args.parallel,
-            MaxParallel::Count(num) => config.meta.args.parallel.min(num),
-        };
 
-        self.run_parallel(config, num_threads)
+            result
+        }
     }
 
-    fn run_parallel(self, config: &Arc<Config>, num_threads: usize) -> Result<BenchmarkSummaries> {
+    fn run_parallel(self, config: &Arc<Config>, num_workers: usize) -> Result<BenchmarkSummaries> {
         let mut benchmark_summaries = BenchmarkSummaries::default();
 
         let compare_by_id = self.compare_by_id;
@@ -1093,7 +1092,7 @@ impl Group {
         let module_path = Arc::new(self.module_path.clone());
         let main_index = self.index;
 
-        let mut thread_pool = ThreadPool::<Result<JobResult>>::new(num_threads)?;
+        let mut thread_pool = ThreadPool::<Result<JobResult>>::new(num_workers)?;
 
         match self.benches {
             Benches::LibBenches(lib_benches) => {
@@ -1802,6 +1801,19 @@ impl Groups {
     }
 }
 
+impl MaxParallel {
+    /// Resolves `parallel` and this group-specific limit to an effective worker count.
+    ///
+    /// Returns [`None`] when either setting limits the effective parallelism to `1`. Otherwise,
+    /// returns the parallelism capped by the group limit.
+    pub fn num_workers(&self, parallel: usize) -> Option<usize> {
+        match (self, parallel) {
+            (Self::Serial | Self::Count(1), _) | (_, 1) => None,
+            (Self::NoMaximum, parallel) => Some(parallel),
+            (Self::Count(max), parallel) => Some(parallel.min(*max)),
+        }
+    }
+}
 impl From<Option<usize>> for MaxParallel {
     fn from(value: Option<usize>) -> Self {
         match value {
@@ -2319,6 +2331,22 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+
+    #[rstest]
+    #[case::default_serial(MaxParallel::NoMaximum, 1, None)]
+    #[case::global_serial_overrides_group_limit(MaxParallel::Count(2), 1, None)]
+    #[case::group_serial(MaxParallel::Serial, 8, None)]
+    #[case::defensive_group_count_one(MaxParallel::Count(1), 8, None)]
+    #[case::global_parallelism(MaxParallel::NoMaximum, 8, Some(8))]
+    #[case::group_limit(MaxParallel::Count(2), 8, Some(2))]
+    #[case::global_limit(MaxParallel::Count(8), 2, Some(2))]
+    fn test_max_parallel_num_workers(
+        #[case] max_parallel: MaxParallel,
+        #[case] parallel: usize,
+        #[case] expected: Option<usize>,
+    ) {
+        assert_eq!(max_parallel.num_workers(parallel), expected);
+    }
 
     #[rstest]
     #[case::empty("", None)]

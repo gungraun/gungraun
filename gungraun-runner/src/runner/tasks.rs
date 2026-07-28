@@ -407,6 +407,8 @@ impl ProcessHandler {
             return Err(Error::TaskInterrupt.into());
         }
 
+        debug!("Spawning {} command", tool_config.tool());
+
         let child = command.run(
             tool_config,
             executable,
@@ -460,6 +462,7 @@ impl ProcessHandler {
             .take()
             .expect("A benchmark should be started before waiting");
 
+        debug!("Waiting for the {} child process", bench_child.tool);
         let result = ProcessChild(
             bench_child
                 .child

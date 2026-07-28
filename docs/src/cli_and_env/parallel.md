@@ -403,12 +403,12 @@ library_benchmark_group!(
 
 ### How `max_parallel` Values Work
 
-| Value            | Behavior                                   |
-| ---------------- | ------------------------------------------ |
-| Not specified    | No limit (uses `--parallel` value)         |
-| `0`              | No limit (same as not specifying)          |
-| `1`              | Serial execution (one benchmark at a time) |
-| `N` where N >= 2 | Limit to at most N parallel benchmarks     |
+| Value            | Behavior                                    |
+| ---------------- | ------------------------------------------- |
+| Not specified    | No limit (uses `--parallel` value)          |
+| `0`              | No limit (same as not specifying)           |
+| `1`              | Serial execution, including post-processing |
+| `N` where N >= 2 | Limit to at most N parallel benchmarks      |
 
 ### Important Notes
 

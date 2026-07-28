@@ -401,7 +401,6 @@ impl Metadata {
                 let mut command = Command::new(&cmd.bin);
 
                 if run_options.env_clear {
-                    debug!("Clearing environment variables");
                     env_clear(tool_config.tool(), &mut command);
                 }
 

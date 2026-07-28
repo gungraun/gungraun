@@ -61,6 +61,8 @@ and this project adheres to
   gungraun-common crate.
 - The default tool can be disabled
 - Only enabled tool configurations are validated
+- Fixed serial execution if --parallel=1 or just using the args.parallel of 1 as
+  default (MaxParallel::NoMaximum).
 
 ## [0.19.4] - 2026-07-10
 

@@ -687,7 +687,8 @@ macro_rules! main {
 /// * __`max_parallel`__ (optional): The default is no limit. If set to a value, `0` means no limit
 ///   (same as not specifying this option), `1` disables parallel execution for this group, and
 ///   values `>= 2` limit the maximum number of parallel benchmarks to run within this group. This
-///   option does nothing without the `--parallel` command line option.
+///   option does nothing unless parallel execution is enabled with `--parallel` or
+///   `GUNGRAUN_PARALLEL`.
 /// * __`setup`__ (optional): A function which is executed before all benchmarks in this group
 /// * __`teardown`__ (optional): A function which is executed after all benchmarks in this group
 /// * __`benchmarks`__ (mandatory): A `,`-separated array of `#[binary_benchmark]` annotated
@@ -1410,7 +1411,8 @@ macro_rules! binary_benchmark_group {
 /// * __`max_parallel`__ (optional): The default is no limit. If set to a value, `0` means no limit
 ///   (same as not specifying this option), `1` disables parallel execution for this group, and
 ///   values `>= 2` limit the maximum number of parallel benchmarks to run within this group. This
-///   option does nothing without the `--parallel` command line option.
+///   option does nothing unless parallel execution is enabled with `--parallel` or
+///   `GUNGRAUN_PARALLEL`.
 /// * __`setup`__ (optional): A setup function or any valid expression which is run before all
 ///   benchmarks of this group
 /// * __`teardown`__ (optional): A teardown function or any valid expression which is run after all

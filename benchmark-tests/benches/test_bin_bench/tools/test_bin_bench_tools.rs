@@ -10,7 +10,7 @@ use gungraun::{Bbv, Dhat, Drd, Helgrind, Massif, Memcheck, OutputFormat, Perf, T
 #[bench::perf_override(
     config = BinaryBenchmarkConfig::default()
         .default_tool(Tool::Perf)
-        .tool_override(Perf::default())
+        .tool_override(Perf::default().event_set("task-clock,cpu-clock,faults,context-switches"))
 )]
 fn bench_subprocess() -> Command {
     Command::new(env!("CARGO_BIN_EXE_subprocess"))
@@ -32,6 +32,6 @@ main!(
         .tool(Memcheck::with_args(["--time-stamp=yes"]))
         .tool(Drd::default())
         .tool(Helgrind::default())
-        .tool(Perf::default()),
+        .tool(Perf::default().event_set("task-clock,cpu-clock,faults,context-switches")),
     binary_benchmark_groups = bench_group
 );

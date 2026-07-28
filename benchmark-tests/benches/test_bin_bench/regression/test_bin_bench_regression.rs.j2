@@ -24,7 +24,8 @@ use gungraun::{
     config = BinaryBenchmarkConfig::default()
         .default_tool(Tool::Perf)
         .tool(Perf::default()
-            .soft_limits([("*instructions*", 0.0)]).fail_fast({{ fail_fast }})
+            .event_set("task-clock,cpu-clock,faults,context-switches")
+            .soft_limits([("*task-clock*", 0.0)]).fail_fast({{ fail_fast }})
         )
 )]
 #[bench::should_not_run_after_regression(10)]

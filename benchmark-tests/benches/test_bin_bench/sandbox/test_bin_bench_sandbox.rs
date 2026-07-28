@@ -101,7 +101,9 @@ fn perf() -> gungraun::Command {
 
 binary_benchmark_group!(
     name = perf_direct,
-    config = BinaryBenchmarkConfig::default().default_tool(Tool::Perf),
+    config = BinaryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().event_set("task-clock,cpu-clock,faults,context-switches")),
     benchmarks = [with_sandbox, without_sandbox, with_current_dir]
 );
 
@@ -113,11 +115,10 @@ binary_benchmark_group!(
             Perf::default()
                 .sample_duration(Duration::from_secs(2))
                 .run_mode(PerfRunMode::Calibrate(Duration::from_secs(2)))
-                // This is the default set without faults because it produces flaky terminal output
-                // in the second comparison run
+                // This is the usual event set without faults because it produces flaky terminal
+                // output in the second comparison run
                 .event_set(
-                    "instructions:u,cycles:u,task-clock,cpu-clock,context-switches,branch-misses,\
-                     cache-misses"
+                    "task-clock,cpu-clock,context-switches"
                 )
         ),
     benchmarks = perf

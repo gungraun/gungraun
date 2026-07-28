@@ -1,3 +1,29 @@
+//! Generates controlled minor page faults for Linux perf system tests.
+//!
+//! Linux backs a private anonymous mapping on demand. The first write to an untouched page makes
+//! the kernel allocate and zero a physical page and install its page-table entry. Because this
+//! requires no file-system I/O, [`getrusage(2)`] accounts it as a minor page fault.
+//!
+//! The methodology is:
+//!
+//! 1. Create a fresh private anonymous mapping with [`mmap(2)`]. A fresh mapping ensures that each
+//!    requested page is initially untouched.
+//! 2. Apply `MADV_NOHUGEPAGE` with [`madvise(2)`]. Transparent and multi-size huge pages can
+//!    satisfy multiple base pages with one fault, so disabling them preserves the per-base-page
+//!    behavior.
+//! 3. Write one byte at every base-page offset. Volatile writes keep these otherwise unobservable
+//!    stores from being removed by the compiler.
+//! 4. Unmap the region explicitly so cleanup failures are reported and every invocation starts with
+//!    a new mapping.
+//!
+//! Prefaulting mechanisms such as `MAP_POPULATE` are intentionally not used because the helper
+//! needs the page accesses themselves to induce the faults.
+//!
+//! [`getrusage(2)`]: https://man7.org/linux/man-pages/man2/getrusage.2.html
+//! [`madvise(2)`]: https://man7.org/linux/man-pages/man2/madvise.2.html
+//! [`mmap(2)`]: https://man7.org/linux/man-pages/man2/mmap.2.html
+//! [Transparent and multi-size huge pages]: https://docs.kernel.org/admin-guide/mm/transhuge.html
+
 use std::io;
 use std::ptr::NonNull;
 

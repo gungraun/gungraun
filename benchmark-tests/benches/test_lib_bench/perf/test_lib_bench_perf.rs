@@ -20,7 +20,7 @@ where
     args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .event_sets(["instructions"])
+            .event_sets(["task-clock"])
             // to provoke a warning which tells us that the args are parsed but only if record is
             // enabled
             .record_args(["-e", "foo"])
@@ -31,7 +31,7 @@ where
     args = [10],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .event_sets(["instructions"])
+            .event_sets(["task-clock"])
         )
 )]
 // The first one is discarded, so the result should be still only one measurement (without mean, rse
@@ -40,21 +40,21 @@ where
     args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .event_sets(["instructions,instructions"])
+            .event_sets(["task-clock,task-clock"])
         )
 )]
 #[bench::two_sets_same_event(
     args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .event_sets(["instructions", "instructions"])
+            .event_sets(["task-clock", "task-clock"])
         )
 )]
 #[bench::two_sets_different_events(
     args = [1000],
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
-            .event_sets(["instructions", "task-clock"])
+            .event_sets(["task-clock", "cpu-clock"])
             // Testing:
             // 1. that just adding `record_args` without enabling record doesn't do anything.
             // 2. sadly, these arguments don't have any side-effects we can verify but at least we
@@ -67,8 +67,8 @@ where
     config = LibraryBenchmarkConfig::default()
         .tool(Perf::default()
             .event_sets([
-                "instructions:u","cycles:u","ref-cycles","task-clock","cpu-clock","faults",
-                "context-switches","branches","branch-misses","cache-misses"
+                "task-clock","cpu-clock","faults","context-switches","cpu-clock","task-clock",
+                "context-switches","faults","task-clock","cpu-clock"
             ])
         )
 )]
@@ -100,6 +100,7 @@ where
             // Setting the override is necessary to avoid intermittent zero instruction metrics.
             .sample_duration(Duration::from_secs(2))
             .run_mode(PerfRunMode::DefaultCalibrate)
+            .event_set("task-clock,cpu-clock,context-switches")
         )
 )]
 #[bench::calibrate_1_secs(
@@ -136,26 +137,6 @@ fn event_sets(n: i32) -> Vec<i32> {
         .tool(Perf::default().enable(false))
 )]
 fn with_other_tool() -> Vec<i32> {
-    black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
-}
-
-// Far too many slots to succeed without multiplexing on a regular cpu when using sampling. The low
-// `min_pcnt_running` value ensures we still count all events which have a valid counter-value.
-#[library_benchmark(
-    config = LibraryBenchmarkConfig::default()
-        .tool(Perf::default()
-            .min_pcnt_running(0.0)
-            .event_sets([
-                "instructions,instructions,instructions,instructions,instructions,\
-                instructions,instructions,instructions,instructions,instructions,\
-                instructions,instructions,instructions,instructions,instructions,\
-                instructions,instructions,instructions,instructions,instructions,\
-                instructions,instructions,instructions,instructions,instructions,\
-                instructions,instructions,instructions,instructions,instructions"
-            ])
-        )
-)]
-fn thirty_events_then_multiplexing() -> Vec<i32> {
     black_box(bubble_sort(setup_worst_case_array(black_box(1000))))
 }
 
@@ -225,7 +206,6 @@ library_benchmark_group!(
     benchmarks = [
         event_sets,
         with_other_tool,
-        thirty_events_then_multiplexing,
         disabled_entry_point,
         disabled_entry_point_without_measurement,
         generic,
@@ -245,6 +225,8 @@ library_benchmark_group!(
 );
 
 main!(
-    config = LibraryBenchmarkConfig::default().default_tool(Tool::Perf),
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().event_set("task-clock,cpu-clock,faults,context-switches")),
     library_benchmark_groups = [without_sampling, with_sampling, record]
 );

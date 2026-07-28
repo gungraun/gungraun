@@ -1,6 +1,7 @@
 # Test Case: `test_lib_bench_regression`
 #
-# TODO: UPDATE DOCS
+# TODO: Readd task-clock hard-limit when hard limits *can* have units but don't
+# have to
 #
 # Description:
 #   Validates soft- and hard-limit regression detection and fail-fast behavior
@@ -15,21 +16,30 @@
 #   4. Set limits through CLI arguments, with and without CLI fail-fast
 #
 # Test Inputs:
-#   - Soft limits at a 0% threshold so any metric increase is a regression
-#   - Hard limits below observed metric values to force hard-limit regressions
+#   - Zero-percent soft limits for each tool's regression benchmark
+#   - Hard limits on Callgrind and Cachegrind `Ir`, DHAT `TotalBytes`, and Perf
+#     `*faults*`, set below observed values
 #   - `--callgrind-limits`, `--cachegrind-limits`, `--dhat-limits`, and
 #     `--perf-limits` CLI arguments
 #   - `--regression-fail-fast` CLI flag
 #   - Template-generated arrays of varying lengths to change benchmark metrics
+#   - `cause_minor_page_faults` function to provoke an increase in minor page
+#     faults to trigger the hard limit for Perf `faults`.
+#   - A `should_not_run_after_regression` sentinel benchmark
+#   - The explicit `task-clock,cpu-clock,faults,context-switches` event set is
+#     intentionally limited to events available across Linux systems and the
+#     Github CI;
 #
 # Expected Outcomes:
-#   - Invalid floating-point hard limits produce clear errors for Callgrind,
-#     Cachegrind, and DHAT; Perf is intentionally not part of this case
+#   - Invalid floating-point hard limits for integer limits produce clear errors
+#     for Callgrind, Cachegrind, and DHAT; Perf is intentionally not part of
+#     this case because it accepts `Float` and `Int` limits
 #   - Baseline runs exit successfully with code 0
 #   - Detected regressions exit with code 3
-#   - Per-tool fail-fast aborts after its first regression; without fail-fast,
-#     output reports regressions from all configured tools
+#   - Per-tool fail-fast aborts before the sentinel benchmark; without
+#     fail-fast, output reports all configured regressions and reaches it
 #   - Output identifies the violated metric, configured limit, and limit type
+#   - FreeBSD doesn't run Perf and uses the non-Perf fallback expectations
 
 # spell-checker: ignore readsbytes
 template: test_lib_bench_regression.rs.j2
@@ -128,9 +138,8 @@ groups:
             stdout: freebsd/expected_stdout.perf-fail-fast
             no_stderr: true
             exit_code: 0
-
         template_data:
-          perf_array_length: 100
+          perf_array_length: 10000
           perf_fail_fast: true
   # 3 regress all without fail fast
   - runs:
@@ -163,7 +172,8 @@ groups:
           callgrind_array_length: 100
           cachegrind_array_length: 500
           dhat_array_length: 5
-          perf_array_length: 1000
+          perf_array_length: 10000
+          page_faults: 100
   # 4 regress all with limits set per command-line arguments
   - runs:
       # 4.1
@@ -189,7 +199,7 @@ groups:
             "--dhat-limits",
             "readsbytes=0%,totalbytes=16",
             "--perf-limits",
-            "instructions=0.0%",
+            "task-clock=0.0%",
           ]
         expected:
           files:
@@ -204,7 +214,7 @@ groups:
           callgrind_array_length: 100
           cachegrind_array_length: 500
           dhat_array_length: 5
-          perf_array_length: 1000
+          perf_array_length: 10000
       # 4.3
       - args: ["--regression-fail-fast"]
         expected:
@@ -220,4 +230,4 @@ groups:
           callgrind_array_length: 200
           cachegrind_array_length: 1000
           dhat_array_length: 6
-          perf_array_length: 2000
+          perf_array_length: 20000

@@ -1,11 +1,10 @@
 # Test Case: `test_bin_bench_tools`
 #
-# TODO: UPDATE DOCS, especially the new perf_override
-#
 # Description:
 #   Tests running multiple Valgrind tools (Dhat, Massif, Bbv, Memcheck, Drd,
 #   Helgrind, Perf) in a single benchmark run. Also validates the
-#   `trace-children` option for subprocess instrumentation for Valgrind tools.
+#   `trace-children` option for subprocess instrumentation and benchmark-level
+#   tool overrides.
 #
 # Test Steps:
 #   1. Run benchmarks with `--nocapture` and all tools enabled
@@ -20,6 +19,9 @@
 #   - `Helgrind` with default configuration
 #   - `Perf` with default configuration
 #   - `trace-children=yes/no` option for subprocess handling
+#   - A `perf_override` benchmark that replaces the configured tools with Perf
+#     as the default tool and selects the portable
+#     `task-clock,cpu-clock,faults,context-switches` event subset.
 #
 # Expected Outcomes:
 #   - All tools produce expected output files
@@ -27,6 +29,7 @@
 #   - No stderr output (clean execution)
 #   - Subprocess instrumentation works with `trace-children` option for Valgrind
 #     tools
+#   - The benchmark-level Perf override runs only Perf with the selected events
 #   - FreeBSD doesn't run perf and skips it silently
 #   - FreeBSD platform has separate expected outputs and files without perf
 

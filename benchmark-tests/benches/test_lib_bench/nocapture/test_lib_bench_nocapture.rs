@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
-use gungraun::Tool;
 use gungraun::prelude::*;
+use gungraun::{Perf, Tool};
 
 fn setup_to_stdout(value: u64) -> u64 {
     println!("setup: stdout: {value}");
@@ -54,7 +54,9 @@ library_benchmark_group!(
 
 library_benchmark_group!(
     name = perf,
-    config = LibraryBenchmarkConfig::default().default_tool(Tool::Perf),
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().event_set("task-clock,cpu-clock,context-switches")),
     benchmarks = [bench, print_events_line]
 );
 

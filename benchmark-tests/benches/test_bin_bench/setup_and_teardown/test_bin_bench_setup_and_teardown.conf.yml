@@ -1,37 +1,35 @@
 # Test Case: `test_bin_bench_setup_and_teardown`
 #
-# TODO: UPDATE DOCS
-#
 # Description:
-#   Tests setup and teardown functions at the benchmark level, including
-#   function argument passing, inheritance from `#[binary_benchmark]` level, and
-#   override behavior. Also validates skipping setup/teardown when loading a
-#   baseline. perf executes setup/teardown only once for sampling or calibrate
-#   modes.
+#   Tests binary setup and teardown functions, including arguments, module
+#   namespacing, benchmark-level inheritance, bench-level overrides, low-level
+#   API construction, execution order, and Perf run modes. Also verifies that
+#   assistants are skipped when loading an existing baseline.
 #
 # Test Steps:
-#   1. Run with `--nocapture` to see all setup/teardown output
-#   2. Save baseline with `--save-baseline`
-#   3. Load baseline with `--load-baseline` (setup/teardown should not run)
+#   1. Run with `--nocapture` and compare assistant ordering and generated files
+#   2. Create baseline data as preparation for the load-only assertion
+#   3. Run with `--load-baseline --baseline --nocapture` and confirm assistants
+#      are not executed
 #
 # Test Inputs:
-#   - Setup/teardown functions with and without arguments
-#   - Setup/teardown functions in modules (namespaced)
-#   - Global setup/teardown at `#[binary_benchmark]` level
-#   - Bench-level setup/teardown that override global
-#   - Low-level API (`BinaryBenchmark`, `Bench`) setup/teardown
-#   - `--save-baseline` and `--load-baseline` flags
-#   - perf with different run modes and sampling
+#   - Setup/teardown functions with arguments and namespaced module functions
+#   - `#[binary_benchmark]` assistants inherited or overridden by individual
+#     benches
+#   - Low-level `BinaryBenchmark` and `Bench` setup/teardown definitions
+#   - Perf direct, sampling, calibration, and sampling-plus-calibration modes
+#     with `task-clock`, `cpu-clock`, and `context-switches`. The explicit
+#     `task-clock,cpu-clock,context-switches` event set is intentionally limited
+#     to events available across Linux systems and the Github CI;
 #
 # Expected Outcomes:
-#   - Setup functions execute before command, teardown after
-#   - Arguments passed correctly to setup/teardown functions
-#   - Bench-level overrides take precedence over global
-#   - `--load-baseline` skips setup/teardown execution
-#   - Output files created with expected metrics
-#   - Stdout shows correct execution order
-#   - perf executes setup and teardown only once no matter the run mode and if
-#     sampling is configured
+#   - Stdout shows setup before each command and teardown afterward, with
+#     correct arguments, namespacing, inheritance, and overrides
+#   - Low-level and macro-defined benchmarks produce their declared files
+#   - Baseline loading emits no setup/teardown output
+#   - Perf assistants execute once per binary benchmark run regardless of
+#     sampling or calibration
+#   - FreeBSD doesn't run Perf and uses the non-Perf fallback expectations
 
 groups:
   - runs:

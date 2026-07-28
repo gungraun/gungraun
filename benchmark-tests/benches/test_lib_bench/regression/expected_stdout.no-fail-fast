@@ -26,18 +26,13 @@ test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:(se
   Reads bytes:                                            |                     (        %) [        x]
   Writes bytes:                                           |                     (        %) [        x]
 
-test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_perf:(setup_worst_case_array(1000))
+test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_perf:(setup_worst_case_array(10000))
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 
 test_bench_template::bench_group::bench_bubble_sort_soft_limits should_not_run_after_regression:(setup_worst_case_array(10))
   Instructions:                                           |                     (No change)
@@ -74,25 +69,28 @@ test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:(se
   Reads bytes:                                            |                     (        %) [        x]
   Writes bytes:                                           |                     (        %) [        x]
 
-test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_perf:(setup_worst_case_array(1000))
+test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_perf:(setup_worst_case_array(10000))
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
+    samples                                               |                     (        %) [        x]
 
 test_bench_template::bench_group::bench_bubble_sort_hard_limits should_not_run_after_regression:(setup_worst_case_array(10))
-  Instructions:                                           |                     (No change)
+  Instructions:                                           |                     (        %) [        x]
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
   RAM Hits:                                               |                     (         )
-  Total read+write:                                       |                     (No change)
+  Total read+write:                                       |                     (        %) [        x]
   Estimated Cycles:                                       |                     (         )
 
 Regressions:
@@ -104,7 +102,7 @@ Regressions:
   test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:
     DHAT: Total bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_perf:
-    Perf: cpu_core/instructions/u [*instructions*] (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+    Perf: task-clock:u [*task-clock*] (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_callgrind:
     Callgrind: Instructions (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_cachegrind:
@@ -112,7 +110,6 @@ Regressions:
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:
     DHAT: Total bytes (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_perf:
-    Perf: cpu_core/instructions/u [*instructions*] (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
-    Perf: task-clock:u [*task-clock*] (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
+    Perf: faults:u [*faults*] (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
 
 Gungraun result: Regressed. 2 without regressions; 8 regressed; 0 filtered; 10 benchmarks finished in <__SECONDS__>s

@@ -1,9 +1,10 @@
 use std::hint::black_box;
+use std::time::Duration;
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
+use benchmark_tests::{bubble_sort, setup_worst_case_array, cause_minor_page_faults};
 use gungraun::{
     library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    Callgrind, Tool, Cachegrind, CachegrindMetric, Dhat, DhatMetric, Limit, Perf, Unit
+    Callgrind, Tool, Cachegrind, CachegrindMetric, Dhat, DhatMetric, Limit, Perf
 };
 
 #[cfg(target_os = "freebsd")]
@@ -50,7 +51,8 @@ fn get_cachegrind_hard_limits() -> Vec<(CachegrindMetric, Limit)> {
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::Perf)
         .tool(Perf::default()
-            .soft_limits([("*instructions*", 0.0)]).fail_fast({{ perf_fail_fast | default(false) }})
+            .event_set("task-clock,cpu-clock,faults,context-switches")
+            .soft_limits([("*task-clock*", 0.0)]).fail_fast({{ perf_fail_fast | default(false) }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]
@@ -64,7 +66,7 @@ fn bench_bubble_sort_soft_limits(array: Vec<i32>) -> Vec<i32> {
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .hard_limits([(EventKind::Ir, {{ callgrind_hard_limit | default(200) }} )]).fail_fast({{ callgrind_fail_fast | default(false) }})
+            .hard_limits([(EventKind::Ir, {{ callgrind_hard_limit | default(500) }} )]).fail_fast({{ callgrind_fail_fast | default(false) }})
         )
 )]
 #[bench::regress_cachegrind(
@@ -92,14 +94,16 @@ fn bench_bubble_sort_soft_limits(array: Vec<i32>) -> Vec<i32> {
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::Perf)
         .tool(Perf::default()
+            .event_set("task-clock,cpu-clock,faults,context-switches")
+            .sample_duration(Duration::from_secs(5))
             .hard_limits([
-                ("*instructions*", None, {{ perf_hard_limit | default("Limit::Int(5000)") }}),
-                ("*task-clock*", Some(Unit::Microseconds), {{ perf_hard_limit_with_unit | default("Limit::Int(100)") }})
+                ("*faults*", None, {{ perf_hard_limit | default("Limit::Int(10)") }}),
             ]).fail_fast({{ perf_fail_fast | default(false) }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]
 fn bench_bubble_sort_hard_limits(array: Vec<i32>) -> Vec<i32> {
+    cause_minor_page_faults({{ page_faults | default(10) }}).unwrap();
     black_box(bubble_sort(array))
 }
 

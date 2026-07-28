@@ -123,15 +123,10 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   Suppressed Contexts:                                    |                     (         )
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_bin_bench_tools::bench_group::bench_subprocess no_trace_children:() -> target/release/subprocess <__ABS_PATH__>/sort
 1999000
 - end of stdout/stderr
@@ -173,28 +168,18 @@ test_bin_bench_tools::bench_group::bench_subprocess no_trace_children:() -> targ
   Suppressed Contexts:                                    |                     (         )
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_bin_bench_tools::bench_group::bench_subprocess perf_override:() -> target/release/subprocess <__ABS_PATH__>/sort
 1999000
 - end of stdout/stderr
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 
 Gungraun result: Ok. 3 without regressions; 0 regressed; 0 filtered; 3 benchmarks finished in <__SECONDS__>s

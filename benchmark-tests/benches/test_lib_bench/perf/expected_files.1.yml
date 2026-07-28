@@ -348,13 +348,6 @@ data:
         - perf.iter.two_to_four_2.out
         - summary.json
   - group: with_sampling
-    function: thirty_events_then_multiplexing
-    expected:
-      files:
-        - perf.thirty_events_then_multiplexing.log
-        - perf.thirty_events_then_multiplexing.out
-        - summary.json
-  - group: with_sampling
     function: with_consts
     id: one_thousand
     expected:

@@ -4,15 +4,10 @@ perf stat
 - end of stdout/stderr
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |N/A                  (*********)
-  cpu_atom/cycles/u:                                      |N/A                  (*********)
-  cpu_core/cycles/u:                                      |N/A                  (*********)
-  task-clock/u [  ]:                                      |N/A                  (*********)
-  cpu-clock/u [  ]:                                       |N/A                  (*********)
+  task-clock/u:                                           |N/A                  (*********)
+  cpu-clock/u:                                            |N/A                  (*********)
   faults/u:                                               |N/A                  (*********)
   context-switches/u:                                     |N/A                  (*********)
-  cpu_core/branch-misses/u:                               |N/A                  (*********)
-  cpu_core/cache-misses/u:                                |N/A                  (*********)
   ======= CALLGRIND ===================================================================================
   Instructions:                                           |N/A                  (*********)
   L1 Hits:                                                |N/A                  (*********)

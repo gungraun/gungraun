@@ -110,7 +110,9 @@ fn bench_perf(control_dir: &str) -> String {
 library_benchmark_group!(name = valgrind, benchmarks = [sandbox, current_dir]);
 library_benchmark_group!(
     name = perf,
-    config = LibraryBenchmarkConfig::default().default_tool(Tool::Perf),
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().event_set("task-clock,cpu-clock,context-switches")),
     benchmarks = [sandbox, current_dir, bench_perf]
 );
 

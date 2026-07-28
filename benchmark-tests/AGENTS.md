@@ -44,9 +44,20 @@ benchmark-tests/
   benchmark against expectations. Use `just bench-test <bench>` only for a quick
   run without expectation verification. `just full-bench-test-all` verifies the
   full suite and takes approximately 20-30 minutes.
-- **`.conf.yml` header**: Every file must start with a comment block containing
-  exactly these fields: `Test Case`, `Description`, `Test Steps`, `Test Inputs`,
-  `Expected Outcomes`. No `Notes` section.
+- **`.conf.yml` header**: System test configuration files must include a test
+  case description comment block at the top with the following fields:
+
+| Field             | Required | Purpose                                                                                      |
+| ----------------- | -------- | -------------------------------------------------------------------------------------------- |
+| Test Case         | Yes      | Unique identifier for the test usually the file name of the test without the `.rs` suffix    |
+| Description       | Yes      | Brief explanation of what is being tested                                                    |
+| Test Steps        | Yes      | Numbered sequence of actions performed during the test                                       |
+| Test Inputs       | Yes      | Specific inputs, configurations, or scenarios being tested                                   |
+| Expected Outcomes | Yes      | Clear, measurable expectations for correct execution                                         |
+| Preconditions     | No       | Conditions that must be met before test execution                                            |
+| Postconditions    | No       | Expected state after test execution (only include if it adds value beyond Expected Outcomes) |
+| Test Environment  | No       | Specific environment requirements (e.g., tool versions)                                      |
+
 - **Groups and runs**: A configuration has `groups`, each with `runs`. Runs
   specify `args`, `cargo_args`, `envs`, `setup`/`teardown`, and `expected`.
   Groups can be gated by `runs_on` target triple or `rust_version`.
@@ -69,8 +80,8 @@ benchmark-tests/
 
 - Do not update expected output before confirming the behavior change is
   intentional.
-- Do not add a `Notes` section to `.conf.yml` headers; stick to the five
-  required fields.
+- Do not add a `Notes` section to `.conf.yml` headers; use only the fields
+  listed above.
 - Always ask and wait for explicit user approval before running
   `just full-bench-test-all` or `just full-bench-test-all-overwrite`.
 - Do not run benchmark system tests via `cargo test`; they require the `bench`

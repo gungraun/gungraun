@@ -1,66 +1,59 @@
 test_lib_bench_perf::without_sampling::event_sets default:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets one:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.00100, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets one_low_n:(10)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets same_twice:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets two_sets_same_event:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets two_sets_different_events:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets ten_sets:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   ## pid: <__PID__> part: 3                               |pid: <__PID__> part: 3
-  cpu_core/ref-cycles/u:                                  |                     (        %) [        x]
-  ## pid: <__PID__> part: 4                               |pid: <__PID__> part: 4
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  ## pid: <__PID__> part: 5                               |pid: <__PID__> part: 5
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
-  ## pid: <__PID__> part: 6                               |pid: <__PID__> part: 6
   faults/u:                                               |                     (        %) [        x]
+  ## pid: <__PID__> part: 4                               |pid: <__PID__> part: 4
+  context-switches/u:                                     |                     (        %) [        x]
+  ## pid: <__PID__> part: 5                               |pid: <__PID__> part: 5
+  cpu-clock/u:                                            |                     (        %) [        x]
+  ## pid: <__PID__> part: 6                               |pid: <__PID__> part: 6
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 7                               |pid: <__PID__> part: 7
   context-switches/u:                                     |                     (        %) [        x]
   ## pid: <__PID__> part: 8                               |pid: <__PID__> part: 8
-  cpu_atom/branches/u:                                    |                     (        %) [        x]
-  cpu_core/branches/u:                                    |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 9                               |pid: <__PID__> part: 9
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 10                              |pid: <__PID__> part: 10
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets dummy:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
@@ -71,69 +64,36 @@ test_lib_bench_perf::without_sampling::event_sets dummy_non_zero:(1000)
 test_lib_bench_perf::without_sampling::event_sets default_calibrate:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets default_calibrate_low_n:(10)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  faults/u:                                               |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::event_sets calibrate_1_secs:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::with_other_tool default_perf_with_callgrind
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
   ======= CALLGRIND ===================================================================================
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
@@ -158,15 +118,10 @@ test_lib_bench_perf::without_sampling::with_other_tool default_callgrind_with_pe
   Estimated Cycles:                                       |                     (         )
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::with_other_tool default_callgrind_disable_perf
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
@@ -177,94 +132,55 @@ test_lib_bench_perf::without_sampling::with_other_tool default_callgrind_disable
 test_lib_bench_perf::without_sampling::disabled_entry_point with_arg:(20)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::disabled_entry_point_without_measurement
   ======= PERF ========================================================================================
   Empty data
 test_lib_bench_perf::without_sampling::generic one_thousand:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::with_consts one_thousand:<1000>
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::iter two_to_four_0:(nth of 2 ..= 4)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::iter two_to_four_1:(nth of 2 ..= 4)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::without_sampling::iter two_to_four_2:(nth of 2 ..= 4)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets default:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -273,80 +189,71 @@ test_lib_bench_perf::with_sampling::event_sets default:(1000)
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets one:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.00100, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets one_low_n:(10)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets same_twice:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets two_sets_same_event:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets two_sets_different_events:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets ten_sets:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 3                               |pid: <__PID__> part: 3
-  cpu_core/ref-cycles/u:                                  |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 4                               |pid: <__PID__> part: 4
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 5                               |pid: <__PID__> part: 5
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 6                               |pid: <__PID__> part: 6
-  faults/u:                                               |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 7                               |pid: <__PID__> part: 7
@@ -354,18 +261,15 @@ test_lib_bench_perf::with_sampling::event_sets ten_sets:(1000)
     rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 8                               |pid: <__PID__> part: 8
-  cpu_atom/branches/u:                                    |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/branches/u:                                    |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 9                               |pid: <__PID__> part: 9
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 10                              |pid: <__PID__> part: 10
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets dummy:(1000)
@@ -380,19 +284,10 @@ test_lib_bench_perf::with_sampling::event_sets dummy_non_zero:(1000)
 test_lib_bench_perf::with_sampling::event_sets default_calibrate:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -400,59 +295,26 @@ test_lib_bench_perf::with_sampling::event_sets default_calibrate:(1000)
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets default_calibrate_low_n:(10)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  faults/u:                                               |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets calibrate_1_secs:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -460,29 +322,14 @@ test_lib_bench_perf::with_sampling::event_sets calibrate_1_secs:(1000)
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::with_other_tool default_perf_with_callgrind
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -490,12 +337,6 @@ test_lib_bench_perf::with_sampling::with_other_tool default_perf_with_callgrind
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   ======= CALLGRIND ===================================================================================
   Instructions:                                           |                     (No change)
@@ -521,19 +362,10 @@ test_lib_bench_perf::with_sampling::with_other_tool default_callgrind_with_perf
   Estimated Cycles:                                       |                     (         )
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -541,12 +373,6 @@ test_lib_bench_perf::with_sampling::with_other_tool default_callgrind_with_perf
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::with_other_tool default_callgrind_disable_perf
   Instructions:                                           |                     (No change)
@@ -555,28 +381,13 @@ test_lib_bench_perf::with_sampling::with_other_tool default_callgrind_disable_pe
   RAM Hits:                                               |                     (         )
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
-test_lib_bench_perf::with_sampling::thirty_events_then_multiplexing
-  ======= PERF ========================================================================================
-  >> alpha: 0.05000, min_pcnt_running: 0.00000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::disabled_entry_point with_arg:(20)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -584,12 +395,6 @@ test_lib_bench_perf::with_sampling::disabled_entry_point with_arg:(20)
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::disabled_entry_point_without_measurement
   ======= PERF ========================================================================================
@@ -597,19 +402,10 @@ test_lib_bench_perf::with_sampling::disabled_entry_point_without_measurement
 test_lib_bench_perf::with_sampling::generic one_thousand:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -617,29 +413,14 @@ test_lib_bench_perf::with_sampling::generic one_thousand:(1000)
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::with_consts one_thousand:<1000>
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -647,29 +428,14 @@ test_lib_bench_perf::with_sampling::with_consts one_thousand:<1000>
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::iter two_to_four_0:(nth of 2 ..= 4)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -677,29 +443,14 @@ test_lib_bench_perf::with_sampling::iter two_to_four_0:(nth of 2 ..= 4)
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::iter two_to_four_1:(nth of 2 ..= 4)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -707,29 +458,14 @@ test_lib_bench_perf::with_sampling::iter two_to_four_1:(nth of 2 ..= 4)
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
-    samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::iter two_to_four_2:(nth of 2 ..= 4)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
@@ -738,75 +474,62 @@ test_lib_bench_perf::with_sampling::iter two_to_four_2:(nth of 2 ..= 4)
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets default:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets one:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.00100, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets one_low_n:(10)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets same_twice:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets two_sets_same_event:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets two_sets_different_events:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  task-clock/u [  ]:                                      |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets ten_sets:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
   ## pid: <__PID__> part: 1                               |pid: <__PID__> part: 1
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 2                               |pid: <__PID__> part: 2
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   ## pid: <__PID__> part: 3                               |pid: <__PID__> part: 3
-  cpu_core/ref-cycles/u:                                  |                     (        %) [        x]
-  ## pid: <__PID__> part: 4                               |pid: <__PID__> part: 4
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  ## pid: <__PID__> part: 5                               |pid: <__PID__> part: 5
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
-  ## pid: <__PID__> part: 6                               |pid: <__PID__> part: 6
   faults/u:                                               |                     (        %) [        x]
+  ## pid: <__PID__> part: 4                               |pid: <__PID__> part: 4
+  context-switches/u:                                     |                     (        %) [        x]
+  ## pid: <__PID__> part: 5                               |pid: <__PID__> part: 5
+  cpu-clock/u:                                            |                     (        %) [        x]
+  ## pid: <__PID__> part: 6                               |pid: <__PID__> part: 6
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 7                               |pid: <__PID__> part: 7
   context-switches/u:                                     |                     (        %) [        x]
   ## pid: <__PID__> part: 8                               |pid: <__PID__> part: 8
-  cpu_atom/branches/u:                                    |                     (        %) [        x]
-  cpu_core/branches/u:                                    |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
   ## pid: <__PID__> part: 9                               |pid: <__PID__> part: 9
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
   ## pid: <__PID__> part: 10                              |pid: <__PID__> part: 10
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets dummy:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
@@ -817,71 +540,38 @@ test_lib_bench_perf::record::event_sets dummy_non_zero:(1000)
 test_lib_bench_perf::record::event_sets default_calibrate:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets default_calibrate_low_n:(10)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  faults/u:                                               |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
-    samples                                               |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets calibrate_1_secs:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::record::disabled_entry_point with_arg:(20)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 test_lib_bench_perf::record::disabled_entry_point_without_measurement
   ======= PERF ========================================================================================
   Empty data
 
-Gungraun result: Ok. 61 without regressions; 0 regressed; 0 filtered; 61 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 60 without regressions; 0 regressed; 0 filtered; 60 benchmarks finished in <__SECONDS__>s

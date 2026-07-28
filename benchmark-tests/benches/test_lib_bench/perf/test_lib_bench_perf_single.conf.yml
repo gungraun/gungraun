@@ -1,13 +1,10 @@
 # Test Case: `test_lib_bench_perf_single`
 #
-# TODO: UPDATE DOCS
-#
 # Description:
 #   Validates command-line configuration of the Perf tool for one library
 #   benchmark. The `my_group` benchmark sorts a worst-case 1,000-element array
-#   prepared by `setup_worst_case_array` before each invocation.
-#
-# --perf-limits is tested in test_lib_bench_regression
+#   prepared by `setup_worst_case_array` before each invocation. `--perf-limits`
+#   is covered by `test_lib_bench_regression`
 #
 # Test Steps:
 #   1. Run Perf as the default tool and as an additional tool, comparing their
@@ -28,6 +25,8 @@
 #     the calibration run-mode argument passed through the Perf wrapper.
 #   - `--perf-sampling=2s` and repeated `--perf-events` for `instructions` and
 #     `task-clock`.
+#   - The explicit `task-clock,cpu-clock,faults,context-switches` event subset
+#     is intentionally limited to events available across heterogeneous Linux CI
 #
 # Expected Outcomes:
 #   - Successful modes emit the declared stdout with no stderr
@@ -36,27 +35,48 @@
 #   - The custom wrapper sees Perf but not Callgrind and validates the
 #     calibration mode in the `*.log.cal` log file
 #   - Sampling and multi-event output matches fixtures
+#   - FreeBSD uses the non-Perf fallback expectations
 
 groups:
   # 1: Verify running perf as default tool
   - runs:
-      - args: ["--default-tool=perf"]
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
         expected:
-          no_stderr: true
-          stdout:
-            default: expected_stdout.default-tool-perf
-            x86_64-unknown-freebsd: freebsd/expected_stdout.just-summary
+          default:
+            no_stderr: true
+            files: expected_files.default-tool-perf
+            stdout: expected_stdout.default-tool-perf
+          x86_64-unknown-freebsd:
+            no_stderr: true
+            no_files: true
+            stdout: freebsd/expected_stdout.just-summary
   # 2: Verify running perf as additional tool
   - runs:
-      - args: ["--tools=perf"]
+      - args:
+          [
+            "--tools=perf",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
         expected:
           no_stderr: true
+          files:
+            default: expected_files.tools-perf
+            x86_64-unknown-freebsd: freebsd/expected_files.just-callgrind
           stdout:
             default: expected_stdout.tools-perf
             x86_64-unknown-freebsd: freebsd/expected_stdout.just-callgrind
   # 3: Verify that arguments reach perf
   - runs:
-      - args: ["--default-tool=perf", "--perf-args=--does-not-exist"]
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-args=--does-not-exist",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
         expected:
           default:
             stdout: expected_stdout.arg-does-not-exist
@@ -72,7 +92,12 @@ groups:
             exit_code: 0
   # 4: perf record args without activating perf record does nothing
   - runs:
-      - args: ["--default-tool=perf", "--perf-record-args=--does-not-exist"]
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-record-args=--does-not-exist",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
         expected:
           stdout:
             default: expected_stdout.default-tool-perf
@@ -83,6 +108,7 @@ groups:
             "--default-tool=perf",
             "--perf-record",
             "--perf-record-args=--does-not-exist",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
           ]
         expected:
           default:
@@ -105,6 +131,7 @@ groups:
             "--tools=callgrind",
             "--perf-bin=/tmp/gungraun_perf_bin",
             "--nocapture",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
           ]
         setup: |
           cat <<'EOF' >/tmp/gungraun_perf_bin
@@ -129,6 +156,7 @@ groups:
             "--default-tool=perf",
             "--perf-bin=/tmp/gungraun_perf_bin",
             "--perf-run-mode=calibrate",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
           ]
         setup: |
           cat <<'EOF' >/tmp/gungraun_perf_bin
@@ -166,19 +194,24 @@ groups:
             no_stderr: true
   # 7: Verify perf sampling. The stdout shows the extra rse, samples lines
   - runs:
-      - args: ["--default-tool=perf", "--perf-sampling=2s"]
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-sampling=2s",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
         expected:
           stdout:
             default: expected_stdout.perf-sampling
             x86_64-unknown-freebsd: freebsd/expected_stdout.just-summary
           no_stderr: true
-  # 8: Verify perf events
+  # 8: Verify two perf events
   - runs:
       - args:
           [
             "--default-tool=perf",
-            "--perf-events=instructions",
             "--perf-events=task-clock",
+            "--perf-events=cpu-clock",
           ]
         expected:
           stdout:

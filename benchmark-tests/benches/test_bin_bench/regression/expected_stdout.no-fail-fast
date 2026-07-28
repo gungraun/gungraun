@@ -18,15 +18,10 @@ test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:(5) -> ta
 test_bench_template::bench_group::bench_bubble_sort regress_perf:(20000) -> target/release/bubble-sort 20000
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
-  cpu_core/instructions/u:                                |                     (        %) [        x]
-  cpu_atom/cycles/u:                                      |                     (        %) [        x]
-  cpu_core/cycles/u:                                      |                     (        %) [        x]
-  task-clock/u [  ]:                                      |                     (        %) [        x]
-  cpu-clock/u [  ]:                                       |                     (        %) [        x]
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
-  cpu_core/branch-misses/u:                               |                     (        %) [        x]
-  cpu_core/cache-misses/u:                                |                     (        %) [        x]
 
 test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regression:(10) -> target/release/bubble-sort 10
   Instructions:                                           |                     (No change)
@@ -43,6 +38,6 @@ Regressions:
   test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:
     Cachegrind: Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort regress_perf:
-    Perf: cpu_core/instructions/u [*instructions*] (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+    Perf: task-clock:u [*task-clock*] (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
 
 Gungraun result: Regressed. 1 without regressions; 3 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s

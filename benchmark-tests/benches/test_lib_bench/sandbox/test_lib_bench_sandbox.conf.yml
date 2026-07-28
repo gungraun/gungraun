@@ -1,36 +1,32 @@
 # Test Case: `test_lib_bench_sandbox`
 #
-# TODO: UPDATE DOCS
-#
 # Description:
-#   Tests `Sandbox` configuration for file isolation in library benchmarks for
-#   Valgrind and perf. Validates sandbox creation, fixture handling, current
-#   directory changes, setup/teardown execution per sample for perf sampling,
-#   and sandbox-disabled execution.
+#   Tests library-benchmark file isolation for Valgrind and Perf. Covers exact
+#   fixture visibility, benchmark-workdir access, sandbox-relative current
+#   directories, disabled sandboxes, and per-sample Perf assistants.
 #
 # Test Steps:
 #   1. Run benchmarks with `--nocapture` testing sandbox configurations
 #   2. Run benchmarks a second time to verify comparison output
 #
 # Test Inputs:
-#   - `Sandbox::new(true)` with fixtures: copies fixture files into sandbox
-#   - `Sandbox::new(true)` without fixtures: empty sandbox created
-#   - `Sandbox::new(false)`: no sandbox, runs in current directory
-#   - `Sandbox::new(false)`: no sandbox with fixtures, executes normally without
-#      copying fixtures
-#   - `current_dir` option to change working directory within sandbox and if no
-#      sandbox then in current benchmark directory
-#   - perf in direct and sampling/calibration mode
+#   - `Sandbox::new(true)` with and without the `one_line.fix` fixture
+#   - `Sandbox::new(false)` with a fixture declaration that is intentionally
+#     ignored while benchmark-workdir files remain visible
+#   - `current_dir("foo")` with copied directory fixture `foo/bar.txt`
+#   - Perf direct, sampling, calibration, and sampling-plus-calibration modes
+#   - The explicit `task-clock,cpu-clock,context-switches` event set is
+#     intentionally limited to events available across Linux systems and the
+#     Github CI;
 #
 # Expected Outcomes:
-#   - Fixtures are copied into sandbox when specified
-#   - Missing fixtures are not visible in an empty sandbox
-#   - `current_dir` changes working directory correctly for Valgrind and perf
-#   - With `Sandbox::new(false)`, files from the benchmark working directory are
-#     visible
-#   - Sandboxed perf in direct mode executes like Valgrind tools
-#   - Perf when using sampling and calibration executes normally in a sandbox
-#     and setup/teardown are executed once per sample
+#   - `one_line.fix` is visible only when copied into an enabled sandbox
+#   - Disabled sandboxes expose benchmark-workdir files without copying fixtures
+#   - `current_dir("foo")` exposes the copied `foo/bar.txt` for Valgrind and Perf
+#   - Both runs match their declared output fixtures
+#   - Perf setup/teardown executes once per sample in sampling and calibration
+#     modes, unlike binary-benchmark assistants
+#   - FreeBSD doesn't run Perf and uses the non-Perf expectations
 
 groups:
   - runs:

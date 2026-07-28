@@ -153,14 +153,11 @@ fn perf(dir: &str) -> gungraun::Command {
 
 binary_benchmark_group!(
     name = perf_group,
+    // remove `faults` from the usual event set because it produces rse values which are sometimes
+    // zero and sometimes not which makes the benchmark output difficult to validate
     config = BinaryBenchmarkConfig::default()
         .default_tool(Tool::Perf)
-        // remove `faults` from the default set because it produces rse values which are sometimes
-        // zero and sometimes not which makes the benchmark output difficult to validate
-        .tool(Perf::default().event_set(
-            "instructions:u,cycles:u,task-clock,cpu-clock,context-switches,branch-misses,\
-             cache-misses"
-        ))
+        .tool(Perf::default().event_set("task-clock,cpu-clock,context-switches"))
         .sandbox(Sandbox::new(true)),
     benchmarks = perf
 );

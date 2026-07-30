@@ -1,14 +1,14 @@
 # spell-checker: ignore polonius
 [workspace]
 members = [
-  "gungraun",
-  "gungraun-common",
-  "gungraun-runner",
-  "gungraun-macros",
-  "gungraun-summary",
-  "valgrind-requests",
-  "benchmark-tests",
-  "client-request-tests",
+  "crates/gungraun",
+  "crates/gungraun-common",
+  "crates/gungraun-runner",
+  "crates/gungraun-macros",
+  "crates/gungraun-summary",
+  "crates/valgrind-requests",
+  "crates/benchmark-tests",
+  "crates/client-request-tests",
 ]
 resolver = "3"
 

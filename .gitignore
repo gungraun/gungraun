@@ -1,5 +1,5 @@
 flamegraph.svg
-perf.data
+perf.data*
 *.profraw
 lcov*.info
 *.scip
@@ -152,3 +152,11 @@ fabric.properties
 
 *.box
 Vagrantfile
+
+# Graphify knowledge graph output
+**/graphify-out/
+.graphify*
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json

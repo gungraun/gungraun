@@ -67,6 +67,12 @@ pub struct File(pub Option<LitStr>);
 #[derive(Debug, Clone, Default)]
 pub struct Iter(pub Option<Expr>);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PerfRepetition {
+    Dynamic,
+    Fixed(Ident),
+}
+
 /// The `setup` parameter
 #[derive(Debug, Default, Clone)]
 pub struct Setup(pub Option<ExprPath>);
@@ -648,13 +654,13 @@ impl Consts {
     pub fn to_function_calls(
         &self,
         generics: &Generics,
-        bench_func_name: &Ident,
-        id_func_name: Option<&Ident>,
+        bench_func_ident: &Ident,
+        bench_id: Option<&Ident>,
     ) -> (TokenStream, TokenStream) {
         if self.is_empty() {
             (
-                quote! { #bench_func_name },
-                id_func_name.map_or_else(TokenStream::new, |ident| quote! { #ident }),
+                quote! { #bench_func_ident },
+                bench_id.map_or_else(TokenStream::new, |ident| quote! { #ident }),
             )
         } else {
             let const_exprs = self.exprs();
@@ -679,8 +685,8 @@ impl Consts {
                 })
                 .collect::<Vec<TokenStream>>();
             (
-                quote! { #bench_func_name::<#(#generics_call),*> },
-                id_func_name.map_or_else(
+                quote! { #bench_func_ident::<#(#generics_call),*> },
+                bench_id.map_or_else(
                     TokenStream::new,
                     |ident| quote! { #ident::<#(#generics_call),*> },
                 ),

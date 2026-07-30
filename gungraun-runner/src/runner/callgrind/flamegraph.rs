@@ -476,14 +476,17 @@ impl OutputPath {
         Self {
             kind: match &tool_output_path.kind {
                 ToolOutputPathKind::Out
+                | ToolOutputPathKind::Data
                 | ToolOutputPathKind::Log
                 | ToolOutputPathKind::Xtree
                 | ToolOutputPathKind::Xleak => OutputPathKind::Regular,
                 ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::OldData
                 | ToolOutputPathKind::OldLog
                 | ToolOutputPathKind::OldXtree
                 | ToolOutputPathKind::OldXleak => OutputPathKind::Old,
                 ToolOutputPathKind::BaseLog(name)
+                | ToolOutputPathKind::BaseData(name)
                 | ToolOutputPathKind::BaseOut(name)
                 | ToolOutputPathKind::BaseXtree(name)
                 | ToolOutputPathKind::BaseXleak(name) => OutputPathKind::Base(name.clone()),
@@ -513,7 +516,7 @@ impl OutputPath {
     }
 
     pub fn clear(&self, ignore_event_kind: bool) -> Result<()> {
-        for path in self.real_paths_in(&self.dir, ignore_event_kind)? {
+        for path in self.sanitized_paths_in(&self.dir, ignore_event_kind)? {
             std::fs::remove_file(path)?;
         }
 
@@ -587,7 +590,7 @@ impl OutputPath {
         match &self.baseline_kind {
             BaselineKind::Old => {
                 self.to_base_path().clear(ignore_event_kind)?;
-                for path in self.real_paths_in(&self.dir, ignore_event_kind)? {
+                for path in self.sanitized_paths_in(&self.dir, ignore_event_kind)? {
                     let new_path = path.with_extension("old.svg");
                     std::fs::rename(&path, &new_path).with_context(|| {
                         format!(
@@ -674,7 +677,8 @@ impl OutputPath {
             &self.dir
         }
     }
-    pub fn real_paths_in(&self, dir: &Path, ignore_event_kind: bool) -> Result<Vec<PathBuf>> {
+
+    pub fn sanitized_paths_in(&self, dir: &Path, ignore_event_kind: bool) -> Result<Vec<PathBuf>> {
         let extension = self.extension();
         let to_match = if ignore_event_kind {
             extension

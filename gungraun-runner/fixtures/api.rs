@@ -1,33 +1,70 @@
 //! Fixtures for types from the api module
 
+use std::time::Duration;
+
 use bon::builder;
 
 use crate::api::{
-    CachegrindMetrics, CachegrindRegressionConfig, DhatMetrics, DhatRegressionConfig, Limit,
+    CachegrindMetrics, CachegrindRegressionConfig, Delay, DelayKind, DhatMetrics,
+    DhatRegressionConfig, DhatSpec, Limit, PerfRegressionConfig,
 };
+use crate::units::Unit;
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
 pub fn cachegrind_regression_config_f(
     soft_limits: Option<Vec<(CachegrindMetrics, f64)>>,
     hard_limits: Option<Vec<(CachegrindMetrics, Limit)>>,
     fail_fast: Option<bool>,
 ) -> CachegrindRegressionConfig {
     CachegrindRegressionConfig {
-        soft_limits: soft_limits.map_or_else(Vec::default, |s| s.into_iter().collect()),
-        hard_limits: hard_limits.map_or_else(Vec::default, |h| h.into_iter().collect()),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
         fail_fast,
     }
 }
 
-#[builder(finish_fn = "fixture")]
+#[builder(finish_fn = "fx")]
+pub fn delay_f(poll: Option<u64>, timeout: Option<u64>, kind: DelayKind) -> Delay {
+    Delay {
+        kind,
+        poll: poll.map(Duration::from_millis),
+        timeout: timeout.map(Duration::from_millis),
+    }
+}
+
+#[builder(finish_fn = "fx")]
 pub fn dhat_regression_config_f(
     soft_limits: Option<Vec<(DhatMetrics, f64)>>,
     hard_limits: Option<Vec<(DhatMetrics, Limit)>>,
     fail_fast: Option<bool>,
 ) -> DhatRegressionConfig {
     DhatRegressionConfig {
-        soft_limits: soft_limits.map_or_else(Vec::default, |s| s.into_iter().collect()),
-        hard_limits: hard_limits.map_or_else(Vec::default, |h| h.into_iter().collect()),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
+        fail_fast,
+    }
+}
+
+#[builder(finish_fn = "fx")]
+pub fn dhat_spec_f(
+    #[builder(default = vec![], with = FromIterator::from_iter)] frames: Vec<&str>,
+) -> DhatSpec {
+    DhatSpec {
+        frames: (!frames.is_empty()).then(|| frames.into_iter().map(ToOwned::to_owned).collect()),
+    }
+}
+
+#[builder(finish_fn = "fx")]
+pub fn perf_regression_config_f(
+    soft_limits: Option<Vec<(String, f64)>>,
+    hard_limits: Option<Vec<(String, Option<Unit>, Limit)>>,
+    fail_fast: Option<bool>,
+    alpha: Option<f64>,
+) -> PerfRegressionConfig {
+    PerfRegressionConfig {
+        alpha,
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
         fail_fast,
     }
 }

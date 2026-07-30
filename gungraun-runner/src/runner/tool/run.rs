@@ -1,7 +1,9 @@
 //! The module responsible for the actual run of the benchmark
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output};
 
@@ -12,12 +14,16 @@ use os_str_bytes::OsStrBytesExt;
 
 use super::config::ToolConfig;
 use super::path::ToolOutputPath;
-use crate::api::{self, ExitWith, Stream, ValgrindTool};
+use crate::api::{self, BenchRunMode, ExitWith, PerfRunMode, Stream, Tool};
 use crate::error::Error;
 use crate::runner::args::NoCapture;
 use crate::runner::bin_bench::Delay;
 use crate::runner::common::{Assistant, CapturedOutput, ModulePath};
 use crate::runner::meta::Metadata;
+use crate::runner::perf::run::{
+    DEFAULT_PERF_CALIBRATION_TIME, PerfCalibration, PerfData, prepare_perf_command,
+};
+use crate::runner::tool::config::ToolConfigOptions;
 use crate::util::resolve_binary_path;
 
 /// The run options for the [`ToolCommand`]
@@ -47,7 +53,7 @@ pub struct RunOptions {
     pub teardown: Option<Assistant>,
 }
 
-/// A configured valgrind command ready to be executed
+/// A configured tool command ready to be executed.
 ///
 /// This struct encapsulates a valgrind tool invocation with its command, output capture
 /// configuration, and the specific tool being used.
@@ -59,15 +65,15 @@ pub struct ToolCommand {
     pub nocapture: NoCapture,
     /// Optional path rebasing configuration for containerized runners
     ///
-    /// When using `--valgrind-runner-root`, this contains the tuple `(original_workspace_root,
+    /// When using `--tool-runner-root`, this contains the tuple `(original_workspace_root,
     /// replacement_path)` for rebasing paths to match the runner's perspective (e.g., inside a
     /// container).
     pub roots: Option<(PathBuf, PathBuf)>,
-    /// The [`ValgrindTool`] to run
-    pub tool: ValgrindTool,
+    /// The [`Tool`] to run
+    pub tool: Tool,
 }
 
-/// A running valgrind tool process and its metadata
+/// A running tool process and its metadata.
 ///
 /// This struct represents an actively spawned valgrind tool process and tracks information needed
 /// to monitor its execution and validate its exit status.
@@ -75,14 +81,16 @@ pub struct ToolCommand {
 pub struct ToolCommandChild {
     /// The spawned child process, or `None` if the process has already been consumed
     pub child: Option<Child>,
-    /// The path to the executable being profiled by valgrind
+    /// The path to the executable being profiled by the tool.
     pub executable: PathBuf,
     /// The expected exit behavior (exit code or signal), or `None` if any exit is acceptable
     pub exit_with: Option<ExitWith>,
     /// The path where Valgrind will write its output log files
     pub log_path: ToolOutputPath,
-    /// The Valgrind tool running this process (e.g., Memcheck, Callgrind, Massif)
-    pub tool: ValgrindTool,
+    /// Keeps the parent-side perf descriptors alive for the lifetime of the running tool process.
+    pub perf_data: Option<PerfData>,
+    /// The tool running this process (e.g., Memcheck, Callgrind, Massif)
+    pub tool: Tool,
 }
 
 impl ToolCommand {
@@ -103,10 +111,10 @@ impl ToolCommand {
         Ok(Self {
             command,
             nocapture,
-            tool: tool_config.tool,
+            tool: tool_config.tool(),
             roots: meta
                 .args
-                .valgrind_runner_root
+                .tool_runner_root
                 .clone()
                 .map(|r| (meta.project_root.clone(), r)),
         })
@@ -114,7 +122,7 @@ impl ToolCommand {
 
     /// Resolve an executable path, applying path rebasing if configured
     ///
-    /// When `--valgrind-runner-root` is specified, this method attempts to rebase the executable
+    /// When `--tool-runner-root` is specified, this method attempts to rebase the executable
     /// path from the original workspace root to the runner's perspective. If rebasing is not
     /// possible or not configured, falls back to resolving the binary path normally.
     pub fn resolve_executable(&self, executable: &Path, current_dir: Option<&Path>) -> PathBuf {
@@ -139,7 +147,7 @@ impl ToolCommand {
 
     /// Add an argument to the command, applying path rebasing if configured
     ///
-    /// When `--valgrind-runner-root` is specified and the argument appears to be a path that needs
+    /// When `--tool-runner-root` is specified and the argument appears to be a path that needs
     /// rebasing, this method will rebase it. Otherwise, it behaves like [`Self::arg`].
     pub fn arg_rebase<T>(&mut self, arg: T) -> &mut Self
     where
@@ -184,20 +192,49 @@ impl ToolCommand {
         self
     }
 
+    /// Clone this command, preserving path rebasing state.
+    pub fn clone_command(&self) -> Self {
+        Self {
+            command: clone_command(&self.command),
+            nocapture: self.nocapture,
+            roots: self.roots.clone(),
+            tool: self.tool,
+        }
+    }
+
+    /// Append tool args, the already resolved executable, and executable args to the command.
+    pub fn append_tool_invocation<I, T>(
+        &mut self,
+        tool_args: I,
+        executable: &Path,
+        executable_args: &[OsString],
+    ) -> &mut Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<OsStr>,
+    {
+        self.args_rebase(tool_args)
+            .arg(executable) // already resolved, no need to rebase
+            .args_rebase(executable_args)
+    }
+
     /// Run the `ToolCommand`
-    pub fn run(
+    pub fn run<'args, F>(
         mut self,
         config: &ToolConfig,
         executable: &Path,
-        executable_args: &[OsString],
+        executable_args_fn: &F,
         run_options: &RunOptions,
         output_path: &ToolOutputPath,
         module_path: &ModulePath,
         child: Option<&mut Child>,
         captured_output: Option<&CapturedOutput>,
         sandbox_dir: Option<&Path>,
-        valgrind_runner_dest: Option<&Path>,
-    ) -> Result<ToolCommandChild> {
+        tool_runner_dest: Option<&Path>,
+    ) -> Result<ToolCommandChild>
+    where
+        F: Fn(&ToolConfig, Option<BenchRunMode>) -> Cow<'args, [OsString]>,
+    {
         let RunOptions {
             current_dir,
             exit_with,
@@ -205,7 +242,15 @@ impl ToolCommand {
             stdout,
             stderr,
             ..
-        } = run_options.clone();
+        } = run_options;
+
+        // If set, the timeout is expected to happen and the program/perf exits with a signal code
+        // since we interrupt perf with SIGTERM or SIGKILL. We do not override a user-specified exit
+        // status expectation, but in all other cases we set the expected exit signals.
+        let exit_with = match exit_with {
+            None if config.timeout.is_some() => Some(ExitWith::Signals(vec![9, 15])),
+            _ => exit_with.clone(),
+        };
 
         match (sandbox_dir, current_dir.as_ref()) {
             (None, None) => {}
@@ -222,13 +267,56 @@ impl ToolCommand {
             }
         }
 
-        let mut tool_args = config.args.clone();
-        tool_args.set_output_arg(output_path, valgrind_runner_dest);
-        tool_args.set_log_arg(output_path, valgrind_runner_dest);
-        tool_args.set_xtree_arg(output_path, valgrind_runner_dest);
-        tool_args.set_xleak_arg(output_path, valgrind_runner_dest);
-
         let executable = self.resolve_executable(executable, sandbox_dir);
+        let executable_args = executable_args_fn(config, None);
+
+        let (mut perf_data, args, log_path) =
+            if let ToolConfigOptions::Perf(options) = &config.options {
+                if let Some(time) = match options.run_mode {
+                    PerfRunMode::DefaultCalibrate => Some(DEFAULT_PERF_CALIBRATION_TIME),
+                    PerfRunMode::Calibrate(time) => Some(time),
+                    _ => None,
+                } {
+                    let calibration_args =
+                        executable_args_fn(config, Some(BenchRunMode::PerfCalibrate));
+                    PerfCalibration::new(
+                        &self,
+                        config,
+                        &executable,
+                        &calibration_args,
+                        output_path,
+                        time,
+                        tool_runner_dest,
+                    )
+                    .run()?;
+                }
+
+                prepare_perf_command(
+                    &mut self.command,
+                    config,
+                    output_path,
+                    options.use_sampling,
+                    tool_runner_dest,
+                )
+                .map(|(perf_data, tool_args, log_path)| (Some(perf_data), tool_args, log_path))?
+            } else {
+                let mut tool_args = config.args.clone();
+                tool_args.set_output_arg(output_path, tool_runner_dest);
+                tool_args.set_log_arg(output_path, tool_runner_dest);
+                tool_args.set_xtree_arg(output_path, tool_runner_dest);
+                tool_args.set_xleak_arg(output_path, tool_runner_dest);
+
+                (None, tool_args.to_vec(), output_path.to_log_output())
+            };
+
+        debug!(
+            "{}: Tool arguments: {}",
+            self.tool.id(),
+            args.iter()
+                .map(|s| s.to_string_lossy().to_string())
+                .join(" ")
+        );
+
         debug!("{}: Executable: {}", self.tool.id(), executable.display());
         debug!(
             "{}: Executable arguments: {}",
@@ -239,18 +327,16 @@ impl ToolCommand {
                 .join(" ")
         );
 
-        let args = tool_args.to_vec();
-        debug!(
-            "{}: Valgrind arguments: {}",
-            self.tool.id(),
-            args.iter()
-                .map(|s| s.to_string_lossy().to_string())
-                .join(" ")
-        );
+        if let Some(p) = perf_data.as_mut() {
+            p.log_file.write_header_command(
+                &self.command,
+                &args,
+                &executable,
+                executable_args.as_ref(),
+            )?;
+        }
 
-        self.args_rebase(args)
-            .arg(&executable) // already resolved, no need to rebase
-            .args_rebase(executable_args);
+        self.append_tool_invocation(args, &executable, executable_args.as_ref());
 
         self.nocapture.apply(&mut self.command, captured_output)?;
 
@@ -274,17 +360,17 @@ impl ToolCommand {
 
         self.command
             .spawn()
-            .map(|c| {
-                ToolCommandChild::new(
-                    self.tool,
-                    c,
-                    executable,
-                    exit_with,
-                    output_path.to_log_output(),
-                )
+            .and_then(|c| {
+                if let Some(p) = perf_data.as_mut() {
+                    p.log_file.finalize_header(c.id(), config.part)?;
+                }
+
+                Ok(ToolCommandChild::new(
+                    self.tool, c, executable, exit_with, log_path, perf_data,
+                ))
             })
             .map_err(|error| {
-                Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+                Error::LaunchError(PathBuf::from(config.tool().id()), error.to_string()).into()
             })
     }
 
@@ -337,16 +423,17 @@ impl ToolCommandChild {
     /// Creates a new `ToolCommandChild` instance to manage a spawned tool process.
     ///
     /// This constructor wraps a spawned child process along with metadata needed to track and
-    /// manage its execution. The `tool` parameter specifies which [`ValgrindTool`] is being run,
+    /// manage its execution. The `tool` parameter specifies which [`Tool`] is being run,
     /// `child` is the actual spawned process, `executable` is the path to the binary being
     /// instrumented, `exit_with` defines the expected exit behavior, and `log_path` specifies
     /// where the tool's output is written.
     pub fn new(
-        tool: ValgrindTool,
+        tool: Tool,
         child: Child,
         executable: PathBuf,
         exit_with: Option<ExitWith>,
         log_path: ToolOutputPath,
+        perf_data: Option<PerfData>,
     ) -> Self {
         Self {
             child: Some(child),
@@ -354,21 +441,112 @@ impl ToolCommandChild {
             exit_with,
             log_path,
             tool,
+            perf_data,
         }
     }
 }
 
-/// Check the exit code of the [`ToolCommand`] and verify it matches the expected [`ExitWith`]
+/// Clone the stable parts of a [`Command`]
+///
+/// The stable parts are: exe path, args, current dir and env vars
+pub fn clone_command(command: &Command) -> Command {
+    let mut clone = Command::new(command.get_program());
+    clone.args(command.get_args());
+
+    if let Some(current_dir) = command.get_current_dir() {
+        clone.current_dir(current_dir);
+    }
+
+    for (key, value) in command.get_envs() {
+        if let Some(value) = value {
+            clone.env(key, value);
+        } else {
+            clone.env_remove(key);
+        }
+    }
+
+    clone
+}
+
+/// Check the exit code of the [`ToolCommand`] and verify the expected [`ExitWith`] if present
 pub fn check_exit(
-    tool: ValgrindTool,
+    tool: Tool,
     executable: &Path,
     output: Output,
     output_path: &ToolOutputPath,
     exit_with: Option<&ExitWith>,
 ) -> Result<Output> {
     let Some(status_code) = output.status.code() else {
-        // death by signal
-        return Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into());
+        match (output.status.signal(), exit_with) {
+            (None, _) => {
+                error!(
+                    "{}: Expected '{}' to exit in a reproducible way but neither signal nor exit \
+                     code were set",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(signal), None | Some(ExitWith::Success)) => {
+                error!(
+                    "{}: Expected '{}' to exit with success but exited with signal '{signal}'",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(_), Some(ExitWith::Failure)) => {
+                return Ok(output);
+            }
+            (Some(signal), Some(ExitWith::Signal(expected_signal)))
+                if signal == *expected_signal =>
+            {
+                return Ok(output);
+            }
+            (Some(signal), Some(ExitWith::Signals(expected_signals)))
+                if expected_signals.contains(&signal) =>
+            {
+                return Ok(output);
+            }
+            (Some(signal), Some(ExitWith::Signal(expected_signal))) => {
+                error!(
+                    "{}: Expected '{}' to exit with signal '{expected_signal}' but exited with \
+                     signal '{signal}'",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(signal), Some(ExitWith::Signals(expected_signals))) => {
+                error!(
+                    "{}: Expected '{}' to exit with one of these signals '{}' but exited with \
+                     signal '{signal}'",
+                    tool.id(),
+                    executable.display(),
+                    expected_signals.iter().map(ToString::to_string).join(", ")
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+            (Some(signal), Some(ExitWith::Code(code))) => {
+                error!(
+                    "{}: Expected '{}' to exit with code '{code}' but exited with signal \
+                     '{signal}'",
+                    tool.id(),
+                    executable.display()
+                );
+                return Err(
+                    Error::new_process_error(tool.id(), output, Some(output_path.clone())).into(),
+                );
+            }
+        }
     };
 
     match (status_code, exit_with) {
@@ -414,5 +592,101 @@ pub fn check_exit(
             Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into())
         }
         _ => Err(Error::new_process_error(tool.id(), output, Some(output_path.clone())).into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixtures::{tool_config_f, tool_output_path_f};
+
+    #[test]
+    fn prepare_perf_command_uses_tool_runner_dest_for_output_arg() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = tool_output_path_f()
+            .init(true)
+            .target_dir(temp_dir.path())
+            .tool(Tool::Perf)
+            .fx();
+        let config = tool_config_f().tool(Tool::Perf).fx();
+        let tool_runner_dest = Path::new("/runner/dest");
+        let mut command = Command::new("perf");
+
+        let (_perf_data, args, _log_path) = prepare_perf_command(
+            &mut command,
+            &config,
+            &output_path,
+            false,
+            Some(tool_runner_dest),
+        )
+        .unwrap();
+
+        let mut expected = OsString::from("--output=");
+        expected.push(tool_runner_dest.join(output_path.file_name()));
+
+        assert!(
+            args.contains(&expected),
+            "perf args did not contain rebased output path {expected:?}: {args:?}"
+        );
+    }
+
+    #[test]
+    fn append_tool_invocation_rebases_tool_and_benchmark_args() {
+        let mut tool_command = ToolCommand {
+            command: Command::new("runner"),
+            nocapture: NoCapture::False,
+            roots: Some((
+                PathBuf::from("/host/workspace"),
+                PathBuf::from("/container/workspace"),
+            )),
+            tool: Tool::Perf,
+        };
+        let tool_args = [
+            OsString::from("--output=/host/workspace/target/perf.json"),
+            OsString::from("--plain"),
+        ];
+        let executable = Path::new("/container/workspace/target/release/deps/bench");
+        let executable_args = [OsString::from(
+            "--fixture=/host/workspace/fixtures/input.txt",
+        )];
+
+        tool_command.append_tool_invocation(&tool_args, executable, &executable_args);
+
+        let args = tool_command
+            .command
+            .get_args()
+            .map(OsStr::to_os_string)
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            args,
+            vec![
+                OsString::from("--output=/container/workspace/target/perf.json"),
+                OsString::from("--plain"),
+                OsString::from("/container/workspace/target/release/deps/bench"),
+                OsString::from("--fixture=/container/workspace/fixtures/input.txt"),
+            ]
+        );
+    }
+
+    #[test]
+    fn cloned_tool_command_preserves_rebasing_roots() {
+        let tool_command = ToolCommand {
+            command: Command::new("runner"),
+            nocapture: NoCapture::False,
+            roots: Some((
+                PathBuf::from("/host/workspace"),
+                PathBuf::from("/container/workspace"),
+            )),
+            tool: Tool::Perf,
+        };
+
+        let mut cloned = tool_command.clone_command();
+        cloned.arg_rebase("--input=/host/workspace/data.txt");
+
+        assert_eq!(
+            cloned.command.get_args().collect::<Vec<_>>(),
+            vec![OsStr::new("--input=/container/workspace/data.txt")]
+        );
     }
 }

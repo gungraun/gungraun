@@ -11,11 +11,13 @@
 # Test Inputs:
 #   - All Callgrind command-line arguments
 #   - The data collection arguments with and without client requests
+#   - The explicit `task-clock,cpu-clock,context-switches` event set is
+#     intentionally limited to events available across Linux systems and the
+#     Github CI
 #
 # Test Environment:
-#   - The callgrind data collection options differ for FreeBSD and Linux since
-#     `--collect-systime` does not support the value `nsec` on `FreeBSD`, so we
-#     test slightly differently on FreeBSD and Linux.
+#   - Platform-specific data collection options because `--collect-systime`
+#     does not support `nsec` on FreeBSD
 #
 # Expected Outcomes:
 #   - No unexpected behavior from Gungraun for all possible callgrind arguments
@@ -27,6 +29,7 @@
 #   - Different output on FreeBSD due to platform-specific differences for the
 #     `--collect-systime` argument
 #   - Some cli arguments cause the metrics to be all zero
+#   - FreeBSD doesn't run Perf and uses the non-Perf fallback expectations
 
 groups:
   - runs_on: "!x86_64-unknown-freebsd"

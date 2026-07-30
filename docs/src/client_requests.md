@@ -1,5 +1,7 @@
 # Valgrind Client Requests
 
+<!-- TODO: Update docs to new act, stubs usage, add perf -->
+
 Gungraun ships with its own package [valgrind-requests] for [Valgrind's Client
 Request Mechanism][valgrind-client-req]. Gungraun's client requests have zero
 overhead (relative to the "C" implementation of Valgrind) on many targets which
@@ -10,7 +12,7 @@ and performant implementation of Valgrind Client Requests.
 
 [valgrind-requests] is a standalone package but is integrated and re-exported in
 Gungraun under the `client_requests` module. Client requests are deactivated by
-default but can be activated with the `client_requests` feature.
+default but can be activated with the `act` feature.
 
 ```toml
 [dev-dependencies]
@@ -19,24 +21,23 @@ gungraun = { version = "0.19.4", features = ["client_requests"] }
 
 If you need the client requests in your production code, you don't want them to
 do anything when not running under Valgrind with Gungraun benchmarks. You can
-achieve this by adding Gungraun with the `client_requests_defs` feature to your
-runtime dependencies and with the `client_requests` feature to your
-`dev-dependencies`:
+achieve this by adding Gungraun with the `stubs` feature to your runtime
+dependencies and with the `act` feature to your `dev-dependencies`:
 
 ```toml
 [dependencies]
 gungraun = { version = "0.19.4", default-features = false, features = [
-    "client_requests_defs"
+    "stubs"
 ] }
 
 [dev-dependencies]
-gungraun = { version = "0.19.4", features = ["client_requests"] }
+gungraun = { version = "0.19.4", features = ["act"] }
 ```
 
-With just the `client_requests_defs` feature activated, the client requests
-compile down to nothing and don't add any overhead to your production code. It
-simply provides the "stubs", method signatures and macros without body. Only
-with the activated `client_requests` feature they will be actually executed.
+With just the `stubs` feature activated, the client requests compile down to
+nothing and don't add any overhead to your production code. It simply provides
+the "stubs", method signatures and macros without body. Only with the activated
+`act` feature they will be actually executed.
 
 When using Gungraun with client requests, the Valgrind header files must exist
 in your standard include path (most of the time `/usr/include`). This is usually

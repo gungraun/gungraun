@@ -1,30 +1,30 @@
 test_bin_bench_low_level::short_group_syntax::some_id bench_id:() -> target/release/echo
 
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::long_group_syntax::some_id bench_id:() -> target/release/echo
 
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::check_config::bench_env with_config_0:(N/A) -> target/release/env '--is-cleared=true'
 The environment variables look like they have been cleared
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::check_config::bench_env with_config_1:(N/A) -> target/release/env --check 'MAIN_ENV=1' 'GROUP_ENV=2' 'BINARY_BENCHMARK_ENV=3' 'BENCH_ENV=4' 'COMMAND_ENV=5'
 Found env: 'MAIN_ENV' with value '1'
 Found env: 'GROUP_ENV' with value '2'
@@ -32,12 +32,12 @@ Found env: 'BINARY_BENCHMARK_ENV' with value '3'
 Found env: 'BENCH_ENV' with value '4'
 Found env: 'COMMAND_ENV' with value '5'
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::check_config::bench_env with_config_2:(N/A) -> target/release/env --check 'MAIN_ENV=1' 'GROUP_ENV=2' 'BINARY_BENCHMARK_ENV=3' 'BENCH_ENV=4' 'COMMAND_ENV=6'
 Found env: 'MAIN_ENV' with value '1'
 Found env: 'GROUP_ENV' with value '2'
@@ -45,12 +45,12 @@ Found env: 'BINARY_BENCHMARK_ENV' with value '3'
 Found env: 'BENCH_ENV' with value '4'
 Found env: 'COMMAND_ENV' with value '6'
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::check_config::bench_attribute case_1:() -> target/release/env --check 'MAIN_ENV=1' 'GROUP_ENV=2' 'BINARY_BENCHMARK_ATTRIBUTE_ENV=3' 'COMMAND_IN_ATTRIBUTE_ENV=5' 'BENCH_IN_ATTRIBUTE_ENV=10'
 Found env: 'MAIN_ENV' with value '1'
 Found env: 'GROUP_ENV' with value '2'
@@ -58,12 +58,12 @@ Found env: 'BINARY_BENCHMARK_ATTRIBUTE_ENV' with value '3'
 Found env: 'COMMAND_IN_ATTRIBUTE_ENV' with value '5'
 Found env: 'BENCH_IN_ATTRIBUTE_ENV' with value '10'
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::check_config::bench_attribute case_2:() -> target/release/env --check 'MAIN_ENV=1' 'GROUP_ENV=2' 'BINARY_BENCHMARK_ATTRIBUTE_ENV=3' 'COMMAND_IN_ATTRIBUTE_ENV=5' 'BENCH_IN_ATTRIBUTE_ENV=20'
 Found env: 'MAIN_ENV' with value '1'
 Found env: 'GROUP_ENV' with value '2'
@@ -71,132 +71,132 @@ Found env: 'BINARY_BENCHMARK_ATTRIBUTE_ENV' with value '3'
 Found env: 'COMMAND_IN_ATTRIBUTE_ENV' with value '5'
 Found env: 'BENCH_IN_ATTRIBUTE_ENV' with value '20'
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::override_sandbox::override_sandbox some_id:() -> target/release/file-exists Cargo.toml true
 Verifying that file exists succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::setup_override::first_override first_bench_0:(N/A) -> target/release/file-exists aaa.txt true
 Verifying that file exists succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::setup_override::first_override first_bench_1:(N/A) -> target/release/file-exists foo.txt false
 Verifying that file doesn't exist succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::setup_override::first_override second_bench_0:(N/A) -> target/release/file-exists bbb.txt true
 Verifying that file exists succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::setup_override::first_override second_bench_1:(N/A) -> target/release/file-exists foo.txt false
 Verifying that file doesn't exist succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::setup_override::second_override third_bench_0:(N/A) -> target/release/file-exists ccc.txt true
 Verifying that file exists succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::setup_override::second_override third_bench_1:(N/A) -> target/release/file-exists bar.txt false
 Verifying that file doesn't exist succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::teardown_override::first_override with_teardown_override_two_commands_0:(N/A) -> target/release/echo aaa
 Verifying that file exists succeeded
 Verifying that file doesn't exist succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::teardown_override::first_override with_teardown_override_two_commands_1:(N/A) -> target/release/echo aaa
 Verifying that file exists succeeded
 Verifying that file doesn't exist succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::teardown_override::first_override without_teardown_override:() -> target/release/echo foo
 Verifying that file exists succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::teardown_override::first_override with_teardown_override_single_command:() -> target/release/echo bbb
 Verifying that file exists succeeded
 Verifying that file doesn't exist succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::teardown_override::second_override with_teardown_override:() -> target/release/echo bbb
 Verifying that file exists succeeded
 Verifying that file doesn't exist succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_low_level::teardown_override::second_override without_teardown_override:() -> target/release/echo bar
 Verifying that file exists succeeded
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 
 Gungraun result: Ok. 20 without regressions; 0 regressed; 0 filtered; 20 benchmarks finished in <__SECONDS__>s

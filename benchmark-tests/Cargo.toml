@@ -26,9 +26,11 @@ colored = { workspace = true }
 either-or-both = { workspace = true }
 fs_extra = { workspace = true }
 glob = { workspace = true }
-gungraun = { path = "../gungraun", features = ["client_requests"] }
+gungraun = { path = "../gungraun", features = ["act"] }
 gungraun-runner = { path = "../gungraun-runner", features = ["__fixtures"] }
+indexmap = { workspace = true }
 minijinja = { workspace = true }
+nix = { workspace = true }
 once_cell = { workspace = true }
 pretty_assertions = { workspace = true }
 regex = { workspace = true }
@@ -90,6 +92,10 @@ path = "src/helper/file-exists.rs"
 [[bin]]
 name = "leak-memory"
 path = "src/helper/leak-memory.rs"
+
+[[bin]]
+name = "perf-bench"
+path = "src/helper/perf-bench.rs"
 
 [[bin]]
 name = "pipe"
@@ -246,6 +252,11 @@ path = "benches/test_bin_bench/paths/test_bin_bench_paths.rs"
 
 [[bench]]
 harness = false
+name = "test_bin_bench_perf"
+path = "benches/test_bin_bench/perf/test_bin_bench_perf.rs"
+
+[[bench]]
+harness = false
 name = "test_bin_bench_sandbox"
 path = "benches/test_bin_bench/sandbox/test_bin_bench_sandbox.rs"
 
@@ -396,6 +407,16 @@ path = "benches/test_lib_bench/parts/test_lib_bench_parts.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_perf"
+path = "benches/test_lib_bench/perf/test_lib_bench_perf.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_perf_single"
+path = "benches/test_lib_bench/perf/test_lib_bench_perf_single.rs"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_readme_example_fibonacci"
 path = "benches/test_lib_bench/readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
 
@@ -427,7 +448,7 @@ path = "benches/test_lib_bench/tools/test_lib_bench_tools.rs"
 [[bench]]
 harness = false
 name = "test_lib_bench_valgrind_runner"
-path = "benches/test_lib_bench/valgrind_runner/test_lib_bench_valgrind_runner.rs"
+path = "benches/test_lib_bench/tool_runner/test_lib_bench_valgrind_runner.rs"
 
 [[bench]]
 harness = false

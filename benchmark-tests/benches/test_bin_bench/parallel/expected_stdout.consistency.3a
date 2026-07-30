@@ -1,70 +1,70 @@
 test_bin_bench_parallel_consistency::my_group::with_output_in_command setup_and_teardown_without_output:() -> target/release/echo FOO
 FOO
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_parallel_consistency::my_group::with_output_in_command setup_and_teardown_with_output:() -> target/release/echo FOO
 SETUP in bench
 FOO
 TEARDOWN in bench
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_parallel_consistency::my_group::subprocess :() -> target/release/subprocess <__ABS_PATH__>/echo BAR
 BAR
 - end of stdout/stderr
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
-  Command:             target/release/subprocess <__ABS_PATH__>/echo BAR
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
-  Command:             target/release/echo BAR
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
+  Command: target/release/subprocess <__ABS_PATH__>/echo BAR
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
+  Command: target/release/echo BAR
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
   ## Total
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 SETUP in group
 test_bin_bench_parallel_consistency::group_assistants::with_output_in_command setup_and_teardown_without_output:() -> target/release/echo FOO
 FOO
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_parallel_consistency::group_assistants::with_output_in_command setup_and_teardown_with_output:() -> target/release/echo FOO
 SETUP in bench
 FOO
 TEARDOWN in bench
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 TEARDOWN in group
 
 Gungraun result: Ok. 5 without regressions; 0 regressed; 0 filtered; 5 benchmarks finished in <__SECONDS__>s

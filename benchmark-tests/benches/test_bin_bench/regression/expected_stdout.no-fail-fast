@@ -1,25 +1,35 @@
 test_bench_template::bench_group::bench_bubble_sort regress_callgrind:(5) -> target/release/bubble-sort 5
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (        %) [        x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (        %) [        x]
+  Estimated Cycles:                                       |                     (         )
+
 test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:(5) -> target/release/bubble-sort 5
-  ======= CACHEGRIND ===================================================================
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  ======= CACHEGRIND ==================================================================================
+  Instructions:                                           |                     (        %) [        x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (        %) [        x]
+  Estimated Cycles:                                       |                     (         )
+
+test_bench_template::bench_group::bench_bubble_sort regress_perf:(20000) -> target/release/bubble-sort 20000
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+
 test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regression:(10) -> target/release/bubble-sort 10
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 
 Regressions:
 
@@ -27,5 +37,7 @@ Regressions:
     Callgrind: Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:
     Cachegrind: Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+  test_bench_template::bench_group::bench_bubble_sort regress_perf:
+    Perf: task-clock:u [*task-clock*] (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
 
-Gungraun result: Regressed. 1 without regressions; 2 regressed; 0 filtered; 3 benchmarks finished in <__SECONDS__>s
+Gungraun result: Regressed. 1 without regressions; 3 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s

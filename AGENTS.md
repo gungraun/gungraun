@@ -1,114 +1,115 @@
-# Gungraun Agent Guidelines
+# Gungraun Project Knowledge Base
 
-This document provides instructions for AI agents working on the Gungraun
-repository. If present load the user-local AI agents file .opencode/AGENTS.md in
-addition to this file.
+Load `.opencode/AGENTS.md` too when present; it contains user-local authoring
+and search rules.
 
-## 1. Build, Lint, and Test Commands
+## Overview
 
-Gungraun uses `just` as a task runner. Always prefer `just` commands over direct
-`cargo` invocations when available to ensure consistency with CI/CD.
+Gungraun is a Rust 2024 workspace for deterministic Valgrind-based library and
+binary benchmarking. Public macros and runtime metadata feed a separate runner,
+which executes tools, interprets metrics, and emits summaries.
 
-### formatting & Linting
+## Structure
 
-- **Format Code (Rust):** `just fmt` (Requires nightly toolchain)
-- **Format TOML:** `just fmt-toml`
-- **Format Prettier (JSON/YAML/MD):** `just fmt-prettier`
-    - **Important:** Always run `just fmt-prettier` after making changes to
-      `AGENTS.md`
-- **Lint (Clippy):** `just lint` (Uses stable toolchain)
-- **Check All Formatting:** `just check-fmt-all`
+```text
+gungraun/
+|- gungraun/                 # Public benchmark API and runtime transport
+|- gungraun-macros/          # Attribute and main proc-macro expansion
+|- gungraun-runner/          # Executable orchestration and metric processing
+|- gungraun-common/          # Small shared protocol primitives
+|- gungraun-summary/         # Versioned, feature-gated summary schema
+|- valgrind-requests/        # no_std Valgrind client-request API
+|- benchmark-tests/          # End-to-end benchmark harness and fixtures
+|- client-request-tests/     # Native/cross-architecture request tests
+|- docs/                     # mdBook source and generated schema references
+|- scripts/                  # Release and repository maintenance helpers
+|- Justfile                  # Canonical developer and CI commands
+`- Cargo.toml                # Workspace members, versions, and dependencies
+```
 
-### Testing
+## Where To Look
 
-- **Run All Tests:** `just test-all` (Excludes client-request-tests and
-  benchmarks)
-- **Run Package Tests:** `just test <package_name>`
-    - Example: `just test gungraun`
-- **Run UI Tests:** `just test-ui` (Fixed to MSRV compiler)
-    - **Overwrite UI Test Fixtures:** `just test-ui-overwrite`
-- **Run Doc Tests:** `just test-doc`
+| Task                  | Location                                                       | Notes                                              |
+| --------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
+| Public benchmark API  | `gungraun/src/`                                                | Prelude, benchmark groups, config, runtime handoff |
+| Attribute expansion   | `gungraun-macros/src/`                                         | Parsing, validation, generated runner glue         |
+| CLI startup           | `gungraun-runner/src/main.rs`                                  | Warning setup and top-level execution              |
+| Runner orchestration  | `gungraun-runner/src/runner/`                                  | Bench selection, execution, sandboxing             |
+| Tool commands         | `gungraun-runner/src/runner/tool/`                             | Valgrind command/config/path/run lifecycle         |
+| Metrics and summaries | `gungraun-runner/src/metrics/`, `gungraun-runner/src/summary/` | Keep model and processing roles distinct           |
+| Shared protocol       | `gungraun-common/src/`                                         | Exit and command-line transport types              |
+| Summary API/schema    | `gungraun-summary/src/`, `gungraun-summary/schemas/`           | Versioned public format                            |
+| Client requests       | `valgrind-requests/src/`                                       | Core API, tool modules, arch assembly              |
+| System-test harness   | `benchmark-tests/src/bench.rs`                                 | Runs fixtures and compares structured output       |
+| Benchmark cases       | `benchmark-tests/benches/`, `benchmark-tests/tests/`           | Inputs plus `.conf.yml` expectations               |
+| Cross-target tests    | `client-request-tests/`                                        | QEMU/native request execution                      |
+| Build recipes         | `Justfile`                                                     | Prefer recipes over direct tool invocations        |
+| CI matrix             | `.github/workflows/`                                           | MSRV, platforms, formatting, tests, release        |
 
-### Benchmarks (System Tests)
+## Code Map
 
-- **Run Single Benchmark System Test:** `just full-bench-test <bench_name>`
-    - Example: `just full-bench-test test_lib_bench_tools`
-- **Run All Benchmark System Tests:** `just full-bench-test-all`
+| Symbol               | Type          | Location                           | Role                                             |
+| -------------------- | ------------- | ---------------------------------- | ------------------------------------------------ |
+| `Runner`             | runtime API   | `gungraun/src/__internal/mod.rs`   | Transfers macro-generated benchmark metadata     |
+| `library_benchmark`  | proc macro    | `gungraun-macros/src/lib.rs`       | Expands library benchmark declarations           |
+| `binary_benchmark`   | proc macro    | `gungraun-macros/src/lib.rs`       | Expands binary benchmark declarations            |
+| `main`               | entry point   | `gungraun-runner/src/main.rs`      | Starts runner and prints deferred warnings       |
+| `Tool`               | runner model  | `gungraun-runner/src/runner/tool/` | Configures and invokes Valgrind tools            |
+| `BenchmarkRunner`    | test harness  | `benchmark-tests/src/bench.rs`     | Executes benchmark fixtures and validates output |
+| `do_client_request!` | request macro | `valgrind-requests/src/lib.rs`     | Encodes architecture-specific Valgrind requests  |
+| `v6`                 | schema module | `gungraun-summary/src/lib.rs`      | Current public summary representation            |
 
-## 2. Code Style & Conventions
+## Conventions
 
-### General
+- Rust edition 2024; workspace MSRV is 1.85.1.
+- Follow `rustfmt.toml`: Unix newlines, 100-character comments,
+  module-granularity imports, and `StdExternalCrate` grouping.
+- Import order is standard library, external crates, then workspace modules;
+  sort imports and module declarations alphabetically.
+- Co-locate unit tests in `mod tests`; use crate `tests/` for integration tests.
+- Runner integration behavior is primarily exercised through `benchmark-tests`.
+- Public items exposed by feature-gated `api`, `summary`, or `schema` modules
+  are semver-sensitive. Most other `gungraun-runner` visibility is
+  workspace-internal.
+- Use typed library errors. Runner user-facing errors flow through
+  `gungraun-runner/src/error.rs`; reserve `JobError(anyhow::Error)` for internal
+  jobs.
 
-- **Rust Edition:** 2024
-- **Line Length:** 100 characters for comments (enforced by rustfmt).
-- **Newlines:** Unix style (`\n`).
+## Anti-Patterns
 
-### Formatting & Imports
+- Do not invoke direct `cargo` commands when an equivalent `just` recipe exists.
+- Do not edit `Cargo.lock` manually or add dependencies without approval.
+- Do not update expected benchmark output before checking that the behavior
+  change is intentional.
+- Do not collapse runner metric data models and processing logic into one layer.
+- Do not make `valgrind-requests` feature `act` imply `alloc`; active
+  no-allocation builds are supported.
+- Do not require allocation for core `CStr`-based client requests.
+- Do not remove `TODO`, `FIXME`, `WARNING`, or `HACK` markers without resolving
+  and testing the underlying issue.
 
-- **Rustfmt:** Strictly adhere to `rustfmt.toml`.
-    - `imports_granularity = "Module"`
-    - `group_imports = "StdExternalCrate"`
-- **Import Order:** std -> external crates -> crate modules.
-- **Sorting:** Imports and modules should be sorted alphabetically.
+## Commands
 
-### Naming Conventions
+```bash
+just fmt                          # Rust formatting; nightly toolchain
+just fmt-prettier                 # JSON, YAML, and Markdown formatting
+just check-fmt-all                # All formatting checks
+just lint                         # Stable Clippy
+just test <package_name>          # One workspace package
+just test-all                     # Main workspace suite
+just test-ui                      # Compile-fail tests at MSRV
+just test-doc                     # Documentation tests
+just full-bench-test <bench_name> # One benchmark system test
+just full-bench-test-all          # All benchmark system tests
+just build-hack-valgrind-requests # Feature-power-set request builds
+```
 
-- **Types/Traits:** `UpperCamelCase`
-- **Functions/Methods/Modules/Variables:** `snake_case`
-- **Constants/Statics:** `SCREAMING_SNAKE_CASE`
-- **Files:** `snake_case.rs`
+## Notes
 
-### Error Handling
-
-- **Library (`gungraun`):** Use specific, typed errors where possible.
-- **Runner (`gungraun-runner`):**
-    - Uses a central `Error` enum in `src/error.rs`.
-    - Variants include `BenchmarkError`, `ConfigurationError`, `JobError`
-      (wrapping `anyhow`), etc.
-    - `JobError` wraps `anyhow::Error` for internal task failures.
-    - Implement `Display` for user-facing error messages.
-    - Use `thiserror` (if available) or manual `std::error::Error`
-      implementation.
-
-### Code Structure
-
-- **Workspace:** Multi-crate workspace.
-    - `gungraun`: Main library crate.
-    - `gungraun-runner`: Binary runner.
-    - `gungraun-macros`: Proc-macros.
-    - `benchmark-tests`: System tests.
-    - `valgrind-requests`: Valgrind client requests support crate.
-
-### Testing Guidelines
-
-- **Unit Tests:** Co-located in the same file or `mod tests` within the file.
-- **Integration Tests:** Located in `tests/` directory of the package.
-- **gungraun-runner Integration Tests:** Integration-style tests for
-  gungraun-runner live in `benchmark-tests/tests/`.
-- **Benchmarks:** defined using `#[library_benchmark]` and `#[binary_benchmark]`
-  attributes.
-
-## 3. Workflow specific
-
-- **Dependencies:** Check `Cargo.toml` before adding new dependencies. Use
-  `cargo add` only if necessary and approved.
-- **Lockfile:** Do not manually edit `Cargo.lock`.
-- **Pre-commit:** Ensure `just fmt` and `just lint` pass before committing.
-
-### `valgrind-requests` Feature Semantics
-
-- **`stubs`** is the minimum supported feature for `valgrind-requests`. It
-  enables the full public API surface and build-time generated request
-  definitions, but implementations must compile to no-ops or default return
-  values. This supports production dependencies using
-  `default-features = false, features = ["stubs"]` while tests/benchmarks use
-  active requests through dev-dependencies.
-- **`act`** enables real Valgrind client request execution and implies `stubs`.
-  Do not treat `act` as a separate API surface from `stubs`.
-- **`alloc`** only enables allocation-backed convenience APIs, such as
-  formatting macros and owned C string helpers. Core client requests and
-  `core::ffi::CStr`-based APIs must work without `alloc`.
-- Do not make `act` imply `alloc`; active `no_std` without allocation is a
-  supported use case.
-- When changing `valgrind-requests`, verify with
-  `just build-hack-valgrind-requests`
+- `just test-all` excludes client-request tests and benchmark system tests; run
+  their dedicated recipes when changing those domains.
+- `stubs` is the minimum `valgrind-requests` API feature. `act` implies `stubs`;
+  `alloc` only enables allocation-backed conveniences.
+- Run `just fmt-prettier` after editing any `AGENTS.md` file.
+- Schema generation, benchmark expectation overwrite, cross-target request
+  tests, mdBook, and release recipes are documented in `Justfile`.

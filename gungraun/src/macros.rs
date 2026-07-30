@@ -323,7 +323,10 @@ macro_rules! main {
                 .as_ref()
                 .map_or(false, |value| value == "--gungraun-run")
             {
-                let mut current = args_iter.next().expect("At least one value should be present");
+                let _ = args_iter
+                    .next()
+                    .expect("A benchmark run mode should be present");
+                let mut current = args_iter.next().expect("At least two values should be present");
                 let next = args_iter.next();
                 match (current.as_str(), next) {
                     ("setup", None) => {
@@ -522,7 +525,7 @@ macro_rules! main {
                 (
                     fn(bool) -> bool,
                     fn(bool) -> bool,
-                    fn(usize, usize, Option<usize>)
+                    fn($crate::__internal::InternalBenchRunMode, usize, usize, Option<usize>)
                 )
             ] = &[
                 $(
@@ -540,10 +543,20 @@ macro_rules! main {
                 .as_ref()
                 .map_or(false, |value| value == "--gungraun-run")
             {
-                let current = std::hint::black_box(
+                let mut current = std::hint::black_box(
+                    args_iter.next().expect("A mode should be present")
+                );
+
+                let mode = std::hint::black_box(
+                    $crate::__internal::InternalBenchRunMode::from_id(&current)
+                        .expect("The benchmark run mode should be valid")
+                );
+
+                current = std::hint::black_box(
                     args_iter.next().expect("Expecting a function type")
                 );
-                let next = std::hint::black_box(args_iter.next());
+
+                let mut next = std::hint::black_box(args_iter.next());
                 match current.as_str() {
                     "setup" if next.is_none() => {
                         __run_setup(true);
@@ -551,32 +564,29 @@ macro_rules! main {
                     "teardown" if next.is_none() => {
                         __run_teardown(true);
                     },
-                    index => {
-                        let main_index = std::hint::black_box(index.parse::<usize>()
-                            .expect("The value should be a valid integer"));
-                        match std::hint::black_box(
-                            next
-                                .expect(
-                                    "An argument `setup`, `teardown` or an index should be present"
-                                )
-                                .as_str()
-                        ) {
-                            "setup" => {
+                    _ => {
+                        let main_index = std::hint::black_box(
+                            current.parse::<usize>()
+                            .expect("The main index should be a valid integer")
+                        );
+
+                        current = next.expect("A setup/teardown or group index should be present");
+                        next = std::hint::black_box(args_iter.next());
+                        match current.as_str() {
+                            "setup" if next.is_none() => {
                                 (GROUPS[main_index].0)(true);
                             },
-                            "teardown" => {
+                            "teardown" if next.is_none() => {
                                 (GROUPS[main_index].1)(true);
                             }
-                            value => {
+                            _ => {
                                 let group_index = std::hint::black_box(
-                                    value
+                                    current
                                         .parse::<usize>()
                                         .expect("Expecting a valid group index")
                                 );
                                 let bench_index = std::hint::black_box(
-                                    args_iter
-                                        .next()
-                                        .expect("A bench index should be present")
+                                    next.expect("A bench index should be present")
                                         .parse::<usize>()
                                         .expect("Expecting a valid bench index")
                                 );
@@ -585,7 +595,8 @@ macro_rules! main {
                                         .next()
                                         .and_then(|a| a.parse::<usize>().ok())
                                 );
-                                (GROUPS[main_index].2)(group_index, bench_index, iter_index);
+                                (GROUPS[main_index].2)
+                                    (mode, group_index, bench_index, iter_index);
                             }
                         }
                     }
@@ -676,7 +687,8 @@ macro_rules! main {
 /// * __`max_parallel`__ (optional): The default is no limit. If set to a value, `0` means no limit
 ///   (same as not specifying this option), `1` disables parallel execution for this group, and
 ///   values `>= 2` limit the maximum number of parallel benchmarks to run within this group. This
-///   option does nothing without the `--parallel` command line option.
+///   option does nothing unless parallel execution is enabled with `--parallel` or
+///   `GUNGRAUN_PARALLEL`.
 /// * __`setup`__ (optional): A function which is executed before all benchmarks in this group
 /// * __`teardown`__ (optional): A function which is executed after all benchmarks in this group
 /// * __`benchmarks`__ (mandatory): A `,`-separated array of `#[binary_benchmark]` annotated
@@ -1399,7 +1411,8 @@ macro_rules! binary_benchmark_group {
 /// * __`max_parallel`__ (optional): The default is no limit. If set to a value, `0` means no limit
 ///   (same as not specifying this option), `1` disables parallel execution for this group, and
 ///   values `>= 2` limit the maximum number of parallel benchmarks to run within this group. This
-///   option does nothing without the `--parallel` command line option.
+///   option does nothing unless parallel execution is enabled with `--parallel` or
+///   `GUNGRAUN_PARALLEL`.
 /// * __`setup`__ (optional): A setup function or any valid expression which is run before all
 ///   benchmarks of this group
 /// * __`teardown`__ (optional): A teardown function or any valid expression which is run after all
@@ -1521,13 +1534,18 @@ macro_rules! library_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn __run(group_index: usize, bench_index: usize, iter_index: Option<usize>) {
+            pub fn __run(
+                mode: $crate::__internal::InternalBenchRunMode,
+                group_index: usize,
+                bench_index: usize,
+                iter_index: Option<usize>
+            ) {
                 match __BENCHES[group_index].2[bench_index].func {
                     $crate::__internal::InternalLibFunctionKind::Iter(func) => {
-                        (func)(iter_index);
+                        (func)(mode, iter_index);
                     }
                     $crate::__internal::InternalLibFunctionKind::Default(func) => {
-                        (func)();
+                        (func)(mode);
                     }
                 }
             }

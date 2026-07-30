@@ -1,20 +1,20 @@
 test_bin_bench_parallel_threads::my_group::threads one:("1") -> target/release/thread 1
 Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_parallel_threads::my_group::threads two:("2") -> target/release/thread 2
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 
 Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s

@@ -1,11 +1,11 @@
 use std::hint::black_box;
 
 use gungraun::prelude::*;
-use gungraun::{Dhat, EntryPoint, ValgrindTool};
+use gungraun::{Dhat, EntryPoint, Tool};
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DHAT)
+        .default_tool(Tool::DHAT)
         .tool(Dhat::default()
             .entry_point(
                 EntryPoint::Custom("benchmark_tests::find_primes".to_owned())

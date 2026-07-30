@@ -2,100 +2,100 @@ test_lib_bench_output_format_threads::my_group::bench_without_format for_compari
 A very long string to see if the truncation of the description is really working
 Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |N/A
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |N/A
   Command: <__COMMAND__>
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> thread: 2 part: 1      |N/A
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ## pid: <__PID__> thread: 2 part: 1                     |N/A
   Command: <__COMMAND__>
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
   ## Total
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
-  ======= DHAT =========================================================================
-  Total bytes:                             |N/A                  (*********)
-  Total blocks:                            |N/A                  (*********)
-  At t-gmax bytes:                         |N/A                  (*********)
-  At t-gmax blocks:                        |N/A                  (*********)
-  At t-end bytes:                          |N/A                  (*********)
-  At t-end blocks:                         |N/A                  (*********)
-  Reads bytes:                             |N/A                  (*********)
-  Writes bytes:                            |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |N/A                  (*********)
+  Total blocks:                                           |N/A                  (*********)
+  At t-gmax bytes:                                        |N/A                  (*********)
+  At t-gmax blocks:                                       |N/A                  (*********)
+  At t-end bytes:                                         |N/A                  (*********)
+  At t-end blocks:                                        |N/A                  (*********)
+  Reads bytes:                                            |N/A                  (*********)
+  Writes bytes:                                           |N/A                  (*********)
 test_lib_bench_output_format_threads::my_group::bench_with_format for_comparison:("Another very long string to see if the truncation is disabled with the formatting option")
 Another very long string to see if the truncation is disabled with the formatting option
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-|======== CALLGRIND ====================================================================
-|-## pid: <__PID__> thread: 1 part: 1      |N/A
+|======== CALLGRIND ===================================================================================
+|-## pid: <__PID__> thread: 1 part: 1                     |N/A
 | Command: <__COMMAND__>
-| Instructions:                            |N/A                  (*********)
-| L1 Hits:                                 |N/A                  (*********)
-| LL Hits:                                 |N/A                  (*********)
-| RAM Hits:                                |N/A                  (*********)
-| Total read+write:                        |N/A                  (*********)
-| Estimated Cycles:                        |N/A                  (*********)
-|-## pid: <__PID__> thread: 2 part: 1      |N/A
+| Instructions:                                           |N/A                  (*********)
+| L1 Hits:                                                |N/A                  (*********)
+| LL Hits:                                                |N/A                  (*********)
+| RAM Hits:                                               |N/A                  (*********)
+| Total read+write:                                       |N/A                  (*********)
+| Estimated Cycles:                                       |N/A                  (*********)
+|-## pid: <__PID__> thread: 2 part: 1                     |N/A
 | Command: <__COMMAND__>
-| Instructions:                            |N/A                  (*********)
-| L1 Hits:                                 |N/A                  (*********)
-| LL Hits:                                 |N/A                  (*********)
-| RAM Hits:                                |N/A                  (*********)
-| Total read+write:                        |N/A                  (*********)
-| Estimated Cycles:                        |N/A                  (*********)
-|-## pid: <__PID__> thread: 3 part: 1      |N/A
+| Instructions:                                           |N/A                  (*********)
+| L1 Hits:                                                |N/A                  (*********)
+| LL Hits:                                                |N/A                  (*********)
+| RAM Hits:                                               |N/A                  (*********)
+| Total read+write:                                       |N/A                  (*********)
+| Estimated Cycles:                                       |N/A                  (*********)
+|-## pid: <__PID__> thread: 3 part: 1                     |N/A
 | Command: <__COMMAND__>
-| Instructions:                            |N/A                  (*********)
-| L1 Hits:                                 |N/A                  (*********)
-| LL Hits:                                 |N/A                  (*********)
-| RAM Hits:                                |N/A                  (*********)
-| Total read+write:                        |N/A                  (*********)
-| Estimated Cycles:                        |N/A                  (*********)
+| Instructions:                                           |N/A                  (*********)
+| L1 Hits:                                                |N/A                  (*********)
+| LL Hits:                                                |N/A                  (*********)
+| RAM Hits:                                               |N/A                  (*********)
+| Total read+write:                                       |N/A                  (*********)
+| Estimated Cycles:                                       |N/A                  (*********)
 |-## Total
-| Instructions:                            |N/A                  (*********)
-| L1 Hits:                                 |N/A                  (*********)
-| LL Hits:                                 |N/A                  (*********)
-| RAM Hits:                                |N/A                  (*********)
-| Total read+write:                        |N/A                  (*********)
-| Estimated Cycles:                        |N/A                  (*********)
-|======== DHAT =========================================================================
-| Total bytes:                             |N/A                  (*********)
-| Total blocks:                            |N/A                  (*********)
-| At t-gmax bytes:                         |N/A                  (*********)
-| At t-gmax blocks:                        |N/A                  (*********)
-| At t-end bytes:                          |N/A                  (*********)
-| At t-end blocks:                         |N/A                  (*********)
-| Reads bytes:                             |N/A                  (*********)
-| Writes bytes:                            |N/A                  (*********)
+| Instructions:                                           |N/A                  (*********)
+| L1 Hits:                                                |N/A                  (*********)
+| LL Hits:                                                |N/A                  (*********)
+| RAM Hits:                                               |N/A                  (*********)
+| Total read+write:                                       |N/A                  (*********)
+| Estimated Cycles:                                       |N/A                  (*********)
+|======== DHAT ========================================================================================
+| Total bytes:                                            |N/A                  (*********)
+| Total blocks:                                           |N/A                  (*********)
+| At t-gmax bytes:                                        |N/A                  (*********)
+| At t-gmax blocks:                                       |N/A                  (*********)
+| At t-end bytes:                                         |N/A                  (*********)
+| At t-end blocks:                                        |N/A                  (*********)
+| Reads bytes:                                            |N/A                  (*********)
+| Writes bytes:                                           |N/A                  (*********)
 |-Comparison with bench_without_format for_comparison:("A very long string to see if the truncation of t...
 |-------- CALLGRIND
-| Instructions:                            |                     (-       %) [-       x]
-| L1 Hits:                                 |                     (         )
-| LL Hits:                                 |                     (         )
-| RAM Hits:                                |                     (         )
-| Total read+write:                        |                     (-       %) [-       x]
-| Estimated Cycles:                        |                     (         )
+| Instructions:                                           |                     (        %) [        x]
+| L1 Hits:                                                |                     (         )
+| LL Hits:                                                |                     (         )
+| RAM Hits:                                               |                     (         )
+| Total read+write:                                       |                     (        %) [        x]
+| Estimated Cycles:                                       |                     (         )
 |-------- DHAT
-| Total bytes:                             |                     (-       %) [-       x]
-| Total blocks:                            |                     (-       %) [-       x]
-| At t-gmax bytes:                         |                     (         )
-| At t-gmax blocks:                        |                     (         )
-| At t-end bytes:                          |                     (No change)
-| At t-end blocks:                         |                     (No change)
-| Reads bytes:                             |                     (-       %) [-       x]
-| Writes bytes:                            |                     (-       %) [-       x]
+| Total bytes:                                            |                     (        %) [        x]
+| Total blocks:                                           |                     (        %) [        x]
+| At t-gmax bytes:                                        |                     (         )
+| At t-gmax blocks:                                       |                     (         )
+| At t-end bytes:                                         |                     (No change)
+| At t-end blocks:                                        |                     (No change)
+| Reads bytes:                                            |                     (        %) [        x]
+| Writes bytes:                                           |                     (        %) [        x]
 
 Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s

@@ -197,6 +197,8 @@ mod tests {
             .iter()
             .map(|(e, n, o, d, l)| ToolRegression::Soft {
                 metric: MetricKind::Callgrind(*e),
+                display: None,
+                unit: None,
                 new: (*n).into(),
                 old: (*o).into(),
                 diff_pct: *d,

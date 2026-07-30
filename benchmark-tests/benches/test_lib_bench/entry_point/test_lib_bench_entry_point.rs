@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use benchmark_tests::assert::Assert;
 use gungraun::prelude::*;
-use gungraun::{Callgrind, EntryPoint, EventKind, FlamegraphConfig, ValgrindTool};
+use gungraun::{Callgrind, EntryPoint, EventKind, FlamegraphConfig, Tool};
 use gungraun_runner::metrics::model::Metric;
 use gungraun_runner::runner::callgrind::hashmap_parser::SourcePath;
 use gungraun_runner::summary::model::{BenchmarkSummary, ToolMetricSummary};
@@ -49,7 +49,7 @@ fn assert_none() {
             let callgrind_summary = b
                 .profiles
                 .iter()
-                .find(|p| p.tool == ValgrindTool::Callgrind)
+                .find(|p| p.tool == Tool::Callgrind)
                 .unwrap();
             let ToolMetricSummary::Callgrind(metrics_summary) =
                 &callgrind_summary.summaries.parts[0].metrics_summary
@@ -71,7 +71,7 @@ fn assert_default() {
         let callgrind_summary = b
             .profiles
             .iter()
-            .find(|p| p.tool == ValgrindTool::Callgrind)
+            .find(|p| p.tool == Tool::Callgrind)
             .unwrap();
         let ToolMetricSummary::Callgrind(metrics_summary) =
             &callgrind_summary.summaries.parts[0].metrics_summary
@@ -115,7 +115,7 @@ fn assert_nested() {
         let callgrind_summary = b
             .profiles
             .iter()
-            .find(|p| p.tool == ValgrindTool::Callgrind)
+            .find(|p| p.tool == Tool::Callgrind)
             .unwrap();
         let ToolMetricSummary::Callgrind(metrics_summary) =
             &callgrind_summary.summaries.parts[0].metrics_summary

@@ -1,62 +1,81 @@
 # Test Case: `test_bin_bench_regression`
 #
 # Description:
-#   Validates soft limits regression checking with the `fail_fast` option for
-#   Callgrind and Cachegrind tools. Tests that benchmarks can fail when metrics
-#   exceed configured limits, and that `fail_fast` controls whether subsequent
-#   benchmarks run after a failure.
+#   Validates soft-limit regression checking and `fail_fast` behavior for
+#   Callgrind, Cachegrind, and Perf binary benchmarks. A final sentinel
+#   benchmark reveals whether execution continued after a detected regression.
 #
 # Test Steps:
-#   1. Run with `array_length=4` to create a baseline
-#   2. Run with `array_length=5` (metrics exceed limits) - should fail
-#   3. Repeat steps 1-2 with `fail_fast=true` and `fail_fast=false`
+#   1. Run smaller workloads to establish non-regressing baselines
+#   2. Run larger workloads to exceed each tool's zero-percent soft limit
+#   3. Repeat with `fail_fast=true` and `fail_fast=false`
 #
 # Test Inputs:
-#   - `fail_fast=true`: Remaining benchmarks are skipped after first failure
-#   - `fail_fast=false`: All benchmarks run even after failure
-#   - Soft limits set to 0.0 threshold (any metric will exceed)
-#   - Both Callgrind (`Ir` event) and Cachegrind (`Ir` metric) tested
+#   - Callgrind and Cachegrind `Ir` soft limits set to `0.0`
+#   - Perf events `task-clock`, `cpu-clock`, `faults`, and `context-switches`,
+#     with a `*task-clock*` soft limit set to `0.0`
+#   - The explicit `task-clock,cpu-clock,faults,context-switches` event set is
+#     intentionally limited to events available across Linux systems and the
+#     Github CI;
+#   - Array lengths 4/5 for Valgrind and 10000/20000 for Perf
+#   - A `should_not_run_after_regression` sentinel benchmark
 #
 # Expected Outcomes:
-#   - `array_length=4`: All benchmarks pass with exit code 0
-#   - `array_length=5`: Benchmarks fail with exit code 3 (regression limit
-#      exceeded)
-#   - `fail_fast=true`: Error output shows only first failure
-#   - `fail_fast=false`: Error output shows all failures
+#   - Baseline runs pass with exit code 0; regression runs exit with code 3
+#   - `fail_fast=true` stops before the sentinel benchmark
+#   - `fail_fast=false` reports every configured tool regression and reaches the
+#     sentinel benchmark
+#   - FreeBSD doesn't run Perf and uses the non-Perf expectations
 
 template: test_bin_bench_regression.rs.j2
 groups:
   - runs:
       - args: []
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
           exit_code: 0
         template_data:
           array_length: 4
+          # high array length for perf to push the shaky task-clock into the
+          # middle of the ms range to avoid a unit change in the output
+          perf_array_length: 10000
           fail_fast: true
       - args: []
         expected:
           stdout: expected_stdout.fail-fast
-          stderr: expected_stderr.fail-fast
+          stderr:
+            default: expected_stderr.fail-fast
+            x86_64-unknown-freebsd: expected_stderr.freebsd.fail-fast
           exit_code: 3
         template_data:
           array_length: 5
+          perf_array_length: 20000
           fail_fast: true
   - runs:
       - args: []
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
           exit_code: 0
         template_data:
           array_length: 4
+          perf_array_length: 10000
           fail_fast: false
       - args: []
         expected:
-          stdout: expected_stdout.no-fail-fast
-          stderr: expected_stderr.no-fail-fast
+          stdout:
+            default: expected_stdout.no-fail-fast
+            x86_64-unknown-freebsd: expected_stdout.freebsd.no-fail-fast
+          stderr:
+            default: expected_stderr.no-fail-fast
+            x86_64-unknown-freebsd: expected_stderr.freebsd.no-fail-fast
           exit_code: 3
         template_data:
           array_length: 5
+          perf_array_length: 20000
           fail_fast: false

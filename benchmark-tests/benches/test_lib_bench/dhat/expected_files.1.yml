@@ -1,19 +1,19 @@
 data:
   - group: my_group
-    function: copy
-    id: without_entry_point
-    expected:
-      files:
-        - dhat.copy.without_entry_point.log
-        - dhat.copy.without_entry_point.out
-        - summary.json
-  - group: my_group
-    function: heap
+    function: ad_hoc
     id: with_entry_point
     expected:
       files:
-        - dhat.heap.with_entry_point.log
-        - dhat.heap.with_entry_point.out
+        - dhat.ad_hoc.with_entry_point.log
+        - dhat.ad_hoc.with_entry_point.out
+        - summary.json
+  - group: my_group
+    function: ad_hoc
+    id: without_entry_point
+    expected:
+      files:
+        - dhat.ad_hoc.without_entry_point.log
+        - dhat.ad_hoc.without_entry_point.out
         - summary.json
   - group: my_group
     function: alloc_in_func
@@ -32,12 +32,20 @@ data:
         - dhat.copy.with_entry_point.out
         - summary.json
   - group: my_group
-    function: sanitize
-    id: default
+    function: copy
+    id: without_entry_point
     expected:
       files:
-        - dhat.sanitize.default.log
-        - dhat.sanitize.default.out
+        - dhat.copy.without_entry_point.log
+        - dhat.copy.without_entry_point.out
+        - summary.json
+  - group: my_group
+    function: heap
+    id: with_entry_point
+    expected:
+      files:
+        - dhat.heap.with_entry_point.log
+        - dhat.heap.with_entry_point.out
         - summary.json
   - group: my_group
     function: heap
@@ -49,6 +57,14 @@ data:
         - summary.json
   - group: my_group
     function: sanitize
+    id: default
+    expected:
+      files:
+        - dhat.sanitize.default.log
+        - dhat.sanitize.default.out
+        - summary.json
+  - group: my_group
+    function: sanitize
     id: keep_orig
     expected:
       files:
@@ -57,20 +73,12 @@ data:
         - dhat.sanitize.keep_orig.out.orig
         - summary.json
   - group: my_group
-    function: ad_hoc
-    id: with_entry_point
+    function: sanitize
+    id: no
     expected:
       files:
-        - dhat.ad_hoc.with_entry_point.log
-        - dhat.ad_hoc.with_entry_point.out
-        - summary.json
-  - group: my_group
-    function: ad_hoc
-    id: without_entry_point
-    expected:
-      files:
-        - dhat.ad_hoc.without_entry_point.log
-        - dhat.ad_hoc.without_entry_point.out
+        - dhat.sanitize.no.log
+        - dhat.sanitize.no.out
         - summary.json
   - group: my_group
     function: sanitize
@@ -79,12 +87,4 @@ data:
       files:
         - dhat.sanitize.yes.log
         - dhat.sanitize.yes.out
-        - summary.json
-  - group: my_group
-    function: sanitize
-    id: no
-    expected:
-      files:
-        - dhat.sanitize.no.log
-        - dhat.sanitize.no.out
         - summary.json

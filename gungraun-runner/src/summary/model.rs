@@ -1,7 +1,13 @@
-//! Summary data model types deserialized from Gungraun summary JSON.
+//! Summary data model types to build the top-level [`BenchmarkSummary`]
 //!
-//! These types represent the consumer-facing structure of a parsed summary file
-//! and are re-exported by `gungraun-summary::v6`.
+//! Aggregating a [`BenchmarkSummary`] from a benchmark run serves two main purposes:
+//!
+//! 1. It allows running the benchmark and process the data in completely separate steps.
+//! 2. Being able to print a json benchmark summary which at a minimum contains all data of the
+//!    terminal output in a machine-readable format.
+//!
+//! These types define the main consumer-facing structure that is serialized to and deserialized
+//! from summary files.
 
 use std::path::PathBuf;
 
@@ -10,11 +16,14 @@ use either_or_both::EitherOrBoth;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindTool};
-use crate::metrics::model::{Metric, MetricKind, Metrics, MetricsSummary};
+use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool};
+use crate::metrics::model::{
+    AnnotatedMetric, Metric, MetricKind, Metrics, MetricsSummary, PerfQualities,
+};
+use crate::units::Unit;
 
-/// The version string stored in version 6 summary JSON files.
-pub const SCHEMA_VERSION: &str = "6";
+/// The version string stored in version summary JSON files.
+pub const SCHEMA_VERSION: &str = "7";
 
 /// Describes which baseline a summary compares against.
 ///
@@ -50,10 +59,10 @@ pub enum SummaryFormat {
     PrettyJson,
 }
 
-/// A [`ValgrindTool`] metric data summary.
+/// A [`Tool`] metric data summary.
 ///
 /// Each variant contains all metric data including the differences to the old or a
-/// [`BenchmarkSummary::baselines`] run for a single [`ValgrindTool`]. The contained
+/// [`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained
 /// [`MetricsSummary`] is keyed by the metric enum used by that tool.
 ///
 /// The [`ToolMetricSummary::ErrorTool`] variant is used by Memcheck, Helgrind and DRD. Massif and
@@ -94,7 +103,7 @@ pub enum SummaryFormat {
 /// }
 /// ```
 ///
-/// [`ValgrindTool`]: crate::api::ValgrindTool
+/// [`Tool`]: crate::api::Tool
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ToolMetricSummary {
@@ -109,6 +118,11 @@ pub enum ToolMetricSummary {
     Callgrind(MetricsSummary<EventKind>),
     /// The summary of [`CachegrindMetric`]s
     Cachegrind(MetricsSummary<CachegrindMetric>),
+    /// Perf summaries for a single parsed part or direct new/old comparison.
+    ///
+    /// Unlike the valgrind-based tools, perf does not currently produce a synthetic aggregated
+    /// `total` summary across parts in [`ProfileData::new`].
+    Perf(MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>),
 }
 
 /// A per-tool collection of raw metric values.
@@ -119,7 +133,7 @@ pub enum ToolMetricSummary {
 /// # Benchmark Summary
 ///
 /// This struct is not part of the recent summary anymore.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum ToolMetrics {
     /// If there are no metrics extracted from a tool (currently Massif, BBV)
     #[default]
@@ -132,6 +146,11 @@ pub enum ToolMetrics {
     Callgrind(Metrics<EventKind>),
     /// The metrics of a Cachegrind benchmark
     Cachegrind(Metrics<CachegrindMetric>),
+    /// Perf metrics with attached runtime and variability metadata.
+    ///
+    /// These metrics are summarized per part, but no synthetic aggregate `total` is currently
+    /// constructed across parts.
+    Perf(Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>),
 }
 
 /// A regression detected while evaluating a [`BenchmarkSummary`].
@@ -145,6 +164,13 @@ pub enum ToolRegression {
     Soft {
         /// The [`MetricKind`] per tool
         metric: MetricKind,
+        /// An optional human-readable display label for the regression metric, used in formatted
+        /// output.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        display: Option<String>,
+        /// The unit of the metric values, if present.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        unit: Option<Unit>,
         /// The [`Metric`] value of the new benchmark run
         new: Metric,
         /// The [`Metric`] value of the old benchmark run
@@ -164,6 +190,13 @@ pub enum ToolRegression {
     Hard {
         /// The [`MetricKind`] per tool
         metric: MetricKind,
+        /// An optional human-readable display label for the regression metric, used in formatted
+        /// output.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        display: Option<String>,
+        /// The unit of the metric values, if present.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        unit: Option<Unit>,
         /// The [`Metric`] value of the benchmark run
         new: Metric,
         /// The difference between new and the limit as [`Metric`]
@@ -287,7 +320,7 @@ pub struct FlamegraphSummary {
     pub regular_path: Option<PathBuf>,
 }
 
-/// `Profile` data for one [`ValgrindTool`] recorded in a benchmark summary.
+/// `Profile` data for one [`Tool`] recorded in a benchmark summary.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profile {
@@ -301,7 +334,7 @@ pub struct Profile {
     /// The data with the metrics and details about the tool run
     pub summaries: ProfileData,
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
-    pub tool: ValgrindTool,
+    pub tool: Tool,
 }
 
 /// All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.
@@ -360,7 +393,7 @@ pub struct ProfileTotal {
     pub summary: ToolMetricSummary,
 }
 
-/// Contains all [`Profile`]s with the data for each [`ValgrindTool`] run
+/// Contains all [`Profile`]s with the data for each [`Tool`] run
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profiles(pub Vec<Profile>);

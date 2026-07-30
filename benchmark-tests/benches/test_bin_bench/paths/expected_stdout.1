@@ -1,38 +1,38 @@
 test_bin_bench_paths::my_group::bench_paths relative:(create_script("./cat")) -> ./cat some.txt
 content of file
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_paths::my_group::bench_paths absolute:("/bin/cat") -> <__ABS_PATH__>/cat some.txt
 content of file
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_paths::my_group::bench_paths crate_binary:(env! ("CARGO_BIN_EXE_cat")) -> target/release/cat some.txt
 content of file
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_paths::my_group::bench_paths use_path:("cat") -> cat some.txt
 content of file
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 
 Gungraun result: Ok. 4 without regressions; 0 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s

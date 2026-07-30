@@ -1,29 +1,44 @@
 # Test Case: `test_bin_bench_sandbox`
 #
 # Description:
-#   Tests `Sandbox` configuration for file isolation in binary benchmarks.
-#   Validates sandbox creation, fixture handling, current directory changes, and
-#   automatic cleanup after benchmark execution.
+#   Tests binary-benchmark file isolation with the default Valgrind tool and
+#   Perf. Covers fixture copying, benchmark-workdir visibility, sandbox-relative
+#   current directories, cleanup, and assistant execution across Perf modes.
 #
 # Test Steps:
-#   1. Run benchmarks with `--nocapture` testing sandbox configurations
+#   1. Run all sandbox cases with `--nocapture`
+#   2. Repeat the run and compare it with the first run's fixtures
 #
 # Test Inputs:
-#   - `Sandbox::new(true)` with fixtures: copies fixture files into sandbox
-#   - `Sandbox::new(true)` without fixtures: empty sandbox created
-#   - `Sandbox::new(false)`: no sandbox, runs in current directory
-#   - `current_dir` option to change working directory within sandbox
-#   - `truncate_description(None)` for full output
+#   - `Sandbox::new(true)` with and without the `one_line.fix` fixture
+#   - `Sandbox::new(false)` exposing files in the benchmark work directory
+#   - `current_dir("foo")` with setup/teardown creating and removing
+#     `foo/bar.txt`
+#   - Perf direct mode and combined sampling/calibration mode
+#   - Untruncated benchmark descriptions
+#   - The explicit `task-clock,cpu-clock,faults,context-switches` event set is
+#     intentionally limited to events available across Linux systems and the
+#     Github CI;
 #
 # Expected Outcomes:
-#   - Files created in sandbox are cleaned up after benchmark
-#   - Fixtures are copied into sandbox when specified
-#   - `current_dir` changes working directory correctly
-#   - With `Sandbox::new(false)`, files persist outside sandbox
-#   - Setup/check functions execute correctly
+#   - The fixture is visible only when copied into an enabled sandbox, while a
+#     disabled sandbox exposes the benchmark work directory
+#   - `current_dir("foo")` resolves inside the sandbox and created files are
+#     removed during teardown
+#   - Both runs match their declared output fixtures
+#   - Perf direct and sampled/calibrated cases complete in the sandbox; binary
+#     setup/teardown assistants run once despite multiple samples/calibration
+#   - FreeBSD doesn't run Perf and uses the non-Perf fallback expectations
 
 groups:
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
+      - args: ["--nocapture"]
+        expected:
+          stdout:
+            default: expected_stdout.2
+            x86_64-unknown-freebsd: expected_stdout.freebsd.2

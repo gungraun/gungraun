@@ -1,4 +1,4 @@
-use gungraun_runner::api::ValgrindTool;
+use gungraun_runner::api::Tool;
 use gungraun_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
 use gungraun_runner::runner::callgrind::parser::CallgrindParser;
 use gungraun_runner::runner::tool::path::ToolOutputPathKind;
@@ -12,7 +12,7 @@ fn test_valid_just_main() {
     let parser = HashMapParser::default();
     let output = Fixtures::get_tool_output_path(
         "callgrind.out",
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         ToolOutputPathKind::Out,
         "valid.minimal_main",
     );
@@ -30,7 +30,7 @@ fn test_when_empty_file_then_should_return_error() {
     let parser = HashMapParser::default();
     let output = Fixtures::get_tool_output_path(
         "callgrind.out",
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         ToolOutputPathKind::Out,
         "empty",
     );
@@ -42,7 +42,7 @@ fn test_when_version_mismatch_then_should_return_error() {
     let parser = HashMapParser::default();
     let output = Fixtures::get_tool_output_path(
         "callgrind.out",
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         ToolOutputPathKind::Out,
         "invalid.version_too_high",
     );
@@ -60,7 +60,7 @@ fn test_when_no_records(#[case] name: &str) {
     let parser = HashMapParser::default();
     let output = Fixtures::get_tool_output_path(
         "callgrind.out",
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         ToolOutputPathKind::Out,
         name,
     );

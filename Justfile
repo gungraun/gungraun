@@ -192,8 +192,8 @@ build package *args:
 
 # Build gungraun-runner (uses 'cargo')
 [group('build')]
-build-runner:
-    just build gungraun-runner --release
+build-runner *args:
+    just build gungraun-runner --release {{ args }}
 
 # Build the documentation (Uses: 'cargo')
 [group('build')]
@@ -204,7 +204,7 @@ build-docs:
 [group('build')]
 build-hack *args: (build-hack-runner args) (build-hack-valgrind-requests args)
     cargo hack --workspace --feature-powerset --exclude gungraun-runner \
-        --exclude valgrind-requests build {{ args }}
+        --exclude valgrind-requests --at-least-one-of perf,perf_stubs build {{ args }}
 
 # A thorough build of the gungraun-runner package (Uses: 'cargo-hack')
 [group('build')]
@@ -225,7 +225,7 @@ build-hack-valgrind-requests *args:
 [group('build')]
 build-tests-hack *args: (build-tests-hack-runner args) (build-tests-hack-valgrind-requests args)
     cargo hack --workspace --feature-powerset --exclude gungraun-runner \
-        --exclude valgrind-requests test --no-run {{ args }}
+        --exclude valgrind-requests --at-least-one-of perf,perf_stubs test --no-run {{ args }}
 
 # A build of the tests in the gungraun-runner package with `cargo hack` (Uses: 'cargo-hack')
 [group('build')]
@@ -548,11 +548,11 @@ generate-expected-files benchmark path:
     #!/usr/bin/env -S bash -eu
 
     yaml="data:\n"
-    groups="$(find target/gungraun/benchmark-tests/{{ benchmark }} -mindepth 1 -maxdepth 1 -type d)"
+    groups="$(find target/gungraun/benchmark-tests/{{ benchmark }} -mindepth 1 -maxdepth 1 -type d | sort)"
     IFS=$'\n'
     for group in $groups; do
       pushd "$(pwd)/$group" >/dev/null
-      function_ids="$(find -mindepth 1 -maxdepth 1 -type d)"
+      function_ids="$(find . -mindepth 1 -maxdepth 1 -type d | sort)"
       for function_id in $function_ids; do
           function_id="${function_id/\.\//}"
           IFS='.' read function id <<<"${function_id}"
@@ -562,7 +562,7 @@ generate-expected-files benchmark path:
           fi
           yaml+="    expected:\n      files:\n"
           pushd "$function_id" >/dev/null
-          files="$(find -mindepth 1 -maxdepth 1 -type f | sort)"
+          files="$(find . -mindepth 1 -maxdepth 1 -type f | sort)"
           for file in $files; do
             file="${file/\.\//}"
             yaml+="        - ${file}\n"

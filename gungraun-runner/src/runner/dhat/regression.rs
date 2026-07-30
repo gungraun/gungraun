@@ -101,20 +101,20 @@ mod tests {
 
     #[rstest]
     #[case::fail_fast(
-        api_dhat_regression_config_f().fail_fast(true).fixture(),
-        dhat_regression_config_f().fail_fast(true).fixture(),
+        api_dhat_regression_config_f().fail_fast(true).fx(),
+        dhat_regression_config_f().fail_fast(true).fx(),
     )]
     #[case::soft_limit(
         api_dhat_regression_config_f()
             .soft_limits(vec![(DhatMetrics::from(TotalBytes), 5f64)])
-            .fixture(),
-        dhat_regression_config_f().soft_limits(vec![(TotalBytes, 5f64)]).fixture(),
+            .fx(),
+        dhat_regression_config_f().soft_limits(vec![(TotalBytes, 5f64)]).fx(),
     )]
     #[case::hard_limit(
         api_dhat_regression_config_f()
             .hard_limits(vec![(DhatMetrics::from(TotalBytes), Limit::Int(10))])
-            .fixture(),
-        dhat_regression_config_f().hard_limits(vec![(TotalBytes, Metric::Int(10))]).fixture(),
+            .fx(),
+        dhat_regression_config_f().hard_limits(vec![(TotalBytes, Metric::Int(10))]).fx(),
     )]
     fn test_try_from_regression_config(
         #[case] input: api::DhatRegressionConfig,
@@ -175,6 +175,8 @@ mod tests {
             .iter()
             .map(|(e, n, d, l)| ToolRegression::Hard {
                 metric: MetricKind::Dhat(*e),
+                display: None,
+                unit: None,
                 new: (*n).into(),
                 diff: (*d).into(),
                 limit: (*l).into(),
@@ -199,11 +201,26 @@ mod tests {
         let expected = vec![
             ToolRegression::with(
                 MetricKind::Dhat,
-                RegressionMetrics::Soft(DhatMetric::TotalBlocks, 4.into(), 2.into(), 100f64, 20f64),
+                RegressionMetrics::Soft(
+                    DhatMetric::TotalBlocks,
+                    None,
+                    None,
+                    4.into(),
+                    2.into(),
+                    100f64,
+                    20f64,
+                ),
             ),
             ToolRegression::with(
                 MetricKind::Dhat,
-                RegressionMetrics::Hard(DhatMetric::TotalBytes, 3.into(), 1.into(), 2.into()),
+                RegressionMetrics::Hard(
+                    DhatMetric::TotalBytes,
+                    None,
+                    None,
+                    3.into(),
+                    1.into(),
+                    2.into(),
+                ),
             ),
         ];
 

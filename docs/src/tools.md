@@ -1,7 +1,7 @@
-# Other Valgrind Tools
+# Additional Tools
 
-In addition to or instead of the default tool `Callgrind`, you can use the
-Gungraun framework to run other Valgrind profiling tools like
+In addition to or instead of the default tool `Callgrind`, you can use Gungraun
+to run Linux [`perf`](./perf.md) or other Valgrind profiling tools like
 [`DHAT`](./dhat.md), `Massif` or [`Cachegrind`](./cachegrind.md) and the
 experimental `BBV` but also error checking tools like `Memcheck`, `Helgrind` and
 `DRD`.
@@ -14,17 +14,30 @@ files are generated as usual and are ready to be examined with tools like
 See also the [Valgrind User Manual][valgrind-manual] for all the details about
 each tool and their command line arguments.
 
-## Running Other Valgrind Tools
+## Selecting Tools
 
-It's possible to change the default tool `Callgrind` to any other Valgrind tool
-with the [command-line argument](./cli_and_env/basics.md)
-`--default-tool=<tool>` or environment variable `GUNGRAUN_DEFAULT_TOOL=<tool>`.
-`<tool>` may be one of `callgrind`, `cachegrind`, `dhat`, `massif`, `memcheck`,
-`helgrind`, `drd`, `exp-bbv`.
+It's possible to change the default tool `Callgrind` to any supported tool with
+the [command-line argument](./cli_and_env/basics.md) `--default-tool=<tool>` or
+environment variable `GUNGRAUN_DEFAULT_TOOL=<tool>`. `<tool>` may be one of
+`callgrind`, `cachegrind`, `dhat`, `massif`, `memcheck`, `helgrind`, `drd`,
+`exp-bbv`, `perf`.
 
 Running tools in addition to the default tool can be achieved with
 `--tools=<tools>` or `GUNGRAUN_TOOLS=<tools>` where `<tools>` is a `,`-separated
-list of one or more of the `<tool>` above.
+list of one or more of the `<tool>` values above.
+
+Gungraun resolves tool selection separately for each benchmark. A configured
+tool is retained only if it is supported on the benchmark's compilation target
+and has not been disabled with `enable(false)`. If the configured default is not
+retained, the first remaining tool becomes the effective default. When the
+target supports at least one tool family but none of a benchmark's configured
+tools are retained, that benchmark is skipped.
+
+Target support does not guarantee runtime availability. A retained tool must
+still be installed and executable, and `perf` may additionally require suitable
+system permissions. Runtime failures remain errors. Use a
+[custom tool runner](./cli_and_env/tool_runner.md) when the tool must run in a
+container or another execution environment.
 
 The tool configurations can be changed in the benchmark file by specifying the
 structs `Callgrind`, `Cachegrind`, ..., `Bbv` in `LibraryBenchmarkConfig::tool`
@@ -39,7 +52,7 @@ need for `--tools=dhat`:
 # extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
 use gungraun::prelude::*;
-use gungraun::{Dhat, ValgrindTool};
+use gungraun::Dhat;
 use std::hint::black_box;
 
 #[library_benchmark]
@@ -65,7 +78,7 @@ for `Memcheck`
 
 ```rust
 # extern crate gungraun;
-use gungraun::{Memcheck, ValgrindTool};
+use gungraun::Memcheck;
 
 Memcheck::with_args(["--error-exitcode=0"]);
 ```

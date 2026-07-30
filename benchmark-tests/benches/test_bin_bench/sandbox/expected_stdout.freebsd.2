@@ -1,0 +1,46 @@
+test_bin_bench_sandbox::valgrind_tool::with_sandbox sandbox_with_fixture:(check_file_exists("one_line.fix", true)) -> target/release/file-exists one_line.fix true
+File exists: 'one_line.fix'
+Verifying that file exists succeeded
+File exists: 'one_line.fix'
+- end of stdout/stderr
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+test_bin_bench_sandbox::valgrind_tool::with_sandbox sandbox_without_fixture:(check_file_exists("one_line.fix", false)) -> target/release/file-exists one_line.fix false
+File does not exist: 'one_line.fix'
+Verifying that file doesn't exist succeeded
+File does not exist: 'one_line.fix'
+- end of stdout/stderr
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+test_bin_bench_sandbox::valgrind_tool::without_sandbox check_file:(check_file_exists("benches/fixtures/one_line.fix", true)) -> target/release/file-exists benches/fixtures/one_line.fix true
+File exists: 'benches/fixtures/one_line.fix'
+Verifying that file exists succeeded
+File exists: 'benches/fixtures/one_line.fix'
+- end of stdout/stderr
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+test_bin_bench_sandbox::valgrind_tool::with_current_dir :() -> target/release/file-exists bar.txt true
+Created directory 'foo' with file 'bar.txt'
+Verifying that file exists succeeded
+Deleted directory 'foo' with file 'bar.txt'
+- end of stdout/stderr
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+
+Gungraun result: Ok. 4 without regressions; 0 regressed; 0 filtered; 4 benchmarks finished in <__SECONDS__>s

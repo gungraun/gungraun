@@ -1,0 +1,10 @@
+data:
+  - group: my_group
+    function: bench_bubble_sort
+    id: thousand
+    expected:
+      files:
+        - perf.bench_bubble_sort.thousand.log
+        - perf.bench_bubble_sort.thousand.log.record
+        - perf.bench_bubble_sort.thousand.out
+        - summary.json

@@ -3,11 +3,6 @@ data:
     function: bench_exit_with
     id: exit_with
     expected:
-      globs:
-        - pattern: callgrind.bench_exit_with.exit_with.log.#*
-          count: 1
-        - pattern: callgrind.bench_exit_with.exit_with.out.#*
-          count: 2
       files:
         - callgrind.bench_exit_with.exit_with.log
         - callgrind.bench_exit_with.exit_with.log.old
@@ -16,3 +11,8 @@ data:
         - memcheck.bench_exit_with.exit_with.log
         - memcheck.bench_exit_with.exit_with.log.old
         - summary.json
+      globs:
+        - pattern: callgrind.bench_exit_with.exit_with.log.#*
+          count: 1
+        - pattern: callgrind.bench_exit_with.exit_with.out.#*
+          count: 2

@@ -1,0 +1,10 @@
+{"counter-value":"101","event":"event_repeat_01","event-runtime":1001,"pcnt-running":91.0,"variance":1.0}
+{"counter-value":"102","event":"event_repeat_02","event-runtime":1002,"pcnt-running":92.0,"variance":2.0}
+{"counter-value":"103","event":"event_repeat_03","event-runtime":1003,"pcnt-running":93.0,"variance":3.0}
+{"counter-value":"104","event":"event_repeat_04","event-runtime":1004,"pcnt-running":94.0,"variance":4.0}
+{"counter-value":"105","event":"event_repeat_05","event-runtime":1005,"pcnt-running":95.0,"variance":5.0}
+{"counter-value":"106","event":"event_repeat_06","event-runtime":1006,"pcnt-running":96.0,"variance":6.0}
+{"counter-value":"107","event":"event_repeat_07","event-runtime":1007,"pcnt-running":97.0,"variance":7.0}
+{"counter-value":"108","event":"event_repeat_08","event-runtime":1008,"pcnt-running":98.0,"variance":8.0}
+{"counter-value":"109","event":"event_repeat_09","event-runtime":1009,"pcnt-running":99.0,"variance":9.0}
+{"counter-value":"110","event":"event_repeat_10","event-runtime":1010,"pcnt-running":100.0,"variance":10.0}

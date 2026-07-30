@@ -30,19 +30,9 @@ error[E0308]: mismatched types
   --> tests/ui/lib_bench/test_library_benchmark_invalid_setup_and_teardown.rs:28:29
    |
 28 | #[library_benchmark(setup = setup_string)]
-   | ----------------------------^^^^^^^^^^^^--
-   | |                           |
-   | |                           expected `u64`, found `String`
-   | arguments to this function are incorrect
-   |
-note: function defined here
-  --> tests/ui/lib_bench/test_library_benchmark_invalid_setup_and_teardown.rs:28:1
-   |
-28 | #[library_benchmark(setup = setup_string)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^^ expected `u64`, found `String`
 29 | fn bench21(value: u64) {
-   |            ----------
-   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                   --- expected due to this
 
 error[E0308]: mismatched types
   --> tests/ui/lib_bench/test_library_benchmark_invalid_setup_and_teardown.rs:34:32

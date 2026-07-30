@@ -67,6 +67,8 @@ data:
   - group: bench_group
     function: bench_thread_in_thread_in_subprocess
     expected:
+      files:
+        - summary.json
       globs:
         - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.log
           count: 2
@@ -140,6 +142,22 @@ data:
           count: 4
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.bb.out.old
           count: 4
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log.base@default
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log.base@foo
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log.old
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out.base@default
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out.base@foo
+          count: 2
+        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out.old
+          count: 2
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.t1.bb.out
           count: 1
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.t1.bb.out.base@default
@@ -164,22 +182,6 @@ data:
           count: 1
         - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.t3.bb.out.old
           count: 1
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log.base@default
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log.base@foo
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.log.old
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out.base@default
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out.base@foo
-          count: 2
-        - pattern: exp-bbv.bench_thread_in_thread_in_subprocess.*.pc.out.old
-          count: 2
         - pattern: massif.bench_thread_in_thread_in_subprocess.*.log
           count: 2
         - pattern: massif.bench_thread_in_thread_in_subprocess.*.log.base@default
@@ -204,5 +206,3 @@ data:
           count: 2
         - pattern: memcheck.bench_thread_in_thread_in_subprocess.*.log.old
           count: 2
-      files:
-        - summary.json

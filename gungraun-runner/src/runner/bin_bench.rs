@@ -29,7 +29,8 @@ use super::tool::config::ToolConfigs;
 use super::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use super::tool::run::RunOptions;
 use crate::api::{
-    self, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, EntryPoint, Stdin, ValgrindTool,
+    self, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, EntryPoint, PerfRunMode, Stdin,
+    Tool,
 };
 use crate::error::Error;
 use crate::runner::args;
@@ -54,8 +55,8 @@ pub struct BinBench {
     pub command: Command,
     /// The arguments of `consts` parameter as a single string
     pub consts_display: Option<String>,
-    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
-    pub default_tool: ValgrindTool,
+    /// The default [`Tool`]. If not changed it is `Callgrind`.
+    pub default_tool: Tool,
     /// The arguments of `args` parameter as a single string
     pub display: Option<String>,
     /// The name of the annotated function
@@ -220,14 +221,22 @@ impl Benchmark for BaselineAndSaveBenchmark {
             self.baselines(),
         );
 
-        bin_bench.tools.run(
+        let BinBench {
+            command,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = bin_bench;
+
+        tools.run(
             benchmark_summary,
             config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &bin_bench.run_options,
+            &command.path,
+            |_, _| Cow::Borrowed(command.args.as_slice()),
+            &run_options,
             &output_path,
-            &bin_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -299,14 +308,22 @@ impl Benchmark for BaselineBenchmark {
             self.baselines(),
         );
 
-        bin_bench.tools.run(
+        let BinBench {
+            command,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = bin_bench;
+
+        tools.run(
             benchmark_summary,
             config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &bin_bench.run_options,
+            &command.path,
+            |_, _| Cow::Borrowed(command.args.as_slice()),
+            &run_options,
             &output_path,
-            &bin_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -364,7 +381,7 @@ impl BinBench {
         bench_index: usize,
         iter_index: Option<usize>,
         command: api::Command,
-        default_tool: ValgrindTool,
+        default_tool: Tool,
     ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|id| format!("{id}_{iter_index}"))
@@ -422,7 +439,7 @@ impl BinBench {
 
         let tool_configs = ToolConfigs::new(
             &mut output_format,
-            config.tools,
+            config.tool_specs,
             &module_path,
             id.as_ref(),
             meta,
@@ -430,10 +447,16 @@ impl BinBench {
             &EntryPoint::None,
             &config.valgrind_args,
             &HashMap::default(),
+            Some(PerfRunMode::Direct),
         )
         .map_err(|error| {
             Error::ConfigurationError(module_path.clone(), id.clone(), error.to_string())
         })?;
+
+        // The output is only captured for the default tool
+        if tool_configs.default_tool().is_some_and(|t| t == Tool::Perf) {
+            output_format.filter_output = true;
+        }
 
         let setup = has_setup.then_some(Assistant::new_bench_assistant(
             AssistantKind::Setup,
@@ -797,14 +820,22 @@ impl Benchmark for SaveBaselineBenchmark {
             self.baselines(),
         );
 
-        bin_bench.tools.run(
+        let BinBench {
+            command,
+            module_path,
+            run_options,
+            tools,
+            ..
+        } = bin_bench;
+
+        tools.run(
             benchmark_summary,
             config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &bin_bench.run_options,
+            &command.path,
+            |_, _| Cow::Borrowed(command.args.as_slice()),
+            &run_options,
             &output_path,
-            &bin_bench.module_path,
+            &module_path,
             captured_output.as_ref(),
             force_shutdown,
         )
@@ -888,18 +919,8 @@ mod tests {
     use tempfile::tempdir;
 
     use super::*;
-
-    fn api_delay_fixture<T, U>(poll: T, timeout: U, kind: DelayKind) -> api::Delay
-    where
-        T: Into<Option<u64>>,
-        U: Into<Option<u64>>,
-    {
-        api::Delay {
-            poll: poll.into().map(Duration::from_millis),
-            timeout: timeout.into().map(Duration::from_millis),
-            kind,
-        }
-    }
+    use crate::fixtures::api::delay_f as api_delay_f;
+    use crate::fixtures::delay_f;
 
     #[test]
     fn test_baseline_and_save_benchmark_uses_different_display_baselines() {
@@ -916,62 +937,86 @@ mod tests {
 
     #[rstest]
     #[case::duration_elapse_when_no_poll_no_timeout(
-        api_delay_fixture(None, None, DelayKind::DurationElapse(Duration::from_millis(100))),
+        api_delay_f().kind(DelayKind::DurationElapse(Duration::from_millis(100))).fx(),
         Duration::ZERO,
         Duration::ZERO
     )]
     #[case::duration_elapse_when_poll_no_timeout(
-        api_delay_fixture(10, None, DelayKind::DurationElapse(Duration::from_millis(100))),
+        api_delay_f().poll(10).kind(DelayKind::DurationElapse(Duration::from_millis(100))).fx(),
         Duration::ZERO,
         Duration::ZERO
     )]
     #[case::duration_elapse_when_no_poll_but_timeout(
-        api_delay_fixture(None, 10, DelayKind::DurationElapse(Duration::from_millis(100))),
+        api_delay_f().timeout(10).kind(DelayKind::DurationElapse(Duration::from_millis(100))).fx(),
         Duration::ZERO,
         Duration::ZERO
     )]
     #[case::duration_elapse_when_poll_and_timeout(
-        api_delay_fixture(10, 100, DelayKind::DurationElapse(Duration::from_millis(100))),
+        api_delay_f()
+            .poll(10)
+            .timeout(100)
+            .kind(DelayKind::DurationElapse(Duration::from_millis(100)))
+            .fx(),
         Duration::ZERO,
         Duration::ZERO
     )]
     #[case::path_when_no_poll_no_timeout(
-        api_delay_fixture(None, None, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f().kind(DelayKind::PathExists(PathBuf::from("/some/path"))).fx(),
         Duration::from_millis(10),
         Duration::from_secs(600)
     )]
     #[case::path_when_poll_no_timeout(
-        api_delay_fixture(20, None, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f().poll(20).kind(DelayKind::PathExists(PathBuf::from("/some/path"))).fx(),
         Duration::from_millis(20),
         Duration::from_secs(600)
     )]
     #[case::path_when_no_poll_but_timeout(
-        api_delay_fixture(None, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f().timeout( 200).kind(DelayKind::PathExists(PathBuf::from("/some/path"))).fx(),
         Duration::from_millis(10),
         Duration::from_millis(200)
     )]
     #[case::path_when_poll_and_timeout(
-        api_delay_fixture(20, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f()
+            .poll(20)
+            .timeout(200)
+            .kind(DelayKind::PathExists(PathBuf::from("/some/path")))
+            .fx(),
         Duration::from_millis(20),
         Duration::from_millis(200)
     )]
     #[case::path_when_poll_equal_to_timeout(
-        api_delay_fixture(200, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f()
+            .poll(200)
+            .timeout(200)
+            .kind(DelayKind::PathExists(PathBuf::from("/some/path")))
+            .fx(),
         Duration::from_millis(195),
         Duration::from_millis(200)
     )]
     #[case::path_when_poll_higher_than_timeout(
-        api_delay_fixture(201, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f()
+            .poll(201)
+            .timeout(200)
+            .kind(DelayKind::PathExists(PathBuf::from("/some/path")))
+            .fx(),
         Duration::from_millis(195),
         Duration::from_millis(200)
     )]
     #[case::path_when_poll_equal_to_timeout_smaller_than_10(
-        api_delay_fixture(10, 9, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f()
+            .poll(10)
+            .timeout(9)
+            .kind(DelayKind::PathExists(PathBuf::from("/some/path")))
+            .fx(),
         Duration::from_millis(5),
         Duration::from_millis(10)
     )]
     #[case::path_when_poll_lower_than_timeout_smaller_than_10(
-        api_delay_fixture(7, 9, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        api_delay_f()
+            .poll(7)
+            .timeout(9)
+            .kind(DelayKind::PathExists(PathBuf::from("/some/path")))
+            .fx(),
         Duration::from_millis(7),
         Duration::from_millis(10)
     )]
@@ -989,11 +1034,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("file.pid");
 
-        let delay = Delay {
-            poll: Duration::from_millis(50),
-            timeout: Duration::from_secs(1),
-            kind: DelayKind::PathExists(file_path.clone()),
-        };
+        let delay = delay_f()
+            .kind(DelayKind::PathExists(file_path.clone()))
+            .fx();
         let handle = thread::spawn(move || {
             delay.apply(None).unwrap();
         });
@@ -1009,11 +1052,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_path = PathBuf::from("file.pid");
 
-        let delay = Delay {
-            poll: Duration::from_millis(50),
-            timeout: Duration::from_secs(1),
-            kind: DelayKind::PathExists(file_path.clone()),
-        };
+        let delay = delay_f()
+            .kind(DelayKind::PathExists(file_path.clone()))
+            .fx();
 
         let dir_path = dir.path().to_owned();
         let handle = thread::spawn(move || {
@@ -1031,11 +1072,10 @@ mod tests {
         let addr = "127.0.0.1:32000".parse::<SocketAddr>().unwrap();
         let _listener = TcpListener::bind(addr).unwrap();
 
-        let delay = Delay {
-            poll: Duration::from_millis(20),
-            timeout: Duration::from_secs(1),
-            kind: DelayKind::TcpConnect(addr),
-        };
+        let delay = delay_f()
+            .poll(Duration::from_millis(20))
+            .kind(DelayKind::TcpConnect(addr))
+            .fx();
         delay.apply(None).unwrap();
     }
 
@@ -1045,11 +1085,10 @@ mod tests {
 
         let check_addr = addr;
         let handle = thread::spawn(move || {
-            let delay = Delay {
-                poll: Duration::from_millis(20),
-                timeout: Duration::from_secs(1),
-                kind: DelayKind::TcpConnect(check_addr),
-            };
+            let delay = delay_f()
+                .poll(Duration::from_millis(20))
+                .kind(DelayKind::TcpConnect(check_addr))
+                .fx();
             delay.apply(None).unwrap();
         });
 
@@ -1062,11 +1101,10 @@ mod tests {
     #[test]
     fn test_delay_tcp_connect_timeout() {
         let addr = "127.0.0.1:32002".parse::<SocketAddr>().unwrap();
-        let delay = Delay {
-            poll: Duration::from_millis(20),
-            timeout: Duration::from_secs(1),
-            kind: DelayKind::TcpConnect(addr),
-        };
+        let delay = delay_f()
+            .poll(Duration::from_millis(20))
+            .kind(DelayKind::TcpConnect(addr))
+            .fx();
 
         let result = delay.apply(None);
         assert!(result.is_err());
@@ -1100,11 +1138,10 @@ mod tests {
             }
         });
 
-        let delay = Delay {
-            poll: Duration::from_millis(20),
-            timeout: Duration::from_secs(1),
-            kind: DelayKind::UdpResponse(addr, vec![1]),
-        };
+        let delay = delay_f()
+            .poll(Duration::from_millis(20))
+            .kind(DelayKind::UdpResponse(addr, vec![1]))
+            .fx();
 
         delay.apply(None).unwrap();
         handle.join().unwrap();
@@ -1115,11 +1152,10 @@ mod tests {
         let addr = "127.0.0.1:34001".parse::<SocketAddr>().unwrap();
 
         let handle = thread::spawn(move || {
-            let delay = Delay {
-                poll: Duration::from_millis(20),
-                timeout: Duration::from_secs(1),
-                kind: DelayKind::UdpResponse(addr, vec![1]),
-            };
+            let delay = delay_f()
+                .poll(Duration::from_millis(20))
+                .kind(DelayKind::UdpResponse(addr, vec![1]))
+                .fx();
             delay.apply(None).unwrap();
         });
 
@@ -1151,11 +1187,10 @@ mod tests {
     #[test]
     fn test_delay_udp_response_timeout() {
         let addr = "127.0.0.1:34002".parse::<SocketAddr>().unwrap();
-        let delay = Delay {
-            poll: Duration::from_millis(20),
-            timeout: Duration::from_secs(1),
-            kind: DelayKind::UdpResponse(addr, vec![1]),
-        };
+        let delay = delay_f()
+            .poll(Duration::from_millis(20))
+            .kind(DelayKind::UdpResponse(addr, vec![1]))
+            .fx();
         let result = delay.apply(None);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Timeout of '1s' reached");

@@ -1,47 +1,47 @@
 test_bin_bench_filter::group_1::minimal_bench :() -> target/release/echo minimal
 minimal
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_filter::group_2::minimal_bench :() -> target/release/echo minimal
 minimal
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_filter::group_2::benches_with_id forty_two:(42) -> target/release/echo 42
 42
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_filter::group_2::benches_with_id down_0:(42) -> target/release/echo 42
 42
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 test_bin_bench_filter::group_2::benches_with_id down_1:(31) -> target/release/echo 31
 31
 - end of stdout/stderr
-  Instructions:                            |N/A                  (*********)
-  L1 Hits:                                 |N/A                  (*********)
-  LL Hits:                                 |N/A                  (*********)
-  RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
+  Instructions:                                           |N/A                  (*********)
+  L1 Hits:                                                |N/A                  (*********)
+  LL Hits:                                                |N/A                  (*********)
+  RAM Hits:                                               |N/A                  (*********)
+  Total read+write:                                       |N/A                  (*********)
+  Estimated Cycles:                                       |N/A                  (*********)
 
 Gungraun result: Ok. 5 without regressions; 0 regressed; 0 filtered; 5 benchmarks finished in <__SECONDS__>s

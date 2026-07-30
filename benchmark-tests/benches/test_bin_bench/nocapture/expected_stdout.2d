@@ -1,70 +1,70 @@
 1 2
 test_bin_bench_nocapture::simple::bench_echo both_inherit:(Stdio :: Inherit, Stdio :: Inherit) -> target/rel...
 - end of stdout/stderr
-  Baselines:                            foo|bar
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Baselines:                                           foo|bar
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_nocapture::simple::bench_echo both_null:(Stdio :: Null, Stdio :: Null) -> target/release/e...
 - end of stdout/stderr
-  Baselines:                            foo|bar
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Baselines:                                           foo|bar
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_nocapture::simple::bench_echo both_piped:(Stdio :: Pipe, Stdio :: Pipe) -> target/release/e...
 - end of stdout/stderr
-  Baselines:                            foo|bar
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Baselines:                                           foo|bar
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_nocapture::simple::bench_echo both_file_when_exists:(Stdio :: File("file.stdout".into()), Stdio :: Fil...
 create file for stdout: file.stdout
 create file for stderr: file.stderr
 - end of stdout/stderr
-  Baselines:                            foo|bar
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Baselines:                                           foo|bar
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_nocapture::simple::bench_echo both_file_when_not_exists:(Stdio :: File("file.stdout".into()), Stdio :: Fil...
 - end of stdout/stderr
-  Baselines:                            foo|bar
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Baselines:                                           foo|bar
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_nocapture::simple::bench_pipe :() -> target/release/pipe
 STDIN was:
 Something- end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  Baselines:                            foo|bar
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  Total bytes:                             |                     (No change)
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (No change)
-  Writes bytes:                            |                     (No change)
+  ======= CALLGRIND ===================================================================================
+  Baselines:                                           foo|bar
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |                     (No change)
+  Total blocks:                                           |                     (No change)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (No change)
+  At t-end blocks:                                        |                     (No change)
+  Reads bytes:                                            |                     (No change)
+  Writes bytes:                                           |                     (No change)
 
 Gungraun result: Ok. 6 without regressions; 0 regressed; 0 filtered; 6 benchmarks finished in <__SECONDS__>s

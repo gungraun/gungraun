@@ -1,56 +1,75 @@
 # Test Case: `test_lib_bench_nocapture`
 #
 # Description:
-#   Validates the `--nocapture` flag and its variants for controlling
-#   stdout/stderr output capture during benchmark execution.
+#   Validates every `--nocapture` mode against library setup, benchmark, and
+#   teardown output written to stdout and stderr. Also verifies that Perf's
+#   event-control messages are filtered only when Perf is the default tool.
 #
 # Test Steps:
 #   1. Run with no `--nocapture` (default: output captured)
 #   2. Run with `--nocapture=false` (explicit off)
 #   3. Run with `--nocapture` (implicit true)
 #   4. Run with `--nocapture=true` (explicit on)
-#   5. Run with `--nocapture=stdout` (capture only stderr)
-#   6. Run with `--nocapture=stderr` (capture only stdout)
+#   5. Run with `--nocapture=stdout` (show only stdout inline)
+#   6. Run with `--nocapture=stderr` (show only stderr inline)
 #
 # Test Inputs:
-#   - Benchmarks with setup/teardown functions that print to stdout and stderr -
-#     Various `--nocapture` flag variations
+#   - `setup_stdout_teardown_stderr` and `setup_stderr_teardown_stdout` cases
+#   - Benchmark bodies that also print to both output streams
+#   - `Events enabled` and `Events disabled` emitted to stdout and stderr
+#   - Groups where Perf is the default tool and where it is not
 #
 # Expected Outcomes:
 #   - No flag and `--nocapture=false`: Output is captured (not shown inline)
 #   - `--nocapture` and `--nocapture=true`: Both stdout and stderr shown inline
-#   - `--nocapture=stdout`: Only stdout shown inline, stderr captured
-#   - `--nocapture=stderr`: Only stderr shown inline, stdout captured
-#   - The correct nocapture footer is shown or absent if --nocapture=false
+#   - `--nocapture=stdout` shows only stdout inline; `--nocapture=stderr` shows
+#     only stderr inline
+#   - The correct nocapture footer is shown, or absent for `--nocapture=false`
+#   - Perf event-control messages are filtered for Perf-default groups and
+#     remain visible when another tool is the default
 
 groups:
   - runs:
       - args: []
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
   - runs:
       - args: ["--nocapture=false"]
         expected:
-          stdout: expected_stdout.1
+          stdout:
+            default: expected_stdout.1
+            x86_64-unknown-freebsd: expected_stdout.freebsd.1
           no_stderr: true
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout.2
+          stdout:
+            default: expected_stdout.2
+            x86_64-unknown-freebsd: expected_stdout.freebsd.2
           no_stderr: true
   - runs:
       - args: ["--nocapture=true"]
         expected:
-          stdout: expected_stdout.2
+          stdout:
+            default: expected_stdout.2
+            x86_64-unknown-freebsd: expected_stdout.freebsd.2
           no_stderr: true
   - runs:
       - args: ["--nocapture=stdout"]
         expected:
-          stdout: expected_stdout.3
+          stdout:
+            default: expected_stdout.3
+            x86_64-unknown-freebsd: expected_stdout.freebsd.3
           no_stderr: true
   - runs:
       - args: ["--nocapture=stderr"]
         expected:
-          stdout: expected_stdout.4
-          stderr: expected_stderr.1
+          stdout:
+            default: expected_stdout.4
+            x86_64-unknown-freebsd: expected_stdout.freebsd.4
+          stderr:
+            default: expected_stderr.1
+            x86_64-unknown-freebsd: expected_stderr.freebsd.1

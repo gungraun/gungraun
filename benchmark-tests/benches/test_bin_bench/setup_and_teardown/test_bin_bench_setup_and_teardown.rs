@@ -1,7 +1,12 @@
+use std::time::Duration;
+
 use gungraun::prelude::*;
-use gungraun::{Bench, BinaryBenchmark, BinaryBenchmarkGroup};
+use gungraun::{
+    Bench, BinaryBenchmark, BinaryBenchmarkGroup, Perf, PerfRunMode, Sandbox, Stdio, Tool,
+};
 
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
+const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
 
 fn setup_no_argument() {
     println!("SETUP: setup_no_argument function");
@@ -17,6 +22,11 @@ fn setup_one_argument(arg: u64) {
 
 fn teardown_one_argument(arg: u64) {
     println!("TEARDOWN: teardown_one_argument function: {arg}");
+}
+
+fn create_dir(path: &str) -> &str {
+    std::fs::create_dir(path).unwrap();
+    path
 }
 
 mod setup {
@@ -109,6 +119,49 @@ binary_benchmark_group!(
     ]
 );
 
+#[binary_benchmark]
+#[bench::direct(args = ["some_dir"], setup = create_dir)]
+#[bench::sampling(
+    args = ["some_dir"],
+    config = BinaryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .sample_duration(Duration::from_secs(2))
+        ),
+    setup = create_dir)]
+#[bench::calibrate(
+    args = ["some_dir"],
+    config = BinaryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .run_mode(PerfRunMode::DefaultCalibrate)
+        ),
+    setup = create_dir)]
+#[bench::sampling_and_calibrate(
+    args = ["some_dir"],
+    config = BinaryBenchmarkConfig::default()
+        .tool(Perf::default()
+            .sample_duration(Duration::from_secs(2))
+            .run_mode(PerfRunMode::DefaultCalibrate)
+        ),
+    setup = create_dir)]
+fn perf(dir: &str) -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
+        .arg(dir)
+        .arg("true")
+        .stdout(Stdio::Null)
+        .build()
+}
+
+binary_benchmark_group!(
+    name = perf_group,
+    // remove `faults` from the usual event set because it produces rse values which are sometimes
+    // zero and sometimes not which makes the benchmark output difficult to validate
+    config = BinaryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().event_set("task-clock,cpu-clock,context-switches"))
+        .sandbox(Sandbox::new(true)),
+    benchmarks = perf
+);
+
 fn setup_low_level_group(group: &mut BinaryBenchmarkGroup) {
     group
         .binary_benchmark(
@@ -190,4 +243,4 @@ binary_benchmark_group!(
     benchmarks = |group: &mut BinaryBenchmarkGroup| setup_low_level_group(group)
 );
 
-main!(binary_benchmark_groups = [bench_group, low_level]);
+main!(binary_benchmark_groups = [bench_group, low_level, perf_group]);

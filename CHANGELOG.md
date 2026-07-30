@@ -21,11 +21,10 @@ number but is not a standalone package, so its changes are also listed here.
 
 With the `0.17.0` version the project was renamed to `Gungraun`. The packages
 were renamed from `iai-callgrind` to `gungraun`, `iai-callgrind-runner` to
-`gungraun-runner` and `iai-callgrind-macros` to `gungraun-macros`.
-
-The `valgrind-requests` package was extracted from the `gungraun` package and is
-now an independent package with an own
-[CHANGELOG](./valgrind-requests/CHANGELOG.md) file.
+`gungraun-runner` and `iai-callgrind-macros` to `gungraun-macros`. The
+`valgrind-requests` package was extracted from the `gungraun` package and is now
+an independent package with an own [CHANGELOG](./valgrind-requests/CHANGELOG.md)
+file.
 
 With the release of `0.19.3`, the `gungraun-summary` package was created as a
 separate package with an own [CHANGELOG](./gungraun-summary/CHANGELOG.md).
@@ -35,6 +34,35 @@ and this project adheres to
 [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+- Rename ui_tests feature to `__ui_tests` to signal internal usage
+- Change serial execution to real serial execution without thread pool
+- Breaking: feature rename of `client_request_defs` -> `stubs` and
+  `client_requests` -> `act`, `act` now includes `perf` and `stubs` includes
+  `perf_stubs`
+- New features `perf`, `perf_stubs` (at least one of them is required)
+- `ExitWith::Failure` now accepts all signal deaths
+- Removed the now obsolete `gungraun-runner` feature from `gungraun`
+- Replaced specific valgrind-runner with tool-runner and updated the docs
+  accordingly.
+- Renamed to --tool-runner (GUNGRAUN_TOOL_RUNNER), --tool-runner-args
+  (GUNGRAUN_TOOL_RUNNER_ARGS), --tool-runner-dest (GUNGRAUN_TOOL_RUNNER_DEST),
+  --tool_runner_root (GUNGRAUN_TOOL_RUNNER_ROOT)
+- Added `GUNGRAUN_TR_DEST_DIR`, `GUNGRAUN_TR_HOME`, and
+  `GUNGRAUN_TR_WORKSPACE_ROOT` environment variables for tool runners
+- Improved multi-line split logic in terminal output
+- Print empty line between metrics and possible regressions
+- Added new variants `ExitWith::Signal(i32)`, `ExitWith::Signals(Vec<i32>)`
+- ExitWith is not Copy anymore
+- Changes to the json summary (and schema):
+    - Add display field to `summary::model::ToolRegression`, `Soft` and `Hard`
+      variants
+- Extract valgrind support table from valgrind-requests build script into new
+  gungraun-common crate.
+- The default tool can be disabled
+- Only enabled tool configurations are validated
+- Fixed serial execution if --parallel=1 or just using the args.parallel of 1 as
+  default (MaxParallel::NoMaximum).
 
 ## [0.19.4] - 2026-07-10
 

@@ -5,7 +5,7 @@ use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use gungraun::prelude::*;
 use gungraun::{
     Cachegrind, CachegrindMetric, CachegrindMetrics, Callgrind, CallgrindMetrics, Dhat, DhatMetric,
-    Drd, ErrorMetric, EventKind, Helgrind, Memcheck, OutputFormat, ValgrindTool,
+    Drd, ErrorMetric, EventKind, Helgrind, Memcheck, OutputFormat, Tool,
 };
 
 fn make_hashmap(num: usize) -> HashMap<String, usize> {
@@ -169,7 +169,7 @@ fn bench_with_custom_callgrind_format() -> Vec<i32> {
 #[library_benchmark]
 #[bench::cachegrind_all_shuffled(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Cachegrind)
+        .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::with_args(["branch-sim=yes"])
             .format([
                 CachegrindMetric::Ir,
@@ -202,38 +202,38 @@ fn bench_with_custom_callgrind_format() -> Vec<i32> {
 )]
 #[bench::cachegrind_all_default_order(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Cachegrind)
+        .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::with_args(["branch-sim=yes"])
             .format([CachegrindMetrics::All])
         )
 )]
 #[bench::cachegrind(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Cachegrind)
+        .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::default()
             .format([CachegrindMetric::I1mr, CachegrindMetric::EstimatedCycles])
         )
 )]
 #[bench::dhat(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DHAT)
+        .default_tool(Tool::DHAT)
         .tool(Dhat::default().format([DhatMetric::TotalBlocks, DhatMetric::TotalBytes]))
 )]
 #[bench::memcheck(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Memcheck)
+        .default_tool(Tool::Memcheck)
         .tool(Memcheck::default().format([ErrorMetric::SuppressedErrors, ErrorMetric::Errors]))
 )]
 #[bench::helgrind(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Helgrind)
+        .default_tool(Tool::Helgrind)
         .tool(Helgrind::default()
             .format([ErrorMetric::Contexts, ErrorMetric::SuppressedContexts])
         )
 )]
 #[bench::drd(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::DRD)
+        .default_tool(Tool::DRD)
         .tool(Drd::default().format([ErrorMetric::Errors, ErrorMetric::Contexts]))
 )]
 fn bench_with_custom_format() -> Vec<i32> {

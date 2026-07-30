@@ -7,13 +7,6 @@ data:
         - callgrind.bench.out
         - summary.json
   - group: my_group
-    function: bench_with_longer_name
-    expected:
-      files:
-        - callgrind.bench_with_longer_name.log
-        - callgrind.bench_with_longer_name.out
-        - summary.json
-  - group: my_group
     function: bench_with_bench
     id: first
     expected:
@@ -28,4 +21,11 @@ data:
       files:
         - callgrind.bench_with_bench_longer_name.first.log
         - callgrind.bench_with_bench_longer_name.first.out
+        - summary.json
+  - group: my_group
+    function: bench_with_longer_name
+    expected:
+      files:
+        - callgrind.bench_with_longer_name.log
+        - callgrind.bench_with_longer_name.out
         - summary.json

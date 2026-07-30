@@ -6,7 +6,7 @@ use crate::__internal::{
     InternalBinaryBenchmarkGroup, InternalBinaryBenchmarkGroups, InternalCommandKind,
     InternalMacroBinBench, ModulePath,
 };
-use crate::{BenchmarkId, ValgrindTool};
+use crate::{BenchmarkId, Tool};
 
 const UNKNOWN_ARGS: &str = "N/A";
 
@@ -38,7 +38,7 @@ impl GroupsBuilder {
                 command_line_args: args,
                 has_setup,
                 has_teardown,
-                default_tool: ValgrindTool::Cachegrind,
+                default_tool: Tool::Cachegrind,
             }
         } else {
             InternalBinaryBenchmarkGroups {
@@ -47,7 +47,7 @@ impl GroupsBuilder {
                 command_line_args: args,
                 has_setup,
                 has_teardown,
-                default_tool: ValgrindTool::Callgrind,
+                default_tool: Tool::Callgrind,
             }
         };
 

@@ -27,6 +27,7 @@ default = ["runner"]
 runner = [
   "api",
   "dep:anyhow",
+  "dep:approx",
   "dep:bincode-next",
   "dep:cargo_metadata",
   "dep:clap",
@@ -34,8 +35,10 @@ runner = [
   "dep:crossbeam",
   "dep:derive_more",
   "dep:env_logger",
+  "fundu/custom",
   "dep:glob",
   "indexmap/serde",
+  "dep:gungraun-common",
   "dep:inferno",
   "dep:itertools",
   "dep:log",
@@ -50,6 +53,7 @@ runner = [
   "dep:serde_json",
   "dep:shlex",
   "dep:simplematch",
+  "dep:statrs",
   "dep:strum",
   "dep:tempfile",
   "dep:version-compare",
@@ -65,6 +69,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 anyhow = { workspace = true, optional = true }
+approx = { workspace = true, optional = true }
 bincode-next = { workspace = true, optional = true }
 bon = { workspace = true, optional = true }
 cargo_metadata = { workspace = true, optional = true }
@@ -75,17 +80,23 @@ clap = { workspace = true, optional = true, features = [
 ] }
 colored = { workspace = true, optional = true }
 crossbeam = { workspace = true, optional = true }
-derive_more = { workspace = true, optional = true, features = ["as_ref"] }
+derive_more = { workspace = true, optional = true, features = [
+  "as_ref",
+  "deref",
+  "deref_mut",
+] }
 either-or-both = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
+fundu = { workspace = true, optional = true }
 glob = { workspace = true, optional = true }
+gungraun-common = { path = "../gungraun-common/", version = "=0.1.0", optional = true }
 indexmap = { workspace = true, optional = true }
 inferno = { workspace = true, optional = true, default-features = false, features = [
   'multithreaded',
 ] }
 itertools = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
-nix = { workspace = true, optional = true, features = ["signal"] }
+nix = { workspace = true, optional = true, features = ["signal", "fs"] }
 num_cpus = { workspace = true, optional = true }
 os_str_bytes = { workspace = true, optional = true }
 parking_lot = { workspace = true, optional = true }
@@ -97,12 +108,14 @@ serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 shlex = { workspace = true, optional = true }
 simplematch = { workspace = true, optional = true }
+statrs = { workspace = true, optional = true }
 strum = { workspace = true, optional = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
 version-compare = { workspace = true, optional = true }
 which = { workspace = true, optional = true }
 
 [dev-dependencies]
+approx = { workspace = true }
 bon = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
@@ -114,6 +127,7 @@ tempfile = { workspace = true }
 [[bin]]
 name = "gungraun-runner"
 path = "src/main.rs"
+required-features = ["runner"]
 
 [lints.rust]
 missing_docs = "warn"

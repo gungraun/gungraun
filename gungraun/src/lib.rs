@@ -352,13 +352,13 @@
 //!
 //! ```rust
 //! use gungraun::prelude::*;
-//! use gungraun::{ValgrindTool, main};
+//! use gungraun::{Tool, main};
 //! # #[library_benchmark]
 //! # fn some_func() {}
 //! # library_benchmark_group!(name = some_group, benchmarks = some_func);
 //! # fn main() {
 //! main!(
-//!     config = LibraryBenchmarkConfig::default().default_tool(ValgrindTool::DHAT),
+//!     config = LibraryBenchmarkConfig::default().default_tool(Tool::DHAT),
 //!     library_benchmark_groups = some_group
 //! );
 //! # }
@@ -502,9 +502,19 @@ pub mod prelude {
     };
 }
 
+#[cfg(not(feature = "perf_stubs"))]
+compile_error!("gungraun requires either the `perf` or `perf_stubs` feature");
+
 #[cfg(feature = "default")]
 #[doc(hidden)]
 pub mod __internal;
+#[cfg(all(not(feature = "default"), feature = "perf_stubs"))]
+#[doc(hidden)]
+pub mod __internal {
+    pub use gungraun_runner::api::{
+        PERF_ACK_FD_READ, PERF_ACK_FD_WRITE, PERF_CTL_FD_READ, PERF_CTL_FD_WRITE, PERF_LOG_FD,
+    };
+}
 #[cfg(feature = "default")]
 mod bin_bench;
 #[cfg(feature = "default")]
@@ -513,6 +523,9 @@ mod common;
 mod lib_bench;
 #[cfg(feature = "default")]
 mod macros;
+#[cfg(feature = "perf_stubs")]
+pub mod perf;
+
 #[cfg(feature = "default")]
 pub use bin_bench::{
     Bench, BenchmarkId, BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command,
@@ -523,9 +536,9 @@ pub use bincode_next as bincode;
 #[cfg(feature = "default")]
 pub use common::{
     Bbv, Cachegrind, Callgrind, Dhat, Drd, FlamegraphConfig, Helgrind, Massif, Memcheck,
-    OutputFormat, Sandbox,
+    OutputFormat, Perf, PerfRunMode, Sandbox,
 };
-#[cfg(feature = "client_requests_defs")]
+#[cfg(feature = "stubs")]
 pub use cty;
 #[cfg(feature = "default")]
 pub use gungraun_macros::{binary_benchmark, library_benchmark};
@@ -534,10 +547,11 @@ pub use gungraun_macros::{binary_benchmark, library_benchmark};
 #[cfg(feature = "default")]
 pub use gungraun_runner::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DelayKind, DhatMetric, DhatMetrics,
-    Direction, EntryPoint, ErrorMetric, EventKind, ExitWith, FlamegraphKind, Limit, Pipe,
-    SanitizeOutput, Stdin, Stdio, ValgrindTool,
+    Direction, EntryPoint, ErrorMetric, EventKind, ExitWith, FlamegraphKind, Limit, PerfMetric,
+    Pipe, SanitizeOutput, Stdin, Stdio, Tool, Unit,
 };
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;
-#[cfg(feature = "client_requests_defs")]
+// TODO: Use valgrind_requests directly and deprecate client_requests.
+#[cfg(feature = "stubs")]
 pub use valgrind_requests as client_requests;

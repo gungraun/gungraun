@@ -6,8 +6,7 @@ In order to use `Cachegrind` instead of `Callgrind` you need Valgrind version
 `3.22` or above installed (which you can look up with `valgrind --version`). In
 this version Valgrind introduced the two [Client requests](./client_requests.md)
 `start_instrumentation()` and `stop_instrumentation()`. In order to use client
-requests you need to turn them on in the `Cargo.toml` with the `client_requests`
-feature
+requests you need to turn them on in the `Cargo.toml` with the `act` feature
 
 ```toml
 [dev-dependencies]
@@ -25,10 +24,10 @@ look like this:
 gungraun = { version = "0.19.4", features = ["cachegrind"] }
 ```
 
-The `cachegrind` feature automatically activates the `client_requests` feature,
-and there's no need to specify it again. Now, without having to do anything
-else, all benchmarks run with Cachegrind instead of Callgrind. However, this
-change has implications which are better understood by showing the second way.
+The `cachegrind` feature automatically activates the `act` feature, and there's
+no need to specify it again. Now, without having to do anything else, all
+benchmarks run with Cachegrind instead of Callgrind. However, this change has
+implications which are better understood by showing the second way.
 
 ## The Second Way
 
@@ -41,12 +40,12 @@ benchmark file run a specific benchmark function with Cachegrind:
 # pub mod my_lib { pub fn bubble_sort(input: Vec<i32>) -> Vec<i32> { input } }
 
 use gungraun::prelude::*;
-use gungraun::ValgrindTool;
+use gungraun::Tool;
 use std::hint::black_box;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Cachegrind)
+        .default_tool(Tool::Cachegrind)
 )]
 #[bench::small(vec![3, 2, 1])]
 #[bench::bigger(vec![5, 4, 3, 2, 1])]
@@ -70,12 +69,12 @@ to start and stop the instrumentation:
 # pub mod my_lib { pub fn bubble_sort(input: Vec<i32>) -> Vec<i32> { input } }
 
 use gungraun::prelude::*;
-use gungraun::{client_requests, ValgrindTool, Cachegrind};
+use gungraun::{client_requests, Tool, Cachegrind};
 use std::hint::black_box;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .default_tool(ValgrindTool::Cachegrind)
+        .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::with_args(["--instr-at-start=no"]))
 )]
 #[bench::small(vec![3, 2, 1])]

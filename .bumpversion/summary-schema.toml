@@ -1,5 +1,5 @@
 [tool.bumpversion]
-current_version = "6"
+current_version = "7"
 commit = false
 parse = "(?P<major>\\d+)"
 serialize = ["{major}"]

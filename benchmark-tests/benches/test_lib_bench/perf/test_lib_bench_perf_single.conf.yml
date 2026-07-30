@@ -1,0 +1,246 @@
+# Test Case: `test_lib_bench_perf_single`
+#
+# Description:
+#   Validates command-line configuration of the Perf tool for one library
+#   benchmark. The `my_group` benchmark sorts a worst-case 1,000-element array
+#   prepared by `setup_worst_case_array` before each invocation. `--perf-limits`
+#   is covered by `test_lib_bench_regression`
+#
+# Test Steps:
+#   1. Run Perf as the default tool and as an additional tool, comparing their
+#      successful stdout fixtures with no stderr.
+#   2. Forward invalid Perf stat and record arguments, verifying that record
+#      arguments are inert until recording is enabled and then produce usage
+#      errors.
+#   3. Use a temporary Perf wrapper to verify custom-binary forwarding and
+#      calibration run-mode selection, including its generated log output.
+#   4. Exercise two-second sampling and multiple Perf event selection.
+#
+# Test Inputs:
+#   - `--default-tool=perf` and `--tools=perf` for default and additional-tool
+#     configuration
+#   - `--perf-args`, `--perf-record`, and `--perf-record-args`, including
+#     deliberately invalid arguments
+#   - A temporary `--perf-bin` wrapper and `--perf-run-mode=calibrate` verifies
+#     the calibration run-mode argument passed through the Perf wrapper.
+#   - `--perf-sampling=2s` and repeated `--perf-events` for `instructions` and
+#     `task-clock`.
+#   - The explicit `task-clock,cpu-clock,faults,context-switches` event subset
+#     is intentionally limited to events available across heterogeneous Linux CI
+#
+# Expected Outcomes:
+#   - Successful modes emit the declared stdout with no stderr
+#   - Invalid active Perf arguments emit the expected usage error and exit code
+#     1, while inactive record arguments do not change default output
+#   - The custom wrapper sees Perf but not Callgrind and validates the
+#     calibration mode in the `*.log.cal` log file
+#   - Sampling and multi-event output matches fixtures
+#   - FreeBSD uses the non-Perf fallback expectations
+
+groups:
+  # 1: Verify running perf as default tool
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
+        expected:
+          default:
+            no_stderr: true
+            files: expected_files.just-perf.yml
+            stdout: expected_stdout.just-perf
+          x86_64-unknown-freebsd:
+            no_stderr: true
+            no_files: true
+            stdout: freebsd/expected_stdout.just-summary
+  # 2: Verify running perf as additional tool
+  - runs:
+      - args:
+          [
+            "--tools=perf",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
+        expected:
+          no_stderr: true
+          files:
+            default: expected_files.perf-and-callgrind.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.just-callgrind.yml
+          stdout:
+            default: expected_stdout.perf-and-callgrind
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-callgrind
+  # 3: Verify that arguments reach perf
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-args=--does-not-exist",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
+        expected:
+          default:
+            stdout: expected_stdout.arg-does-not-exist
+            stderr_contains:
+              - "Error: unknown option `does-not-exist'"
+              - "Usage: perf stat"
+            files: expected_files.arg-does-not-exist.yml
+            exit_code: 1
+          # since perf is the only tool and it is not supported on freebsd the
+          # arguments are never checked
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_stderr: true
+            no_files: true
+            exit_code: 0
+  # 4: perf record args without activating perf record does nothing
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-record-args=--does-not-exist",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
+        expected:
+          default:
+            stdout: expected_stdout.just-perf
+            files: expected_files.just-perf.yml
+            no_stderr: true
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_files: true
+            no_stderr: true
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-record",
+            "--perf-record-args=--does-not-exist",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
+        expected:
+          default:
+            stdout: expected_stdout.record-arg-does-not-exist
+            stderr_contains:
+              - "Error: unknown option `does-not-exist'"
+              - "Usage: perf record"
+            files: expected_files.record-arg-does-not-exist.yml
+            exit_code: 1
+          # The same argumentation as in the group run with --perf-args applies
+          # here
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_stderr: true
+            no_files: true
+            exit_code: 0
+  # 5: perf bin should be used for perf but not for callgrind
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--tools=callgrind",
+            "--perf-bin=/tmp/gungraun_perf_bin",
+            "--nocapture",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
+        setup: |
+          cat <<'EOF' >/tmp/gungraun_perf_bin
+          #!/usr/bin/env bash
+
+          echo "Running with perf bin script:"
+          printf 'perf %s\n' "$1"
+
+          exec perf "$@"
+          EOF
+
+          chmod +x /tmp/gungraun_perf_bin
+        expected:
+          stdout:
+            default: expected_stdout.perf-bin
+            x86_64-unknown-freebsd: freebsd/expected_stdout.just-callgrind-with-nocapture
+          files:
+            default: expected_files.perf-and-callgrind.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.just-callgrind.yml
+          no_stderr: true
+  # 6: This time we use the perf bin script to verify the perf run mode. The
+  # script is expected to fail and to not run perf. Now, we can inspect the
+  # calibration log file which is present when the calibration run fails.
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-bin=/tmp/gungraun_perf_bin",
+            "--perf-run-mode=calibrate",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+            "--nocapture",
+          ]
+        setup: |
+          cat <<'EOF' >/tmp/gungraun_perf_bin
+          #!/usr/bin/env bash
+
+          echo "Running with perf bin script and arguments:" >&2
+          found=0
+          for arg in "$@"; do
+            echo "$arg" >&2
+            if grep -Fq -- 'p:c:000000' <<<"$arg"; then
+              found=1
+            fi
+          done
+
+          if [[ $found -eq 1 ]]; then
+            echo The run mode is present and uses calibration mode >&2
+            exit 1
+          fi
+
+          exec perf "$@"
+          EOF
+
+          chmod +x /tmp/gungraun_perf_bin
+        expected:
+          default:
+            stdout: expected_stdout.perf-run-mode
+            stderr: expected_stderr.perf-run-mode
+            files: expected_files.perf-run-mode.yml
+            exit_code: 1
+            script: |
+              file='my_group/bench_bubble_sort.thousand/perf.bench_bubble_sort.thousand.log.cal'
+
+              cat "$file"
+              grep -Fx 'The run mode is present and uses calibration mode' "$file"
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_stderr: true
+            no_files: true
+            exit_code: 0
+  # 7: Verify perf sampling. The stdout shows the extra rse, samples lines
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-sampling=2s",
+            "--perf-events=task-clock,cpu-clock,faults,context-switches",
+          ]
+        expected:
+          default:
+            stdout: expected_stdout.perf-sampling
+            files: expected_files.just-perf.yml
+            no_stderr: true
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_files: true
+            no_stderr: true
+  # 8: Verify two perf events
+  - runs:
+      - args:
+          [
+            "--default-tool=perf",
+            "--perf-events=task-clock",
+            "--perf-events=cpu-clock",
+          ]
+        expected:
+          default:
+            stdout: expected_stdout.two-event-sets
+            files: expected_files.two-event-sets.yml
+            no_stderr: true
+          x86_64-unknown-freebsd:
+            stdout: freebsd/expected_stdout.just-summary
+            no_files: true
+            no_stderr: true

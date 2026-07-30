@@ -3,19 +3,21 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{BufRead, Read, Write as IOWrite, stderr, stdout};
 use std::os::unix::process::ExitStatusExt;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
-use std::process::{Output, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::sync::LazyLock;
 
+use anyhow::Context;
 use benchmark_tests::common::Summary;
 use benchmark_tests::serde::runs_on::RunsOn;
 use colored::Colorize;
 use fs_extra::dir::CopyOptions;
-use glob::glob;
+use glob::{Pattern, glob};
+use indexmap::IndexMap;
 use minijinja::Environment;
 use once_cell::sync::OnceCell;
 use regex::{Captures, Regex};
@@ -33,7 +35,7 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
 }
 "#;
 const SCHEMA_PATH: &str = "gungraun-summary/schemas";
-const SCHEMA_VERSION: &str = "6";
+const SCHEMA_VERSION: &str = "7";
 const CONTINUE_FILE_NAME: &str = "benchmark-tests.continue";
 const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
 
@@ -45,7 +47,7 @@ static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::ne
 static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
-            (?<desc>.+:\s*)(?<comp1>[0-9.]+|N/A)\|(?<comp2>[0-9.]+|N/A)
+            (?<desc>.+?\s*)(?<comp1>[0-9.]+|N/A)\|(?<comp2>[0-9.]+|N/A)
             (?<diff>
                 (?<diff_percent>(?<white1>\s*)(?<percent>\(.*\)))
                 (?<diff_factor>(?<white2>\s*)(?<factor>\[.*\]))?
@@ -56,47 +58,93 @@ static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
 // Do not match (*********); those placeholder lines should stay unchanged.
 static NUMBERS_DIFF_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\([^)*]*\)(?:\s+\[[^\]]+\])?$").expect("Regex should compile"));
+static UNIT_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?<prefix>)(?<unit>\s*\[[^\]]+\])(?<suffix>:\s*)").expect("Regex should compile")
+});
 static RUNNING_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[ ]+Running .*$").expect("Regex should compile"));
 static PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
         .expect("Regex should compile")
 });
-// Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)
-// $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9
+
+// Performance has regressed: Instructions (123 -> 196) regressed by +47.3684% (>+0.00000%)
+// Performance has regressed: Some (123.4 [ms] -> 456.7 [ms]) regressed by +47.3684% (>+0.00000%)
 static REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
-                ^(Performance\ has\ regressed:\s*[^0-9]+\()
-                ([0-9]+)(\s*->\s*)([0-9]+)
-                (\)\s*regressed\s*by\s*[+-])
-                ([0-9.]+)(%\s*\([><][+-])([0-9.]+)(%\)\s*)
-              $",
+                ^(Performance\ has\ regressed:\s*[^0-9]+\() # 1: prefix
+                ([0-9.]+)                                   # first int/decimal
+                (?:\s*\[\S+\])?                             # ignore units
+                (\s*->\s*)                                  # 3: arrow with whitespace
+                ([0-9.]+)                                   # second int/decimal
+                (?:\s*\[\S+\])?                             # ignore units
+                (\)\s*regressed\s*by\s*[+-])                # 5: middle part
+                ([0-9.]+)                                   # third int/decimal
+                (%\s*\([><][+-])                            # 7: suffix start
+                ([0-9.]+)                                   # forth int/decimal
+                (%\)\s*)                                    # 9: suffix end
+                $",
     )
     .expect("Regex should compile")
 });
+
+// * Performance has regressed: Instructions (70021) exceeds limit by 69821 (>200)
+// * Performance has regressed: cpu_core/instructions/u [*instructions*] (7002804) exceeds limit by
+//   6997804 (>5000)
+// * Performance has regressed: task-clock:u [*task-clock*] (601.931 [us]) exceeds limit by 501.931
+//   [us] (>100 [us])
+// $1<__NUM__>$3<__NUM__>$5<__NUM__>$7
 static REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"^(Performance has regressed:\s*[^0-9]+\()([0-9]+)",
-        r"(\)\s*exceeds limit by\s*)([0-9.]+)(\s*\([><])([0-9.]+)(\)\s*)$"
-    ))
+    Regex::new(
+        r"(?x)
+            ^(Performance\s*has\s*regressed:\s*[^0-9]+\()
+            ([^)]+)
+            (\)\s*exceeds\s*limit\s*by\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*\([><])
+            ([^)]+)
+            (\))$",
+    )
     .expect("Regex should compile")
 });
 // Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
 // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
 static SUMMARY_REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"^(\s*[^0-9]+\()([0-9]+)(\s*->\s*)([0-9]+)(\):\s*[+-])",
-        r"([0-9.]+)(%\s*exceeds limit of [+-])([0-9.]+)(%\s*)$"
-    ))
+    Regex::new(
+        r"(?x)
+            ^(\s*[^0-9]+\()
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*->\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\):\s*[+-])
+            ([0-9.]+)
+            (%\s*exceeds\s*limit\s*of\s*[+-])
+            ([0-9.]+)
+            (%\s*)
+            $",
+    )
     .expect("Regex should compile")
 });
-// Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
+// * Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
+// * Perf: cpu_core/instructions/u [*instructions*] (7002804): 7002804 exceeds limit of 5000 by
+//   6997804
+// * Perf: task-clock:u [*task-clock*] (602.920 [us]): 602.920 [us] exceeds limit of 100 [us] by
+//   502.920 [us]
+//
+// $1<__NUM__>$3<__NUM__>$5<__LIMIT__>$7<__DIFF__>$9
 static SUMMARY_REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"^(\s*[^0-9]+\()([0-9]+)(\):\s*)([0-9.]+)",
-        r"(\s*exceeds limit of\s*)([0-9.]+)(\s*by\s*)([0-9.]+)(\s*)$"
-    ))
+    Regex::new(
+        r"(?x)
+            ^(\s*[^0-9]+\()
+            ([0-9.]+(?:\s*\[[^)]+\])?)
+            (\):\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*exceeds\s*limit\s*of\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*by\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)$",
+    )
     .expect("Regex should compile")
 });
 // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
@@ -130,6 +178,51 @@ static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
 });
 static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[']([/][^/']+)+[']").expect("Regex should compile"));
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetExpectedConfig {
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, ExpectedConfig>),
+    /// Backward-compatible scalar path
+    Scalar(Box<ExpectedConfig>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetI32 {
+    /// Backward-compatible scalar path
+    Scalar(i32),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Option<i32>>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetPath {
+    /// Backward-compatible scalar path
+    Scalar(PathBuf),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, PathBuf>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetString {
+    /// Backward-compatible scalar path
+    Scalar(String),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Option<String>>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum TargetVecString {
+    /// Backward-compatible scalar path
+    Scalar(Vec<String>),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Vec<String>>),
+}
 
 /// Benchmark test case derived from a `.conf.yml` file.
 ///
@@ -196,6 +289,10 @@ pub struct BenchmarkRunner {
 ///
 /// A group can gate all runs to Linux only.
 pub struct GroupConfig {
+    /// Assertions shared by every run in this group.
+    ///
+    /// A run-level assertion script takes precedence over the group-level script.
+    expected: Option<GroupExpected>,
     /// Optional target triple include or exclude condition for the whole group.
     ///
     /// Example: `x86_64-unknown-linux-gnu`.
@@ -213,6 +310,15 @@ pub struct GroupConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Expected output checks shared by all runs ([`RunConfig`]) in a [`GroupConfig`].
+pub struct GroupExpected {
+    /// Shell script run as a fallback when a run has no assertion script of its own.
+    ///
+    /// The script is executed with `bash -ex` in the benchmark output base directory.
+    script: Option<TargetString>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 /// YAML configuration loaded from one benchmark `.conf.yml` file.
 ///
 /// Example: `test_lib_bench_tools.conf.yml` with an optional template and groups.
@@ -227,8 +333,8 @@ struct Config {
     groups: Vec<GroupConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-/// Expected files for one benchmark output directory.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Expected files and globs for one benchmark output directory.
 ///
 /// Example: requires `summary.json` and one `callgrind.out.*` glob match.
 struct Expected {
@@ -236,11 +342,13 @@ struct Expected {
     ///
     /// Example: `["summary.json"]`.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     files: Vec<PathBuf>,
     /// Glob patterns with required match counts.
     ///
     /// Example: `callgrind.out.*` with `count = 1`.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     globs: Vec<ExpectedGlob>,
 }
 
@@ -248,27 +356,38 @@ struct Expected {
 /// Expected side effects and process result for a run.
 ///
 /// Example: compare stdout against `expected.stdout` and require exit code `0`.
+#[serde(deny_unknown_fields)]
 struct ExpectedConfig {
-    /// Path to an expected files manifest relative to the benchmark config directory.
+    /// Path to an expected-files manifest relative to the benchmark config directory.
     ///
     /// Example: `expected/files.yml`.
     #[serde(default)]
-    files: Option<PathBuf>,
+    files: Option<TargetPath>,
     /// Path to expected stdout relative to the benchmark config directory.
     ///
     /// Example: `expected.stdout`.
     #[serde(default)]
-    stdout: Option<PathBuf>,
+    stdout: Option<TargetPath>,
+    /// A string which should be contained in the stdout output
+    ///
+    /// Example: `stdout: expected.stdout`.
+    #[serde(default)]
+    stdout_contains: TargetVecString,
     /// Path to expected stderr relative to the benchmark config directory.
     ///
-    /// Example: `expected.stderr`.
+    /// Example: `stderr: expected.stderr`.
     #[serde(default)]
-    stderr: Option<PathBuf>,
+    stderr: Option<TargetPath>,
+    /// A string which should be contained in the stderr output
+    ///
+    /// Example: `stderr: expected.stderr`.
+    #[serde(default)]
+    stderr_contains: TargetVecString,
     /// Expected process exit code.
     ///
     /// Example: `101` for a benchmark expected to panic.
     #[serde(default)]
-    exit_code: Option<i32>,
+    exit_code: Option<TargetI32>,
     /// Whether all-zero metrics are allowed in generated summaries.
     ///
     /// Example: `true` for a run that intentionally does not collect costs.
@@ -289,48 +408,45 @@ struct ExpectedConfig {
     /// Example: `true` when cargo should not emit benchmark diagnostics.
     #[serde(default)]
     no_stderr: bool,
+    /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory
+    ///
+    /// For example this is the directory of the `test_something` benchmark in which the script is
+    /// executed: `project_root/target/benchmark-tests/test_something`
+    #[serde(default)]
+    script: Option<TargetString>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Expected glob assertion for benchmark output files.
-///
-/// Example: require exactly one `callgrind.out.*` file.
 struct ExpectedGlob {
     /// Glob pattern relative to an expected run directory.
-    ///
-    /// Example: `callgrind.out.*`.
     pattern: String,
     /// Required number of files matching `pattern`.
-    ///
-    /// Example: `1`.
     count: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-/// Expected files for one benchmark function output directory.
-///
-/// Example: group `library_benchmark`, function `bench_sort`, id `small`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Expected files for one benchmark `function.id` or `function` output directory.
 struct ExpectedRun {
     /// Benchmark group directory below the benchmark output root.
-    ///
-    /// Example: `library_benchmark`.
     group: String,
     /// Benchmark function name or template string used to locate the output directory.
-    ///
-    /// Example: `bench_sort`.
     function: String,
     /// Optional benchmark id appended to the function directory name.
-    ///
-    /// Example: `small` for `bench_sort.small`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
-    /// Expected files and glob counts for the resolved function directory.
-    ///
-    /// Example: require `summary.json` and one callgrind output file.
+    /// Expected files and globs for the resolved function directory.
     expected: Expected,
 }
 
+impl ExpectedRun {
+    fn equals(&self, other: &Self) -> bool {
+        self.group == other.group && self.function == other.function && self.id == other.id
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-/// Expected files manifest referenced by an `ExpectedConfig`.
+/// Expected-files manifest referenced by an `ExpectedConfig`.
 ///
 /// Example: a YAML file listing all expected benchmark function output directories.
 struct ExpectedRuns {
@@ -338,6 +454,7 @@ struct ExpectedRuns {
     ///
     /// Example: a target-triple-specific output root.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     home_dir: Option<PathBuf>,
     /// Expected output directories and files to assert.
     ///
@@ -417,7 +534,7 @@ struct RunConfig {
     ///
     /// Example: compare stdout with `expected.stdout` and validate `summary.json`.
     #[serde(default)]
-    expected: Option<ExpectedConfig>,
+    expected: Option<TargetExpectedConfig>,
     /// Optional target triple include or exclude condition for this run.
     ///
     /// Example: skip a run on `aarch64-apple-darwin`.
@@ -462,9 +579,13 @@ struct RunConfig {
 
 impl Benchmark {
     pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
-        let config: Config = serde_yaml::from_reader(File::open(path).expect("File should exist"))
-            .map_err(|error| format!("Failed to deserialize '{}': {error}", path.display()))
-            .expect("File should be deserializable");
+        let config: Config = serde_yaml::from_reader(
+            File::open(path)
+                .with_context(|| format!("File should exist: '{}'", path.display()))
+                .unwrap(),
+        )
+        .map_err(|error| format!("Failed to deserialize '{}': {error}", path.display()))
+        .expect("File should be deserializable");
 
         let config_name = path.file_name().unwrap().to_string_lossy();
         let config_name = config_name.strip_suffix(".conf.yml").unwrap().to_owned();
@@ -555,14 +676,11 @@ impl Benchmark {
             std::fs::write(&setup_path, setup)
                 .expect("Preparing the file with the setup content should succeed");
             print_info("Running setup:");
-            let status = std::process::Command::new("bash")
+            let status = Command::new("bash")
                 .args(["-ex"])
                 .arg(setup_path)
                 .status()
-                .expect(
-                    "Spawning
-                    the setup process should succeed",
-                );
+                .expect("Spawning the setup process should succeed");
 
             if !status.success() {
                 panic!("Running setup failed with {status:?}");
@@ -574,7 +692,7 @@ impl Benchmark {
         std::fs::write(self.home_dir.join(CONTINUE_FILE_NAME), &self.config_name)
             .expect("Writing to the continue file should succeed");
 
-        let mut command = std::process::Command::new(env!("CARGO"));
+        let mut command = Command::new(env!("CARGO"));
         command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
         command.args(cargo_args);
 
@@ -610,7 +728,7 @@ impl Benchmark {
                 .expect("Preparing the file with the teardown content should succeed");
 
             print_info("Running teardown:");
-            let status = std::process::Command::new("bash")
+            let status = Command::new("bash")
                 .args(["-eux"])
                 .arg(teardown_path)
                 .status()
@@ -643,7 +761,8 @@ impl Benchmark {
     ) -> BenchmarkOutput {
         let mut template_string = String::new();
         File::open(self.dir.join(template_path))
-            .expect("File should exist")
+            .with_context(|| format!("File should exist: '{}'", template_path.display()))
+            .unwrap()
             .read_to_string(&mut template_string)
             .expect("Reading to string should succeed");
 
@@ -666,11 +785,13 @@ impl Benchmark {
         meta: &Metadata,
         schema: &ScopedSchema<'_>,
     ) {
+        let triple = env!("GR_BUILD_TRIPLE");
+
         if !group.runs_on.as_ref().is_none_or(|(is_target, target)| {
             if *is_target {
-                target == env!("GR_BUILD_TRIPLE")
+                target == triple
             } else {
-                target != env!("GR_BUILD_TRIPLE")
+                target != triple
             }
         }) || !group
             .rust_version
@@ -689,9 +810,9 @@ impl Benchmark {
             .filter(|r| {
                 r.runs_on.as_ref().is_none_or(|(is_target, target)| {
                     if *is_target {
-                        target == env!("GR_BUILD_TRIPLE")
+                        target == triple
                     } else {
-                        target != env!("GR_BUILD_TRIPLE")
+                        target != triple
                     }
                 }) && r
                     .rust_version
@@ -713,7 +834,10 @@ impl Benchmark {
                 ));
 
                 for r in run.rmdirs.iter().filter(|r| r.is_dir()) {
-                    print_info(format!("Removing directory: {}", r.display()));
+                    print_info(format!(
+                        "rmdirs is set: Removing directory '{}'",
+                        r.display()
+                    ));
                     std::fs::remove_dir_all(r).unwrap();
                 }
 
@@ -725,10 +849,16 @@ impl Benchmark {
                     print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
                 }
 
-                let capture = run
-                    .expected
-                    .as_ref()
-                    .is_some_and(|e| e.stdout.is_some() || e.stderr.is_some());
+                let capture = run.expected.as_ref().is_some_and(|target_config| {
+                    target_config.resolve(triple).is_some_and(|e| {
+                        e.stdout.is_some()
+                            || e.no_stdout
+                            || !e.stdout_contains.resolve(triple).is_empty()
+                            || e.stderr.is_some()
+                            || e.no_stderr
+                            || !e.stderr_contains.resolve(triple).is_empty()
+                    })
+                });
 
                 let output = if let Some(template) = &self.config.template {
                     let output = self.run_template(
@@ -766,6 +896,7 @@ impl Benchmark {
                             schema,
                             &self.home_dir,
                             &self.bench_name,
+                            group.expected.as_ref(),
                         )
                     }))
                     .is_ok()
@@ -787,6 +918,7 @@ impl Benchmark {
                         schema,
                         &self.home_dir,
                         &self.bench_name,
+                        group.expected.as_ref(),
                     )
                 }
             }
@@ -802,7 +934,7 @@ impl Benchmark {
 }
 
 impl BenchmarkOutput {
-    fn assert(&self, bench_dir: &Path, meta: &Metadata, expected: &ExpectedConfig) {
+    fn assert(&self, bench_dir: &Path, meta: &Metadata, expected: &ExpectedConfig, triple: &str) {
         let output = &self.output;
 
         print_info("STDERR:");
@@ -817,10 +949,20 @@ impl BenchmarkOutput {
             } else {
                 panic!("Assertion of stderr failed: Expected no stderr");
             }
-        } else if let Some(stderr) = &expected.stderr {
+        } else if !expected.stderr_contains.resolve(triple).is_empty() {
+            for expected in expected.stderr_contains.resolve(triple) {
+                let output_stderr: String = String::from_utf8_lossy(&output.stderr).into();
+                if output_stderr.contains(expected) {
+                    print_info(format!("Verifying stderr contains '{expected}' succeeded"));
+                } else {
+                    panic!("Assertion of stderr failed: Expected stderr to contain '{expected}'");
+                }
+            }
+        } else if let Some(stderr) = expected.stderr.as_ref().and_then(|s| s.resolve(triple)) {
             let mut expected_stderr: Vec<u8> = Vec::new();
             File::open(bench_dir.join(stderr))
-                .expect("File should exist")
+                .with_context(|| format!("File should exist: '{}'", stderr.display()))
+                .unwrap()
                 .read_to_end(&mut expected_stderr)
                 .expect("Reading file should succeed");
 
@@ -839,19 +981,29 @@ impl BenchmarkOutput {
                         .write_all(filtered.as_bytes())
                         .expect("Writing to expected stderr should succeed");
 
-                    print_info("Overwriting stderr successful");
+                    print_info(format!(
+                        "Overwriting stderr '{}' successful",
+                        stderr.display()
+                    ));
                 } else {
-                    print_info("Skip overwrite since verifying stderr was successful");
+                    print_info(format!(
+                        "Skip overwrite since verifying stderr '{}' was successful",
+                        stderr.display()
+                    ));
                 }
             } else {
                 if filtered != expected_string {
                     panic!(
-                        "Assertion of stderr failed: {}",
+                        "Assertion of stderr '{}' failed: {}",
+                        stderr.display(),
                         pretty_assertions::StrComparison::new(&filtered, &expected_string)
                     );
                 }
 
-                print_info("Verifying stderr successful");
+                print_info(format!(
+                    "Verifying stderr '{}' successful",
+                    stderr.display()
+                ));
             }
         }
 
@@ -862,10 +1014,20 @@ impl BenchmarkOutput {
             } else {
                 panic!("Assertion of stdout failed: Expected no stdout");
             }
-        } else if let Some(stdout) = &expected.stdout {
+        } else if !expected.stdout_contains.resolve(triple).is_empty() {
+            for expected in expected.stdout_contains.resolve(triple) {
+                let output_stdout: String = String::from_utf8_lossy(&output.stdout).into();
+                if output_stdout.contains(expected) {
+                    print_info(format!("Verifying stdout contains '{expected}' succeeded"));
+                } else {
+                    panic!("Assertion of stdout failed: Expected stdout to contain '{expected}'");
+                }
+            }
+        } else if let Some(stdout) = expected.stdout.as_ref().and_then(|s| s.resolve(triple)) {
             let mut expected_stdout: Vec<u8> = Vec::new();
             File::open(bench_dir.join(stdout))
-                .expect("File should exist")
+                .with_context(|| format!("File should exist: '{}'", stdout.display()))
+                .unwrap()
                 .read_to_end(&mut expected_stdout)
                 .expect("Reading file should succeed");
 
@@ -880,13 +1042,20 @@ impl BenchmarkOutput {
                     );
 
                     File::create(bench_dir.join(stdout))
+                        .with_context(|| format!("File: '{}'", stdout.display()))
                         .expect("Opening expected stdout for writing should succeed")
                         .write_all(filtered.as_bytes())
                         .expect("Writing to expected stdout should succeed");
 
-                    print_info("Overwriting stdout successful");
+                    print_info(format!(
+                        "Overwriting stdout '{}' successful",
+                        stdout.display()
+                    ));
                 } else {
-                    print_info("Skip overwrite since verifying stdout was successful");
+                    print_info(format!(
+                        "Skip overwrite since verifying stdout '{}' was successful",
+                        stdout.display()
+                    ));
                 }
             } else {
                 if meta.is_coverage_run {
@@ -900,7 +1069,10 @@ impl BenchmarkOutput {
                         pretty_assertions::StrComparison::new(&filtered, &expected_string)
                     );
                 }
-                print_info("Verifying stdout successful");
+                print_info(format!(
+                    "Verifying stdout '{}' successful",
+                    stdout.display()
+                ));
             }
         }
     }
@@ -1037,7 +1209,7 @@ impl BenchmarkOutput {
 
             if let Some(caps) = NUMBERS_RE.captures(line) {
                 let mut string = String::new();
-                let desc = caps.name("desc").unwrap().as_str();
+                let desc = filter_unit(caps.name("desc").unwrap().as_str());
                 let comp1 = {
                     let cap = caps.name("comp1").unwrap().as_str();
                     if cap.parse::<f64>().is_ok() {
@@ -1103,17 +1275,15 @@ impl BenchmarkOutput {
                         let white1 = caps.name("white1").unwrap().as_str();
                         let percent = caps.name("percent").unwrap().as_str();
                         let num = &percent[1..percent.len() - 2];
-                        let pos = num.find(['+', '-']);
+                        let pos = num.find(['+', '-', '>']);
 
                         match pos {
-                            Some(pos) if num[pos + 1..].parse::<f64>().is_ok() => {
-                                write!(
-                                    string,
-                                    "{white1}({}{}%)",
-                                    &num[..pos + 1],
-                                    " ".repeat(num.len() - pos - 1)
-                                )
-                                .unwrap();
+                            Some(pos)
+                                if num[pos + 1..].parse::<f64>().is_ok()
+                                    || percent == "(---inf---)"
+                                    || percent == "(+++inf+++)" =>
+                            {
+                                write!(string, "{white1}(        %)").unwrap();
                             }
                             Some(_) | None if self.is_tolerance && percent == "(No change)" => {
                                 write!(string, "{white1}(Tolerance)").unwrap();
@@ -1127,16 +1297,15 @@ impl BenchmarkOutput {
                         let white2 = caps.name("white2").unwrap().as_str();
                         let factor = caps.name("factor").unwrap().as_str();
                         let num = &factor[1..factor.len() - 2];
-                        let pos = num.find(['+', '-']);
+                        let pos = num.find(['+', '-', ' ']);
+
                         match pos {
-                            Some(pos) if num[pos + 1..].parse::<f64>().is_ok() => {
-                                write!(
-                                    string,
-                                    "{white2}[{}{}x]",
-                                    &num[..pos + 1],
-                                    " ".repeat(num.len() - pos - 1)
-                                )
-                                .unwrap();
+                            Some(pos)
+                                if num[pos + 1..].parse::<f64>().is_ok()
+                                    || factor == "[---inf---]"
+                                    || factor == "[+++inf+++]" =>
+                            {
+                                write!(string, "{white2}[        x]").unwrap();
                             }
                             Some(_) | None => {
                                 write!(string, "{white2}{factor}").unwrap();
@@ -1276,17 +1445,22 @@ impl BenchmarkRunner {
 }
 
 impl ExpectedRun {
-    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) {
+    fn expected_dir(&self, base_dir: &Path) -> PathBuf {
         let mut env = Environment::default();
         env.add_template("function", &self.function).unwrap();
         let template = env.get_template("function").unwrap();
         let function = template.render(TEMPLATE_DATA.get().unwrap()).unwrap();
 
-        let dir = if let Some(id) = &self.id {
+        if let Some(id) = &self.id {
             base_dir.join(&self.group).join(format!("{function}.{id}"))
         } else {
             base_dir.join(&self.group).join(&function)
-        };
+        }
+    }
+
+    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) -> PathBuf {
+        let dir = self.expected_dir(base_dir);
+
         print_info(format!(
             "Running assertions in directory '{}'",
             dir.display()
@@ -1350,7 +1524,7 @@ impl ExpectedRun {
         }
 
         if let Some(summary) = summary {
-            print_info(format!("Validating summary {}", summary.display()));
+            print_info(format!("Validating summary '{}'", summary.display()));
             let instance: serde_json::Value =
                 serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
             let result = schema.validate(&instance);
@@ -1376,6 +1550,194 @@ impl ExpectedRun {
             dir.display(),
             real_files
         );
+
+        dir
+    }
+}
+
+impl ExpectedRuns {
+    /// Regenerates an expected-files manifest from a benchmark's current output files.
+    ///
+    /// `output_dir` is the benchmark output root, such as
+    /// `<target-dir>/gungraun/benchmark-tests/test_...`. `manifest` is the manifest path relative
+    /// to the system-test directory as given in the system test configuration file, and
+    /// `manifest_path` is the absolute path to the manifest file to replace.
+    ///
+    /// This supports the `BENCH_OVERWRITE=yes` fixture-update workflow, keeping checked-in
+    /// expectations aligned with intentional output changes. Existing glob expectations are
+    /// retained when they still apply, but new globs are not inferred. Any needed glob coverage
+    /// needs to be added manually to the resulting files. Generated file and retained glob entries
+    /// are sorted, and an existing `home_dir` is preserved rather than added. The resulting
+    /// manifest is formatted with `npx prettier` when available.
+    ///
+    /// # Panics
+    ///
+    /// Panics when benchmark output cannot be enumerated as expected, a retained glob is invalid,
+    /// the output layout is unexpected, or the manifest cannot be created or serialized.
+    fn overwrite(
+        self,
+        output_dir: &Path,
+        old_manifest_content: String,
+        manifest: &str,
+        manifest_path: &Path,
+    ) {
+        let real_files = glob(&format!("{}/**/*", output_dir.display()))
+            .unwrap()
+            .map(Result::unwrap)
+            .filter(|p| !p.is_dir())
+            .map(|p| {
+                let file = p.file_name().expect("A file name should be present");
+                let benchmark_directory =
+                    p.parent().expect("A benchmark directory should be present");
+                let (function, id) = (
+                    benchmark_directory
+                        .file_stem()
+                        .expect("A file stem should be present"),
+                    benchmark_directory.extension(),
+                );
+
+                let group = benchmark_directory
+                    .parent()
+                    .expect("A group should be present");
+
+                assert_eq!(group.parent(), Some(output_dir));
+
+                (
+                    (
+                        group
+                            .file_name()
+                            .expect("group should have a file name")
+                            .to_string_lossy()
+                            .to_string(),
+                        function.to_string_lossy().to_string(),
+                        id.map(|i| i.to_string_lossy().to_string()),
+                    ),
+                    PathBuf::from(file),
+                )
+            })
+            .fold(IndexMap::new(), |mut acc, (key, value)| {
+                acc.entry(key)
+                    .and_modify(|v: &mut Vec<_>| v.push(value.clone()))
+                    .or_insert_with(|| vec![value]);
+                acc
+            });
+
+        let mut old_data = self.data;
+        let new_runs =
+            real_files
+                .into_iter()
+                .fold(Vec::new(), |mut acc, ((group, function, id), files)| {
+                    let mut run = ExpectedRun {
+                        group,
+                        function,
+                        id,
+                        expected: Expected {
+                            files,
+                            globs: vec![],
+                        },
+                    };
+
+                    let existing_index = old_data.iter().position(|e| e.equals(&run));
+                    if let Some(index) = existing_index {
+                        // The order of the old data doesn't matter since we use the order of the
+                        // new data
+                        let existing = old_data.swap_remove(index);
+                        // Multiple globs can match the same files, so we have to collect the
+                        // matched files first before removing them from `run.expected.files`
+                        let mut matched = HashSet::new();
+                        for ExpectedGlob { pattern, .. } in existing.expected.globs.iter() {
+                            let glob = Pattern::new(pattern).expect("The pattern should be valid");
+
+                            let num_matches = run
+                                .expected
+                                .files
+                                .iter()
+                                .filter(|f| glob.matches_path(f))
+                                .inspect(|f| {
+                                    matched.insert((*f).to_owned());
+                                })
+                                .count();
+
+                            if num_matches > 0 {
+                                let new_glob = ExpectedGlob {
+                                    pattern: pattern.clone(),
+                                    count: num_matches,
+                                };
+                                run.expected.globs.push(new_glob);
+                            }
+                        }
+
+                        run.expected.files.retain(|f| !matched.contains(f));
+
+                        run.expected.globs.sort_unstable();
+                        run.expected.globs.dedup();
+                    }
+
+                    acc.push(run);
+                    acc
+                });
+
+        let new_data = ExpectedRuns {
+            home_dir: self.home_dir,
+            data: new_runs,
+        };
+
+        serde_yaml::to_writer(
+            File::create(manifest_path)
+                .with_context(|| {
+                    format!(
+                        "Opening '{}' for files overwrite should succeed",
+                        manifest_path.display()
+                    )
+                })
+                .unwrap(),
+            &new_data,
+        )
+        .map_err(|error| format!("Failed to serialize '{}': {error}", manifest_path.display()))
+        .expect("File should be serializable");
+
+        let status = std::process::Command::new("npx")
+            .args(["-y", "prettier", "-w"])
+            .arg(manifest_path)
+            .stdout(Stdio::null())
+            .status();
+
+        let new_manifest_content = fs::read_to_string(manifest_path)
+            .with_context(|| format!("File should exists: '{}'", manifest_path.display()))
+            .expect("Reading new manifest to string should succeed");
+
+        if old_manifest_content != new_manifest_content {
+            print!(
+                "{}",
+                pretty_assertions::StrComparison::new(&old_manifest_content, &new_manifest_content)
+            );
+
+            if !status.is_ok_and(|s| s.success()) {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' successful"
+                ));
+                print_info(
+                    "Running `npx prettier` failed. This file needs to be manually formatted. \
+                     Continuing ...",
+                );
+            } else {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' successful. Formatting with \
+                     `npx prettier` succeeded.",
+                ));
+            }
+        } else {
+            if !status.is_ok_and(|s| s.success()) {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' did not change the manifest"
+                ));
+                print_info("Running `npx prettier` failed. Continuing ...");
+            } else {
+                print_info(format!(
+                    "Overwriting expected-files manifest '{manifest}' did not change the manifest",
+                ));
+            }
+        }
     }
 }
 
@@ -1486,6 +1848,7 @@ impl Metadata {
 }
 
 impl RunConfig {
+    #[allow(clippy::too_many_arguments)]
     fn assert(
         &self,
         bench_dir: &Path,
@@ -1494,33 +1857,113 @@ impl RunConfig {
         schema: &ScopedSchema<'_>,
         home_dir: &Path,
         bench_name: &str,
+        group_expected: Option<&GroupExpected>,
     ) {
-        if let Some(expected) = &self.expected {
+        let triple = env!("GR_BUILD_TRIPLE");
+        let expected = self.expected.as_ref().and_then(|e| e.resolve(triple));
+
+        if let Some(expected) = expected {
             if expected.stdout.is_some()
                 || expected.no_stdout
+                || !expected.stdout_contains.resolve(triple).is_empty()
                 || expected.stderr.is_some()
                 || expected.no_stderr
+                || !expected.stderr_contains.resolve(triple).is_empty()
             {
-                output.assert(bench_dir, meta, expected);
+                output.assert(bench_dir, meta, expected, triple);
             }
-            output.assert_exit(expected.exit_code);
+            output.assert_exit(expected.exit_code.as_ref().and_then(|e| e.resolve(triple)));
 
-            if let Some(files) = &expected.files {
-                let expected_runs: ExpectedRuns = serde_yaml::from_reader(
-                    File::open(bench_dir.join(files)).expect("File should exist"),
-                )
-                .map_err(|error| format!("Failed to deserialize '{}': {error}", files.display()))
-                .expect("File should be deserializable");
+            // a run-local script takes precedence over a group script if present
+            if let Some(script) = expected.script.as_ref().map_or_else(
+                || group_expected.and_then(|g| g.script.as_ref().and_then(|s| s.resolve(triple))),
+                |s| s.resolve(triple),
+            ) {
+                let dir = tempdir().expect(
+                    "Creating a temporary directory for the assertion script should succeed",
+                );
 
-                let dest_dir = if let Some(home_dir) = expected_runs.home_dir {
+                let base_dir = home_dir.join(PACKAGE).join(bench_name);
+
+                let assert_path = dir.path().join("assert");
+                std::fs::write(&assert_path, script)
+                    .expect("Preparing the file with the script content should succeed");
+                print_info("Running assertion script:");
+                let status = Command::new("bash")
+                    .current_dir(base_dir)
+                    .args(["-ex"])
+                    .arg(assert_path)
+                    .status()
+                    .expect("Spawning the assertion script should succeed");
+
+                if !status.success() {
+                    panic!("Running assertion script failed with {status:?}");
+                }
+            }
+
+            if let Some(manifest) = expected.files.as_ref().and_then(|f| f.resolve(triple)) {
+                let manifest_path = bench_dir.join(manifest);
+
+                let manifest_content = fs::read_to_string(&manifest_path)
+                    .with_context(|| format!("File should exist: '{}'", manifest.display()))
+                    .unwrap();
+                let expected_runs: ExpectedRuns = serde_yaml::from_str(&manifest_content)
+                    .map_err(|error| {
+                        format!("Failed to deserialize '{}': {error}", manifest.display())
+                    })
+                    .expect("File should be deserializable");
+
+                let dest_dir = if let Some(home_dir) = &expected_runs.home_dir {
                     home_dir.join(PACKAGE).join(bench_name)
                 } else {
                     home_dir.join(PACKAGE).join(bench_name)
                 };
 
-                for expected in expected_runs.data {
-                    expected.assert(&dest_dir, schema);
+                if option_env!("BENCH_OVERWRITE").map_or(false, |s| s.eq_ignore_ascii_case("yes")) {
+                    expected_runs.overwrite(
+                        &dest_dir,
+                        manifest_content,
+                        &manifest.display().to_string(),
+                        &manifest_path,
+                    );
+                    return;
                 }
+
+                let mut dirs = HashMap::new();
+                let mut seen = HashMap::new();
+
+                for expected_run in expected_runs.data {
+                    dirs.entry(expected_run.group.clone()).or_insert_with(|| {
+                        glob(&format!("{}/{}/*/", dest_dir.display(), expected_run.group))
+                            .unwrap()
+                            .map(Result::unwrap)
+                            .collect::<HashSet<PathBuf>>()
+                    });
+
+                    let dir = expected_run.assert(&dest_dir, schema);
+                    seen.entry(expected_run.group)
+                        .and_modify(|s: &mut HashSet<PathBuf>| {
+                            s.insert(dir.clone());
+                        })
+                        .or_insert_with(|| HashSet::from([dir]));
+                }
+
+                let not_visited = dirs
+                    .into_iter()
+                    .flat_map(|(key, value)| {
+                        value
+                            .difference(seen.get(&key).unwrap())
+                            .cloned()
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<PathBuf>>();
+
+                assert!(
+                    not_visited.is_empty(),
+                    "Expected no other benchmark in directory '{}' but found: {:#?}",
+                    dest_dir.display(),
+                    not_visited
+                );
             } else if expected.no_files {
                 let package_dir = home_dir.join(PACKAGE);
                 let base_dir = package_dir.join(bench_name);
@@ -1549,8 +1992,7 @@ impl RunConfig {
             }
         }
 
-        if self
-            .expected
+        if expected
             .as_ref()
             .is_some_and(|expected| !expected.zero_metrics)
         {
@@ -1569,13 +2011,87 @@ impl RunConfig {
     }
 }
 
+impl TargetExpectedConfig {
+    fn resolve(&self, triple: &str) -> Option<&ExpectedConfig> {
+        match self {
+            Self::Scalar(config) => Some(config),
+            Self::Targets(map) => map.get(triple).or_else(|| map.get("default")),
+        }
+    }
+}
+
+impl TargetI32 {
+    fn resolve(&self, triple: &str) -> Option<i32> {
+        match self {
+            Self::Scalar(scalar) => Some(*scalar),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .and_then(|p| *p),
+        }
+    }
+}
+
+impl TargetPath {
+    fn resolve(&self, triple: &str) -> Option<&Path> {
+        match self {
+            Self::Scalar(path) => Some(path.as_path()),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .map(|p| p.as_path()),
+        }
+    }
+}
+
+impl TargetString {
+    fn resolve(&self, triple: &str) -> Option<&str> {
+        match self {
+            Self::Scalar(string) => Some(string.as_str()),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .and_then(|p| p.as_deref()),
+        }
+    }
+}
+
+impl TargetVecString {
+    fn resolve(&self, triple: &str) -> &[String] {
+        match self {
+            Self::Scalar(strings) => strings.as_slice(),
+            Self::Targets(map) => map
+                .get(triple)
+                .or_else(|| map.get("default"))
+                .map_or_else(|| &[], Vec::as_slice),
+        }
+    }
+}
+
+impl Default for TargetVecString {
+    fn default() -> Self {
+        TargetVecString::Scalar(vec![])
+    }
+}
+
 fn build_gungraun_runner() {
     print_info("Building gungraun-runner");
-    let status = std::process::Command::new(env!("CARGO"))
+    let status = Command::new(env!("CARGO"))
         .args(["build", "--package", "gungraun-runner", "--release"])
         .status()
         .unwrap();
     assert!(status.success());
+}
+
+fn filter_unit(desc: &str) -> Cow<'_, str> {
+    UNIT_RE.replace(desc, |caps: &Captures| {
+        format!(
+            "{}{}{}",
+            &caps["prefix"],
+            &caps["suffix"],
+            " ".repeat(caps["unit"].len())
+        )
+    })
 }
 
 fn print_error<T>(message: T)
@@ -1692,12 +2208,66 @@ mod tests {
     }
 
     #[rstest]
-    #[case::instructions_positive_when_0_allowed(
+    #[case::valgrind(
+        "Instructions:                                       1234|1234                 \
+         (12345678%) [1234.1234x]"
+    )]
+    #[case::valgrind_na(
+        "Instructions:                                        123|N/A                  (*********)"
+    )]
+    #[case::number_in_event(
+        "L1 Hits:                                             123|1                    \
+         (1.234567%) [2.3456789x]"
+    )]
+    #[case::valgrind_with_special(
+        "Total read+write:                                 123456|12345                \
+         (1.234567%) [123.45678%]"
+    )]
+    #[case::perf_without_unit(
+        "cpu_core/instructions/u:                             N/A|1234                 (*********)"
+    )]
+    #[case::perf_with_unit(
+        "task-clock/u [us]:                                 0.123|1.234                \
+         (123456.8%) [1234.1234x]"
+    )]
+    #[case::perf_rse(
+        "  rse% (sig.thr) [sig.fact]                        2.345|3.4567890            \
+         (9.876543%) [234.56789x]"
+    )]
+    #[case::perf_samples(
+        "  samples                                     1000000000|20000000000000000000 \
+         (3456.123%) [1234.1234x]"
+    )]
+    fn test_numbers_re(#[case] haystack: &str) {
+        assert!(NUMBERS_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::perf_with_unit("task-clock/u [us]:", "task-clock/u:     ")]
+    #[case::perf_without_unit("cpu_core/instructions/u:", "cpu_core/instructions/u:")]
+    #[case::non_unit_brackets("rse% (sig.thr) [sig.fact]", "rse% (sig.thr) [sig.fact]")]
+    fn test_filter_unit(#[case] haystack: &str, #[case] replaced: &str) {
+        assert_eq!(filter_unit(haystack), replaced);
+    }
+
+    #[rstest]
+    #[case::no_decimal_and_unit(
         "Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)",
         "Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by \
          +<__PERCENT__>% (>+<__NUM__>%)"
     )]
-    fn test_regression_re(#[case] haystack: &str, #[case] replaced: &str) {
+    #[case::with_decimal(
+        "Performance has regressed: Some (1.234 -> 2.345) regressed by +47.3684% (>+0.00000%)",
+        "Performance has regressed: Some (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% \
+         (>+<__NUM__>%)"
+    )]
+    #[case::with_decimal_and_unit(
+        "Performance has regressed: Some (1.234 [ms] -> 2.345 [ms]) regressed by +47.3684% \
+         (>+0.00000%)",
+        "Performance has regressed: Some (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% \
+         (>+<__NUM__>%)"
+    )]
+    fn test_regression_soft_re(#[case] haystack: &str, #[case] replaced: &str) {
         assert_eq!(
             REGRESSION_SOFT_RE.replace(
                 haystack,
@@ -1705,6 +2275,50 @@ mod tests {
             ),
             replaced
         );
+    }
+
+    #[rstest]
+    #[case::callgrind(
+        "Performance has regressed: Instructions (70021) exceeds limit by 69821 (>200)"
+    )]
+    #[case::perf_no_unit(
+        "Performance has regressed: cpu_core/instructions/u [*instructions*] (7002804) exceeds \
+         limit by 6997804 (>5000)"
+    )]
+    #[case::perf_with_unit(
+        "Performance has regressed: task-clock:u [*task-clock*] (601.931 [us]) exceeds limit by \
+         501.931 [us] (>100 [us])"
+    )]
+    fn test_regression_hard_re(#[case] haystack: &str) {
+        assert!(REGRESSION_HARD_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::callgrind("Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821")]
+    #[case::perf_no_unit(
+        "Perf: cpu_core/instructions/u [*instructions*] (7002804): 7002804 exceeds limit of 5000 \
+         by 6997804"
+    )]
+    #[case::perf_with_unit(
+        "Perf: task-clock:u [*task-clock*] (632.461 [us]): 632.461 [us] exceeds limit of 100 [us] \
+         by 532.461 [us]"
+    )]
+    fn test_summary_hard_regression_re(#[case] haystack: &str) {
+        assert!(SUMMARY_REGRESSION_HARD_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::valgrind("Total bytes (16 -> 20): +25.0000% exceeds limit of +0.00000%")]
+    #[case::perf_no_unit(
+        "Perf: cpu_core/instructions/u [*instructions*] (1234 -> 4567): +1234% exceeds limit of \
+         +1.234%"
+    )]
+    #[case::perf_with_unit(
+        "Perf: task-clock:u [*task-clock*] (38.3450 [us] -> 74111.1 [us]): +193175% exceeds limit \
+         of +0.00000%"
+    )]
+    fn test_summary_soft_regression_re(#[case] haystack: &str) {
+        assert!(SUMMARY_REGRESSION_SOFT_RE.is_match(haystack));
     }
 
     #[rstest]

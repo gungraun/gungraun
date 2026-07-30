@@ -5,9 +5,19 @@ data:
     expected:
       files:
         - callgrind.bench_paths.absolute.log
-        - callgrind.bench_paths.absolute.out
         - callgrind.bench_paths.absolute.log.old
+        - callgrind.bench_paths.absolute.out
         - callgrind.bench_paths.absolute.out.old
+        - summary.json
+  - group: my_group
+    function: bench_paths
+    id: crate_binary
+    expected:
+      files:
+        - callgrind.bench_paths.crate_binary.log
+        - callgrind.bench_paths.crate_binary.log.old
+        - callgrind.bench_paths.crate_binary.out
+        - callgrind.bench_paths.crate_binary.out.old
         - summary.json
   - group: my_group
     function: bench_paths
@@ -18,9 +28,9 @@ data:
       globs:
         - pattern: callgrind.bench_paths.relative.*.log
           count: 2
-        - pattern: callgrind.bench_paths.relative.*.out
-          count: 2
         - pattern: callgrind.bench_paths.relative.*.log.old
+          count: 2
+        - pattern: callgrind.bench_paths.relative.*.out
           count: 2
         - pattern: callgrind.bench_paths.relative.*.out.old
           count: 2
@@ -30,17 +40,7 @@ data:
     expected:
       files:
         - callgrind.bench_paths.use_path.log
-        - callgrind.bench_paths.use_path.out
         - callgrind.bench_paths.use_path.log.old
+        - callgrind.bench_paths.use_path.out
         - callgrind.bench_paths.use_path.out.old
-        - summary.json
-  - group: my_group
-    function: bench_paths
-    id: crate_binary
-    expected:
-      files:
-        - callgrind.bench_paths.crate_binary.log
-        - callgrind.bench_paths.crate_binary.out
-        - callgrind.bench_paths.crate_binary.log.old
-        - callgrind.bench_paths.crate_binary.out.old
         - summary.json

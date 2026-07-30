@@ -34,8 +34,8 @@ max_line_length = 100
 [*.{asm,s}]
 max_line_length = 88
 
-[*.txt]
-insert_final_newline = false
+# [*.txt]
+# insert_final_newline = false
 
 [*.pl]
 max_line_length = 99

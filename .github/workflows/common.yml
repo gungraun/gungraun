@@ -43,7 +43,7 @@ jobs:
           cache-bin: false
       # This is important for docs.rs which doesn't have the headers installed
       - name: Try build gungraun without valgrind headers
-        run: cargo build --package gungraun --features client_requests_defs --release
+        run: cargo build --package gungraun --features stubs --release
       - name: Run doc tests
         run: cargo test --all-features --doc
       - name: Check docs.rs build for gungraun

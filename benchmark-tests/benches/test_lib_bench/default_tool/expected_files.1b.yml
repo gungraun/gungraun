@@ -183,6 +183,8 @@ data:
     function: default_tool_with_config
     id: bbv
     expected:
+      files:
+        - summary.json
       globs:
         - pattern: exp-bbv.default_tool_with_config.bbv.*.bb.out
           count: 2
@@ -196,8 +198,6 @@ data:
           count: 2
         - pattern: exp-bbv.default_tool_with_config.bbv.*.pc.out.old
           count: 2
-      files:
-        - summary.json
   - group: my_group
     function: default_tool_with_config
     id: cachegrind

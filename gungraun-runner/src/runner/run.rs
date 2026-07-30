@@ -1,12 +1,40 @@
-//! TODO: DOCS
+//! Main entry point for the gungraun benchmark runner process with [`run`] doing the hard work
+//!
+//! This module via `gungraun_runner::main` is invoked by the gungraun benchmarking harness (not by
+//! the end user directly). The harness spawns the runner as a subprocess and passes basic benchmark
+//! metadata via command-line arguments. The actual benchmark configuration
+//! ([`LibraryBenchmarkGroups`] or [`BinaryBenchmarkGroups`]) is sent through stdin as a
+//! bincode-encoded payload and deserialized by [`receive_benchmark`].
+//!
+//! The harness formats [`SupportedTools`] through [`std::fmt::Display`] as one of those
+//! command-line arguments, and `RunnerArgs::new` parses it through [`FromStr`]. This describes
+//! compile-target support only; runtime availability, such as whether an executable is installed or
+//! Perf events are permitted, is checked separately by the runner.
+//!
+//! # Runner flow
+//!
+//! 1. **CLI parsing**: `Cli::parse` inspects the first argument to decide between showing help,
+//!    version, or executing a benchmark run.
+//! 2. **Version check**: `compare_versions` validates that the runner version matches the library
+//!    version that spawned it, preventing mismatched ABI issues.
+//! 3. **Harness argument parsing**: `RunnerArgs::new` reads the remaining arguments passed by the
+//!    harness: benchmark kind (`--lib-bench` or `--bin-bench`), paths, target, and module.
+//! 4. **Configuration reception**: [`receive_benchmark`] reads the serialized
+//!    [`LibraryBenchmarkGroups`] or [`BinaryBenchmarkGroups`] from stdin.
+//! 5. **Dispatch**: [`run`] creates a [`Config`] and dispatches to either [`lib_bench::run`] or
+//!    [`bin_bench::run`], depending on the benchmark kind.
+//! 6. **Post-run**: `PostRun::execute` prints the benchmark summary and returns
+//!    [`Error::RegressionError`] if any regressions were detected.
 
 use std::env::ArgsOs;
 use std::ffi::OsString;
 use std::io::{BufReader, stdin};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
+use gungraun_common::SupportedTools;
 use log::debug;
 
 use super::args::CommandLineArgs;
@@ -46,6 +74,7 @@ struct RunnerArgs {
     module: String,
     num_bytes: usize,
     package_dir: PathBuf,
+    supported_tools: SupportedTools,
     target: String,
 }
 
@@ -122,6 +151,8 @@ impl RunnerArgs {
         let bench_file = args_iter.next_path()?;
         let module = args_iter.next_string()?;
         let target = args_iter.next_string()?;
+        let supported_tools =
+            SupportedTools::from_str(&args_iter.next_string()?).map_err(anyhow::Error::msg)?;
         let bench_bin = args_iter.next_path()?;
         let num_bytes = args_iter
             .next_string()?
@@ -136,6 +167,7 @@ impl RunnerArgs {
             num_bytes,
             package_dir,
             _package_name: package_name,
+            supported_tools,
             target,
         })
     }
@@ -256,6 +288,7 @@ pub fn run() -> Result<()> {
         module,
         bench_bin,
         num_bytes,
+        supported_tools,
         target,
         ..
     } = runner_args;
@@ -263,7 +296,11 @@ pub fn run() -> Result<()> {
     let post_run = match bench_kind {
         BenchmarkKind::LibraryBenchmark => {
             let benchmark_groups: LibraryBenchmarkGroups = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark_groups.command_line_args, &target)?;
+            let meta = Metadata::new(
+                &benchmark_groups.command_line_args,
+                &target,
+                supported_tools,
+            )?;
 
             let config = Config {
                 package_dir,
@@ -291,7 +328,11 @@ pub fn run() -> Result<()> {
         }
         BenchmarkKind::BinaryBenchmark => {
             let benchmark_groups: BinaryBenchmarkGroups = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark_groups.command_line_args, &target)?;
+            let meta = Metadata::new(
+                &benchmark_groups.command_line_args,
+                &target,
+                supported_tools,
+            )?;
 
             let config = Config {
                 package_dir,

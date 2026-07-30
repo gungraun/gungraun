@@ -9,12 +9,12 @@ use crate::util::common::{Fixtures, get_project_root};
 #[case::when_entry_point("when_entry_point", Some(Sentinel::new("benchmark_tests_exit::main")))]
 #[case::no_entry_point("no_entry_point", None)]
 fn test_flamegraph_parser(#[case] name: &str, #[case] sentinel: Option<Sentinel>) {
-    use gungraun_runner::api::ValgrindTool;
+    use gungraun_runner::api::Tool;
     use gungraun_runner::runner::tool::path::ToolOutputPathKind;
 
     let output = Fixtures::get_tool_output_path(
         "callgrind.out",
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         ToolOutputPathKind::Out,
         name,
     );

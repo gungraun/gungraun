@@ -51,8 +51,9 @@ use log::warn;
 use nix::NixPath;
 
 use super::path::ToolOutputPath;
-use crate::api::{RawToolArgs, ValgrindTool};
+use crate::api::{RawToolArgs, Tool};
 use crate::error::Error;
+use crate::runner::perf::args::PerfArgs;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The possible values of the --fair-sched cli arg
@@ -66,6 +67,42 @@ pub enum FairSched {
     Try,
 }
 
+/// Normalizes per-tool command-line argument construction for Valgrind and perf.
+///
+/// `ToolArgs` dispatches to [`ValgrindArgs`] or [`PerfArgs`] depending on the active tool, exposing
+/// a unified interface for setting output paths, events, and serializing the final argument vector.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ToolArgs {
+    /// Valgrind tool arguments.
+    Valgrind(ValgrindArgs),
+    /// perf tool arguments.
+    Perf(PerfArgs),
+}
+
+/// A Valgrind tool selectable by the runner.
+///
+/// Each variant maps one-to-one to [`crate::api::Tool`] and determines the `--tool` argument passed
+/// to Valgrind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValgrindTool {
+    /// The Callgrind profiler.
+    Callgrind,
+    /// The Cachegrind cache simulator.
+    Cachegrind,
+    /// The DHAT heap profiler.
+    DHAT,
+    /// The Memcheck memory error detector.
+    Memcheck,
+    /// The Helgrind thread error detector.
+    Helgrind,
+    /// The DRD thread error detector.
+    DRD,
+    /// The Massif heap profiler.
+    Massif,
+    /// The Basic Block Vector generator.
+    BBV,
+}
+
 /// The possible values for --vgdb
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Vgdb {
@@ -75,17 +112,6 @@ pub enum Vgdb {
     No,
     /// Corresponds to `full`
     Full,
-}
-
-/// Common parsing behavior for Valgrind tool arguments.
-pub trait ToolArgs: Sized {
-    /// Try to create new arguments from multiple [`RawToolArgs`].
-    fn try_from_raw_tool_args(tool: ValgrindTool, raw_tool_args: &[&RawToolArgs]) -> Result<Self>;
-
-    /// Try to update these arguments from the contents of an iterator.
-    fn try_update<'a, T>(&mut self, args: T) -> Result<()>
-    where
-        T: Iterator<Item = &'a String>;
 }
 
 /// The arguments to pass to the Valgrind tool
@@ -115,6 +141,17 @@ pub struct ValgrindArgs {
     pub xtree_path: Option<OsString>,
 }
 
+/// Common parsing behavior for Valgrind tool arguments.
+pub trait ToolArgsLike: Sized {
+    /// Try to create new arguments from multiple [`RawToolArgs`].
+    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self>;
+
+    /// Try to update these arguments from the contents of an iterator.
+    fn try_update<'a, T>(&mut self, args: T) -> Result<()>
+    where
+        T: Iterator<Item = &'a String>;
+}
+
 impl Display for FairSched {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = match self {
@@ -141,9 +178,113 @@ impl FromStr for FairSched {
     }
 }
 
-impl ToolArgs for ValgrindArgs {
-    fn try_from_raw_tool_args(tool: ValgrindTool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
-        let mut tool_args = Self::new(tool);
+impl From<ValgrindTool> for Tool {
+    fn from(value: ValgrindTool) -> Self {
+        match value {
+            ValgrindTool::Callgrind => Self::Callgrind,
+            ValgrindTool::Cachegrind => Self::Cachegrind,
+            ValgrindTool::DHAT => Self::DHAT,
+            ValgrindTool::Memcheck => Self::Memcheck,
+            ValgrindTool::Helgrind => Self::Helgrind,
+            ValgrindTool::DRD => Self::DRD,
+            ValgrindTool::Massif => Self::Massif,
+            ValgrindTool::BBV => Self::BBV,
+        }
+    }
+}
+
+impl ToolArgs {
+    /// Sets the output path argument to the [`ToolOutputPath`] for the active tool.
+    pub fn set_output_arg(
+        &mut self,
+        output_path: &ToolOutputPath,
+        tool_runner_dest: Option<&Path>,
+    ) {
+        match self {
+            Self::Valgrind(valgrind_args) => {
+                valgrind_args.set_output_arg(output_path, tool_runner_dest);
+            }
+            Self::Perf(perf_args) => perf_args.set_output_arg(output_path, tool_runner_dest),
+        }
+    }
+
+    /// Sets the log file argument to the [`ToolOutputPath`] for Valgrind tools.
+    ///
+    /// This is a no-op for perf.
+    pub fn set_log_arg(&mut self, output_path: &ToolOutputPath, tool_runner_dest: Option<&Path>) {
+        match self {
+            Self::Valgrind(valgrind_args) => {
+                valgrind_args.set_log_arg(output_path, tool_runner_dest);
+            }
+            Self::Perf(_) => {}
+        }
+    }
+
+    /// Sets the xtree file argument to the [`ToolOutputPath`] for Valgrind tools that support it.
+    ///
+    /// This is a no-op for perf.
+    pub fn set_xtree_arg(&mut self, output_path: &ToolOutputPath, tool_runner_dest: Option<&Path>) {
+        match self {
+            Self::Valgrind(valgrind_args) => {
+                valgrind_args.set_xtree_arg(output_path, tool_runner_dest);
+            }
+            Self::Perf(_) => {}
+        }
+    }
+
+    /// Sets the xleak file argument to the [`ToolOutputPath`] for Valgrind tools that support it.
+    ///
+    /// This is a no-op for perf.
+    pub fn set_xleak_arg(&mut self, output_path: &ToolOutputPath, tool_runner_dest: Option<&Path>) {
+        match self {
+            Self::Valgrind(valgrind_args) => {
+                valgrind_args.set_xleak_arg(output_path, tool_runner_dest);
+            }
+            Self::Perf(_) => {}
+        }
+    }
+
+    /// Adds a list of perf events to the command line arguments.
+    ///
+    /// This is a no-op for Valgrind tools.
+    pub fn add_events(&mut self, events: &str) {
+        match self {
+            Self::Valgrind(_) => {}
+            Self::Perf(perf_args) => perf_args.add_events(events),
+        }
+    }
+
+    /// Enables sampling mode for `perf stat`.
+    ///
+    /// This is a no-op for Valgrind tools.
+    pub fn use_sampling(&mut self, yes: bool) {
+        match self {
+            Self::Valgrind(_) => {}
+            Self::Perf(perf_args) => perf_args.use_sampling(yes),
+        }
+    }
+
+    /// Returns `true` if the active tool is `perf record`.
+    pub fn is_perf_record(&self) -> bool {
+        match self {
+            Self::Perf(perf_args) => perf_args.is_record(),
+            Self::Valgrind(_) => false,
+        }
+    }
+
+    /// Serializes the active tool arguments into a vector suitable for
+    /// [`std::process::Command::args`].
+    pub fn to_vec(&self) -> Vec<OsString> {
+        match self {
+            Self::Valgrind(valgrind_args) => valgrind_args.to_vec(),
+            Self::Perf(perf_args) => perf_args.to_vec(),
+        }
+    }
+}
+impl ToolArgsLike for ValgrindArgs {
+    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
+        let valgrind_tool = ValgrindTool::try_from(tool).map_err(anyhow::Error::msg)?;
+        let mut tool_args = Self::new(valgrind_tool);
 
         tool_args.try_update(raw_tool_args.iter().flat_map(|args| args.as_slice()))?;
 
@@ -219,7 +360,7 @@ impl ValgrindArgs {
     pub fn set_output_arg(
         &mut self,
         output_path: &ToolOutputPath,
-        valgrind_runner_dest: Option<&Path>,
+        tool_runner_dest: Option<&Path>,
     ) {
         if !self.tool.has_output_file() {
             return;
@@ -230,7 +371,7 @@ impl ValgrindArgs {
                 let arg = self.generate_file_arg(
                     "--callgrind-out-file=",
                     output_path,
-                    valgrind_runner_dest,
+                    tool_runner_dest,
                     None,
                 );
                 self.output_paths.push(arg);
@@ -239,31 +380,27 @@ impl ValgrindArgs {
                 let arg = self.generate_file_arg(
                     "--massif-out-file=",
                     output_path,
-                    valgrind_runner_dest,
+                    tool_runner_dest,
                     None,
                 );
                 self.output_paths.push(arg);
             }
             ValgrindTool::DHAT => {
-                let arg = self.generate_file_arg(
-                    "--dhat-out-file=",
-                    output_path,
-                    valgrind_runner_dest,
-                    None,
-                );
+                let arg =
+                    self.generate_file_arg("--dhat-out-file=", output_path, tool_runner_dest, None);
                 self.output_paths.push(arg);
             }
             ValgrindTool::BBV => {
                 let bb_arg = self.generate_file_arg(
                     "--bb-out-file=",
                     output_path,
-                    valgrind_runner_dest,
+                    tool_runner_dest,
                     Some("bb"),
                 );
                 let pc_arg = self.generate_file_arg(
                     "--pc-out-file=",
                     output_path,
-                    valgrind_runner_dest,
+                    tool_runner_dest,
                     Some("pc"),
                 );
                 self.output_paths.push(bb_arg);
@@ -273,7 +410,7 @@ impl ValgrindArgs {
                 let arg = self.generate_file_arg(
                     "--cachegrind-out-file=",
                     output_path,
-                    valgrind_runner_dest,
+                    tool_runner_dest,
                     None,
                 );
 
@@ -285,31 +422,23 @@ impl ValgrindArgs {
     }
 
     /// Set the logfile argument
-    pub fn set_log_arg(
-        &mut self,
-        output_path: &ToolOutputPath,
-        valgrind_runner_dest: Option<&Path>,
-    ) {
+    pub fn set_log_arg(&mut self, output_path: &ToolOutputPath, tool_runner_dest: Option<&Path>) {
         let arg = self.generate_file_arg(
             "--log-file=",
             &output_path.to_log_output(),
-            valgrind_runner_dest,
+            tool_runner_dest,
             None,
         );
         self.log_path = Some(arg);
     }
 
     /// Set the xtree-memory-file argument for tools which support it
-    pub fn set_xtree_arg(
-        &mut self,
-        output_path: &ToolOutputPath,
-        valgrind_runner_dest: Option<&Path>,
-    ) {
+    pub fn set_xtree_arg(&mut self, output_path: &ToolOutputPath, tool_runner_dest: Option<&Path>) {
         if let Some(output_path) = output_path.to_xtree_output() {
             let arg = self.generate_file_arg(
                 "--xtree-memory-file=",
                 &output_path,
-                valgrind_runner_dest,
+                tool_runner_dest,
                 None,
             );
             self.xtree_path = Some(arg);
@@ -317,18 +446,10 @@ impl ValgrindArgs {
     }
 
     /// Set the xtree-leak-file argument for tools which support it
-    pub fn set_xleak_arg(
-        &mut self,
-        output_path: &ToolOutputPath,
-        valgrind_runner_dest: Option<&Path>,
-    ) {
+    pub fn set_xleak_arg(&mut self, output_path: &ToolOutputPath, tool_runner_dest: Option<&Path>) {
         if let Some(output_path) = output_path.to_xleak_output() {
-            let arg = self.generate_file_arg(
-                "--xtree-leak-file=",
-                &output_path,
-                valgrind_runner_dest,
-                None,
-            );
+            let arg =
+                self.generate_file_arg("--xtree-leak-file=", &output_path, tool_runner_dest, None);
             self.xleak_path = Some(arg);
         }
     }
@@ -365,7 +486,7 @@ impl ValgrindArgs {
         &self,
         arg: &str,
         output_path: &ToolOutputPath,
-        valgrind_runner_dest: Option<&Path>,
+        tool_runner_dest: Option<&Path>,
         extra_modifier: Option<&str>,
     ) -> OsString {
         let output_path = match (self.trace_children, extra_modifier) {
@@ -375,7 +496,7 @@ impl ValgrindArgs {
             (false, None) => output_path.with_modifiers(["#0"]),
         };
 
-        let path = match valgrind_runner_dest {
+        let path = match tool_runner_dest {
             Some(dest) => dest.join(output_path.file_name()),
             None => output_path.to_path(),
         };
@@ -384,6 +505,34 @@ impl ValgrindArgs {
         file_arg.push(arg);
         file_arg.push(path);
         file_arg
+    }
+}
+
+impl ValgrindTool {
+    fn id(self) -> String {
+        Tool::from(self).id()
+    }
+
+    fn has_output_file(self) -> bool {
+        Tool::from(self).has_output_file()
+    }
+}
+
+impl TryFrom<Tool> for ValgrindTool {
+    type Error = String;
+
+    fn try_from(value: Tool) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Tool::Callgrind => Ok(Self::Callgrind),
+            Tool::Cachegrind => Ok(Self::Cachegrind),
+            Tool::DHAT => Ok(Self::DHAT),
+            Tool::Memcheck => Ok(Self::Memcheck),
+            Tool::Helgrind => Ok(Self::Helgrind),
+            Tool::DRD => Ok(Self::DRD),
+            Tool::Massif => Ok(Self::Massif),
+            Tool::BBV => Ok(Self::BBV),
+            Tool::Perf => Err("Invalid valgrind tool: perf".to_owned()),
+        }
     }
 }
 
@@ -472,7 +621,7 @@ mod tests {
         args.into_iter().map(str::to_owned).collect()
     }
 
-    #[builder(finish_fn = "fixture")]
+    #[builder(finish_fn = "fx")]
     pub fn valgrind_args_f(
         tool: Option<ValgrindTool>,
         error_exitcode: Option<&str>,
@@ -508,34 +657,32 @@ mod tests {
     #[rstest]
     #[case::error_exitcode(
         &["--error-exitcode=99"],
-        valgrind_args_f().error_exitcode("99").fixture()
+        valgrind_args_f().error_exitcode("99").fx()
     )]
     #[case::trace_children(
         &["--trace-children=no"],
-        valgrind_args_f().trace_children(false).fixture()
+        valgrind_args_f().trace_children(false).fx()
     )]
     #[case::fair_sched(
         &["--fair-sched=no"],
-        valgrind_args_f().fair_sched(FairSched::No).fixture()
+        valgrind_args_f().fair_sched(FairSched::No).fx()
     )]
-    #[case::long_verbose(&["--verbose"], valgrind_args_f().verbose(true).fixture())]
-    #[case::short_verbose(&["-v"], valgrind_args_f().verbose(true).fixture())]
-    #[case::vgdb(&["--vgdb=yes"], valgrind_args_f().vgdb(Vgdb::Yes).fixture())]
-    #[case::vgdb(&["--vgdb=no"], valgrind_args_f().vgdb(Vgdb::No).fixture())]
-    #[case::vgdb(&["--vgdb=full"], valgrind_args_f().vgdb(Vgdb::Full).fixture())]
-    #[case::outfile_is_ignored(&["--log-file=some"], valgrind_args_f().fixture())]
+    #[case::long_verbose(&["--verbose"], valgrind_args_f().verbose(true).fx())]
+    #[case::short_verbose(&["-v"], valgrind_args_f().verbose(true).fx())]
+    #[case::vgdb(&["--vgdb=yes"], valgrind_args_f().vgdb(Vgdb::Yes).fx())]
+    #[case::vgdb(&["--vgdb=no"], valgrind_args_f().vgdb(Vgdb::No).fx())]
+    #[case::vgdb(&["--vgdb=full"], valgrind_args_f().vgdb(Vgdb::Full).fx())]
+    #[case::outfile_is_ignored(&["--log-file=some"], valgrind_args_f().fx())]
     #[case::other(
         &["--some-arg=yes"],
         valgrind_args_f()
             .other(strings(["--some-arg=yes"]))
-            .fixture()
+            .fx()
     )]
     fn test_try_from_raw_tool_args(#[case] args: &[&str], #[case] expected: ValgrindArgs) {
-        let actual = ValgrindArgs::try_from_raw_tool_args(
-            ValgrindTool::Memcheck,
-            &[&RawToolArgs::from_iter(args)],
-        )
-        .unwrap();
+        let actual =
+            ValgrindArgs::try_from_raw_tool_args(Tool::Memcheck, &[&RawToolArgs::from_iter(args)])
+                .unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -545,11 +692,8 @@ mod tests {
     #[case::fair_sched(&["--fair-sched=something"])]
     #[case::vgdb(&["--vgdb=something"])]
     fn test_try_from_raw_tool_args_when_invalid_then_error(#[case] input: &[&str]) {
-        ValgrindArgs::try_from_raw_tool_args(
-            ValgrindTool::Memcheck,
-            &[&RawToolArgs::from_iter(input)],
-        )
-        .unwrap_err();
+        ValgrindArgs::try_from_raw_tool_args(Tool::Memcheck, &[&RawToolArgs::from_iter(input)])
+            .unwrap_err();
     }
 
     #[test]
@@ -558,7 +702,7 @@ mod tests {
             .error_exitcode("99")
             .fair_sched(FairSched::No)
             .trace_children(false)
-            .fixture();
+            .fx();
 
         let actual = args.to_vec();
 
@@ -579,7 +723,7 @@ mod tests {
         let args = valgrind_args_f()
             .verbose(true)
             .other(strings(["--some-arg=yes", "--another-some-arg"]))
-            .fixture();
+            .fx();
 
         let actual = args.to_vec();
 

@@ -163,17 +163,17 @@ data:
     function: default_tool_with_config
     id: bbv
     expected:
+      files:
+        - summary.json
       globs:
-        - pattern: dhat.default_tool_with_config.bbv.*.out
-          count: 2
         - pattern: dhat.default_tool_with_config.bbv.*.log
+          count: 2
+        - pattern: dhat.default_tool_with_config.bbv.*.out
           count: 2
         - pattern: helgrind.default_tool_with_config.bbv.*.log
           count: 2
         - pattern: memcheck.default_tool_with_config.bbv.*.log
           count: 2
-      files:
-        - summary.json
   - group: my_group
     function: default_tool_with_config
     id: cachegrind

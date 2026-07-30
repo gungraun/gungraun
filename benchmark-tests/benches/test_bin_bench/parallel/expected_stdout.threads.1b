@@ -1,16 +1,16 @@
 test_bin_bench_parallel_threads::my_group::threads one:("1") -> target/release/thread 1
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_parallel_threads::my_group::threads two:("2") -> target/release/thread 2
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 
 Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s

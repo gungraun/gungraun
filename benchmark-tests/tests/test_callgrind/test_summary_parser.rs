@@ -1,4 +1,4 @@
-use gungraun_runner::api::{EventKind, ValgrindTool};
+use gungraun_runner::api::{EventKind, Tool};
 use gungraun_runner::runner::callgrind::model::Metrics;
 use gungraun_runner::runner::callgrind::parser::CallgrindParser;
 use gungraun_runner::runner::callgrind::summary_parser::SummaryParser;
@@ -16,7 +16,7 @@ use crate::util::common::{Fixtures, assert_parse_error};
 #[case::no_summary_but_totals("no_summary_but_totals", [11, 12, 13, 14, 15, 16, 17, 18, 19])]
 #[case::summary_no_totals("summary_no_totals", [1, 2, 3, 4, 5, 6, 7, 8, 9])]
 fn test_summary_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
-    use gungraun_runner::api::ValgrindTool;
+    use gungraun_runner::api::Tool;
     use gungraun_runner::runner::tool::path::ToolOutputPathKind;
 
     let expected_costs = Metrics::with_metric_kinds([
@@ -33,7 +33,7 @@ fn test_summary_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
 
     let callgrind_output = Fixtures::get_tool_output_path(
         "callgrind.out",
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         ToolOutputPathKind::Out,
         fixture,
     );
@@ -49,7 +49,7 @@ fn test_summary_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
 fn test_summary_parser_when_not_found_then_error() {
     let callgrind_output = Fixtures::get_tool_output_path(
         "callgrind.out",
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         ToolOutputPathKind::Out,
         "no_summary_no_totals",
     );

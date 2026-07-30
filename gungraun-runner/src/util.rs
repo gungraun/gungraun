@@ -12,6 +12,7 @@ use anyhow::{Result, anyhow};
 use either_or_both::EitherOrBoth;
 use indexmap::IndexMap;
 use log::{Level, debug, log_enabled, trace};
+use nix::libc;
 use which::{which, which_in};
 
 use crate::error::Error;
@@ -103,6 +104,97 @@ where
             None
         }
     }
+}
+
+/// Clears the close-on-exec flag on a raw file descriptor.
+///
+/// This ensures the descriptor remains open across a successful `exec` call.
+///
+/// # Safety
+///
+/// The caller must ensure `fd` refers to a valid, open file descriptor for the entire duration of
+/// this function.
+pub unsafe fn clear_cloexec(fd: libc::c_int) -> std::io::Result<()> {
+    // SAFETY: The caller guarantees `fd` is a valid open file descriptor.
+    let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+
+    if flags == -1 {
+        return Err(std::io::Error::last_os_error());
+    }
+
+    // SAFETY: The caller guarantees `fd` is valid, and `flags` came from `F_GETFD` for this fd.
+    let result = unsafe { libc::fcntl(fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC) };
+
+    if result == -1 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+/// Duplicates `source` onto `target` and ensures the target is inherited across `exec`.
+///
+/// If `source` and `target` are the same descriptor, this only clears `FD_CLOEXEC` on `target`.
+/// Otherwise this behaves like `dup2(source, target)`.
+///
+/// # Safety
+///
+/// The caller must ensure `source` is a valid open file descriptor. The caller must also ensure
+/// that reassigning `target` is correct for the current process state and that `target` is safe to
+/// reuse as a duplicated descriptor.
+pub unsafe fn dup_to_inheritable_fd(
+    source: libc::c_int,
+    target: libc::c_int,
+) -> std::io::Result<()> {
+    if source == target {
+        // SAFETY: The caller guarantees `target` is a valid open file descriptor.
+        unsafe { clear_cloexec(target) }
+    } else {
+        // SAFETY: The caller guarantees `source` is valid and that duplicating it onto `target`
+        // is sound in the current pre-exec process state.
+        let result = unsafe { libc::dup2(source, target) };
+
+        if result == -1 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// Closes a raw file descriptor.
+///
+/// # Safety
+///
+/// The caller must ensure `fd` refers to a valid open file descriptor and that no other owner will
+/// attempt to close it afterwards.
+pub unsafe fn close_raw_fd(fd: libc::c_int) -> std::io::Result<()> {
+    // SAFETY: The caller guarantees `fd` is a valid open file descriptor that may be closed here.
+    let result = unsafe { libc::close(fd) };
+
+    if result == -1 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+/// Closes `source` if it differs from `target`.
+///
+/// This is useful after duplicating a file descriptor onto a fixed target number, where closing the
+/// original source is only correct when it is not already the target descriptor.
+///
+/// # Safety
+///
+/// The caller must ensure `source` can be safely closed when it differs from `target`, including
+/// ensuring there is no remaining owner that will also close it.
+pub unsafe fn close_if_different(source: libc::c_int, target: libc::c_int) -> std::io::Result<()> {
+    if source != target {
+        // SAFETY: The caller guarantees `source` is a valid descriptor that may be closed here.
+        unsafe { close_raw_fd(source) }?;
+    }
+
+    Ok(())
 }
 
 /// Convert a boolean value to a `yes` or `no` string
@@ -367,7 +459,10 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::fd::IntoRawFd as _;
+
     use indexmap::indexmap;
+    use nix::unistd::pipe;
     use rstest::rstest;
 
     use super::*;
@@ -468,5 +563,25 @@ mod tests {
         let union: Union<i32, i32> = Union::new(a, b);
         let actual: IndexMap<i32, EitherOrBoth<i32>> = union.into_iter().collect();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_close_raw_fd_closes_descriptor() {
+        let (read_fd, write_fd) = pipe().unwrap();
+        let raw_read_fd = read_fd.into_raw_fd();
+
+        // SAFETY: `raw_read_fd` comes from `into_raw_fd`, so this test is its sole owner.
+        unsafe { close_raw_fd(raw_read_fd) }.unwrap();
+
+        // SAFETY: `raw_read_fd` is a plain integer here; `fcntl` is used only to verify that the
+        // descriptor was actually closed.
+        let result = unsafe { libc::fcntl(raw_read_fd, libc::F_GETFD) };
+        assert_eq!(result, -1);
+        assert_eq!(
+            std::io::Error::last_os_error().raw_os_error(),
+            Some(libc::EBADF)
+        );
+
+        drop(write_fd);
     }
 }

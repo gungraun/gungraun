@@ -1,67 +1,95 @@
 test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_callgrind:(setup_worst_case_array(100))
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (        %) [        x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (        %) [        x]
+  Estimated Cycles:                                       |                     (         )
+
 test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_cachegrind:(setup_worst_case_array(500))
-  ======= CACHEGRIND ===================================================================
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  ======= CACHEGRIND ==================================================================================
+  Instructions:                                           |                     (        %) [        x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (        %) [        x]
+  Estimated Cycles:                                       |                     (         )
+
 test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:(setup_worst_case_array(5))
-  ======= DHAT =========================================================================
-  Total bytes:                             |                     (+       %) [+       x]
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (+       %) [+       x]
-  Writes bytes:                            |                     (+       %) [+       x]
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |                     (        %) [        x]
+  Total blocks:                                           |                     (No change)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (No change)
+  At t-end blocks:                                        |                     (No change)
+  Reads bytes:                                            |                     (        %) [        x]
+  Writes bytes:                                           |                     (        %) [        x]
+
+test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_perf:(setup_worst_case_array(10000))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
 test_bench_template::bench_group::bench_bubble_sort_soft_limits should_not_run_after_regression:(setup_worst_case_array(10))
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_callgrind:(setup_worst_case_array(100))
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (        %) [        x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (        %) [        x]
+  Estimated Cycles:                                       |                     (         )
+
 test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_cachegrind:(setup_worst_case_array(500))
-  ======= CACHEGRIND ===================================================================
-  Instructions:                            |                     (+       %) [+       x]
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (+       %) [+       x]
-  Estimated Cycles:                        |                     (         )
+  ======= CACHEGRIND ==================================================================================
+  Instructions:                                           |                     (        %) [        x]
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (        %) [        x]
+  Estimated Cycles:                                       |                     (         )
+
 test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:(setup_worst_case_array(5))
-  ======= DHAT =========================================================================
-  Total bytes:                             |                     (+       %) [+       x]
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (+       %) [+       x]
-  Writes bytes:                            |                     (+       %) [+       x]
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |                     (        %) [        x]
+  Total blocks:                                           |                     (No change)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (No change)
+  At t-end blocks:                                        |                     (No change)
+  Reads bytes:                                            |                     (        %) [        x]
+  Writes bytes:                                           |                     (        %) [        x]
+
+test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_perf:(setup_worst_case_array(10000))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  task-clock/u:                                           |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    samples                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
+    samples                                               |                     (        %) [        x]
 test_bench_template::bench_group::bench_bubble_sort_hard_limits should_not_run_after_regression:(setup_worst_case_array(10))
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
 
 Regressions:
 
@@ -80,4 +108,4 @@ Regressions:
     DHAT: Reads bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
     DHAT: Total bytes (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
 
-Gungraun result: Regressed. 2 without regressions; 6 regressed; 0 filtered; 8 benchmarks finished in <__SECONDS__>s
+Gungraun result: Regressed. 4 without regressions; 6 regressed; 0 filtered; 10 benchmarks finished in <__SECONDS__>s

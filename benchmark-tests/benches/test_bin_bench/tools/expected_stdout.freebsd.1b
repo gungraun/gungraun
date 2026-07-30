@@ -1,166 +1,166 @@
 test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/release/subprocess <__ABS_PATH__>/sort
 1999000
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
-  ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
-  Command:             target/release/sort
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
+  ======= CALLGRIND ===================================================================================
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
+  Command: target/release/subprocess <__ABS_PATH__>/sort
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+  ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
+  Command: target/release/sort
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
   ## Total
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
-  Total bytes:                             |                     (No change)
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (No change)
-  Writes bytes:                            |                     (No change)
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/sort
-  Total bytes:                             |                     (No change)
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (No change)
-  Writes bytes:                            |                     (No change)
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+  ======= DHAT ========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/subprocess <__ABS_PATH__>/sort
+  Total bytes:                                            |                     (No change)
+  Total blocks:                                           |                     (No change)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (No change)
+  At t-end blocks:                                        |                     (No change)
+  Reads bytes:                                            |                     (No change)
+  Writes bytes:                                           |                     (No change)
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/sort
+  Total bytes:                                            |                     (No change)
+  Total blocks:                                           |                     (No change)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (No change)
+  At t-end blocks:                                        |                     (No change)
+  Reads bytes:                                            |                     (No change)
+  Writes bytes:                                           |                     (No change)
   ## Total
-  Total bytes:                             |                     (No change)
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (No change)
-  Writes bytes:                            |                     (No change)
-  ======= MASSIF =======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
+  Total bytes:                                            |                     (No change)
+  Total blocks:                                           |                     (No change)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (No change)
+  At t-end blocks:                                        |                     (No change)
+  Reads bytes:                                            |                     (No change)
+  Writes bytes:                                           |                     (No change)
+  ======= MASSIF ======================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/subprocess <__ABS_PATH__>/sort
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/sort
-  ======= EXP-BBV ======================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/sort
+  ======= EXP-BBV =====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/subprocess <__ABS_PATH__>/sort
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/sort
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/sort
   Details: <__DETAILS__>
-  ======= MEMCHECK =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/sort
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  ======= MEMCHECK ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/subprocess <__ABS_PATH__>/sort
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/sort
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ## Total
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= DRD ==========================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/sort
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= DRD =========================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/subprocess <__ABS_PATH__>/sort
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/sort
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ## Total
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= HELGRIND =====================================================================
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
-  Command:             target/release/sort
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= HELGRIND ====================================================================================
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/subprocess <__ABS_PATH__>/sort
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
+  Command: target/release/sort
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
   ## Total
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
 test_bin_bench_tools::bench_group::bench_subprocess no_trace_children:() -> target/release/subprocess <__ABS_PATH__>/sort
 1999000
 - end of stdout/stderr
-  ======= CALLGRIND ====================================================================
-  Instructions:                            |                     (No change)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  Total bytes:                             |                     (No change)
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (No change)
-  Writes bytes:                            |                     (No change)
-  ======= MASSIF =======================================================================
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
+  ======= CALLGRIND ===================================================================================
+  Instructions:                                           |                     (No change)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (No change)
+  Estimated Cycles:                                       |                     (         )
+  ======= DHAT ========================================================================================
+  Total bytes:                                            |                     (No change)
+  Total blocks:                                           |                     (No change)
+  At t-gmax bytes:                                        |                     (         )
+  At t-gmax blocks:                                       |                     (         )
+  At t-end bytes:                                         |                     (No change)
+  At t-end blocks:                                        |                     (No change)
+  Reads bytes:                                            |                     (No change)
+  Writes bytes:                                           |                     (No change)
+  ======= MASSIF ======================================================================================
+  Command: target/release/subprocess <__ABS_PATH__>/sort
   Details: <__DETAILS__>
-  ======= EXP-BBV ======================================================================
-  Command:             target/release/subprocess <__ABS_PATH__>/sort
+  ======= EXP-BBV =====================================================================================
+  Command: target/release/subprocess <__ABS_PATH__>/sort
   Details: <__DETAILS__>
-  ======= MEMCHECK =====================================================================
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= DRD ==========================================================================
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
-  ======= HELGRIND =====================================================================
-  Errors:                                  |                     (No change)
-  Contexts:                                |                     (No change)
-  Suppressed Errors:                       |                     (         )
-  Suppressed Contexts:                     |                     (         )
+  ======= MEMCHECK ====================================================================================
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= DRD =========================================================================================
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
+  ======= HELGRIND ====================================================================================
+  Errors:                                                 |                     (No change)
+  Contexts:                                               |                     (No change)
+  Suppressed Errors:                                      |                     (         )
+  Suppressed Contexts:                                    |                     (         )
 
 Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s

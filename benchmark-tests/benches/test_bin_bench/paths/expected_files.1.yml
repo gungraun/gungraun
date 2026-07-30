@@ -9,6 +9,14 @@ data:
         - summary.json
   - group: my_group
     function: bench_paths
+    id: crate_binary
+    expected:
+      files:
+        - callgrind.bench_paths.crate_binary.log
+        - callgrind.bench_paths.crate_binary.out
+        - summary.json
+  - group: my_group
+    function: bench_paths
     id: relative
     expected:
       files:
@@ -25,12 +33,4 @@ data:
       files:
         - callgrind.bench_paths.use_path.log
         - callgrind.bench_paths.use_path.out
-        - summary.json
-  - group: my_group
-    function: bench_paths
-    id: crate_binary
-    expected:
-      files:
-        - callgrind.bench_paths.crate_binary.log
-        - callgrind.bench_paths.crate_binary.out
         - summary.json

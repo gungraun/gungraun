@@ -1,4 +1,7 @@
-//! TODO: DOCS
+//! Runner-side logic for the [`summary::model`][super::model] types.
+//!
+//! This module implements the internal behavior used to build, aggregate, compare, print, and save
+//! benchmark summaries.
 
 use std::fmt::Display;
 use std::fs::File;
@@ -12,14 +15,16 @@ use glob::glob;
 use itertools::Itertools;
 use serde_json::Value;
 
-use crate::api::{ErrorMetric, EventKind, ValgrindTool};
+use crate::api::{ErrorMetric, EventKind, Tool};
 use crate::error::Error;
 use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
 use crate::runner::args::NoCapture;
-use crate::runner::common::{Baselines, CapturedOutput, Config, ModulePath};
+use crate::runner::common::{
+    Baselines, CapturedOutput, Config, ModulePath, PerfOutputConfig, PostProcessingConfig,
+};
 use crate::runner::format::{
-    Formatter, Header, OutputFormat, OutputFormatKind, VerticalFormatter, print_no_capture_footer,
-    print_regressions,
+    Formatter, OutputFormat, OutputFormatKind, VerticalFormatter, print_no_capture_footer,
+    print_no_config, print_regressions,
 };
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
@@ -89,11 +94,16 @@ impl BenchmarkSummary {
     fn print_default(
         &self,
         config: &Config,
-        header: &Header,
         output_format: &OutputFormat,
         mut captured_output: CapturedOutput,
+        post_processing_config: &PostProcessingConfig,
     ) -> Result<()> {
-        header.print();
+        post_processing_config.header.print();
+
+        if self.profiles.is_empty() {
+            print_no_config();
+            return Ok(());
+        }
 
         if config.meta.args.load_baseline.is_none() {
             match config.meta.args.nocapture {
@@ -118,7 +128,7 @@ impl BenchmarkSummary {
             let is_default = index == 0;
             let mut formatter = VerticalFormatter::new(output_format.clone());
             if !output_format.show_only_comparison
-                && (has_multiple || profile.tool != ValgrindTool::Callgrind)
+                && (has_multiple || profile.tool != Tool::Callgrind)
             {
                 formatter.format_tool_headline(profile.tool);
                 formatter.print_buffer();
@@ -130,6 +140,7 @@ impl BenchmarkSummary {
                 baselines,
                 &profile.summaries,
                 is_default,
+                post_processing_config.perf_config.as_ref(),
             );
             print_regressions(&profile.summaries.total.regressions);
         }
@@ -170,13 +181,18 @@ impl BenchmarkSummary {
     pub fn print_and_save(
         &self,
         config: &Config,
-        header: &Header,
         output_format: &OutputFormat,
         captured_output: CapturedOutput,
+        post_processing_config: &PostProcessingConfig,
     ) -> Result<()> {
         match output_format.kind {
             OutputFormatKind::Default => self
-                .print_default(config, header, output_format, captured_output)
+                .print_default(
+                    config,
+                    output_format,
+                    captured_output,
+                    post_processing_config,
+                )
                 .and_then(|()| {
                     if let Some(output) = &self.summary_output {
                         serde_json::to_value(self)
@@ -220,7 +236,13 @@ impl BenchmarkSummary {
     }
 
     /// Compare this summary with another and print the result of the comparison
-    pub fn compare_and_print(&self, id: &str, other: &Self, output_format: &OutputFormat) {
+    pub fn compare_and_print(
+        &self,
+        id: &str,
+        other: &Self,
+        output_format: &OutputFormat,
+        perf_processing_config: Option<&PerfOutputConfig>,
+    ) {
         let mut summaries = vec![];
 
         for profile in self.profiles.iter() {
@@ -242,6 +264,7 @@ impl BenchmarkSummary {
                 id,
                 self.details.as_deref(),
                 summaries,
+                perf_processing_config,
             );
         }
     }
@@ -281,6 +304,36 @@ impl ProfileData {
     /// Returns `true` if the profile data is empty.
     pub fn is_empty(&self) -> bool {
         self.parts.is_empty()
+    }
+
+    /// Returns `true` if any `ProfilePart` has a non-empty [`MetricsSummary`]
+    pub fn has_data<T>(&self, tool: T) -> bool
+    where
+        T: Into<Option<Tool>>,
+    {
+        match tool.into() {
+            Some(tool) => !self.parts.iter().all(|p| match (tool, &p.metrics_summary) {
+                (
+                    Tool::Helgrind | Tool::DRD | Tool::Memcheck,
+                    ToolMetricSummary::ErrorTool(metrics_summary),
+                ) => metrics_summary.is_empty(),
+                (Tool::DHAT, ToolMetricSummary::Dhat(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Callgrind, ToolMetricSummary::Callgrind(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Cachegrind, ToolMetricSummary::Cachegrind(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Perf, ToolMetricSummary::Perf(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
+                (Tool::Massif | Tool::BBV, ToolMetricSummary::None) => true,
+                (..) => unreachable!(),
+            }),
+            None => !self.parts.iter().all(|p| p.metrics_summary.is_empty()),
+        }
     }
 
     /// Returns `true` if the total and only the total has regressed.
@@ -348,15 +401,23 @@ impl ProfileData {
         grouped
     }
 
-    /// Creates a new `ToolRun` from the output(s) of the tool parsers.
+    /// Creates a new `ProfileData` from parser output grouped by pid, part, and thread.
+    ///
+    /// A running `total` is built while the grouped summaries are processed. For tools with a
+    /// meaningful aggregate summary, `total` starts as the corresponding empty summary and is
+    /// updated for every produced [`ProfilePart`].
+    ///
+    /// Perf is the exception: it does not currently define a synthetic total summary across parts.
+    /// Its metadata-bearing metrics are kept on the individual parts only, so the running total is
+    /// initialized as [`ToolMetricSummary::None`].
     ///
     /// The summaries created from the new parser outputs and the old parser outputs are grouped by
     /// pid (subprocesses recorded with `--trace-children`), then by part (for example cause by a
     /// `--dump-every-bb=xxx`) and then by thread (caused by `--separate-threads`). Since each of
     /// these components can differ between the new and the old parser output, this complicates the
     /// creation of each [`ProfileData`]. We can't just zip the new and old parser output directly
-    /// to get (as far as possible) correct comparisons between the new and old costs. To remedy
-    /// the possibly incorrect comparisons, there is always a total created.
+    /// to get (as far as possible) correct comparisons between the new and old costs. To remedy the
+    /// possibly incorrect comparisons, there is always a total created.
     ///
     /// In a first step the parsed outputs are grouped in vectors by pid, then by parts and then by
     /// threads. This solution is not very efficient but there are not too many parsed outputs to be
@@ -370,7 +431,8 @@ impl ProfileData {
             .expect("At least 1 parsed result should be present")
             .metrics
         {
-            ToolMetrics::None => ToolMetricSummary::None,
+            // Perf currently has no synthetic total summary; only per-part summaries are kept.
+            ToolMetrics::None | ToolMetrics::Perf(_) => ToolMetricSummary::None,
             ToolMetrics::Dhat(_) => ToolMetricSummary::Dhat(MetricsSummary::default()),
             ToolMetrics::ErrorTool(_) => ToolMetricSummary::ErrorTool(MetricsSummary::default()),
             ToolMetrics::Callgrind(_) => ToolMetricSummary::Callgrind(MetricsSummary::default()),
@@ -469,7 +531,8 @@ impl ProfilePart {
             ToolMetricSummary::None
             | ToolMetricSummary::Dhat(_)
             | ToolMetricSummary::Cachegrind(_)
-            | ToolMetricSummary::Callgrind(_) => false,
+            | ToolMetricSummary::Callgrind(_)
+            | ToolMetricSummary::Perf(_) => false,
             ToolMetricSummary::ErrorTool(metrics) => metrics
                 .diff_by_kind(&ErrorMetric::Errors)
                 .is_some_and(|e| e.metrics.has_left_and(|new| new > Metric::Int(0))),
@@ -532,6 +595,11 @@ impl Profiles {
     /// Creates a new collection of [`Profile`]s.
     pub fn new(values: Vec<Profile>) -> Self {
         Self(values)
+    }
+
+    /// Returns `true` when no tool produced a profile for the benchmark.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Return an iterator over the contained [`Profile`]s
@@ -603,6 +671,20 @@ impl SummaryOutput {
 }
 
 impl ToolMetricSummary {
+    /// Returns `true` if this summary is a typed variant with no metric diffs present.
+    ///
+    /// `ToolMetricSummary::None` is not considered empty and returns `false`.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::None => false,
+            Self::ErrorTool(summary) => summary.is_empty(),
+            Self::Dhat(summary) => summary.is_empty(),
+            Self::Callgrind(summary) => summary.is_empty(),
+            Self::Cachegrind(summary) => summary.is_empty(),
+            Self::Perf(summary) => summary.is_empty(),
+        }
+    }
+
     /// Sum up another summary metrics to these metrics
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
@@ -616,6 +698,9 @@ impl ToolMetricSummary {
                 this.add(other);
             }
             (Self::Cachegrind(this), Self::Cachegrind(other)) => {
+                this.add(other);
+            }
+            (Self::Perf(this), Self::Perf(other)) => {
                 this.add(other);
             }
             _ => {}
@@ -638,6 +723,9 @@ impl ToolMetricSummary {
             ToolMetrics::Cachegrind(metrics) => {
                 Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
+            ToolMetrics::Perf(metrics) => {
+                Self::Perf(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
         }
     }
 
@@ -656,6 +744,9 @@ impl ToolMetricSummary {
             }
             ToolMetrics::Cachegrind(metrics) => {
                 Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::Perf(metrics) => {
+                Self::Perf(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
             }
         }
     }
@@ -691,6 +782,9 @@ impl ToolMetricSummary {
                     old_metrics.clone(),
                 ))))
             }
+            (ToolMetrics::Perf(new_metrics), ToolMetrics::Perf(old_metrics)) => Ok(Self::Perf(
+                MetricsSummary::new(EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone())),
+            )),
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
         }
     }
@@ -763,6 +857,22 @@ impl ToolMetricSummary {
                     None
                 }
             }
+            (Self::Perf(metrics), Self::Perf(other_metrics)) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(Self::Perf(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -782,19 +892,63 @@ impl ToolRegression {
     /// Creates a new `ToolRegression`.
     pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
         match regressions {
-            RegressionMetrics::Soft(metric, new, old, diff_pct, limit) => Self::Soft {
+            RegressionMetrics::Soft(metric, display, unit, new, old, diff_pct, limit) => {
+                Self::Soft {
+                    metric: apply(metric),
+                    display,
+                    unit,
+                    new,
+                    old,
+                    diff_pct,
+                    limit,
+                }
+            }
+            RegressionMetrics::Hard(metric, display, unit, new, diff, limit) => Self::Hard {
                 metric: apply(metric),
-                new,
-                old,
-                diff_pct,
-                limit,
-            },
-            RegressionMetrics::Hard(metric, new, diff, limit) => Self::Hard {
-                metric: apply(metric),
+                display,
+                unit,
                 new,
                 diff,
                 limit,
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::api::PerfMetric;
+    use crate::units::Unit;
+
+    #[test]
+    fn test_tool_regression_with_preserves_unit() {
+        let regression = ToolRegression::with(
+            MetricKind::Perf,
+            RegressionMetrics::Soft(
+                PerfMetric("foo".to_owned()),
+                Some("foo [s]".to_owned()),
+                Some(Unit::Seconds),
+                Metric::Int(5),
+                Metric::Int(4),
+                25.0,
+                10.0,
+            ),
+        );
+
+        assert_eq!(
+            regression,
+            ToolRegression::Soft {
+                metric: MetricKind::Perf(PerfMetric("foo".to_owned())),
+                display: Some("foo [s]".to_owned()),
+                unit: Some(Unit::Seconds),
+                new: Metric::Int(5),
+                old: Metric::Int(4),
+                diff_pct: 25.0,
+                limit: 10.0,
+            }
+        );
     }
 }

@@ -8,7 +8,7 @@ use std::process::Output;
 
 use version_compare::Cmp;
 
-use crate::api::ValgrindTool;
+use crate::api::Tool;
 use crate::runner::common::{CapturedOutput, ModulePath};
 use crate::runner::format::Header;
 use crate::runner::tool::path::ToolOutputPath;
@@ -19,8 +19,8 @@ use crate::util::write_all_to_stderr;
 pub enum Error {
     /// An error during setup of a benchmark.
     ///
-    /// `BenchmarkError(ValgrindTool, ModulePath, message)`
-    BenchmarkError(ValgrindTool, ModulePath, String),
+    /// `BenchmarkError(Tool, ModulePath, message)`
+    BenchmarkError(Tool, ModulePath, String),
     /// An error within the UI configuration structs but transpiring in the runner
     ///
     /// `ConfigurationError(ModulePath, benchmark_id, message)`

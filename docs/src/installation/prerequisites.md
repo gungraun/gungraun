@@ -1,7 +1,13 @@
 # Prerequisites
 
-In order to use Gungraun, you must have [Valgrind] installed. This means that
-Gungraun cannot be used on platforms that are not supported by Valgrind.
+Gungraun requires at least one supported profiling tool for the benchmark
+target. Valgrind is required for the default `Callgrind` configuration and the
+other Valgrind tools. On Linux, Gungraun also supports `perf`, so a benchmark
+configured exclusively for perf does not require Valgrind.
+
+Target support and runtime availability are separate. A configured tool must be
+installed and executable in the environment where the benchmark runs. Perf may
+also require suitable kernel permissions for the requested events.
 
 The default benchmarking tool is `Callgrind` and is in most cases perfectly
 suited to do the job but if you want or need to use
@@ -86,15 +92,15 @@ dnf install valgrind
 pkg install valgrind
 ```
 
-### Running Valgrind in Containers
+### Running Valgrind or perf in Containers
 
-If Valgrind cannot be installed directly on your host system or you want to
-customize the Valgrind execution in a wrapper, you can use the
-`--valgrind-runner` argument, for example to run Valgrind through a container
-runtime like Docker or Podman.
+If Valgrind or perf cannot be installed directly on your host system, or you
+want to customize tool execution in a wrapper, you can use the `--tool-runner`
+argument to run the selected tool through a container runtime like Docker or
+Podman.
 
 For detailed instructions and more examples, see
-[Running Valgrind with a Custom Runner](../cli_and_env/valgrind_runner.md).
+[Running Tools with a Custom Runner](../cli_and_env/tool_runner.md).
 
 ### Valgrind is Available for the Following Distributions
 

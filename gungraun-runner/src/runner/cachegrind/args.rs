@@ -2,9 +2,9 @@
 
 use anyhow::Result;
 
-use crate::api::{RawToolArgs, ValgrindTool};
+use crate::api::{RawToolArgs, Tool};
 use crate::error::Error;
-use crate::runner::tool::args::{ToolArgs, ValgrindArgs, defaults};
+use crate::runner::tool::args::{ToolArgsLike, ValgrindArgs, ValgrindTool, defaults};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -17,9 +17,9 @@ pub struct CachegrindArgs {
     valgrind: ValgrindArgs,
 }
 
-impl ToolArgs for CachegrindArgs {
-    fn try_from_raw_tool_args(tool: ValgrindTool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
-        debug_assert_eq!(tool, ValgrindTool::Cachegrind);
+impl ToolArgsLike for CachegrindArgs {
+    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
+        debug_assert_eq!(tool, Tool::Cachegrind);
 
         let mut default = Self::default();
         default.try_update(raw_tool_args.iter().flat_map(|s| s.as_slice()))?;
@@ -93,7 +93,7 @@ mod tests {
         args.into_iter().map(str::to_owned).collect()
     }
 
-    #[builder(finish_fn = "fixture")]
+    #[builder(finish_fn = "fx")]
     pub fn valgrind_args_f(
         i1: Option<&str>,
         fair_sched: Option<FairSched>,
@@ -113,7 +113,7 @@ mod tests {
         args
     }
 
-    #[builder(finish_fn = "fixture")]
+    #[builder(finish_fn = "fx")]
     pub fn cachegrind_args_f(
         i1: Option<&str>,
         d1: Option<&str>,
@@ -142,26 +142,26 @@ mod tests {
     }
 
     #[rstest]
-    #[case::i1(&["--I1=some"], cachegrind_args_f().i1("some").fixture())]
-    #[case::d1(&["--D1=some"], cachegrind_args_f().d1("some").fixture())]
-    #[case::ll(&["--LL=some"], cachegrind_args_f().ll("some").fixture())]
-    #[case::cache_sim(&["--cache-sim=no"], cachegrind_args_f().cache_sim(false).fixture())]
+    #[case::i1(&["--I1=some"], cachegrind_args_f().i1("some").fx())]
+    #[case::d1(&["--D1=some"], cachegrind_args_f().d1("some").fx())]
+    #[case::ll(&["--LL=some"], cachegrind_args_f().ll("some").fx())]
+    #[case::cache_sim(&["--cache-sim=no"], cachegrind_args_f().cache_sim(false).fx())]
     #[case::valgrind_special(
         &["--fair-sched=no"],
         cachegrind_args_f()
-            .valgrind(valgrind_args_f().fair_sched(FairSched::No).fixture())
-            .fixture()
+            .valgrind(valgrind_args_f().fair_sched(FairSched::No).fx())
+            .fx()
     )]
     #[case::valgrind_other(
         &["--some-arg=yes"],
         cachegrind_args_f()
-            .valgrind(valgrind_args_f().other(vec!["--some-arg=yes".to_owned()]).fixture())
-            .fixture()
+            .valgrind(valgrind_args_f().other(vec!["--some-arg=yes".to_owned()]).fx())
+            .fx()
     )]
     fn test_try_from_raw_tool_args(#[case] args: &[&str], #[case] expected: CachegrindArgs) {
         let actual = CachegrindArgs::try_from_raw_tool_args(
-            ValgrindTool::Cachegrind,
-            &[&RawToolArgs::from_iter(args)],
+            Tool::Cachegrind,
+            &[&RawToolArgs::from_iter_ignore_flag(args)],
         )
         .unwrap();
         assert_eq!(actual, expected);
@@ -171,9 +171,9 @@ mod tests {
     fn test_from_cachegrind_args_defaults() {
         let expected = valgrind_args_f()
             .other(default_cachegrind_other_args())
-            .fixture();
+            .fx();
 
-        let actual = ValgrindArgs::from(cachegrind_args_f().fixture());
+        let actual = ValgrindArgs::from(cachegrind_args_f().fx());
 
         assert_eq!(actual, expected);
     }
@@ -185,10 +185,10 @@ mod tests {
             .d1("d1")
             .ll("ll")
             .cache_sim(false)
-            .fixture();
+            .fx();
         let expected = valgrind_args_f()
             .other(strings(["--I1=i1", "--D1=d1", "--LL=ll", "--cache-sim=no"]))
-            .fixture();
+            .fx();
 
         let actual = ValgrindArgs::from(args);
 
@@ -203,9 +203,9 @@ mod tests {
                 valgrind_args_f()
                     .fair_sched(FairSched::No)
                     .other(strings(["--unknown=yes", "--I1=generic"]))
-                    .fixture(),
+                    .fx(),
             )
-            .fixture();
+            .fx();
         let expected = valgrind_args_f()
             .fair_sched(FairSched::No)
             .other(strings([
@@ -216,7 +216,7 @@ mod tests {
                 "--LL=8388608,16,64",
                 "--cache-sim=yes",
             ]))
-            .fixture();
+            .fx();
 
         let actual = ValgrindArgs::from(args);
 

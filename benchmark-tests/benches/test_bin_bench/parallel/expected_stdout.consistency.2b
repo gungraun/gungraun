@@ -1,53 +1,53 @@
 test_bin_bench_parallel_consistency::my_group::with_output_in_command setup_and_teardown_without_output:() -> target/release/echo FOO
 FOO
 - end of stdout/stderr
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_parallel_consistency::my_group::with_output_in_command setup_and_teardown_with_output:() -> target/release/echo FOO
 SETUP in bench
 FOO
 TEARDOWN in bench
 - end of stdout/stderr
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_parallel_consistency::my_group::subprocess :() -> target/release/subprocess <__ABS_PATH__>/echo BAR
 BAR
 - end of stdout/stderr
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 SETUP in group
 test_bin_bench_parallel_consistency::group_assistants::with_output_in_command setup_and_teardown_without_output:() -> target/release/echo FOO
 FOO
 - end of stdout/stderr
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 test_bin_bench_parallel_consistency::group_assistants::with_output_in_command setup_and_teardown_with_output:() -> target/release/echo FOO
 SETUP in bench
 FOO
 TEARDOWN in bench
 - end of stdout/stderr
-  Instructions:                            |                     (Tolerance)
-  L1 Hits:                                 |                     (         )
-  LL Hits:                                 |                     (         )
-  RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (Tolerance)
-  Estimated Cycles:                        |                     (         )
+  Instructions:                                           |                     (Tolerance)
+  L1 Hits:                                                |                     (         )
+  LL Hits:                                                |                     (         )
+  RAM Hits:                                               |                     (         )
+  Total read+write:                                       |                     (Tolerance)
+  Estimated Cycles:                                       |                     (         )
 TEARDOWN in group
 
 Gungraun result: Ok. 5 without regressions; 0 regressed; 0 filtered; 5 benchmarks finished in <__SECONDS__>s

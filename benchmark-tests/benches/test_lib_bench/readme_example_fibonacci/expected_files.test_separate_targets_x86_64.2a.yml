@@ -2,17 +2,17 @@ home_dir: target/gungraun/x86_64-unknown-linux-gnu
 data:
   - group: bench_fibonacci_group
     function: bench_fibonacci
-    id: short
-    expected:
-      files:
-        - callgrind.bench_fibonacci.short.log
-        - callgrind.bench_fibonacci.short.out
-        - summary.json
-  - group: bench_fibonacci_group
-    function: bench_fibonacci
     id: long
     expected:
       files:
         - callgrind.bench_fibonacci.long.log
         - callgrind.bench_fibonacci.long.out
+        - summary.json
+  - group: bench_fibonacci_group
+    function: bench_fibonacci
+    id: short
+    expected:
+      files:
+        - callgrind.bench_fibonacci.short.log
+        - callgrind.bench_fibonacci.short.out
         - summary.json

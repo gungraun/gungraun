@@ -4,9 +4,9 @@ use std::collections::VecDeque;
 use anyhow::Result;
 use log::warn;
 
-use crate::api::{RawToolArgs, ValgrindTool};
+use crate::api::{RawToolArgs, Tool};
 use crate::error::Error;
-use crate::runner::tool::args::{ToolArgs, ValgrindArgs, defaults};
+use crate::runner::tool::args::{ToolArgsLike, ValgrindArgs, ValgrindTool, defaults};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -28,9 +28,9 @@ pub struct CallgrindArgs {
     valgrind_args: ValgrindArgs,
 }
 
-impl ToolArgs for CallgrindArgs {
-    fn try_from_raw_tool_args(tool: ValgrindTool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
-        debug_assert_eq!(tool, ValgrindTool::Callgrind);
+impl ToolArgsLike for CallgrindArgs {
+    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
+        debug_assert_eq!(tool, Tool::Callgrind);
 
         let mut default = Self::default();
         default.try_update(raw_tool_args.iter().flat_map(|s| s.as_slice()))?;
@@ -164,7 +164,7 @@ mod tests {
         args.into_iter().map(str::to_owned).collect()
     }
 
-    #[builder(finish_fn = "fixture")]
+    #[builder(finish_fn = "fx")]
     pub fn valgrind_args_f(
         i1: Option<&str>,
         fair_sched: Option<FairSched>,
@@ -184,7 +184,7 @@ mod tests {
         args
     }
 
-    #[builder(finish_fn = "fixture")]
+    #[builder(finish_fn = "fx")]
     pub fn callgrind_args_f(
         i1: Option<&str>,
         d1: Option<&str>,
@@ -229,44 +229,44 @@ mod tests {
     }
 
     #[rstest]
-    #[case::i1(&["--I1=some"], callgrind_args_f().i1("some").fixture())]
-    #[case::d1(&["--D1=some"], callgrind_args_f().d1("some").fixture())]
-    #[case::ll(&["--LL=some"], callgrind_args_f().ll("some").fixture())]
-    #[case::cache_sim(&["--cache-sim=no"], callgrind_args_f().cache_sim(false).fixture())]
+    #[case::i1(&["--I1=some"], callgrind_args_f().i1("some").fx())]
+    #[case::d1(&["--D1=some"], callgrind_args_f().d1("some").fx())]
+    #[case::ll(&["--LL=some"], callgrind_args_f().ll("some").fx())]
+    #[case::cache_sim(&["--cache-sim=no"], callgrind_args_f().cache_sim(false).fx())]
     #[case::toggle_collect(
         &["--toggle-collect=main"],
         callgrind_args_f()
             .toggle_collect(VecDeque::from(["main".to_owned()]))
-            .fixture()
+            .fx()
     )]
-    #[case::dump_instr(&["--dump-instr=yes"], callgrind_args_f().dump_instr(true).fixture())]
-    #[case::dump_line(&["--dump-line=no"], callgrind_args_f().dump_line(false).fixture())]
+    #[case::dump_instr(&["--dump-instr=yes"], callgrind_args_f().dump_instr(true).fx())]
+    #[case::dump_line(&["--dump-line=no"], callgrind_args_f().dump_line(false).fx())]
     #[case::separate_threads(
         &["--separate-threads=no"],
-        callgrind_args_f().separate_threads(false).fixture()
+        callgrind_args_f().separate_threads(false).fx()
     )]
-    #[case::combine_dumps_is_ignored(&["--combine-dumps=yes"], callgrind_args_f().fixture())]
+    #[case::combine_dumps_is_ignored(&["--combine-dumps=yes"], callgrind_args_f().fx())]
     #[case::compress_strings_is_ignored(
         &["--compress-strings=yes"],
-        callgrind_args_f().fixture()
+        callgrind_args_f().fx()
     )]
-    #[case::compress_pos_is_ignored(&["--compress-pos=yes"], callgrind_args_f().fixture())]
+    #[case::compress_pos_is_ignored(&["--compress-pos=yes"], callgrind_args_f().fx())]
     #[case::valgrind_special(
         &["--fair-sched=no"],
         callgrind_args_f()
-            .valgrind_args(valgrind_args_f().fair_sched(FairSched::No).fixture())
-            .fixture()
+            .valgrind_args(valgrind_args_f().fair_sched(FairSched::No).fx())
+            .fx()
     )]
     #[case::valgrind_other(
         &["--some-arg=yes"],
         callgrind_args_f()
-            .valgrind_args(valgrind_args_f().other(vec!["--some-arg=yes".to_owned()]).fixture())
-            .fixture()
+            .valgrind_args(valgrind_args_f().other(vec!["--some-arg=yes".to_owned()]).fx())
+            .fx()
     )]
     fn test_try_from_raw_tool_args(#[case] args: &[&str], #[case] expected: CallgrindArgs) {
         let actual = CallgrindArgs::try_from_raw_tool_args(
-            ValgrindTool::Callgrind,
-            &[&RawToolArgs::from_iter(args)],
+            Tool::Callgrind,
+            &[&RawToolArgs::from_iter_ignore_flag(args)],
         )
         .unwrap();
         assert_eq!(actual, expected);
@@ -274,11 +274,9 @@ mod tests {
 
     #[test]
     fn test_from_callgrind_args_when_defaults() {
-        let expected = valgrind_args_f()
-            .other(default_callgrind_other_args())
-            .fixture();
+        let expected = valgrind_args_f().other(default_callgrind_other_args()).fx();
 
-        let actual = ValgrindArgs::from(callgrind_args_f().fixture());
+        let actual = ValgrindArgs::from(callgrind_args_f().fx());
 
         assert_eq!(actual, expected);
     }
@@ -293,7 +291,7 @@ mod tests {
             .dump_line(false)
             .dump_instr(true)
             .separate_threads(false)
-            .fixture();
+            .fx();
         let expected = valgrind_args_f()
             .other(strings([
                 "--I1=i1",
@@ -307,7 +305,7 @@ mod tests {
                 "--combine-dumps=no",
                 "--separate-threads=no",
             ]))
-            .fixture();
+            .fx();
 
         let actual = ValgrindArgs::from(args);
 
@@ -318,13 +316,13 @@ mod tests {
     fn test_from_callgrind_args_when_toggle_collect() {
         let args = callgrind_args_f()
             .toggle_collect(VecDeque::from(["main".to_owned(), "helper".to_owned()]))
-            .fixture();
+            .fx();
         let mut other = default_callgrind_other_args();
         other.extend(strings([
             "--toggle-collect=main",
             "--toggle-collect=helper",
         ]));
-        let expected = valgrind_args_f().other(other).fixture();
+        let expected = valgrind_args_f().other(other).fx();
 
         let actual = ValgrindArgs::from(args);
 
@@ -339,9 +337,9 @@ mod tests {
                 valgrind_args_f()
                     .fair_sched(FairSched::No)
                     .other(strings(["--unknown=yes", "--I1=generic"]))
-                    .fixture(),
+                    .fx(),
             )
-            .fixture();
+            .fx();
         let expected = valgrind_args_f()
             .fair_sched(FairSched::No)
             .other(strings([
@@ -358,7 +356,7 @@ mod tests {
                 "--combine-dumps=no",
                 "--separate-threads=yes",
             ]))
-            .fixture();
+            .fx();
 
         let actual = ValgrindArgs::from(args);
 

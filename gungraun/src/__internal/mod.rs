@@ -5,7 +5,13 @@
 pub mod bin_bench;
 pub mod error;
 pub mod lib_bench;
+pub mod perf;
 
+pub mod stats {
+    pub use gungraun_runner::api::{calibrate_linear, logistic};
+}
+
+use gungraun_common::supported_tools;
 // The runner api is not used directly in order to decouple the user interface and
 // documentation from the internal usage.
 //
@@ -18,7 +24,7 @@ pub mod lib_bench;
 // As an exception, enums from the runner api are usually used directly and re-exported in
 // `lib.rs`.
 pub use gungraun_runner::api::{
-    BinaryBenchmark as InternalBinaryBenchmark,
+    BenchRunMode as InternalBenchRunMode, BinaryBenchmark as InternalBinaryBenchmark,
     BinaryBenchmarkBench as InternalBinaryBenchmarkBench,
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
     BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup,
@@ -26,24 +32,28 @@ pub use gungraun_runner::api::{
     CachegrindRegressionConfig as InternalCachegrindRegressionConfig,
     CallgrindRegressionConfig as InternalCallgrindRegressionConfig, Command as InternalCommand,
     CommandKind as InternalCommandKind, Delay as InternalDelay,
-    DhatRegressionConfig as InternalDhatRegressionConfig, EntryPoint as InternalEntryPoint,
-    ExitWith as InternalExitWith, Fixtures as InternalFixtures,
+    DhatRegressionConfig as InternalDhatRegressionConfig, DhatSpec as InternalDhatSpec,
+    EntryPoint as InternalEntryPoint, ExitWith as InternalExitWith, Fixtures as InternalFixtures,
     FlamegraphConfig as InternalFlamegraphConfig,
     LibraryBenchmark as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup,
     LibraryBenchmarkGroups as InternalLibraryBenchmarkGroups, OutputFormat as InternalOutputFormat,
-    RawToolArgs as InternalRawArgs, Sandbox as InternalSandbox, Tool as InternalTool,
+    PERF_ACK_FD_READ, PERF_ACK_FD_WRITE, PERF_CTL_FD_READ, PERF_CTL_FD_WRITE, PERF_LOG_FD,
+    PERF_REPETITIONS_MARKER, PerfRegressionConfig as InternalPerfRegressionConfig,
+    PerfRunMode as InternalPerfRunMode, PerfSpec as InternalPerfSpec,
+    RawToolArgs as InternalRawArgs, Sandbox as InternalSandbox,
     ToolFlamegraphConfig as InternalToolFlamegraphConfig,
     ToolOutputFormat as InternalToolOutputFormat,
-    ToolRegressionConfig as InternalToolRegressionConfig, Tools as InternalTools,
+    ToolRegressionConfig as InternalToolRegressionConfig, ToolSpec as InternalToolSpec,
+    ToolSpecOptions as InternalToolSpecOptions, ToolSpecs as InternalToolSpecs,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub enum InternalLibFunctionKind {
-    Iter(fn(Option<usize>) -> usize),
-    Default(fn()),
+    Iter(fn(InternalBenchRunMode, Option<usize>) -> usize),
+    Default(fn(InternalBenchRunMode)),
 }
 
 #[derive(Debug, Clone, Copy, Eq)]
@@ -172,6 +182,7 @@ impl Runner {
         cmd.arg(file);
         cmd.arg(module_path);
         cmd.arg(env!("__GUNGRAUN_BUILD_TARGET"));
+        cmd.arg(supported_tools().to_string());
         cmd.arg(bench_bin); // The executable benchmark binary
 
         Self {

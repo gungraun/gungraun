@@ -1,4 +1,18 @@
 data:
+  - group: bubble_sort_compare_no_id
+    function: bench_bubble_sort_no_id_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_no_id_1.log
+        - callgrind.bench_bubble_sort_no_id_1.out
+        - summary.json
+  - group: bubble_sort_compare_no_id
+    function: bench_bubble_sort_no_id_2
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_no_id_2.log
+        - callgrind.bench_bubble_sort_no_id_2.out
+        - summary.json
   - group: bubble_sort_compare_one
     function: bench_bubble_sort_best_case
     id: case_3
@@ -23,54 +37,6 @@ data:
         - callgrind.bench_bubble_sort_best_case.multiple_1.log
         - callgrind.bench_bubble_sort_best_case.multiple_1.out
         - summary.json
-  - group: bubble_sort_compare_two
-    function: bench_bubble_sort_best_case
-    id: case_3
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_best_case.case_3.log
-        - callgrind.bench_bubble_sort_best_case.case_3.out
-        - summary.json
-  - group: bubble_sort_compare_two
-    function: bench_bubble_sort_best_case
-    id: multiple_0
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_best_case.multiple_0.log
-        - callgrind.bench_bubble_sort_best_case.multiple_0.out
-        - summary.json
-  - group: bubble_sort_compare_two
-    function: bench_bubble_sort_best_case
-    id: multiple_1
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_best_case.multiple_1.log
-        - callgrind.bench_bubble_sort_best_case.multiple_1.out
-        - summary.json
-  - group: bubble_sort_compare_two
-    function: bench_bubble_sort_worst_case
-    id: case_3
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_worst_case.case_3.log
-        - callgrind.bench_bubble_sort_worst_case.case_3.out
-        - summary.json
-  - group: bubble_sort_compare_two
-    function: bench_bubble_sort_worst_case
-    id: multiple_0
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_worst_case.multiple_0.log
-        - callgrind.bench_bubble_sort_worst_case.multiple_0.out
-        - summary.json
-  - group: bubble_sort_compare_two
-    function: bench_bubble_sort_worst_case
-    id: multiple_1
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_worst_case.multiple_1.log
-        - callgrind.bench_bubble_sort_worst_case.multiple_1.out
-        - summary.json
   - group: bubble_sort_compare_three
     function: bench_bubble_sort_best_case
     id: case_3
@@ -94,30 +60,6 @@ data:
       files:
         - callgrind.bench_bubble_sort_best_case.multiple_1.log
         - callgrind.bench_bubble_sort_best_case.multiple_1.out
-        - summary.json
-  - group: bubble_sort_compare_three
-    function: bench_bubble_sort_worst_case
-    id: case_3
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_worst_case.case_3.log
-        - callgrind.bench_bubble_sort_worst_case.case_3.out
-        - summary.json
-  - group: bubble_sort_compare_three
-    function: bench_bubble_sort_worst_case
-    id: multiple_0
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_worst_case.multiple_0.log
-        - callgrind.bench_bubble_sort_worst_case.multiple_0.out
-        - summary.json
-  - group: bubble_sort_compare_three
-    function: bench_bubble_sort_worst_case
-    id: multiple_1
-    expected:
-      files:
-        - callgrind.bench_bubble_sort_worst_case.multiple_1.log
-        - callgrind.bench_bubble_sort_worst_case.multiple_1.out
         - summary.json
   - group: bubble_sort_compare_three
     function: bench_bubble_sort_mixed_case
@@ -143,17 +85,119 @@ data:
         - callgrind.bench_bubble_sort_mixed_case.no_compare_multiple_1.log
         - callgrind.bench_bubble_sort_mixed_case.no_compare_multiple_1.out
         - summary.json
-  - group: bubble_sort_compare_no_id
-    function: bench_bubble_sort_no_id_1
+  - group: bubble_sort_compare_three
+    function: bench_bubble_sort_worst_case
+    id: case_3
     expected:
       files:
-        - callgrind.bench_bubble_sort_no_id_1.log
-        - callgrind.bench_bubble_sort_no_id_1.out
+        - callgrind.bench_bubble_sort_worst_case.case_3.log
+        - callgrind.bench_bubble_sort_worst_case.case_3.out
         - summary.json
-  - group: bubble_sort_compare_no_id
-    function: bench_bubble_sort_no_id_2
+  - group: bubble_sort_compare_three
+    function: bench_bubble_sort_worst_case
+    id: multiple_0
     expected:
       files:
-        - callgrind.bench_bubble_sort_no_id_2.log
-        - callgrind.bench_bubble_sort_no_id_2.out
+        - callgrind.bench_bubble_sort_worst_case.multiple_0.log
+        - callgrind.bench_bubble_sort_worst_case.multiple_0.out
+        - summary.json
+  - group: bubble_sort_compare_three
+    function: bench_bubble_sort_worst_case
+    id: multiple_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_worst_case.multiple_1.log
+        - callgrind.bench_bubble_sort_worst_case.multiple_1.out
+        - summary.json
+  - group: bubble_sort_compare_two
+    function: bench_bubble_sort_best_case
+    id: case_3
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_best_case.case_3.log
+        - callgrind.bench_bubble_sort_best_case.case_3.out
+        - summary.json
+  - group: bubble_sort_compare_two
+    function: bench_bubble_sort_best_case
+    id: multiple_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_best_case.multiple_0.log
+        - callgrind.bench_bubble_sort_best_case.multiple_0.out
+        - summary.json
+  - group: bubble_sort_compare_two
+    function: bench_bubble_sort_best_case
+    id: multiple_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_best_case.multiple_1.log
+        - callgrind.bench_bubble_sort_best_case.multiple_1.out
+        - summary.json
+  - group: bubble_sort_compare_two
+    function: bench_bubble_sort_worst_case
+    id: case_3
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_worst_case.case_3.log
+        - callgrind.bench_bubble_sort_worst_case.case_3.out
+        - summary.json
+  - group: bubble_sort_compare_two
+    function: bench_bubble_sort_worst_case
+    id: multiple_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_worst_case.multiple_0.log
+        - callgrind.bench_bubble_sort_worst_case.multiple_0.out
+        - summary.json
+  - group: bubble_sort_compare_two
+    function: bench_bubble_sort_worst_case
+    id: multiple_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_worst_case.multiple_1.log
+        - callgrind.bench_bubble_sort_worst_case.multiple_1.out
+        - summary.json
+  - group: bubble_sort_compare_with_dhat
+    function: bench_bubble_sort_dhat
+    id: case_3
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_dhat.case_3.log
+        - callgrind.bench_bubble_sort_dhat.case_3.out
+        - dhat.bench_bubble_sort_dhat.case_3.log
+        - dhat.bench_bubble_sort_dhat.case_3.out
+        - summary.json
+  - group: bubble_sort_compare_with_dhat
+    function: bench_bubble_sort_dhat_other
+    id: case_3
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_dhat_other.case_3.log
+        - callgrind.bench_bubble_sort_dhat_other.case_3.out
+        - dhat.bench_bubble_sort_dhat_other.case_3.log
+        - dhat.bench_bubble_sort_dhat_other.case_3.out
+        - summary.json
+  - group: bubble_sort_compare_with_dhat
+    function: bench_bubble_sort_mixed_case
+    id: case_3
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_mixed_case.case_3.log
+        - callgrind.bench_bubble_sort_mixed_case.case_3.out
+        - summary.json
+  - group: bubble_sort_compare_with_dhat
+    function: bench_bubble_sort_mixed_case
+    id: no_compare_multiple_0
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_mixed_case.no_compare_multiple_0.log
+        - callgrind.bench_bubble_sort_mixed_case.no_compare_multiple_0.out
+        - summary.json
+  - group: bubble_sort_compare_with_dhat
+    function: bench_bubble_sort_mixed_case
+    id: no_compare_multiple_1
+    expected:
+      files:
+        - callgrind.bench_bubble_sort_mixed_case.no_compare_multiple_1.log
+        - callgrind.bench_bubble_sort_mixed_case.no_compare_multiple_1.out
         - summary.json

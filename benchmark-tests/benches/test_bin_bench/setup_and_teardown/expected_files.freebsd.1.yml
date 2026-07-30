@@ -1,0 +1,216 @@
+data:
+  - group: bench_group
+    function: bench_global_setup_and_teardown
+    id: no_overwrite
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.no_overwrite.log
+        - callgrind.bench_global_setup_and_teardown.no_overwrite.out
+        - summary.json
+  - group: bench_group
+    function: bench_global_setup_and_teardown
+    id: overwrite_setup
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup.log
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup.out
+        - summary.json
+  - group: bench_group
+    function: bench_global_setup_and_teardown
+    id: overwrite_setup_and_teardown
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup_and_teardown.log
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup_and_teardown.out
+        - summary.json
+  - group: bench_group
+    function: bench_global_setup_and_teardown
+    id: overwrite_teardown
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.overwrite_teardown.log
+        - callgrind.bench_global_setup_and_teardown.overwrite_teardown.out
+        - summary.json
+  - group: bench_group
+    function: bench_just_binary_benchmark_attribute
+    expected:
+      files:
+        - callgrind.bench_just_binary_benchmark_attribute.log
+        - callgrind.bench_just_binary_benchmark_attribute.out
+        - summary.json
+  - group: bench_group
+    function: bench_only_setup
+    id: setup_first_then_args
+    expected:
+      files:
+        - callgrind.bench_only_setup.setup_first_then_args.log
+        - callgrind.bench_only_setup.setup_first_then_args.out
+        - summary.json
+  - group: bench_group
+    function: bench_only_setup
+    id: setup_in_module
+    expected:
+      files:
+        - callgrind.bench_only_setup.setup_in_module.log
+        - callgrind.bench_only_setup.setup_in_module.out
+        - summary.json
+  - group: bench_group
+    function: bench_only_setup
+    id: setup_with_one_argument
+    expected:
+      files:
+        - callgrind.bench_only_setup.setup_with_one_argument.log
+        - callgrind.bench_only_setup.setup_with_one_argument.out
+        - summary.json
+  - group: bench_group
+    function: bench_only_teardown
+    id: teardown_first_then_args
+    expected:
+      files:
+        - callgrind.bench_only_teardown.teardown_first_then_args.log
+        - callgrind.bench_only_teardown.teardown_first_then_args.out
+        - summary.json
+  - group: bench_group
+    function: bench_only_teardown
+    id: teardown_in_module
+    expected:
+      files:
+        - callgrind.bench_only_teardown.teardown_in_module.log
+        - callgrind.bench_only_teardown.teardown_in_module.out
+        - summary.json
+  - group: bench_group
+    function: bench_only_teardown
+    id: teardown_with_one_argument
+    expected:
+      files:
+        - callgrind.bench_only_teardown.teardown_with_one_argument.log
+        - callgrind.bench_only_teardown.teardown_with_one_argument.out
+        - summary.json
+  - group: bench_group
+    function: bench_setup_and_teardown
+    id: setup_first_then_teardown
+    expected:
+      files:
+        - callgrind.bench_setup_and_teardown.setup_first_then_teardown.log
+        - callgrind.bench_setup_and_teardown.setup_first_then_teardown.out
+        - summary.json
+  - group: bench_group
+    function: bench_setup_and_teardown
+    id: teardown_first_then_setup
+    expected:
+      files:
+        - callgrind.bench_setup_and_teardown.teardown_first_then_setup.log
+        - callgrind.bench_setup_and_teardown.teardown_first_then_setup.out
+        - summary.json
+  - group: bench_group
+    function: simple_bench
+    id: setup_no_args_parameter
+    expected:
+      files:
+        - callgrind.simple_bench.setup_no_args_parameter.log
+        - callgrind.simple_bench.setup_no_args_parameter.out
+        - summary.json
+  - group: bench_group
+    function: simple_bench
+    id: setup_with_args_parameter
+    expected:
+      files:
+        - callgrind.simple_bench.setup_with_args_parameter.log
+        - callgrind.simple_bench.setup_with_args_parameter.out
+        - summary.json
+  - group: low_level
+    function: bench_global_setup_and_teardown
+    id: no_overwrite
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.no_overwrite.log
+        - callgrind.bench_global_setup_and_teardown.no_overwrite.out
+        - summary.json
+  - group: low_level
+    function: bench_global_setup_and_teardown
+    id: overwrite_setup
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup.log
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup.out
+        - summary.json
+  - group: low_level
+    function: bench_global_setup_and_teardown
+    id: overwrite_setup_and_teardown
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup_and_teardown.log
+        - callgrind.bench_global_setup_and_teardown.overwrite_setup_and_teardown.out
+        - summary.json
+  - group: low_level
+    function: bench_global_setup_and_teardown
+    id: overwrite_teardown
+    expected:
+      files:
+        - callgrind.bench_global_setup_and_teardown.overwrite_teardown.log
+        - callgrind.bench_global_setup_and_teardown.overwrite_teardown.out
+        - summary.json
+  - group: low_level
+    function: bench_only_setup
+    id: setup_in_module
+    expected:
+      files:
+        - callgrind.bench_only_setup.setup_in_module.log
+        - callgrind.bench_only_setup.setup_in_module.out
+        - summary.json
+  - group: low_level
+    function: bench_only_setup
+    id: setup_with_one_argument
+    expected:
+      files:
+        - callgrind.bench_only_setup.setup_with_one_argument.log
+        - callgrind.bench_only_setup.setup_with_one_argument.out
+        - summary.json
+  - group: low_level
+    function: bench_only_teardown
+    id: teardown_in_module
+    expected:
+      files:
+        - callgrind.bench_only_teardown.teardown_in_module.log
+        - callgrind.bench_only_teardown.teardown_in_module.out
+        - summary.json
+  - group: low_level
+    function: bench_only_teardown
+    id: teardown_with_one_argument
+    expected:
+      files:
+        - callgrind.bench_only_teardown.teardown_with_one_argument.log
+        - callgrind.bench_only_teardown.teardown_with_one_argument.out
+        - summary.json
+  - group: low_level
+    function: bench_setup_and_teardown
+    id: setup_first_then_teardown
+    expected:
+      files:
+        - callgrind.bench_setup_and_teardown.setup_first_then_teardown.log
+        - callgrind.bench_setup_and_teardown.setup_first_then_teardown.out
+        - summary.json
+  - group: low_level
+    function: bench_setup_and_teardown
+    id: teardown_first_then_setup
+    expected:
+      files:
+        - callgrind.bench_setup_and_teardown.teardown_first_then_setup.log
+        - callgrind.bench_setup_and_teardown.teardown_first_then_setup.out
+        - summary.json
+  - group: low_level
+    function: bench_setup_last
+    id: no_setup
+    expected:
+      files:
+        - callgrind.bench_setup_last.no_setup.log
+        - callgrind.bench_setup_last.no_setup.out
+        - summary.json
+  - group: low_level
+    function: bench_setup_last
+    id: with_setup
+    expected:
+      files:
+        - callgrind.bench_setup_last.with_setup.log
+        - callgrind.bench_setup_last.with_setup.out
+        - summary.json

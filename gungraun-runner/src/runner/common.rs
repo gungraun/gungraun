@@ -7,10 +7,10 @@ mod defaults {
 }
 
 use std::collections::HashMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{Seek, Write, stderr, stdout};
+use std::io::{BufRead, BufReader, Seek, Write, stderr, stdout};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio as StdStdio};
 use std::sync::atomic::AtomicBool;
@@ -18,13 +18,14 @@ use std::sync::{Arc, atomic};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow};
+use itertools::Itertools;
 use log::{Level, debug, log_enabled, warn};
 use tempfile::{TempDir, tempfile};
 
 use super::format::{OutputFormatKind, SummaryFormatter};
 use super::meta::Metadata;
 use crate::api::{
-    self, BinaryBenchmarkGroups, EntryPoint, LibraryBenchmarkGroups, Pipe, ValgrindTool,
+    self, BenchRunMode, BinaryBenchmarkGroups, EntryPoint, LibraryBenchmarkGroups, Pipe, Tool,
 };
 use crate::error::Error;
 use crate::runner::args::NoCapture;
@@ -39,7 +40,9 @@ use crate::runner::format::{
 };
 use crate::runner::lib_bench::{self, LibBench};
 use crate::runner::tasks::ThreadPool;
-use crate::runner::tool::config::ToolFlamegraphConfig;
+use crate::runner::tool::config::{
+    DEFAULT_PERF_ALPHA, DEFAULT_PERF_MIN_PCNT_RUNNING, ToolFlamegraphConfig,
+};
 use crate::runner::tool::parser::{Parser, ParserOutput};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
@@ -176,12 +179,10 @@ pub struct JobResult {
     pub captured_output: CapturedOutput,
     /// Data processor used to parse and finalize tool outputs.
     pub data_processor: Box<dyn BenchmarkDataProcessor>,
-    /// Whether regressions in this job should immediately fail the run.
-    pub fail_fast: bool,
-    /// Header metadata used for formatting benchmark output.
-    pub header: Header,
     /// Output formatting configuration used when printing this job result.
     pub output_format: OutputFormat,
+    /// Configuration controlling how benchmark results are processed and formatted.
+    pub post_processing_config: PostProcessingConfig,
 }
 
 /// Data processor used when loading and comparing against an existing baseline.
@@ -194,6 +195,59 @@ pub struct LoadBaselineDataProcessor {
 /// A helper struct similar to a file path but for module paths with the `::` delimiter
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
+
+/// Configuration controlling how benchmark results are processed and formatted for output.
+#[derive(Debug, PartialEq, Clone)]
+pub struct PostProcessingConfig {
+    /// Whether to compare benchmarks by their id.
+    pub compare_by_id: bool,
+    /// Whether to stop after the first failing benchmark.
+    pub fail_fast: bool,
+    /// The header to print at the start of benchmark output.
+    pub header: Header,
+    /// Optional perf-specific output configuration. When [`None`], defaults are used.
+    pub perf_config: Option<PerfOutputConfig>,
+}
+
+/// Configuration for perf-specific output formatting and significance thresholds.
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct PerfOutputConfig {
+    /// The alpha threshold used for statistical significance testing.
+    pub alpha: f64,
+    /// The minimum percentage of time the benchmark must be running.
+    pub min_pcnt_running: f64,
+}
+
+// FIX: Sort structs, impls, ... in this module
+impl PerfOutputConfig {
+    /// Returns the alpha threshold for statistical significance testing.
+    pub fn alpha(&self) -> f64 {
+        self.alpha
+    }
+
+    /// Returns the minimum percentage of time the benchmark must be running.
+    pub fn min_pcnt_running(&self) -> f64 {
+        self.min_pcnt_running
+    }
+}
+
+impl From<(f64, f64)> for PerfOutputConfig {
+    fn from((alpha, min_pcnt_running): (f64, f64)) -> Self {
+        Self {
+            alpha,
+            min_pcnt_running,
+        }
+    }
+}
+
+impl Default for PerfOutputConfig {
+    fn default() -> Self {
+        Self {
+            alpha: DEFAULT_PERF_ALPHA,
+            min_pcnt_running: DEFAULT_PERF_MIN_PCNT_RUNNING,
+        }
+    }
+}
 
 /// The `Sandbox` in which benchmarks should be runs
 ///
@@ -222,6 +276,10 @@ pub struct Runner {
 /// Temporary output files used to capture benchmark stdout and stderr.
 #[derive(Debug)]
 pub struct CapturedOutput {
+    /// Whether Perf control messages are removed when captured output is written to the terminal.
+    ///
+    /// Filtering preserves all other bytes and line endings.
+    pub filter_output: bool,
     /// Temporary file receiving captured stderr output.
     pub stderr: File,
     /// Temporary file receiving captured stdout output.
@@ -248,6 +306,14 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
                 ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
             ) {
                 output_path.to_log_output().clear()?;
+            }
+            if output_path.tool == Tool::Perf
+                && matches!(
+                    output_path.kind,
+                    ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
+                )
+            {
+                output_path.to_data_output().clear()?;
             }
             if let Some(path) = output_path.to_xtree_output() {
                 path.clear()?;
@@ -374,13 +440,24 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
 
             let mut profile = Profile {
                 tool,
-                log_paths: output_path.to_log_output().real_paths()?,
-                out_paths: output_path.real_paths()?,
+                log_paths: output_path.to_log_output().sanitized_paths()?,
+                out_paths: output_path.sanitized_paths()?,
                 summaries: data,
                 flamegraphs: vec![],
             };
 
-            profile.summaries.total.regressions = regression_config.check(&profile.summaries.total);
+            if tool == Tool::Perf {
+                profile.summaries.total.regressions = profile
+                    .summaries
+                    .parts
+                    .iter()
+                    .flat_map(|p| regression_config.check(&p.metrics_summary))
+                    .collect();
+            } else {
+                profile.summaries.total.regressions =
+                    regression_config.check(&profile.summaries.total.summary);
+            }
+
             profile.flamegraphs = self.generate_flamegraphs(
                 config,
                 header,
@@ -437,6 +514,14 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
                 ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
             ) {
                 output_path.to_log_output().shift()?;
+            }
+            if output_path.tool == Tool::Perf
+                && matches!(
+                    output_path.kind,
+                    ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_)
+                )
+            {
+                output_path.to_data_output().shift()?;
             }
             if let Some(path) = output_path.to_xtree_output() {
                 path.shift()?;
@@ -522,7 +607,10 @@ impl Assistant {
 
     /// The arguments for the benchmark executable
     fn executable_args(&self) -> Vec<OsString> {
-        let mut args = vec![OsString::from("--gungraun-run")];
+        let mut args = vec![
+            OsString::from("--gungraun-run"),
+            OsString::from(BenchRunMode::Default.id()),
+        ];
 
         // The index of the binary or `library_benchmark_group!` in the main! macro
         if let Some(main_index) = &self.group_index {
@@ -582,6 +670,12 @@ impl Assistant {
             }
             _ => {}
         }
+
+        debug!(
+            "Assistant command line: {} {}",
+            command.get_program().to_string_lossy(),
+            command.get_args().map(OsStr::to_string_lossy).join(" ")
+        );
 
         if force_parallel || self.is_parallel() {
             debug!("Spawning assistant '{}' in parallel", self.kind.id());
@@ -659,7 +753,7 @@ impl BenchmarkDataProcessor for BaselineAndSaveDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 let save_baseline = output_path.loaded_baseline_name().expect(
                     "The saved baseline of a baseline-and-save output path should have a name",
@@ -702,8 +796,12 @@ impl BenchmarkDataProcessor for BaselineDataProcessor {
             .and_then(|()| self.remove_summary())
             .and_then(|()| self.shift())
             .and_then(|()| self.sanitize())
-            .and_then(|()| self.parse(benchmark_summary, config, header, None))
-            .and_then(|()| self.copy_temp())
+            .and_then(|()| {
+                let parse_result = self.parse(benchmark_summary, config, header, None);
+                let copy_result = self.copy_temp();
+
+                parse_result.and(copy_result)
+            })
     }
 
     fn has_benchmarks(&self) -> bool {
@@ -718,7 +816,7 @@ impl BenchmarkDataProcessor for BaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 return BaselineFlamegraphGenerator {
                     baseline_kind: output_path.baseline_kind.clone(),
@@ -840,6 +938,7 @@ impl Group {
     }
 
     fn start_bin_benches(
+        compare_by_id: bool,
         config: &Arc<Config>,
         module_path: &Arc<ModulePath>,
         thread_pool: &mut ThreadPool<Result<JobResult>>,
@@ -847,6 +946,7 @@ impl Group {
     ) {
         for bench in benches {
             let fail_fast = bench.is_fail_fast();
+            let perf_config = bench.tools.perf_output_config();
             let benchmark: Arc<dyn bin_bench::Benchmark> = bin_bench::benchmark_factory(config);
             let header = BinaryBenchmarkHeader::new(&config.meta, &bench);
 
@@ -856,7 +956,7 @@ impl Group {
             let output_format = bench.output_format.clone();
 
             thread_pool.execute(move |force_shutdown| {
-                let captured_output = CapturedOutput::new()?;
+                let captured_output = CapturedOutput::new(output_format.filter_output)?;
                 let output_path =
                     benchmark.default_output_path(&bench, &config, &module_path, true)?;
 
@@ -872,8 +972,12 @@ impl Group {
                 ) {
                     Ok(benchmark_summary) => Ok(JobResult {
                         benchmark_summary,
-                        fail_fast,
-                        header: header.into(),
+                        post_processing_config: PostProcessingConfig {
+                            compare_by_id,
+                            fail_fast,
+                            header: header.into(),
+                            perf_config,
+                        },
                         output_format,
                         captured_output,
                         data_processor,
@@ -890,6 +994,7 @@ impl Group {
     }
 
     fn start_lib_benches(
+        compare_by_id: bool,
         main_index: usize,
         config: &Arc<Config>,
         module_path: &Arc<ModulePath>,
@@ -898,6 +1003,7 @@ impl Group {
     ) {
         for bench in benches {
             let fail_fast = bench.is_fail_fast();
+            let perf_config = bench.tools.perf_output_config();
             let benchmark: Arc<dyn lib_bench::Benchmark> = lib_bench::benchmark_factory(config);
             let header = LibraryBenchmarkHeader::new(&bench);
 
@@ -907,7 +1013,7 @@ impl Group {
             let output_format = bench.output_format.clone();
 
             thread_pool.execute(move |force_shutdown| {
-                let captured_output = CapturedOutput::new()?;
+                let captured_output = CapturedOutput::new(output_format.filter_output)?;
                 let output_path =
                     benchmark.default_output_path(&bench, &config, &module_path, true)?;
 
@@ -924,11 +1030,15 @@ impl Group {
                 ) {
                     Ok(benchmark_summary) => Ok(JobResult {
                         benchmark_summary,
-                        fail_fast,
-                        header: header.into(),
                         output_format,
                         captured_output,
                         data_processor,
+                        post_processing_config: PostProcessingConfig {
+                            compare_by_id,
+                            fail_fast,
+                            header: header.into(),
+                            perf_config,
+                        },
                     }),
                     Err(error) => Err(anyhow::Error::from(Error::JobError(
                         Box::new(error),
@@ -943,37 +1053,38 @@ impl Group {
 
     /// Runs all benchmarks in this group and returns the [`BenchmarkSummaries`].
     ///
-    /// Benchmarks are executed in a thread pool, finalized through their data processors, and
-    /// optionally compared by id when configured.
+    /// When the effective parallelism is `1`, benchmarks and their post-processing run serially one
+    /// after another on the current thread. Otherwise, benchmarks are executed in a [`ThreadPool`]
+    /// using the configured or derived number of workers. On [`Error::JobError`], the temporary
+    /// files are copied to the benchmark directory keeping their unsanitized file names which makes
+    /// them distinguishable from the normal output files, so error logs and output files can be
+    /// easily inspected.
     ///
     /// # Errors
     ///
-    /// Returns an error if benchmark execution, output finalization, printing, or regression checks
-    /// fail.
+    /// Returns an error if benchmark execution or result processing fails.
     pub fn run(self, config: &Arc<Config>) -> Result<BenchmarkSummaries> {
-        let num_threads = match self.max_parallel {
-            MaxParallel::Serial => {
-                let result = self.run_serial(config);
-                if let Err(error) = &result {
-                    if let Some(Error::JobError(_, _, _, path)) = error.downcast_ref::<Error>() {
-                        // Avoid an error within the error situation.
-                        let _ = path
-                            .init()
-                            .and_then(|()| path.clear_temp_files(true))
-                            .and_then(|()| path.copy_temp());
-                    }
+        let num_workers = self.max_parallel.num_workers(config.meta.args.parallel);
+
+        if let Some(num_workers) = num_workers {
+            self.run_parallel(config, num_workers)
+        } else {
+            let result = self.run_serial(config);
+            if let Err(error) = &result {
+                if let Some(Error::JobError(_, _, _, path)) = error.downcast_ref::<Error>() {
+                    // Avoid an error within the error situation.
+                    let _ = path
+                        .init()
+                        .and_then(|()| path.clear_temp_files(true))
+                        .and_then(|()| path.copy_temp());
                 }
-
-                return result;
             }
-            MaxParallel::NoMaximum => config.meta.args.parallel,
-            MaxParallel::Count(num) => config.meta.args.parallel.min(num),
-        };
 
-        self.run_parallel(config, num_threads)
+            result
+        }
     }
 
-    fn run_parallel(self, config: &Arc<Config>, num_threads: usize) -> Result<BenchmarkSummaries> {
+    fn run_parallel(self, config: &Arc<Config>, num_workers: usize) -> Result<BenchmarkSummaries> {
         let mut benchmark_summaries = BenchmarkSummaries::default();
 
         let compare_by_id = self.compare_by_id;
@@ -981,11 +1092,12 @@ impl Group {
         let module_path = Arc::new(self.module_path.clone());
         let main_index = self.index;
 
-        let mut thread_pool = ThreadPool::<Result<JobResult>>::new(num_threads)?;
+        let mut thread_pool = ThreadPool::<Result<JobResult>>::new(num_workers)?;
 
         match self.benches {
             Benches::LibBenches(lib_benches) => {
                 Self::start_lib_benches(
+                    compare_by_id,
                     main_index,
                     config,
                     &module_path,
@@ -994,7 +1106,13 @@ impl Group {
                 );
             }
             Benches::BinBenches(bin_benches) => {
-                Self::start_bin_benches(config, &module_path, &mut thread_pool, bin_benches);
+                Self::start_bin_benches(
+                    compare_by_id,
+                    config,
+                    &module_path,
+                    &mut thread_pool,
+                    bin_benches,
+                );
             }
         }
 
@@ -1058,13 +1176,14 @@ impl Group {
 
                 for bench in lib_benches {
                     let fail_fast = bench.is_fail_fast();
+                    let perf_config = bench.tools.perf_output_config();
                     let benchmark: Arc<dyn lib_bench::Benchmark> =
                         lib_bench::benchmark_factory(config);
 
-                    let captured_output = CapturedOutput::new()?;
-                    let header = LibraryBenchmarkHeader::new(&bench).into();
-
                     let output_format = bench.output_format.clone();
+
+                    let captured_output = CapturedOutput::new(output_format.filter_output)?;
+                    let header = LibraryBenchmarkHeader::new(&bench).into();
 
                     let force_shutdown = Arc::new(AtomicBool::new(false));
                     let output_path =
@@ -1097,13 +1216,19 @@ impl Group {
                         }
                     };
 
+                    let post_processing_config = PostProcessingConfig {
+                        compare_by_id,
+                        fail_fast,
+                        header,
+                        perf_config,
+                    };
+
                     let job_result = JobResult {
                         benchmark_summary,
                         captured_output,
                         data_processor,
-                        fail_fast,
-                        header,
                         output_format,
+                        post_processing_config,
                     };
 
                     job_result.process_data(
@@ -1120,13 +1245,14 @@ impl Group {
 
                 for bench in bin_benches {
                     let fail_fast = bench.is_fail_fast();
+                    let perf_config = bench.tools.perf_output_config();
                     let benchmark: Arc<dyn bin_bench::Benchmark> =
                         bin_bench::benchmark_factory(config);
 
-                    let captured_output = CapturedOutput::new()?;
-                    let header = BinaryBenchmarkHeader::new(&config.meta, &bench).into();
-
                     let output_format = bench.output_format.clone();
+
+                    let captured_output = CapturedOutput::new(output_format.filter_output)?;
+                    let header = BinaryBenchmarkHeader::new(&config.meta, &bench).into();
 
                     let force_shutdown = Arc::new(AtomicBool::new(false));
                     let output_path =
@@ -1160,9 +1286,13 @@ impl Group {
                         benchmark_summary,
                         captured_output,
                         data_processor,
-                        fail_fast,
-                        header,
                         output_format,
+                        post_processing_config: PostProcessingConfig {
+                            compare_by_id,
+                            fail_fast,
+                            header,
+                            perf_config,
+                        },
                     };
 
                     job_result.process_data(
@@ -1205,7 +1335,7 @@ impl BenchmarkDataProcessor for LoadBaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 let loaded_baseline = output_path.loaded_baseline_name().expect(
                     "The loaded baseline of an output path of a loaded baseline should have a name",
@@ -1234,7 +1364,16 @@ impl BenchmarkDataProcessor for LoadBaselineDataProcessor {
 }
 
 impl JobResult {
-    /// TODO: DOCS
+    /// Finalizes, prints, and stores a single benchmark job result in [`BenchmarkSummaries`]
+    ///
+    /// This method consumes the [`JobResult`] to process its benchmark data through the
+    /// [`BenchmarkDataProcessor`] pipeline. When `compare_by_id` is `true` and the [`OutputFormat`]
+    /// is default (printing to terminal output), the summary is also compared against benchmarks in
+    /// other groups sharing the same benchmark id and stored in `comparison_summaries`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if finalization, printing/saving, or regression checks fail.
     fn process_data(
         self,
         config: &Arc<Config>,
@@ -1244,11 +1383,10 @@ impl JobResult {
     ) -> Result<()> {
         let Self {
             mut benchmark_summary,
-            fail_fast,
-            header,
             output_format,
             captured_output,
             mut data_processor,
+            post_processing_config,
         } = self;
 
         if !data_processor.has_benchmarks() {
@@ -1256,18 +1394,32 @@ impl JobResult {
         }
 
         data_processor
-            .finalize(&mut benchmark_summary, config, &header)
+            .finalize(
+                &mut benchmark_summary,
+                config,
+                &post_processing_config.header,
+            )
             .and_then(|()| {
-                benchmark_summary.print_and_save(config, &header, &output_format, captured_output)
+                benchmark_summary.print_and_save(
+                    config,
+                    &output_format,
+                    captured_output,
+                    &post_processing_config,
+                )
             })
-            .and_then(|()| benchmark_summary.check_regression(fail_fast))?;
+            .and_then(|()| benchmark_summary.check_regression(post_processing_config.fail_fast))?;
 
         benchmark_summaries.add_summary(benchmark_summary.clone());
         if compare_by_id && output_format.is_default() {
             if let Some(id) = &benchmark_summary.id {
                 if let Some(sums) = comparison_summaries.get_mut(id) {
                     for sum in sums.iter() {
-                        sum.compare_and_print(id, &benchmark_summary, &output_format);
+                        sum.compare_and_print(
+                            id,
+                            &benchmark_summary,
+                            &output_format,
+                            post_processing_config.perf_config.as_ref(),
+                        );
                     }
                     sums.push(benchmark_summary);
                 } else {
@@ -1649,6 +1801,19 @@ impl Groups {
     }
 }
 
+impl MaxParallel {
+    /// Resolves `parallel` and this group-specific limit to an effective worker count.
+    ///
+    /// Returns [`None`] when either setting limits the effective parallelism to `1`. Otherwise,
+    /// returns the parallelism capped by the group limit.
+    pub fn num_workers(&self, parallel: usize) -> Option<usize> {
+        match (self, parallel) {
+            (Self::Serial | Self::Count(1), _) | (_, 1) => None,
+            (Self::NoMaximum, parallel) => Some(parallel),
+            (Self::Count(max), parallel) => Some(parallel.min(*max)),
+        }
+    }
+}
 impl From<Option<usize>> for MaxParallel {
     fn from(value: Option<usize>) -> Self {
         match value {
@@ -1929,7 +2094,7 @@ impl BenchmarkDataProcessor for SaveBaselineDataProcessor {
             .and_then(|()| self.move_temp())
             .and_then(|()| self.sanitize())
             .and_then(|()| self.parse(benchmark_summary, config, header, Some(parsed_old)))
-            .and_then(|()| self.copy_temp()) // for the flamegraphs which are created in the
+            .and_then(|()| self.copy_temp())
         // temporary directory
     }
 
@@ -1949,7 +2114,7 @@ impl BenchmarkDataProcessor for SaveBaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == ValgrindTool::Callgrind {
+        if output_path.tool == Tool::Callgrind {
             if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
                 let baseline = output_path.baseline_name().cloned().expect(
                     "The baseline of an output path of a saved baseline should have a name",
@@ -1975,9 +2140,15 @@ impl CapturedOutput {
     /// # Errors
     ///
     /// Returns an error if creating temporary files fails.
-    pub fn new() -> Result<Self> {
+    pub fn new(filter_output: bool) -> Result<Self> {
         tempfile()
-            .and_then(|stdout| tempfile().map(|stderr| Self { stderr, stdout }))
+            .and_then(|stdout| {
+                tempfile().map(|stderr| Self {
+                    filter_output,
+                    stderr,
+                    stdout,
+                })
+            })
             .with_context(|| "Creating captured output failed")
     }
 
@@ -1990,9 +2161,11 @@ impl CapturedOutput {
         self.stdout
             .try_clone()
             .and_then(|stdout| {
-                self.stderr
-                    .try_clone()
-                    .map(|stderr| Self { stderr, stdout })
+                self.stderr.try_clone().map(|stderr| Self {
+                    filter_output: self.filter_output,
+                    stderr,
+                    stdout,
+                })
             })
             .with_context(|| "Cloning captured output failed")
     }
@@ -2031,10 +2204,19 @@ impl CapturedOutput {
             let mut stdout_lock = stdout().lock();
             let mut stderr_lock = stderr().lock();
 
-            std::io::copy(&mut self.stdout, &mut stdout_lock)
-                .and_then(|_| std::io::copy(&mut self.stderr, &mut stderr_lock))
-                .map(|_| ())
-                .with_context(|| "Dumping captured output failed")
+            if self.filter_output {
+                Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
+            } else {
+                std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+            }
+            .and_then(|()| {
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping captured output failed")
         })
     }
 
@@ -2044,15 +2226,24 @@ impl CapturedOutput {
     ///
     /// Returns an error if cloning, resetting, or copying stream data fails.
     pub fn dump_cloned(&self) -> Result<()> {
-        let mut captured_output = self.try_clone()?;
-        captured_output.reset().and_then(|()| {
+        let mut this = self.try_clone()?;
+        this.reset().and_then(|()| {
             let mut stdout_lock = stdout().lock();
             let mut stderr_lock = stderr().lock();
 
-            std::io::copy(&mut captured_output.stdout, &mut stdout_lock)
-                .and_then(|_| std::io::copy(&mut captured_output.stderr, &mut stderr_lock))
-                .map(|_| ())
-                .with_context(|| "Dumping cloned captured output failed")
+            if self.filter_output {
+                Self::dump_filtered(&mut BufReader::new(&mut this.stdout), &mut stdout_lock)
+            } else {
+                std::io::copy(&mut this.stdout, &mut stdout_lock).map(|_| ())
+            }
+            .and_then(|()| {
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut this.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut this.stderr, &mut stderr_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping cloned captured output failed")
         })
     }
 
@@ -2067,7 +2258,11 @@ impl CapturedOutput {
             .and_then(|()| self.stderr.rewind())
             .and_then(|()| {
                 let mut stderr_lock = stderr().lock();
-                std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                }
             })
             .with_context(|| "Dumping stderr failed")
     }
@@ -2083,9 +2278,45 @@ impl CapturedOutput {
             .and_then(|()| self.stdout.rewind())
             .and_then(|()| {
                 let mut stdout_lock = stdout().lock();
-                std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
+                } else {
+                    std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+                }
             })
             .with_context(|| "Dumping stdout failed")
+    }
+
+    /// Writes `reader` into `writer` filtering the reader line by line
+    ///
+    /// This function filters the `Events disabled`, `Events enabled` messages issued by perf. They
+    /// usually just clutter the nocapture output especially when using sampling. Bytes and line
+    /// endings are preserved.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if line-wise reading or writing into the `writer` fails
+    pub fn dump_filtered<R, W>(reader: &mut R, writer: &mut W) -> std::io::Result<()>
+    where
+        R: ?Sized + BufRead,
+        W: ?Sized + Write,
+    {
+        let is_perf_event_line = |line: &[u8]| -> bool {
+            let line = line.strip_suffix(b"\n").unwrap_or(line);
+            let line = line.strip_suffix(b"\r").unwrap_or(line);
+            matches!(line, b"Events enabled" | b"Events disabled")
+        };
+
+        let mut line = Vec::new();
+
+        while reader.read_until(b'\n', &mut line)? != 0 {
+            if !is_perf_event_line(&line) {
+                writer.write_all(&line)?;
+            }
+            line.clear(); // retain allocation for the next line
+        }
+
+        Ok(())
     }
 }
 
@@ -2100,6 +2331,22 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+
+    #[rstest]
+    #[case::default_serial(MaxParallel::NoMaximum, 1, None)]
+    #[case::global_serial_overrides_group_limit(MaxParallel::Count(2), 1, None)]
+    #[case::group_serial(MaxParallel::Serial, 8, None)]
+    #[case::defensive_group_count_one(MaxParallel::Count(1), 8, None)]
+    #[case::global_parallelism(MaxParallel::NoMaximum, 8, Some(8))]
+    #[case::group_limit(MaxParallel::Count(2), 8, Some(2))]
+    #[case::global_limit(MaxParallel::Count(8), 2, Some(2))]
+    fn test_max_parallel_num_workers(
+        #[case] max_parallel: MaxParallel,
+        #[case] parallel: usize,
+        #[case] expected: Option<usize>,
+    ) {
+        assert_eq!(max_parallel.num_workers(parallel), expected);
+    }
 
     #[rstest]
     #[case::empty("", None)]

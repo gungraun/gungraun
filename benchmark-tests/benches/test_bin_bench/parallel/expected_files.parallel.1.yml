@@ -1,26 +1,26 @@
 data:
-  - group: no_max_parallel
+  - group: max_parallel_group
     function: create_file
     expected:
       files:
         - callgrind.create_file.log
         - callgrind.create_file.out
         - summary.json
-  - group: no_max_parallel
+  - group: max_parallel_group
     function: file_exists
     expected:
       files:
         - callgrind.file_exists.log
         - callgrind.file_exists.out
         - summary.json
-  - group: max_parallel_group
+  - group: no_max_parallel
     function: create_file
     expected:
       files:
         - callgrind.create_file.log
         - callgrind.create_file.out
         - summary.json
-  - group: max_parallel_group
+  - group: no_max_parallel
     function: file_exists
     expected:
       files:

@@ -1,6 +1,7 @@
 //! Common structs for `bin_bench` and `lib_bench`
 
 use std::path::PathBuf;
+use std::time::Duration;
 use std::vec::Vec;
 
 use derive_more::AsRef;
@@ -8,9 +9,90 @@ use gungraun_macros::IntoInner;
 
 use super::{
     __internal, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics,
-    Direction, ErrorMetric, EventKind, FlamegraphKind, Limit, SanitizeOutput, ValgrindTool,
+    Direction, ErrorMetric, EventKind, FlamegraphKind, Limit, SanitizeOutput, Tool, Unit,
 };
 use crate::EntryPoint;
+
+/// Controls how a `perf` measurement is executed.
+///
+/// The default is [`Self::Direct`], which is the normal mode and measures a single invocation with
+/// no extra setup. Calibration modes ([`Self::DefaultCalibrate`] and [`Self::Calibrate`]) run a
+/// separate overhead-measurement pass first, then subtract the best calibration run from the final
+/// result.
+///
+/// # Examples
+///
+/// ```rust
+/// # pub mod gungraun {
+/// # pub use gungraun_runner::api::PerfRunMode;
+/// # }
+/// use gungraun::PerfRunMode;
+///
+/// let mode = PerfRunMode::DynamicBatch;
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PerfRunMode {
+    /// Calibrate Gungraun by sampling the benchmark harness overhead, then run the benchmark once.
+    ///
+    /// Before the main measurement, the runner executes `perf` to measure the overhead introduced
+    /// by `perf` and the Gungraun harness. This doesn't run the benchmark itself. perf stops
+    /// sampling after a default duration of one second. The first sample is discarded to mitigate
+    /// cold-start effects, and the mean calibration metrics are subtracted from the final benchmark
+    /// metrics.
+    ///
+    /// Whether calibration is worthwhile depends on the benchmark: if the overhead is small
+    /// relative to the main benchmark run, [`Self::Direct`] is usually sufficient.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod gungraun {
+    /// # pub use gungraun_runner::api::PerfRunMode;
+    /// # }
+    /// use gungraun::PerfRunMode;
+    ///
+    /// let mode = PerfRunMode::DefaultCalibrate;
+    /// ```
+    DefaultCalibrate,
+
+    /// Like [`Self::DefaultCalibrate`] but with a custom calibration sampling duration.
+    ///
+    /// The provided [`Duration`] controls how long the runner samples `perf` overhead before
+    /// taking the main measurement. A longer duration collects more samples and may yield a more
+    /// stable overhead estimate, at the cost of increased total benchmark time.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod gungraun {
+    /// # pub use gungraun_runner::api::PerfRunMode;
+    /// # }
+    /// use std::time::Duration;
+    ///
+    /// use gungraun::PerfRunMode;
+    ///
+    /// let mode = PerfRunMode::Calibrate(Duration::from_secs(2));
+    /// ```
+    Calibrate(Duration),
+
+    /// Run `perf` once with a normal single benchmark invocation.
+    ///
+    /// This is the default mode. It is suitable when the benchmark execution time is long enough
+    /// that `perf` benchmark self costs are negligible compared to the main benchmark metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod gungraun {
+    /// # pub use gungraun_runner::api::PerfRunMode;
+    /// # }
+    /// use gungraun::PerfRunMode;
+    ///
+    /// let mode = PerfRunMode::Direct;
+    /// ```
+    #[default]
+    Direct,
+}
 
 /// The configuration for the experimental bbv
 ///
@@ -34,7 +116,7 @@ use crate::EntryPoint;
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Bbv(__internal::InternalTool);
+pub struct Bbv(__internal::InternalToolSpec);
 
 /// The configuration for Cachegrind
 ///
@@ -58,7 +140,7 @@ pub struct Bbv(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Cachegrind(__internal::InternalTool);
+pub struct Cachegrind(__internal::InternalToolSpec);
 
 /// The configuration for Callgrind
 ///
@@ -82,7 +164,7 @@ pub struct Cachegrind(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Callgrind(__internal::InternalTool);
+pub struct Callgrind(__internal::InternalToolSpec);
 
 /// The configuration for Dhat
 ///
@@ -106,7 +188,7 @@ pub struct Callgrind(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Dhat(__internal::InternalTool);
+pub struct Dhat(__internal::InternalToolSpec);
 
 /// The configuration for DRD
 ///
@@ -130,7 +212,7 @@ pub struct Dhat(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Drd(__internal::InternalTool);
+pub struct Drd(__internal::InternalToolSpec);
 
 /// The `FlamegraphConfig` which allows the customization of the created flamegraphs
 ///
@@ -190,7 +272,7 @@ pub struct FlamegraphConfig(__internal::InternalFlamegraphConfig);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Helgrind(__internal::InternalTool);
+pub struct Helgrind(__internal::InternalToolSpec);
 
 /// The configuration for Massif
 ///
@@ -214,7 +296,7 @@ pub struct Helgrind(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Massif(__internal::InternalTool);
+pub struct Massif(__internal::InternalToolSpec);
 
 /// The configuration for Memcheck
 ///
@@ -238,7 +320,7 @@ pub struct Massif(__internal::InternalTool);
 /// # }
 /// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Memcheck(__internal::InternalTool);
+pub struct Memcheck(__internal::InternalToolSpec);
 
 /// Configures the default output format of the terminal output of Gungraun.
 ///
@@ -269,6 +351,30 @@ pub struct Memcheck(__internal::InternalTool);
 /// ```
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct OutputFormat(__internal::InternalOutputFormat);
+
+/// The configuration for perf
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use gungraun::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group, benchmarks = some_func);
+/// use gungraun::{LibraryBenchmarkConfig, Perf, main};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default().tool(Perf::default()),
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Perf(__internal::InternalToolSpec);
 
 /// The `Sandbox` in which benchmarks are run.
 ///
@@ -335,7 +441,7 @@ impl Bbv {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(ValgrindTool::BBV, args))
+        Self(__internal::InternalToolSpec::with_args(Tool::BBV, args))
     }
 
     /// Adds command-line arguments to the `BBV` configuration.
@@ -380,7 +486,7 @@ impl Bbv {
 
 impl Default for Bbv {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::BBV))
+        Self(__internal::InternalToolSpec::new(Tool::BBV))
     }
 }
 
@@ -401,8 +507,8 @@ impl Cachegrind {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Cachegrind,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Cachegrind,
             args,
         ))
     }
@@ -616,7 +722,7 @@ impl Cachegrind {
 
 impl Default for Cachegrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Cachegrind))
+        Self(__internal::InternalToolSpec::new(Tool::Cachegrind))
     }
 }
 
@@ -637,8 +743,8 @@ impl Callgrind {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Callgrind,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Callgrind,
             args,
         ))
     }
@@ -674,7 +780,8 @@ impl Callgrind {
     ///
     /// This is mostly useful to disable a tool which has been enabled in a
     /// [`crate::LibraryBenchmarkConfig`] (or [`crate::BinaryBenchmarkConfig`]) at a higher level.
-    /// However, the default tool (usually Callgrind) cannot be disabled.
+    /// This also disables the tool when it is the configured default. In that case, the first
+    /// remaining retained tool becomes the effective default.
     ///
     /// ```rust
     /// use gungraun::Callgrind;
@@ -709,8 +816,8 @@ impl Callgrind {
     /// If you're using callgrind client requests either in the benchmark function itself or in your
     /// library, then using [`EntryPoint::None`] is presumably be required. Consider the following
     /// example (`DEFAULT_ENTRY_POINT` marks the default entry point):
-    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
-    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
+    #[cfg_attr(not(feature = "stubs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "stubs", doc = "```rust")]
     /// use gungraun::{
     ///     main, LibraryBenchmarkConfig,library_benchmark, library_benchmark_group
     /// };
@@ -1055,7 +1162,7 @@ impl Callgrind {
 
 impl Default for Callgrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Callgrind))
+        Self(__internal::InternalToolSpec::new(Tool::Callgrind))
     }
 }
 
@@ -1076,10 +1183,7 @@ impl Dhat {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::DHAT,
-            args,
-        ))
+        Self(__internal::InternalToolSpec::with_args(Tool::DHAT, args))
     }
 
     /// Adds command-line arguments to the `Dhat` configuration.
@@ -1208,8 +1312,8 @@ impl Dhat {
     ///
     /// You most likely want to disable the entry point with [`EntryPoint::None`] if you're using
     /// DHAT ad-hoc profiling.
-    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
-    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
+    #[cfg_attr(not(feature = "stubs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "stubs", doc = "```rust")]
     /// use gungraun::{
     ///     main, LibraryBenchmarkConfig, library_benchmark, library_benchmark_group,
     ///     EntryPoint, Dhat
@@ -1339,7 +1443,8 @@ impl Dhat {
         I: Into<String>,
         T: IntoIterator<Item = I>,
     {
-        let this = self.0.frames.get_or_insert_with(Vec::new);
+        let spec = self.dhat_spec_mut();
+        let this = spec.frames.get_or_insert_with(Vec::new);
         this.extend(frames.into_iter().map(Into::into));
 
         self
@@ -1483,11 +1588,23 @@ impl Dhat {
         }
         self
     }
+
+    fn dhat_spec_mut(&mut self) -> &mut __internal::InternalDhatSpec {
+        if !matches!(self.0.options, __internal::InternalToolSpecOptions::Dhat(_)) {
+            self.0.options =
+                __internal::InternalToolSpecOptions::Dhat(__internal::InternalDhatSpec::default());
+        }
+
+        match &mut self.0.options {
+            __internal::InternalToolSpecOptions::Dhat(spec) => spec,
+            _ => unreachable!("Dhat should always use DhatSpec"),
+        }
+    }
 }
 
 impl Default for Dhat {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::DHAT))
+        Self(__internal::InternalToolSpec::new(Tool::DHAT))
     }
 }
 
@@ -1508,7 +1625,7 @@ impl Drd {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(ValgrindTool::DRD, args))
+        Self(__internal::InternalToolSpec::with_args(Tool::DRD, args))
     }
 
     /// Adds command-line arguments to the `Drd` configuration.
@@ -1582,7 +1699,7 @@ impl Drd {
 
 impl Default for Drd {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::DRD))
+        Self(__internal::InternalToolSpec::new(Tool::DRD))
     }
 }
 
@@ -1778,8 +1895,8 @@ impl Helgrind {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Helgrind,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Helgrind,
             args,
         ))
     }
@@ -1856,7 +1973,7 @@ impl Helgrind {
 
 impl Default for Helgrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Helgrind))
+        Self(__internal::InternalToolSpec::new(Tool::Helgrind))
     }
 }
 
@@ -1877,10 +1994,7 @@ impl Massif {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Massif,
-            args,
-        ))
+        Self(__internal::InternalToolSpec::with_args(Tool::Massif, args))
     }
 
     /// Adds command-line arguments to the `Massif` configuration.
@@ -1927,7 +2041,7 @@ impl Massif {
 
 impl Default for Massif {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Massif))
+        Self(__internal::InternalToolSpec::new(Tool::Massif))
     }
 }
 
@@ -1948,8 +2062,8 @@ impl Memcheck {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(__internal::InternalTool::with_args(
-            ValgrindTool::Memcheck,
+        Self(__internal::InternalToolSpec::with_args(
+            Tool::Memcheck,
             args,
         ))
     }
@@ -2026,7 +2140,564 @@ impl Memcheck {
 
 impl Default for Memcheck {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Memcheck))
+        Self(__internal::InternalToolSpec::new(Tool::Memcheck))
+    }
+}
+
+impl Perf {
+    /// Creates a new `Perf` configuration with initial command-line arguments.
+    ///
+    /// See also [`Perf::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::with_args(["--all-user"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalToolSpec::with_args(Tool::Perf, args))
+    }
+
+    /// Adds command-line arguments to the `Perf` configuration.
+    ///
+    /// The command-line arguments are passed directly to the `perf` invocation. Valid arguments are
+    /// from the `perf stat` documentation. Command-line arguments for `perf record` if you have
+    /// enabled it with [`Self::record`] can be added with [`Self::record_args`]. Note that not all
+    /// command-line arguments are supported, especially the ones which manipulate the output and
+    /// output paths. Unsupported arguments will be ignored, printing a warning.
+    ///
+    /// Unlike Valgrind tools, argument flags are necessary and cannot be omitted ("--all-user" but
+    /// not `all-user`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().args(["--all-user"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_tool_args.extend(args);
+        self
+    }
+
+    /// Sets the statistical significance threshold for perf soft-limit checks.
+    ///
+    /// `alpha` is the [p-value] threshold used to determine whether a metric change is
+    /// statistically significant before applying soft limits. When [`Self::soft_limits`] are
+    /// configured, only statistically significant changes are considered regressions.
+    ///
+    /// The default value is `0.05`. For benchmarking contexts, `0.05` is the conventional default
+    /// because it balances sensitivity and false-positive rate well. Higher values make the check
+    /// more sensitive, so it can catch smaller or noisier changes sooner, but it also increases the
+    /// chance of false positives. Lower values make the check more conservative, which reduces
+    /// noise-driven regression reports, but it may miss subtle real regressions unless more samples
+    /// are collected.
+    ///
+    /// If your CI is noisy and you get too many spurious regressions, tightening to `0.01` or
+    /// `0.001` (more stringent, useful when false positives are costly) can help. Some literature
+    /// suggests a value of `0.005` as a middle-ground. If you are doing exploratory profiling and
+    /// want to catch smaller changes, loosening to `0.10` may be appropriate. See [Statistical
+    /// significance][stat-sig] for more background.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().alpha(0.05);
+    /// ```
+    ///
+    /// [p-value]: https://en.wikipedia.org/wiki/P-value
+    /// [stat-sig]: https://en.wikipedia.org/wiki/Statistical_significance
+    pub fn alpha(&mut self, value: f64) -> &mut Self {
+        let perf_spec = self.perf_spec_mut();
+        perf_spec.alpha = Some(value);
+
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.alpha = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: Some(value),
+                    soft_limits: Vec::default(),
+                    hard_limits: Vec::default(),
+                    fail_fast: None,
+                },
+            ));
+        }
+
+        self
+    }
+
+    /// Disables or enables the default entry point for the benchmark.
+    ///
+    /// When set to `true`, Gungraun does not automatically start perf measurement when the
+    /// benchmark function is entered. Instead, you manually bracket the measured region with
+    /// [`perf_enable!()`] and [`perf_disable!()`]. This is useful when the benchmark body contains
+    /// setup or teardown work that should not be measured.
+    ///
+    /// The `perf_enable!()` and `perf_disable!()` macros can also be called from production code
+    /// that is executed in the benchmark process. To use them outside benchmark code, the
+    /// dependency on `gungraun` must enable the `stubs` feature (or `perf_stubs` if only the perf
+    /// macros are needed without Valgrind client-request stubs). The Gungraun [guide] contains more
+    /// examples.
+    ///
+    /// The perf client-request macros operate on a single process-global control channel. They are
+    /// not thread-safe, must not be nested, and every token returned by [`perf_enable!()`] must be
+    /// passed to exactly one matching [`perf_disable!()`].
+    ///
+    /// When set to `false`, the default entry point is restored to [`EntryPoint::Default`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::{
+    ///     LibraryBenchmarkConfig, Perf, library_benchmark, library_benchmark_group, main,
+    /// };
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Perf::default().disable_entry_point(true))
+    /// )]
+    /// fn some_bench() {
+    ///     // setup code (not measured)
+    ///     let token = gungraun::perf_enable!();
+    ///     // benchmarked code
+    ///     gungraun::perf_disable!(token);
+    ///     // teardown code (not measured)
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group, benchmarks = some_bench);
+    /// # fn main() {
+    /// # main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    ///
+    /// [`perf_enable!()`]: crate::perf_enable
+    /// [`perf_disable!()`]: crate::perf_disable
+    /// [guide]: https://gungraun.github.io/gungraun/latest/html/index.html
+    pub fn disable_entry_point(&mut self, yes: bool) -> &mut Self {
+        if yes {
+            self.0.entry_point = Some(EntryPoint::None);
+        } else {
+            self.0.entry_point = Some(EntryPoint::Default);
+        }
+
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    /// Adds a single perf event selector to measure.
+    ///
+    /// The event selector is passed directly to `perf` and determines which hardware or software
+    /// events are counted. Each event set is executed in a separate perf invocation and passed to
+    /// perf with `--event` as-is. Hence, `event_set` supports the same syntax as the perf
+    /// stat/record `--event` event selector.
+    ///
+    /// These event sets are the same for `perf stat` and `perf record` (if activated with
+    /// [`Self::record`]).
+    ///
+    /// # Examples
+    ///
+    /// Executes `perf stat` once with `--event=cycles,instructions`.
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().event_set("cycles,instructions");
+    /// ```
+    ///
+    /// Executes `perf stat` twice. The first time with `--event=cache-misses` and a second time
+    /// with `--event={instructions,cycles}` (using perf's group syntax):
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default()
+    ///     .event_set("cache-misses")
+    ///     .event_set("{instructions,cycles}");
+    /// ```
+    pub fn event_set<T>(&mut self, events: T) -> &mut Self
+    where
+        T: AsRef<str>,
+    {
+        let spec = self.perf_spec_mut();
+        let events_spec = spec.events.get_or_insert_with(Vec::new);
+        events_spec.push(events.as_ref().to_owned());
+
+        self
+    }
+
+    /// Adds multiple perf event sets, equivalent to calling [`Self::event_set`] once for each item.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().event_sets(["cycles", "instructions"]);
+    /// ```
+    pub fn event_sets<I, T>(&mut self, events: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        let spec = self.perf_spec_mut();
+        let events_spec = spec.events.get_or_insert_with(Vec::new);
+        events_spec.extend(events.into_iter().map(|event| event.as_ref().to_owned()));
+
+        self
+    }
+
+    /// If set to `true`, the benchmarks fail on the first encountered regression.
+    ///
+    /// The default is `false` and the whole benchmark run fails with a regression error after all
+    /// benchmarks have been run. This option does not enable regression checks by itself. Configure
+    /// regression checks explicitly with [`Perf::soft_limits`] or [`Perf::hard_limits`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::{Perf, PerfMetric};
+    ///
+    /// let config = Perf::default()
+    ///     .soft_limits([("*instructions*", 5.0)])
+    ///     .fail_fast(true);
+    /// ```
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.fail_fast = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: None,
+                    soft_limits: Vec::default(),
+                    hard_limits: Vec::default(),
+                    fail_fast: Some(value),
+                },
+            ));
+        }
+        self
+    }
+
+    /// Sets patterns for perf metrics that must be nonzero.
+    ///
+    /// If a metric matching one of these patterns is exactly zero, the entire measurement record
+    /// containing it is discarded. Each measurement record contains all metrics selected by one
+    /// [`Self::event_set`]. By default, these patterns are: `task-clock*`, `cpu-clock*`, and
+    /// `*instructions*`. Calling this method overrides the default patterns.
+    ///
+    /// Short-running benchmarks can occasionally produce zero values for metrics expected to be
+    /// nonzero. In sampling mode, discarding these records mitigates one source of artificial
+    /// low-end skew in the measured metrics.
+    ///
+    /// Configure only metrics that cannot legitimately be zero for the benchmark. A matching zero
+    /// discards the entire measurement record.
+    ///
+    /// Patterns use [`simplematch`] wildcard syntax, including:
+    ///
+    /// - `*` (any sequence of characters),
+    /// - `?` (a single character),
+    /// - `\` to escape special characters,
+    /// - character classes such as `[...]`, `[!...]`, and `[a-zA-Z]`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().non_zero_metrics(["cycles", "instructions"]);
+    /// ```
+    ///
+    /// [`simplematch`]: https://crates.io/crates/simplematch
+    pub fn non_zero_metrics<I, T>(&mut self, values: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        let spec = self.perf_spec_mut();
+        spec.non_zero_metrics = Some(values.into_iter().map(|v| v.as_ref().to_owned()).collect());
+
+        self
+    }
+
+    /// Sets the minimum percentage of time a PMU counter must be running.
+    ///
+    /// When perf multiplexes hardware counters because more events are requested than physical PMU
+    /// slots exist, `pcnt_running` reports the fraction of the interval the counter was active.
+    /// Gungraun discards sampled records whose `pcnt_running` falls below the `min_pcnt_running`
+    /// threshold.
+    ///
+    /// The default is `100.0` (no multiplexing tolerated) and valid `min_pcnt_running` values are
+    ///
+    /// `0.0 <= min_pcnt_running <= 100.0`.
+    ///
+    /// Lower this value only if you intentionally request more events than the hardware can count
+    /// simultaneously and you still want to keep multiplexed data. Usually, it is better to keep
+    /// the default and split the amount of events into multiple sets using [`Perf::event_sets`]
+    /// with each set having the number of available physical PMU slots. However, splitting into
+    /// multiple sets requires perf to be run multiple times.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().min_pcnt_running(80.0);
+    /// ```
+    pub fn min_pcnt_running(&mut self, percent: f64) -> &mut Self {
+        let spec = self.perf_spec_mut();
+        spec.min_pcnt_running = Some(percent);
+
+        self
+    }
+
+    /// Configures the soft limits over/below which a performance regression can be assumed.
+    ///
+    /// A soft limit consists of a metric pattern (See [`Self::non_zero_metrics`] for a description
+    /// of the wildcard syntax) and a percentage over which a regression is assumed. If the limit is
+    /// negative, then a regression is assumed to be below this limit. Only [statistically
+    /// significant][stat-sig] changes are checked against the soft limits.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().soft_limits([("cycles", 5f64)]);
+    /// ```
+    ///
+    /// [stat-sig]: Self::alpha
+    pub fn soft_limits<K, T>(&mut self, soft_limits: T) -> &mut Self
+    where
+        K: Into<String>,
+        T: IntoIterator<Item = (K, f64)>,
+    {
+        let iter = soft_limits.into_iter().map(|(k, l)| (k.into(), l));
+
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.soft_limits.extend(iter);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: None,
+                    soft_limits: iter.collect(),
+                    hard_limits: Vec::default(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// Sets hard limits above which a performance regression can be assumed.
+    ///
+    /// In contrast to [`Perf::soft_limits`], hard limits restrict a metric pattern (See
+    /// [`Self::non_zero_metrics`] for a description of the wildcard syntax) in absolute numbers
+    /// instead of a percentage. A hard limit only affects the `new` benchmark run.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::{Limit, Perf};
+    ///
+    /// let config = Perf::default().hard_limits([("cycles", None, Limit::Int(10_000))]);
+    /// ```
+    pub fn hard_limits<K, L, U, T>(&mut self, hard_limits: T) -> &mut Self
+    where
+        K: Into<String>,
+        L: Into<Limit>,
+        U: Into<Option<Unit>>,
+        T: IntoIterator<Item = (K, U, L)>,
+    {
+        let iter = hard_limits
+            .into_iter()
+            .map(|(k, u, l)| (k.into(), u.into(), l.into()));
+
+        if let Some(__internal::InternalToolRegressionConfig::Perf(config)) =
+            &mut self.0.regression_config
+        {
+            config.hard_limits.extend(iter);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Perf(
+                __internal::InternalPerfRegressionConfig {
+                    alpha: None,
+                    soft_limits: Vec::default(),
+                    hard_limits: iter.collect(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// Sets the [`PerfRunMode`] for this perf configuration.
+    ///
+    /// The run mode controls how benchmark invocations are calibrated inside the `perf`
+    /// measurement. See [`PerfRunMode`] for a description of each mode. The default is
+    /// [`PerfRunMode::Direct`] which runs perf in normal mode without any special setup.
+    ///
+    /// For binary benchmarks, calibration-oriented run modes such as
+    /// [`PerfRunMode::DefaultCalibrate`] and [`PerfRunMode::Calibrate`] are effectively ignored and
+    /// fall back to [`PerfRunMode::Direct`], because the benchmark binary is invoked directly with
+    /// command arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use gungraun::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group, benchmarks = some_func);
+    /// use gungraun::{LibraryBenchmarkConfig, Perf, PerfRunMode, main};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Perf::default().run_mode(PerfRunMode::DefaultCalibrate)),
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn run_mode(&mut self, run_mode: PerfRunMode) -> &mut Self {
+        let api_run_mode = match run_mode {
+            PerfRunMode::DefaultCalibrate => __internal::InternalPerfRunMode::DefaultCalibrate,
+            PerfRunMode::Calibrate(duration) => {
+                __internal::InternalPerfRunMode::Calibrate(duration)
+            }
+            PerfRunMode::Direct => __internal::InternalPerfRunMode::Direct,
+        };
+        self.perf_spec_mut().run_mode = Some(api_run_mode);
+        self
+    }
+
+    /// Configures whether to run a companion `perf record` capture in addition to `perf stat`.
+    ///
+    /// When enabled, the runner executes an additional `perf record` run with the benchmark,
+    /// producing a sample-based profile that can be analyzed with `perf report`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().record(true);
+    /// ```
+    pub fn record(&mut self, yes: bool) -> &mut Self {
+        self.perf_spec_mut().record = Some(yes);
+        self
+    }
+
+    /// Adds command-line arguments to the optional `perf record` run.
+    ///
+    /// These arguments are passed only to the companion `perf record` invocation and not to
+    /// `perf stat`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default()
+    ///     .record(true)
+    ///     .record_args(["--call-graph", "dwarf"]);
+    /// ```
+    pub fn record_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        let spec = self.perf_spec_mut();
+        spec.record_args.extend(args);
+        self
+    }
+
+    /// Sets the sampling duration for `perf stat` in sampling mode.
+    ///
+    /// This duration is a wall-clock limit for continuously repeated `perf stat` sampling. It is
+    /// independent from the duration supplied to [`PerfRunMode::Calibrate`], which controls a
+    /// separate calibration pass.
+    ///
+    /// If the sampling duration is long enough for multiple benchmark runs, the first run is
+    /// discarded to mitigate cold-start effects. However, there is always at least one record
+    /// kept. For example, if a benchmark run takes 1s and the sampling duration is 2s, two runs
+    /// fit within the window: the first is discarded, and one record is kept.
+    ///
+    /// Cold-start effects become less significant as benchmark runtime increases. With a 1s
+    /// benchmark and a 1.5s sampling duration, only a single run fits within the window, so
+    /// cold-start effects are present in the sole record. However, for longer-running benchmarks,
+    /// these effects are typically negligible relative to the total measurement.
+    ///
+    /// A sampling duration above 1 second typically works well, but the optimal setting depends on
+    /// your specific use-case and benchmark.
+    ///
+    /// For binary benchmarks, setup and teardown run only once before and after the sampling
+    /// period, unlike library benchmarks where they run per sample.
+    ///
+    /// [`Self::sample_duration`] affects the main `perf stat` measurement, not the optional
+    /// companion `perf record` capture (see [`Perf::record`]).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::time::Duration;
+    ///
+    /// use gungraun::Perf;
+    ///
+    /// let config = Perf::default().sample_duration(Duration::from_secs(1));
+    /// ```
+    pub fn sample_duration(&mut self, duration: Duration) -> &mut Self {
+        let spec = self.perf_spec_mut();
+        spec.sample_duration = Some(duration);
+        self
+    }
+
+    fn perf_spec_mut(&mut self) -> &mut __internal::InternalPerfSpec {
+        if !matches!(self.0.options, __internal::InternalToolSpecOptions::Perf(_)) {
+            self.0.options =
+                __internal::InternalToolSpecOptions::Perf(__internal::InternalPerfSpec::default());
+        }
+
+        match &mut self.0.options {
+            __internal::InternalToolSpecOptions::Perf(spec) => spec,
+            _ => unreachable!("Perf should always use PerfSpec"),
+        }
+    }
+}
+
+impl Default for Perf {
+    fn default() -> Self {
+        Self(__internal::InternalToolSpec::new(Tool::Perf))
     }
 }
 

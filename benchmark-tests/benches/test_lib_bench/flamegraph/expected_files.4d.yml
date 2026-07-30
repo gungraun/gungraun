@@ -1,20 +1,4 @@
 data:
-  - group: recursive
-    function: recursive_function
-    id: fibonacci
-    expected:
-      files:
-        - callgrind.recursive_function.fibonacci.log.base@bar
-        - callgrind.recursive_function.fibonacci.log.base@baz
-        - callgrind.recursive_function.fibonacci.log.base@foo
-        - callgrind.recursive_function.fibonacci.out.base@bar
-        - callgrind.recursive_function.fibonacci.out.base@baz
-        - callgrind.recursive_function.fibonacci.out.base@foo
-        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@bar.diff.base@baz.svg
-        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@bar.svg
-        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@baz.svg
-        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@foo.svg
-        - summary.json
   - group: benches
     function: bench_level_flamegraphs
     id: all_kinds
@@ -32,36 +16,6 @@ data:
         - callgrind.bench_level_flamegraphs.all_kinds.total.Ir.flamegraph.base@foo.svg
         - summary.json
   - group: benches
-    function: without_bench_attribute
-    expected:
-      files:
-        - callgrind.without_bench_attribute.log.base@bar
-        - callgrind.without_bench_attribute.log.base@baz
-        - callgrind.without_bench_attribute.log.base@foo
-        - callgrind.without_bench_attribute.out.base@bar
-        - callgrind.without_bench_attribute.out.base@baz
-        - callgrind.without_bench_attribute.out.base@foo
-        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@bar.diff.base@baz.svg
-        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@bar.svg
-        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@baz.svg
-        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@foo.svg
-        - summary.json
-  - group: benches
-    function: function_with_many_stacks
-    expected:
-      files:
-        - callgrind.function_with_many_stacks.log.base@bar
-        - callgrind.function_with_many_stacks.log.base@baz
-        - callgrind.function_with_many_stacks.log.base@foo
-        - callgrind.function_with_many_stacks.out.base@bar
-        - callgrind.function_with_many_stacks.out.base@baz
-        - callgrind.function_with_many_stacks.out.base@foo
-        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@bar.diff.base@baz.svg
-        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@bar.svg
-        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@baz.svg
-        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@foo.svg
-        - summary.json
-  - group: benches
     function: bench_level_flamegraphs
     id: differential_kind
     expected:
@@ -73,6 +27,18 @@ data:
         - callgrind.bench_level_flamegraphs.differential_kind.out.base@baz
         - callgrind.bench_level_flamegraphs.differential_kind.out.base@foo
         - callgrind.bench_level_flamegraphs.differential_kind.total.Ir.flamegraph.base@bar.diff.base@baz.svg
+        - summary.json
+  - group: benches
+    function: bench_level_flamegraphs
+    id: none_kind
+    expected:
+      files:
+        - callgrind.bench_level_flamegraphs.none_kind.log.base@bar
+        - callgrind.bench_level_flamegraphs.none_kind.log.base@baz
+        - callgrind.bench_level_flamegraphs.none_kind.log.base@foo
+        - callgrind.bench_level_flamegraphs.none_kind.out.base@bar
+        - callgrind.bench_level_flamegraphs.none_kind.out.base@baz
+        - callgrind.bench_level_flamegraphs.none_kind.out.base@foo
         - summary.json
   - group: benches
     function: bench_level_flamegraphs
@@ -90,16 +56,19 @@ data:
         - callgrind.bench_level_flamegraphs.regular_kind.total.Ir.flamegraph.base@foo.svg
         - summary.json
   - group: benches
-    function: bench_level_flamegraphs
-    id: none_kind
+    function: function_with_many_stacks
     expected:
       files:
-        - callgrind.bench_level_flamegraphs.none_kind.log.base@bar
-        - callgrind.bench_level_flamegraphs.none_kind.log.base@baz
-        - callgrind.bench_level_flamegraphs.none_kind.log.base@foo
-        - callgrind.bench_level_flamegraphs.none_kind.out.base@bar
-        - callgrind.bench_level_flamegraphs.none_kind.out.base@baz
-        - callgrind.bench_level_flamegraphs.none_kind.out.base@foo
+        - callgrind.function_with_many_stacks.log.base@bar
+        - callgrind.function_with_many_stacks.log.base@baz
+        - callgrind.function_with_many_stacks.log.base@foo
+        - callgrind.function_with_many_stacks.out.base@bar
+        - callgrind.function_with_many_stacks.out.base@baz
+        - callgrind.function_with_many_stacks.out.base@foo
+        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@bar.diff.base@baz.svg
+        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@bar.svg
+        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@baz.svg
+        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@foo.svg
         - summary.json
   - group: benches
     function: main_level_flamegraph_config
@@ -116,4 +85,35 @@ data:
         - callgrind.main_level_flamegraph_config.worst_case.total.Ir.flamegraph.base@bar.svg
         - callgrind.main_level_flamegraph_config.worst_case.total.Ir.flamegraph.base@baz.svg
         - callgrind.main_level_flamegraph_config.worst_case.total.Ir.flamegraph.base@foo.svg
+        - summary.json
+  - group: benches
+    function: without_bench_attribute
+    expected:
+      files:
+        - callgrind.without_bench_attribute.log.base@bar
+        - callgrind.without_bench_attribute.log.base@baz
+        - callgrind.without_bench_attribute.log.base@foo
+        - callgrind.without_bench_attribute.out.base@bar
+        - callgrind.without_bench_attribute.out.base@baz
+        - callgrind.without_bench_attribute.out.base@foo
+        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@bar.diff.base@baz.svg
+        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@bar.svg
+        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@baz.svg
+        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@foo.svg
+        - summary.json
+  - group: recursive
+    function: recursive_function
+    id: fibonacci
+    expected:
+      files:
+        - callgrind.recursive_function.fibonacci.log.base@bar
+        - callgrind.recursive_function.fibonacci.log.base@baz
+        - callgrind.recursive_function.fibonacci.log.base@foo
+        - callgrind.recursive_function.fibonacci.out.base@bar
+        - callgrind.recursive_function.fibonacci.out.base@baz
+        - callgrind.recursive_function.fibonacci.out.base@foo
+        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@bar.diff.base@baz.svg
+        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@bar.svg
+        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@baz.svg
+        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@foo.svg
         - summary.json

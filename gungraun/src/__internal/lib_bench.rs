@@ -1,4 +1,4 @@
-use crate::ValgrindTool;
+use crate::Tool;
 
 type MacroLibBenches<'a> = &'a [&'a (
     &'static str,
@@ -23,7 +23,7 @@ impl GroupsBuilder {
             command_line_args: args,
             has_setup,
             has_teardown,
-            default_tool: ValgrindTool::Cachegrind,
+            default_tool: Tool::Cachegrind,
         })
     }
 
@@ -40,7 +40,7 @@ impl GroupsBuilder {
             command_line_args: args,
             has_setup,
             has_teardown,
-            default_tool: ValgrindTool::Callgrind,
+            default_tool: Tool::Callgrind,
         })
     }
 
@@ -77,7 +77,9 @@ impl GroupsBuilder {
                     function_name: (*function_name).to_owned(),
                     config: macro_lib_bench.config.map(|f| f()),
                     iter_count: match macro_lib_bench.func {
-                        super::InternalLibFunctionKind::Iter(func) => Some(func(None)),
+                        super::InternalLibFunctionKind::Iter(func) => {
+                            Some(func(super::InternalBenchRunMode::Default, None))
+                        }
                         super::InternalLibFunctionKind::Default(_) => None,
                     },
                 };

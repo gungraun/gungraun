@@ -27,10 +27,14 @@ use std::hash::Hash;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use std::time::Duration;
 
 use anyhow::Result;
-use clap::builder::{BoolishValueParser, PathBufValueParser, TypedValueParser};
+use clap::builder::{
+    BoolishValueParser, NonEmptyStringValueParser, PathBufValueParser, TypedValueParser,
+};
 use clap::{ArgAction, CommandFactory, Parser};
+use fundu::{CustomTimeUnit, SaturatingInto, TimeUnit};
 use indexmap::{IndexMap, IndexSet, indexset};
 use simplematch::{DoWild, Options};
 use strum::IntoEnumIterator;
@@ -42,15 +46,25 @@ use super::format::{ListFormat, OutputFormatKind};
 use super::tool::regression::ToolRegressionConfig;
 use crate::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, ErrorMetric,
-    EventKind, RawToolArgs, ValgrindTool,
+    EventKind, Limit, PerfRunMode, RawToolArgs, Tool,
 };
 use crate::metrics::logic::TypeChecker;
 use crate::metrics::model::Metric;
 use crate::runner::common::CapturedOutput;
 use crate::summary::model::{BaselineName, SummaryFormat};
+use crate::units::Unit;
 use crate::util;
 
 const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
+
+const DEFAULT_PERF_SAMPLING_DURATION: Duration = Duration::from_secs(2);
+
+const DEFAULT_TIME_UNITS: [CustomTimeUnit<'static>; 4] = [
+    CustomTimeUnit::with_default(TimeUnit::NanoSecond, &["ns", "nsec"]),
+    CustomTimeUnit::with_default(TimeUnit::MicroSecond, &["us", "usec"]),
+    CustomTimeUnit::with_default(TimeUnit::MilliSecond, &["ms", "msec"]),
+    CustomTimeUnit::with_default(TimeUnit::Second, &["s", "sec", "secs", "second", "seconds"]),
+];
 
 // Utility for complex types intended to be used during the parsing of the command-line arguments
 type Limits<T> = (IndexMap<T, f64>, IndexMap<T, Metric>);
@@ -79,6 +93,15 @@ pub enum NoCapture {
     Stderr,
     /// Don't capture `stdout`
     Stdout,
+}
+
+/// The internal value of the `--perf-sampling` argument.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PerfSampling {
+    /// Disable perf sampling.
+    Disabled,
+    /// Enable perf sampling with the given timeout.
+    Enabled(Duration),
 }
 
 /// An internal enum for the value of the --truncate-description argument
@@ -353,7 +376,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * --cachegrind-metrics='ir' to show only `Instructions`
-/// * --cachegrind-metrics='@all' to show all possible Cachegrind metrics
+    ///   * --cachegrind-metrics='@all' to show all possible Cachegrind metrics
     ///   * --cachegrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
     #[arg(
         display_order = 400,
@@ -459,7 +482,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * --callgrind-metrics='ir' to show only `Instructions`
-/// * --callgrind-metrics='@all' to show all possible Callgrind metrics
+    ///   * --callgrind-metrics='@all' to show all possible Callgrind metrics
     ///   * --callgrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
     #[arg(
         display_order = 400,
@@ -476,7 +499,7 @@ pub struct CommandLineArgs {
     /// The default tool used to run the benchmarks
     ///
     /// The standard tool to run the benchmarks is Callgrind but can be overridden with this
-    /// option. Any Valgrind tool can be used:
+    /// option. Any supported tool can be used:
     ///   * callgrind
     ///   * cachegrind
     ///   * dhat
@@ -485,6 +508,7 @@ pub struct CommandLineArgs {
     ///   * drd
     ///   * massif
     ///   * exp-bbv
+    ///   * perf
     ///
     /// This argument matches the tool case-insensitive. Note that using Cachegrind with this
     /// option to benchmark library functions needs adjustments to the benchmarking functions with
@@ -499,7 +523,7 @@ pub struct CommandLineArgs {
         num_args = 1,
         verbatim_doc_comment,
     )]
-    pub default_tool: Option<ValgrindTool>,
+    pub default_tool: Option<Tool>,
 
     #[rustfmt::skip]
     /// The command-line arguments to pass through to DHAT
@@ -579,7 +603,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * --dhat-metrics='totalbytes' to show only `Total Bytes`
-/// * --dhat-metrics='@all' to show all possible DHAT metrics
+    ///   * --dhat-metrics='@all' to show all possible DHAT metrics
     ///   * --dhat-metrics='@default,mb' to show maximum bytes in addition to the defaults
     #[arg(
         display_order = 400,
@@ -1039,6 +1063,197 @@ pub struct CommandLineArgs {
     pub parallel: usize,
 
     #[rustfmt::skip]
+    /// The command-line arguments to pass through to `perf stat`
+    ///
+    /// Gungraun controls output, event selection, and process execution. Not all perf arguments are
+    /// allowed and arguments that change those settings are ignored with a warning. Note that
+    /// `--perf-args` is used for the perf stat invocation. To pass arguments to the perf record
+    /// invocation use `--perf-record-args`.
+    ///
+    /// Examples:
+    ///   * --perf-args='--all-cpus'
+    #[arg(
+        display_order = 500,
+        env = "GUNGRAUN_PERF_ARGS",
+        long = "perf-args",
+        num_args = 1,
+        value_parser = parse_tool_args,
+        verbatim_doc_comment,
+    )]
+    pub perf_args: Option<RawToolArgs>,
+
+    #[rustfmt::skip]
+    /// Specify the path to the `perf` executable
+    ///
+    /// By default, Gungraun searches for `perf` in the system PATH. When used with `--tool-runner`,
+    /// the path of --perf-bin is passed to the runner as the perf binary to invoke.
+    ///
+    /// Examples:
+    ///   * --perf-bin=/usr/local/bin/perf
+    #[arg(
+        display_order = 100,
+        env = "GUNGRAUN_PERF_BIN",
+        long = "perf-bin",
+        num_args = 1,
+        verbatim_doc_comment,
+    )]
+    pub perf_bin: Option<PathBuf>,
+
+    #[rustfmt::skip]
+    /// Add an event set for `perf` (for the `-e`, `--event` perf argument)
+    ///
+    /// Each --perf-events occurrence creates a separate event set for the perf invocation. Each
+    /// event set is passed to perf with `-e`, `--event` as-is. So, comma-separated events within
+    /// one occurrence are measured together and you can use the same syntax as the perf stat/record
+    /// `-e` event selector.
+    ///
+    /// Examples:
+    ///   * --perf-events=instructions,cycles
+    ///   * --perf-events=instructions --perf-events=task-clock (creates two event sets)
+    ///   * --perf-events='{instructions,cycles},task-clock' (perf `--event` special syntax)
+    #[arg(
+        action = ArgAction::Append,
+        display_order = 500,
+        env = "GUNGRAUN_PERF_EVENTS",
+        long = "perf-events",
+        num_args = 1,
+        value_parser = NonEmptyStringValueParser::new(),
+        verbatim_doc_comment,
+    )]
+    pub perf_events: Vec<String>,
+
+    #[rustfmt::skip]
+    /// Set perf regression limits
+    ///
+    /// This is a comma-separated list of `pattern=limit` pairs. Patterns support wildcards:
+    ///
+    /// - the basic wildcard * (matches any sequence of characters),
+    /// - ? (matches a single character)
+    /// - escaping \ of special characters
+    /// - character classes [...]. Character classes can be negated [!...] and contain ranges
+    ///   [a-zA-Z].
+    ///
+    /// A limit ending in `%` is a soft percentage limit. A bare number or a number with a perf unit
+    /// such as `ms`, `s`, `B`, or `Hz` is a hard limit. Combine soft and hard limits for one
+    /// pattern with `|`.
+    ///
+    /// Examples:
+    ///   * --perf-limits='*instructions*=5%'
+    ///   * --perf-limits='*instructions*=5%|1000000,task-clock*=40%|2.5ms'
+    #[arg(
+        display_order = 600,
+        env = "GUNGRAUN_PERF_LIMITS",
+        long = "perf-limits",
+        num_args = 1,
+        value_parser = parse_perf_limits,
+        verbatim_doc_comment,
+    )]
+    pub perf_limits: Option<ToolRegressionConfig>,
+
+    #[rustfmt::skip]
+    /// Run `perf record` in addition to the `perf stat` benchmark run
+    ///
+    /// This option does not enable running perf. Using this option without enabling perf (for
+    /// example with `--tools=perf` or in the benchmark within a `LibraryBenchmarkConfig` or
+    /// `BinaryBenchmarkConfig`) does nothing. Arguments to the perf record invocation can be passed
+    /// with `--perf-record-args`.
+    ///
+    /// Examples:
+    ///   * --perf-record
+    ///   * --perf-record=false
+    #[arg(
+        default_missing_value = "true",
+        display_order = 450,
+        env = "GUNGRAUN_PERF_RECORD",
+        long = "perf-record",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        verbatim_doc_comment,
+    )]
+    pub perf_record: Option<bool>,
+
+    #[rustfmt::skip]
+    /// The command-line arguments to pass to `perf record`
+    ///
+    /// If running perf record is enabled, these arguments are passed to the `perf record`
+    /// invocation. Note these arguments are independent of `perf-args` which are passed to `perf
+    /// stat`.
+    ///
+    /// Examples:
+    ///   * --perf-record-args=--all-cpus
+    ///   * --perf-record-args='--all-cpus --freq=400' (multiple args space separated in quotes)
+    #[arg(
+        display_order = 500,
+        env = "GUNGRAUN_PERF_RECORD_ARGS",
+        long = "perf-record-args",
+        num_args = 1,
+        value_parser = parse_tool_args,
+        verbatim_doc_comment,
+    )]
+    pub perf_record_args: Option<RawToolArgs>,
+
+    #[rustfmt::skip]
+    /// Select how perf runs the benchmark
+    ///
+    /// `direct` runs the benchmark once without calibration. `calibrate` samples the default
+    /// calibration duration, while `calibrate=<duration>` uses a duration such as `250ms` or `2s`.
+    ///
+    /// Supported duration units are nanoseconds (`ns`, `nsec`), microseconds (`us`, `usec`),
+    /// milliseconds (`ms`, `msec`), and seconds (`s`, `sec`, `secs`, `second`, `seconds`). A
+    /// missing unit defaults to seconds.
+    ///
+    /// Examples:
+    ///   * --perf-run-mode=direct
+    ///   * --perf-run-mode=calibrate
+    ///   * --perf-run-mode=calibrate=250ms
+    #[arg(
+        display_order = 500,
+        env = "GUNGRAUN_PERF_RUN_MODE",
+        long = "perf-run-mode",
+        num_args = 1,
+        value_parser = parse_perf_run_mode,
+        verbatim_doc_comment,
+    )]
+    pub perf_run_mode: Option<PerfRunMode>,
+
+    #[rustfmt::skip]
+    /// Enable, disable, or configure the duration for perf sampling
+    ///
+    /// This duration is a time limit for continuously repeated `perf stat` sampling to improve
+    /// measurement stability. `yes` enables sampling with the default duration of 2 seconds. `no`
+    /// disables sampling. Passing a duration such as `250ms` or `2s` enables sampling with that
+    /// duration.
+    ///
+    /// Supported duration units are nanoseconds (`ns`, `nsec`), microseconds (`us`, `usec`),
+    /// milliseconds (`ms`, `msec`), and seconds (`s`, `sec`, `secs`, `second`, `seconds`). A
+    /// missing unit defaults to seconds.
+    ///
+    /// The sampling duration affects only the main `perf stat` measurement, not the optional
+    /// companion `perf record` capture (see `--perf-record`). It is also independent from the
+    /// duration supplied with `--perf-run-mode=calibrate=<duration>`, which controls a separate
+    /// calibration pass.
+    ///
+    /// For more details, see the Gungraun guide and the API docs for `Perf::sample_duration` at
+    /// <https://docs.rs/gungraun/latest/gungraun>.
+    ///
+    /// Examples:
+    ///   * --perf-sampling
+    ///   * --perf-sampling=no
+    ///   * --perf-sampling=250ms
+    #[arg(
+        default_missing_value = "yes",
+        display_order = 500,
+        env = "GUNGRAUN_PERF_SAMPLING",
+        long = "perf-sampling",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = parse_perf_sampling,
+        verbatim_doc_comment,
+    )]
+    pub perf_sampling: Option<PerfSampling>,
+
+    #[rustfmt::skip]
     /// Fail the entire benchmark run on the first performance regression
     ///
     /// When enabled, this option causes Gungraun to stop immediately when a performance regression
@@ -1243,15 +1458,133 @@ pub struct CommandLineArgs {
     pub tolerance: Option<f64>,
 
     #[rustfmt::skip]
+    /// Specify an alternative executable to run a tool invocation
+    ///
+    /// By default, Gungraun runs the selected tool directly. This option allows specifying an
+    /// alternative runner executable that will be invoked instead, with the selected tool binary
+    /// passed as an argument to the runner.
+    ///
+    /// When specified, the runner is invoked as:
+    ///   `<RUNNER> [RUNNER_ARGS...] <TOOL_BIN> [TOOL_ARGS...] <BENCHMARK> [BENCHMARK_ARGS...]`
+    ///
+    /// The runner receives extra environment variables that provide context:
+    /// - `GUNGRAUN_TR_DEST_DIR`: The destination directory for tool output files
+    /// - `GUNGRAUN_TR_HOME`: The gungraun home (`--home`) directory
+    /// - `GUNGRAUN_TR_WORKSPACE_ROOT`: The project's workspace root directory
+    /// - `GUNGRAUN_ALLOW_ASLR`: `yes` or `no` (the default) based on `--allow-aslr` setting
+    ///
+    /// Environment variables in `--tool-runner-args` are interpolated using `${VAR}` syntax.
+    /// The interpolation priority is: `GUNGRAUN_TR_*` variables first, then `--envs` variables,
+    /// then the system environment.
+    ///
+    /// This is useful for running benchmarks in containers or other environments where the tool is
+    /// not available on the host. See the online guide for detailed examples.
+    ///
+    /// Examples:
+    ///   * --tool-runner=docker
+    ///   * --tool-runner=/path/to/wrapper --tool-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
+    #[arg(
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER",
+        long = "tool-runner",
+        num_args = 1,
+        value_parser = PathBufValueParser::new().try_map(parse_path_resolved),
+        verbatim_doc_comment,
+    )]
+    pub tool_runner: Option<PathBuf>,
+
+    #[rustfmt::skip]
+    /// Additional arguments to pass to the tool runner executable
+    ///
+    /// This option is only effective when `--tool-runner` is specified. The arguments are passed
+    /// to the runner executable after `--tool-runner` and before the tool path.
+    ///
+    /// Environment variable interpolation is supported using the `${VAR}` syntax. Variables are
+    /// resolved in this order:
+    /// 1. `GUNGRAUN_TR_*` variables set by Gungraun (see `--tool-runner` for the list)
+    /// 2. Variables specified via `--envs` and `LibraryBenchmarkConfig::envs` or
+    ///    `BinaryBenchmarkConfig::envs`
+    /// 3. System environment variables
+    ///
+    /// The interpolation allows passing dynamic values to the runner based on Gungraun's
+    /// configuration. For example, `${GUNGRAUN_ALLOW_ASLR}` interpolation is useful for passing
+    /// the ASLR setting to container setups.
+    ///
+    /// Examples:
+    ///   * --tool-runner=sudo --tool-runner-args='--user=foo'
+    ///   * --tool-runner=wrapper '--tool-runner-args=--allow-aslr=${GUNGRAUN_ALLOW_ASLR}'
+    #[arg(
+        action = ArgAction::Append,
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER_ARGS",
+        long = "tool-runner-args",
+        num_args = 1,
+        required = false,
+        requires = "tool_runner",
+        value_parser = parse_raw_args,
+        verbatim_doc_comment,
+    )]
+    pub tool_runner_args: Vec<RawArgs>,
+
+    #[rustfmt::skip]
+    /// Override the destination directory path for tool runner output files
+    ///
+    /// This option is only effective when `--tool-runner` is specified. By default, tool output
+    /// files are written to paths under the gungraun home directory or in temporary directories.
+    /// This option allows substituting this path with a custom directory.
+    ///
+    /// When specified, any occurrence of this path prefix in tool arguments will be replaced with
+    /// the directory path specified by `--tool-runner-dest`.
+    ///
+    /// WARNING: Make sure the directory of this argument exists, is empty and doesn't point to a
+    /// directory with important files in it! This directory is managed by Gungraun and Gungraun
+    /// might delete **all** files in this directory. More details can be found in the online
+    /// guide.
+    ///
+    /// Examples:
+    ///   * `--tool-runner-dest=/tmp/results`
+    #[arg(
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER_DEST",
+        long = "tool-runner-dest",
+        num_args = 1,
+        requires = "tool_runner",
+        verbatim_doc_comment,
+    )]
+    pub tool_runner_dest: Option<PathBuf>,
+
+    #[rustfmt::skip]
+    /// Override the workspace root path for the tool runner
+    ///
+    /// This option is only effective when `--tool-runner` is specified. It allows substituting the
+    /// workspace root path prefix in the benchmark executable path and all other tool arguments.
+    ///
+    /// This can be useful for container setups where the workspace is mounted at a different
+    /// location inside the container.
+    ///
+    /// Examples:
+    ///   * `--tool-runner-root=/workspace`
+    #[arg(
+        display_order = 150,
+        env = "GUNGRAUN_TOOL_RUNNER_ROOT",
+        long = "tool-runner-root",
+        num_args = 1,
+        requires = "tool_runner",
+        verbatim_doc_comment,
+    )]
+    pub tool_runner_root: Option<PathBuf>,
+
+    #[rustfmt::skip]
     /// A comma separated list of tools to run additionally to Callgrind or another default tool
     ///
-    /// The tools specified here take precedence over the tools in the benchmarks. The Valgrind
+    /// The tools specified here take precedence over the tools in the benchmarks. The supported
     /// tools which are allowed here are the same as the ones listed in the documentation of
     /// --default-tool.
     ///
     /// Examples
     ///   * --tools dhat
     ///   * --tools memcheck,drd
+    ///   * --tools perf
     #[arg(
         display_order = 450,
         env = "GUNGRAUN_TOOLS",
@@ -1260,7 +1593,7 @@ pub struct CommandLineArgs {
         value_delimiter = ',',
         verbatim_doc_comment,
     )]
-    pub tools: Vec<ValgrindTool>,
+    pub tools: Vec<Tool>,
 
     #[rustfmt::skip]
     /// Adjust, enable or disable the truncation of the description in the Gungraun output
@@ -1319,7 +1652,7 @@ pub struct CommandLineArgs {
     ///
     /// By default, Gungraun searches for `valgrind` in the system PATH. This option
     /// allows specifying an alternative Valgrind executable. When used with
-    /// `--valgrind-runner`, this path is passed to the runner as the Valgrind binary
+    /// `--tool-runner`, this path is passed to the runner as the Valgrind binary
     /// to invoke.
     ///
     /// Note: The specified path is not validated for existence. If the path is invalid, the
@@ -1327,7 +1660,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples:
     ///   * `--valgrind-bin=/usr/local/bin/valgrind`
-    ///   * `--valgrind-bin=/doesnotexist` (used with `--valgrind-runner` for container setups)
+    ///   * `--valgrind-bin=/doesnotexist` (used with `--tool-runner` for container setups)
     #[arg(
         display_order = 100,
         env = "GUNGRAUN_VALGRIND_BIN",
@@ -1336,124 +1669,6 @@ pub struct CommandLineArgs {
         verbatim_doc_comment,
     )]
     pub valgrind_bin: Option<PathBuf>,
-
-    #[rustfmt::skip]
-    /// Specify an alternative executable to run Valgrind
-    ///
-    /// By default, Gungraun runs the benchmark executable with Valgrind directly. This option
-    /// allows specifying an alternative runner executable that will be invoked instead, with
-    /// Valgrind passed as an argument to the runner.
-    ///
-    /// When specified, the runner is invoked as:
-    ///   `<RUNNER> [RUNNER_ARGS...] <VALGRIND_BIN> [VALGRIND_ARGS...] <BENCHMARK> [BENCHMARK_ARGS...]`
-    ///
-    /// The runner receives extra environment variables that provide context:
-    /// - `GUNGRAUN_VR_DEST_DIR`: The destination directory for Valgrind output files
-    /// - `GUNGRAUN_VR_HOME`: The gungraun home (`--home`) directory
-    /// - `GUNGRAUN_VR_WORKSPACE_ROOT`: The project's workspace root directory
-    /// - `GUNGRAUN_ALLOW_ASLR`: `yes` or `no` (the default) based on `--allow-aslr` setting
-    ///
-    /// Environment variables in `--valgrind-runner-args` are interpolated using `${VAR}` syntax.
-    /// The interpolation priority is: `GUNGRAUN_VR_*` variables first, then `--envs` variables,
-    /// then the system environment.
-    ///
-    /// This is useful for running benchmarks in containers or other environments where Valgrind is
-    /// not available on the host. See the online guide for detailed examples.
-    ///
-    /// Examples:
-    ///   * --valgrind-runner=docker
-    ///   * --valgrind-runner=/path/to/wrapper --valgrind-runner-args='--some-flag=${GUNGRAUN_ALLOW_ASLR}'
-    #[arg(
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER",
-        long = "valgrind-runner",
-        num_args = 1,
-        value_parser = PathBufValueParser::new().try_map(parse_path_resolved),
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner: Option<PathBuf>,
-
-    #[rustfmt::skip]
-    /// Additional arguments to pass to the Valgrind runner executable
-    ///
-    /// This option is only effective when `--valgrind-runner` is specified. The arguments are
-    /// passed to the runner executable after `--valgrind-runner` and before the Valgrind path.
-    ///
-    /// Environment variable interpolation is supported using the `${VAR}` syntax. Variables are
-    /// resolved in this order:
-    /// 1. `GUNGRAUN_VR_*` variables set by Gungraun (see `--valgrind-runner` for the list)
-    /// 2. Variables specified via `--envs` and `LibraryBenchmarkConfig::envs` or
-    ///    `BinaryBenchmarkConfig::envs`
-    /// 3. System environment variables
-    ///
-    /// The interpolation allows passing dynamic values to the runner based on Gungraun's
-    /// configuration. For example, `${GUNGRAUN_ALLOW_ASLR}` interpolation is useful for passing
-    /// the ASLR setting to container setups.
-    ///
-    /// Examples:
-    ///   * --valgrind-runner=sudo --valgrind-runner-args='--user=foo'
-    ///   * --valgrind-runner=wrapper '--valgrind-runner-args=--allow-aslr=${GUNGRAUN_ALLOW_ASLR}'
-    #[arg(
-        action = ArgAction::Append,
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER_ARGS",
-        long = "valgrind-runner-args",
-        num_args = 1,
-        required = false,
-        requires = "valgrind_runner",
-        value_parser = parse_raw_args,
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner_args: Vec<RawArgs>,
-
-    #[rustfmt::skip]
-    /// Override the destination directory path for Valgrind runner output files
-    ///
-    /// This option is only effective when `--valgrind-runner` is specified. By default, Valgrind
-    /// output files are written to paths under the gungraun home directory or in temporary
-    /// directories. This option allows substituting this path with a custom directory.
-    ///
-    /// When specified, any occurrence of this path prefix in Valgrind arguments will be replaced
-    /// with the directory path specified by `--valgrind-runner-dest`.
-    ///
-    /// WARNING: Make sure the directory of this argument exists, is empty and doesn't point to a
-    /// directory with important files in it! This directory is managed by Gungraun and Gungraun
-    /// might delete **all** files in this directory. More details can be found in the online
-    /// guide.
-    ///
-    /// Examples:
-    ///   * `--valgrind-runner-dest=/tmp/results`
-    #[arg(
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER_DEST",
-        long = "valgrind-runner-dest",
-        num_args = 1,
-        requires = "valgrind_runner",
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner_dest: Option<PathBuf>,
-
-    #[rustfmt::skip]
-    /// Override the workspace root path for the Valgrind runner
-    ///
-    /// This option is only effective when `--valgrind-runner` is specified. It allows substituting
-    /// the workspace root path prefix in the benchmark executable path and all other Valgrind
-    /// arguments.
-    ///
-    /// This can be useful for container setups where the workspace is mounted at a different
-    /// location inside the container.
-    ///
-    /// Examples:
-    ///   * `--valgrind-runner-root=/workspace`
-    #[arg(
-        display_order = 150,
-        env = "GUNGRAUN_VALGRIND_RUNNER_ROOT",
-        long = "valgrind-runner-root",
-        num_args = 1,
-        requires = "valgrind_runner",
-        verbatim_doc_comment,
-    )]
-    pub valgrind_runner_root: Option<PathBuf>,
 
     /// Override the Cargo workspace root
     ///
@@ -1480,6 +1695,14 @@ pub struct CommandLineArgs {
     )]
     pub workspace_root: Option<PathBuf>,
 }
+
+/// A wrapper type for raw command-line arguments
+///
+/// Stores a list of raw string arguments without special processing or validation. Used for
+/// arguments passed through to external executables without modification, particularly for
+/// `--tool-runner-args`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawArgs(Vec<String>);
 
 impl CommandLineArgs {
     /// Parses command-line arguments and exits on parsing or validation errors.
@@ -1517,14 +1740,6 @@ impl CommandLineArgs {
         Ok(())
     }
 }
-
-/// A wrapper type for raw command-line arguments
-///
-/// Stores a list of raw string arguments without special processing or validation. Used for
-/// arguments passed through to external executables without modification, particularly for
-/// `--valgrind-runner-args`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RawArgs(Vec<String>);
 
 impl BenchmarkFilter {
     /// Return `true` if the filter matches the haystack
@@ -1905,6 +2120,131 @@ fn parse_path_resolved(value: PathBuf) -> Result<PathBuf, String> {
     util::resolve_binary_path(value, None).map_err(|error| error.to_string())
 }
 
+fn parse_perf_duration(value: &str) -> Result<Duration, String> {
+    let parser = fundu::CustomDurationParser::builder()
+        .disable_infinity()
+        .default_unit(TimeUnit::Second)
+        .time_units(&DEFAULT_TIME_UNITS)
+        .build();
+
+    parser
+        .parse(value)
+        .map(SaturatingInto::saturating_into)
+        .map_err(|e| e.to_string())
+}
+
+fn parse_perf_hard_limit_value(value: &str) -> Result<(Option<Unit>, Limit), String> {
+    let value = value.trim();
+    if let Ok(metric) = value.parse::<Metric>() {
+        return Ok((None, metric.into()));
+    }
+
+    for (index, b) in value.bytes().enumerate().rev() {
+        if b.is_ascii_digit() || b == b'.' {
+            let (number, unit) = value.split_at(index + 1);
+            if let Ok(metric) = number.trim().parse::<Metric>() {
+                return Ok((Some(Unit::parse(unit.trim())), metric.into()));
+            }
+
+            return Err(format!("Invalid perf hard limit '{value}'"));
+        }
+    }
+
+    Err(format!("Invalid perf hard limit '{value}'"))
+}
+
+fn parse_perf_limit(value: &str) -> Result<(&str, &str), String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("A perf limit must not be empty".to_owned());
+    }
+
+    let (pattern, limit) = value
+        .split_once('=')
+        .ok_or_else(|| format!("Invalid perf limit: expected pattern=limit, got '{value}'"))?;
+    let (pattern, limit) = (pattern.trim(), limit.trim());
+    if pattern.is_empty() || limit.is_empty() {
+        Err(format!("Invalid perf limit '{value}'"))
+    } else {
+        Ok((pattern, limit))
+    }
+}
+
+fn parse_perf_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("No perf limits found: At least one limit must be present".to_owned());
+    }
+
+    let mut soft_limits = Vec::new();
+    let mut hard_limits = Vec::new();
+    for item in value.split(',') {
+        let (pattern, limits) = parse_perf_limit(item)?;
+        for limit in limits.split('|') {
+            let limit = limit.trim();
+            if limit.is_empty() {
+                return Err(format!(
+                    "Invalid perf limit for '{pattern}': limit must not be empty"
+                ));
+            }
+
+            if let Some(percent) = limit.strip_suffix('%') {
+                let percent = percent
+                    .trim()
+                    .parse::<f64>()
+                    .map_err(|error| format!("Invalid perf soft limit for '{pattern}': {error}"))?;
+                soft_limits.push((pattern.to_owned(), percent));
+            } else {
+                let (unit, limit) = parse_perf_hard_limit_value(limit)?;
+                hard_limits.push((pattern.to_owned(), unit, limit));
+            }
+        }
+    }
+
+    let config: crate::runner::perf::regression::PerfRegressionConfig =
+        crate::api::PerfRegressionConfig {
+            hard_limits,
+            soft_limits,
+            ..Default::default()
+        }
+        .try_into()
+        .map_err(|error: String| error)?;
+    Ok(ToolRegressionConfig::Perf(config))
+}
+
+fn parse_perf_run_mode(value: &str) -> Result<PerfRunMode, String> {
+    let lower = value.to_ascii_lowercase();
+
+    match lower.as_str() {
+        "direct" => Ok(PerfRunMode::Direct),
+        "calibrate" => Ok(PerfRunMode::DefaultCalibrate),
+        lower => lower
+            .strip_prefix("calibrate=")
+            .ok_or_else(|| {
+                format!(
+                    "Invalid perf run mode '{value}': expected direct, calibrate, or \
+                     calibrate=<duration>"
+                )
+            })
+            .and_then(parse_perf_duration)
+            .map(PerfRunMode::Calibrate),
+    }
+}
+
+fn parse_perf_sampling(value: &str) -> Result<PerfSampling, String> {
+    let lower = value.to_ascii_lowercase();
+
+    match lower.as_str() {
+        "yes" => Ok(PerfSampling::Enabled(DEFAULT_PERF_SAMPLING_DURATION)),
+        "no" => Ok(PerfSampling::Disabled),
+        _ => parse_perf_duration(value)
+            .map(PerfSampling::Enabled)
+            .map_err(|error| {
+                format!("Invalid perf sampling '{value}': expected yes, no, or <duration>: {error}")
+            }),
+    }
+}
+
 /// This function parses a space separated list of raw argument strings into [`RawArgs`]
 fn parse_raw_args(value: &str) -> Result<RawArgs, String> {
     let value = if value.is_empty() {
@@ -1926,7 +2266,7 @@ fn parse_raw_args(value: &str) -> Result<RawArgs, String> {
 /// This function parses a space separated list of raw argument strings into
 /// [`crate::api::RawToolArgs`]
 fn parse_tool_args(value: &str) -> Result<RawToolArgs, String> {
-    parse_raw_args(value).map(|r| RawToolArgs::new(r.0))
+    parse_raw_args(value).map(|r| RawToolArgs::new_ignore_flag(r.0))
 }
 
 /// Utility function to parse the --callgrind-metrics, ...
@@ -1973,13 +2313,15 @@ fn parse_truncate_description(value: &str) -> Result<TruncateDescription, String
 mod tests {
     use std::fs::Permissions;
     use std::os::unix::fs::PermissionsExt;
+    use std::time::Duration;
 
     use rstest::rstest;
     use tempfile::{NamedTempFile, tempdir};
 
     use super::*;
     use crate::api::EventKind::*;
-    use crate::api::RawToolArgs;
+    use crate::api::{PerfRunMode, RawToolArgs};
+    use crate::units::Unit;
 
     #[rstest]
     #[case::single_key_value("--some=yes", &["--some=yes"])]
@@ -1992,7 +2334,7 @@ mod tests {
     )]
     fn test_parse_tool_args(#[case] value: &str, #[case] expected: &[&str]) {
         let actual = parse_tool_args(value).unwrap();
-        assert_eq!(actual, RawToolArgs::from_iter(expected));
+        assert_eq!(actual, RawToolArgs::from_iter_ignore_flag(expected));
     }
 
     #[test]
@@ -2142,7 +2484,7 @@ mod tests {
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.callgrind_args,
-            Some(RawToolArgs::new(vec![test_arg.to_owned()]))
+            Some(RawToolArgs::new_ignore_flag(vec![test_arg.to_owned()]))
         );
     }
 
@@ -2158,7 +2500,9 @@ mod tests {
         let result = CommandLineArgs::try_parse_from([input]).unwrap();
         assert_eq!(
             result.callgrind_args,
-            Some(RawToolArgs::new(expected.iter().map(ToOwned::to_owned)))
+            Some(RawToolArgs::new_ignore_flag(
+                expected.iter().map(ToOwned::to_owned)
+            ))
         );
     }
 
@@ -2174,7 +2518,7 @@ mod tests {
         let result = CommandLineArgs::parse_from([format!("--callgrind-args={test_arg_no}")]);
         assert_eq!(
             result.callgrind_args,
-            Some(RawToolArgs::new(vec![test_arg_no.to_owned()]))
+            Some(RawToolArgs::new_ignore_flag(vec![test_arg_no.to_owned()]))
         );
     }
 
@@ -2300,11 +2644,198 @@ mod tests {
     }
 
     #[rstest]
-    #[case::single("drd", &[ValgrindTool::DRD])]
-    #[case::two("drd,callgrind", &[ValgrindTool::DRD, ValgrindTool::Callgrind])]
-    fn test_tools_cli(#[case] tools: &str, #[case] expected: &[ValgrindTool]) {
+    #[case::single("drd", &[Tool::DRD])]
+    #[case::two("drd,callgrind", &[Tool::DRD, Tool::Callgrind])]
+    #[case::case_insensitive("DRD,CAcheGrind", &[Tool::DRD, Tool::Cachegrind])]
+    fn test_tools_cli(#[case] tools: &str, #[case] expected: &[Tool]) {
         let actual = CommandLineArgs::parse_from([format!("--tools={tools}")]);
         assert_eq!(actual.tools, expected);
+    }
+
+    #[test]
+    fn test_perf_args_cli() {
+        let actual = CommandLineArgs::parse_from(["--perf-args='--all-user --no-big-num'"]);
+        assert_eq!(
+            actual.perf_args,
+            Some(RawToolArgs::new_ignore_flag([
+                "--all-user".to_owned(),
+                "--no-big-num".to_owned(),
+            ]))
+        );
+    }
+
+    #[rstest]
+    #[case::enabled("--perf-record", Some(true))]
+    #[case::disabled("--perf-record=false", Some(false))]
+    fn test_perf_record_cli(#[case] arg: &str, #[case] expected: Option<bool>) {
+        let actual = CommandLineArgs::parse_from([arg]);
+        assert_eq!(actual.perf_record, expected);
+    }
+
+    #[test]
+    fn test_perf_record_args_cli() {
+        let actual = CommandLineArgs::parse_from(["--perf-record-args='--all-cpus --freq=400'"]);
+        assert_eq!(
+            actual.perf_record_args,
+            Some(RawToolArgs::new_ignore_flag([
+                "--all-cpus".to_owned(),
+                "--freq=400".to_owned(),
+            ]))
+        );
+    }
+
+    #[test]
+    fn test_perf_events_cli_preserves_event_sets() {
+        let actual = CommandLineArgs::parse_from([
+            "--perf-events=instructions,cycles",
+            "--perf-events=task-clock",
+        ]);
+        assert_eq!(
+            actual.perf_events,
+            vec!["instructions,cycles".to_owned(), "task-clock".to_owned()]
+        );
+    }
+
+    #[rstest]
+    #[case::direct("direct", PerfRunMode::Direct)]
+    #[case::default_calibration("calibrate", PerfRunMode::DefaultCalibrate)]
+    #[case::timed_calibration(
+        "calibrate=250ms",
+        PerfRunMode::Calibrate(Duration::from_millis(250))
+    )]
+    #[case::default_seconds("calibrate=2", PerfRunMode::Calibrate(Duration::from_secs(2)))]
+    fn test_perf_run_mode_cli(#[case] value: &str, #[case] expected: PerfRunMode) {
+        let actual = CommandLineArgs::parse_from([format!("--perf-run-mode={value}")]);
+        assert_eq!(actual.perf_run_mode, Some(expected));
+    }
+
+    #[test]
+    fn test_perf_run_mode_cli_rejects_unsupported_duration_units() {
+        let error = CommandLineArgs::try_parse_from(["--perf-run-mode=calibrate=1m"])
+            .expect_err("minutes must not be accepted as calibration durations");
+        assert!(error.to_string().contains("Invalid time unit"));
+    }
+
+    #[rstest]
+    #[case::bare_flag(
+        "--perf-sampling",
+        PerfSampling::Enabled(DEFAULT_PERF_SAMPLING_DURATION)
+    )]
+    #[case::yes("--perf-sampling=yes", PerfSampling::Enabled(Duration::from_secs(2)))]
+    #[case::no("--perf-sampling=no", PerfSampling::Disabled)]
+    #[case::default_seconds("--perf-sampling=2", PerfSampling::Enabled(Duration::from_secs(2)))]
+    #[case::duration(
+        "--perf-sampling=250ms",
+        PerfSampling::Enabled(Duration::from_millis(250))
+    )]
+    fn test_perf_sampling_cli(#[case] arg: &str, #[case] expected: PerfSampling) {
+        let actual = CommandLineArgs::parse_from([arg]);
+        assert_eq!(actual.perf_sampling, Some(expected));
+    }
+
+    #[test]
+    fn test_perf_sampling_cli_rejects_unsupported_duration_units() {
+        let error = CommandLineArgs::try_parse_from(["--perf-sampling=1m"])
+            .expect_err("minutes must not be accepted as sampling durations");
+        assert!(error.to_string().contains("Invalid time unit"));
+    }
+
+    #[test]
+    fn test_perf_sampling_cli_rejects_invalid_value() {
+        let error = CommandLineArgs::try_parse_from(["--perf-sampling=invalid"])
+            .expect_err("invalid values must not be accepted");
+        assert!(
+            error
+                .to_string()
+                .contains("expected yes, no, or <duration>")
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_perf_sampling_env() {
+        for (value, expected) in [
+            ("yes", PerfSampling::Enabled(Duration::from_secs(2))),
+            ("no", PerfSampling::Disabled),
+            ("250ms", PerfSampling::Enabled(Duration::from_millis(250))),
+        ] {
+            // SAFETY: This test is run serially.
+            unsafe {
+                std::env::set_var("GUNGRAUN_PERF_SAMPLING", value);
+            }
+            let actual = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+            assert_eq!(actual.perf_sampling, Some(expected));
+            // SAFETY: This test is run serially.
+            unsafe {
+                std::env::remove_var("GUNGRAUN_PERF_SAMPLING");
+            }
+        }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_perf_sampling_cli_takes_precedence_over_env() {
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::set_var("GUNGRAUN_PERF_SAMPLING", "no");
+        }
+        let actual = CommandLineArgs::parse_from(["--perf-sampling=yes"]);
+        assert_eq!(
+            actual.perf_sampling,
+            Some(PerfSampling::Enabled(Duration::from_secs(2)))
+        );
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::remove_var("GUNGRAUN_PERF_SAMPLING");
+        }
+    }
+
+    #[test]
+    fn test_perf_limits_cli_smoke() {
+        let actual = CommandLineArgs::parse_from([
+            "--perf-limits=*instructions*=1.5%|1000,task-clock*=10%|2.5ms"
+        ]);
+
+        assert_eq!(
+            actual.perf_limits,
+            Some(ToolRegressionConfig::Perf(
+                crate::runner::perf::regression::PerfRegressionConfig {
+                    alpha: 0.05,
+                    fail_fast: false,
+                    hard_limits: vec![
+                        (
+                            crate::api::PerfMetric("*instructions*".to_owned()),
+                            None,
+                            1000.into(),
+                        ),
+                        (
+                            crate::api::PerfMetric("task-clock*".to_owned()),
+                            Some(Unit::Milliseconds),
+                            2.5.into(),
+                        ),
+                    ],
+                    soft_limits: vec![
+                        (crate::api::PerfMetric("*instructions*".to_owned()), 1.5),
+                        (crate::api::PerfMetric("task-clock*".to_owned()), 10.0),
+                    ],
+                }
+            ))
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_perf_bin_env() {
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::set_var("GUNGRAUN_PERF_BIN", "/opt/perf/bin/perf");
+        }
+        let actual = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(actual.perf_bin, Some(PathBuf::from("/opt/perf/bin/perf")));
+        // SAFETY: This test is run serially.
+        unsafe {
+            std::env::remove_var("GUNGRAUN_PERF_BIN");
+        }
     }
 
     #[rstest]
@@ -2740,71 +3271,65 @@ mod tests {
     }
 
     #[test]
-    fn test_arg_valgrind_runner() {
+    fn test_arg_tool_runner() {
         let file = tempfile::Builder::new()
             .permissions(Permissions::from_mode(0o755))
             .tempfile()
             .unwrap();
-        let result = CommandLineArgs::try_parse_from([format!(
-            "--valgrind-runner={}",
-            file.path().display()
-        )])
-        .unwrap();
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())])
+                .unwrap();
 
-        assert_eq!(result.valgrind_runner, Some(file.path().to_path_buf()));
+        assert_eq!(result.tool_runner, Some(file.path().to_path_buf()));
     }
 
     #[test]
-    fn test_arg_valgrind_runner_when_directory_then_error() {
+    fn test_arg_tool_runner_when_directory_then_error() {
         let dir = tempdir().unwrap();
-        let result = CommandLineArgs::try_parse_from([format!(
-            "--valgrind-runner='{}'",
-            dir.path().display()
-        )]);
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner='{}'", dir.path().display())]);
         result.unwrap_err();
     }
 
     #[test]
-    fn test_arg_valgrind_runner_when_not_executable_then_error() {
+    fn test_arg_tool_runner_when_not_executable_then_error() {
         let file = NamedTempFile::new().unwrap();
-        let result = CommandLineArgs::try_parse_from([format!(
-            "--valgrind-runner={}",
-            file.path().display()
-        )]);
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())]);
         result.unwrap_err();
     }
 
     #[rstest]
-    #[case::positional_one(&["--valgrind-runner-args=foo"], &["foo"])]
-    #[case::positional_one_with_quotes(&["--valgrind-runner-args='foo'"], &["foo"])]
-    #[case::flag_one(&["--valgrind-runner-args=--foo"], &["--foo"])]
-    #[case::flag_one_with_quotes(&["--valgrind-runner-args='--foo'"], &["--foo"])]
-    #[case::flag_one_with_equals(&["--valgrind-runner-args=--foo=some"], &["--foo=some"])]
-    #[case::flag_two(&["--valgrind-runner-args='--foo --bar'"], &["--foo", "--bar"])]
-    fn test_valgrind_runner_args(#[case] input: &[&str], #[case] expected: &[&str]) {
+    #[case::positional_one(&["--tool-runner-args=foo"], &["foo"])]
+    #[case::positional_one_with_quotes(&["--tool-runner-args='foo'"], &["foo"])]
+    #[case::flag_one(&["--tool-runner-args=--foo"], &["--foo"])]
+    #[case::flag_one_with_quotes(&["--tool-runner-args='--foo'"], &["--foo"])]
+    #[case::flag_one_with_equals(&["--tool-runner-args=--foo=some"], &["--foo=some"])]
+    #[case::flag_two(&["--tool-runner-args='--foo --bar'"], &["--foo", "--bar"])]
+    fn test_tool_runner_args(#[case] input: &[&str], #[case] expected: &[&str]) {
         let result = CommandLineArgs::try_parse_from(
             input
                 .iter()
-                .chain(std::iter::once(&"--valgrind-runner=/bin/cat")),
+                .chain(std::iter::once(&"--tool-runner=/bin/cat")),
         )
         .map_err(|e| e.to_string())
         .unwrap();
         assert_eq!(
-            result.valgrind_runner_args,
+            result.tool_runner_args,
             vec![RawArgs(expected.iter().map(ToString::to_string).collect())]
         );
     }
 
     #[test]
-    fn test_valgrind_runner_args_when_twice() {
+    fn test_tool_runner_args_when_twice() {
         let result = CommandLineArgs::try_parse_from([
-            "--valgrind-runner-args=--foo",
-            "--valgrind-runner-args=--bar",
-            "--valgrind-runner=/bin/cat",
+            "--tool-runner-args=--foo",
+            "--tool-runner-args=--bar",
+            "--tool-runner=/bin/cat",
         ])
         .unwrap();
         assert_eq!(
-            result.valgrind_runner_args,
+            result.tool_runner_args,
             vec![
                 RawArgs(vec!["--foo".to_owned()]),
                 RawArgs(vec!["--bar".to_owned()])
@@ -3135,5 +3660,35 @@ mod tests {
             result,
             vec![(OsString::from(expected_key), OsString::from(expected_value))]
         );
+    }
+
+    #[rstest]
+    #[case::integer_joule("1J", Unit::Joules, 1)]
+    #[case::float_joule("1.0J", Unit::Joules, 1.0)]
+    #[case::point_joule("1.J", Unit::Joules, 1.0)]
+    #[case::exponent_joule("1.e3J", Unit::Joules, 1000.0)]
+    #[case::multiple_unit_chars("1ms", Unit::Milliseconds, 1)]
+    #[case::just_integer("1", None, 1)]
+    #[case::just_float("1.0", None, 1.0)]
+    #[case::float_with_exponent("1.0e1", None, 10.0)]
+    #[case::scientific_notation("1e-3Hz", Unit::Hertz, 0.001)]
+    #[case::unknown_unit("1what", Unit::Unknown("what".to_owned()), 1)]
+    fn test_parse_perf_hard_limit_value<L, U>(
+        #[case] input: &str,
+        #[case] expected_unit: U,
+        #[case] expected_limit: L,
+    ) where
+        L: Into<Limit>,
+        U: Into<Option<Unit>>,
+    {
+        let result = parse_perf_hard_limit_value(input).unwrap();
+        assert_eq!(result, (expected_unit.into(), expected_limit.into()));
+    }
+
+    #[rstest]
+    #[case::no_numeric_prefix("ms")]
+    #[case::invalid_numeric_prefix("1..ms")]
+    fn test_parse_perf_hard_limit_value_when_invalid_then_error(#[case] input: &str) {
+        parse_perf_hard_limit_value(input).unwrap_err();
     }
 }

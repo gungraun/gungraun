@@ -1,5 +1,5 @@
 data:
-  - group: my_group
+  - group: group_assistants
     function: with_output_in_command
     id: setup_and_teardown_with_output
     expected:
@@ -9,7 +9,7 @@ data:
         - callgrind.with_output_in_command.setup_and_teardown_with_output.out
         - callgrind.with_output_in_command.setup_and_teardown_with_output.out.old
         - summary.json
-  - group: my_group
+  - group: group_assistants
     function: with_output_in_command
     id: setup_and_teardown_without_output
     expected:
@@ -25,15 +25,15 @@ data:
       files:
         - summary.json
       globs:
-        - pattern: callgrind.subprocess.*.log.old
-          count: 2
-        - pattern: callgrind.subprocess.*.out.old
-          count: 2
         - pattern: callgrind.subprocess.*.log
+          count: 2
+        - pattern: callgrind.subprocess.*.log.old
           count: 2
         - pattern: callgrind.subprocess.*.out
           count: 2
-  - group: group_assistants
+        - pattern: callgrind.subprocess.*.out.old
+          count: 2
+  - group: my_group
     function: with_output_in_command
     id: setup_and_teardown_with_output
     expected:
@@ -43,7 +43,7 @@ data:
         - callgrind.with_output_in_command.setup_and_teardown_with_output.out
         - callgrind.with_output_in_command.setup_and_teardown_with_output.out.old
         - summary.json
-  - group: group_assistants
+  - group: my_group
     function: with_output_in_command
     id: setup_and_teardown_without_output
     expected:

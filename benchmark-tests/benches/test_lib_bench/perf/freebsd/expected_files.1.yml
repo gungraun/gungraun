@@ -1,0 +1,65 @@
+data:
+  - group: with_sampling
+    function: with_other_tool
+    id: default_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_callgrind_disable_perf.out
+        - summary.json
+  - group: with_sampling
+    function: with_other_tool
+    id: default_callgrind_with_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_with_perf.log
+        - callgrind.with_other_tool.default_callgrind_with_perf.out
+        - summary.json
+  - group: with_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind.log
+        - callgrind.with_other_tool.default_perf_with_callgrind.out
+        - summary.json
+  - group: with_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_callgrind_disable_perf.out
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_callgrind_with_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_callgrind_with_perf.log
+        - callgrind.with_other_tool.default_callgrind_with_perf.out
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind.log
+        - callgrind.with_other_tool.default_perf_with_callgrind.out
+        - summary.json
+  - group: without_sampling
+    function: with_other_tool
+    id: default_perf_with_callgrind_disable_perf
+    expected:
+      files:
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.log
+        - callgrind.with_other_tool.default_perf_with_callgrind_disable_perf.out
+        - summary.json

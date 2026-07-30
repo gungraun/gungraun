@@ -150,23 +150,14 @@ error[E0308]: mismatched types
    = note: this error originates in the attribute macro `binary_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
-   --> tests/ui/both/test_file_parameter_when_invalid.rs:144:5
+   --> tests/ui/both/test_file_parameter_when_invalid.rs:145:76
     |
-144 |     #[library_benchmark]
-    |     ^^^^^^^^^^^^^^^^^^^^- help: try using a conversion method: `.to_string()`
-    |     |
-    |     expected `String`, found `u64`
-    |     arguments to this function are incorrect
-    |
-note: function defined here
-   --> tests/ui/both/test_file_parameter_when_invalid.rs:144:5
-    |
-144 |     #[library_benchmark]
-    |     ^^^^^^^^^^^^^^^^^^^^
 145 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix", setup = my_setup)]
+    |                                                                            ^^^^^^^^- help: try using a conversion method: `.to_string()`
+    |                                                                            |
+    |                                                                            expected `String`, found `u64`
 146 |     fn bench_library(value: String) -> u64 {
-    |                      -------------
-    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+    |                             ------ expected due to this
 
 error[E0308]: mismatched types
    --> tests/ui/both/test_file_parameter_when_invalid.rs:151:29

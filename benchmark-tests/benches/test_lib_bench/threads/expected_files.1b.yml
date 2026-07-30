@@ -84,17 +84,17 @@ data:
           count: 3
         - pattern: callgrind.bench_thread_in_subprocess.one.*.t1.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.one.*.t2.p1.out
-          count: 1
         - pattern: callgrind.bench_thread_in_subprocess.one.*.t1.p1.out.old
+          count: 1
+        - pattern: callgrind.bench_thread_in_subprocess.one.*.t2.p1.out
           count: 1
         - pattern: callgrind.bench_thread_in_subprocess.one.*.t2.p1.out.old
           count: 1
         - pattern: dhat.bench_thread_in_subprocess.one.*.log
           count: 2
-        - pattern: dhat.bench_thread_in_subprocess.one.*.out
-          count: 2
         - pattern: dhat.bench_thread_in_subprocess.one.*.log.old
+          count: 2
+        - pattern: dhat.bench_thread_in_subprocess.one.*.out
           count: 2
         - pattern: dhat.bench_thread_in_subprocess.one.*.out.old
           count: 2
@@ -116,17 +116,17 @@ data:
           count: 2
         - pattern: exp-bbv.bench_thread_in_subprocess.one.*.t1.bb.out
           count: 1
-        - pattern: exp-bbv.bench_thread_in_subprocess.one.*.t2.bb.out
-          count: 1
         - pattern: exp-bbv.bench_thread_in_subprocess.one.*.t1.bb.out.old
+          count: 1
+        - pattern: exp-bbv.bench_thread_in_subprocess.one.*.t2.bb.out
           count: 1
         - pattern: exp-bbv.bench_thread_in_subprocess.one.*.t2.bb.out.old
           count: 1
         - pattern: massif.bench_thread_in_subprocess.one.*.log
           count: 2
-        - pattern: massif.bench_thread_in_subprocess.one.*.out
-          count: 2
         - pattern: massif.bench_thread_in_subprocess.one.*.log.old
+          count: 2
+        - pattern: massif.bench_thread_in_subprocess.one.*.out
           count: 2
         - pattern: massif.bench_thread_in_subprocess.one.*.out.old
           count: 2
@@ -151,21 +151,21 @@ data:
           count: 4
         - pattern: callgrind.bench_thread_in_subprocess.two.*.t1.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t2.p1.out
-          count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t3.p1.out
-          count: 1
         - pattern: callgrind.bench_thread_in_subprocess.two.*.t1.p1.out.old
           count: 1
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t2.p1.out
+          count: 1
         - pattern: callgrind.bench_thread_in_subprocess.two.*.t2.p1.out.old
+          count: 1
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t3.p1.out
           count: 1
         - pattern: callgrind.bench_thread_in_subprocess.two.*.t3.p1.out.old
           count: 1
         - pattern: dhat.bench_thread_in_subprocess.two.*.log
           count: 2
-        - pattern: dhat.bench_thread_in_subprocess.two.*.out
-          count: 2
         - pattern: dhat.bench_thread_in_subprocess.two.*.log.old
+          count: 2
+        - pattern: dhat.bench_thread_in_subprocess.two.*.out
           count: 2
         - pattern: dhat.bench_thread_in_subprocess.two.*.out.old
           count: 2
@@ -187,21 +187,21 @@ data:
           count: 2
         - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t1.bb.out
           count: 1
-        - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t2.bb.out
-          count: 1
-        - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t3.bb.out
-          count: 1
         - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t1.bb.out.old
           count: 1
+        - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t2.bb.out
+          count: 1
         - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t2.bb.out.old
+          count: 1
+        - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t3.bb.out
           count: 1
         - pattern: exp-bbv.bench_thread_in_subprocess.two.*.t3.bb.out.old
           count: 1
         - pattern: massif.bench_thread_in_subprocess.two.*.log
           count: 2
-        - pattern: massif.bench_thread_in_subprocess.two.*.out
-          count: 2
         - pattern: massif.bench_thread_in_subprocess.two.*.log.old
+          count: 2
+        - pattern: massif.bench_thread_in_subprocess.two.*.out
           count: 2
         - pattern: massif.bench_thread_in_subprocess.two.*.out.old
           count: 2

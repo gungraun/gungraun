@@ -9,15 +9,22 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
 use anyhow::{Context, Result};
+use derive_more::Deref;
 use log::{debug, log_enabled};
-use regex::Regex;
+use regex::{Captures, Regex};
 use tempfile::{Builder, TempDir};
 
-use crate::api::ValgrindTool;
+use crate::api::Tool;
 use crate::runner::callgrind;
 use crate::runner::common::ModulePath;
 use crate::summary::model::{BaselineKind, BaselineName};
 use crate::util::truncate_str_utf8;
+
+/// Sanitized output paths grouped by optional perf part number.
+///
+/// Each entry contains the paths for one optional `p<N>` part and the remaining modifier string,
+/// such as `cal` or `overhead`, when one is present.
+pub type OutputPathParts = HashMap<Option<u64>, Vec<(PathBuf, Option<String>)>>;
 
 // This regex matches the original file name without the prefix as it is created by callgrind.
 // The baseline <name> (base@<name>) can only consist of ascii and underscore characters.
@@ -44,22 +51,33 @@ static BBV_ORIG_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// This regex matches the original file name without the prefix as it is created by all tools
-/// other than callgrind and bbv.
+/// other than callgrind, bbv and perf.
 static GENERIC_ORIG_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        "^(?<type>[.](?:out|log|xtree|xleak))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$",
-    )
-    .expect("Regex should compile")
-});
-
-static REAL_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
-        "^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?",
-        "(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log|xtree|xleak))",
-        "(?:[.](?<base>old|base@[^.]+))?$"
+        "^(?<type>[.](?:out|log|xtree|xleak|data))(?<base>[.](old|base@[^.]+))?",
+        "(?<pid>[.][#][0-9]+)?(?<ext>[.][^#]+)?$",
     ))
     .expect("Regex should compile")
 });
+
+/// This regex matches the original file name without the prefix as it is created by perf
+///
+/// This regex doesn't match *.cal.XXX files which are created during calibration. These files
+/// should be cleaned up during calibration.
+static PERF_ORIG_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(concat!(
+        "^(?<type>[.](?:out|log|data))(?<base>[.](old|base@[^.]+))?",
+        "(?<part>[.]p[0-9]+)?(?<ext>[.][^0-9]+)?$",
+    ))
+    .expect("Regex should compile")
+});
+
+#[derive(Debug)]
+enum SanitizableBaseline {
+    Baseline(String),
+    NoBaseline,
+    OldBaseline,
+}
 
 /// The different output path kinds
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,6 +94,12 @@ pub enum ToolOutputPathKind {
     OldLog,
     /// The output path for baseline `log` files
     BaseLog(String),
+    /// The output path for `*.data` files
+    Data,
+    /// The output path for `*.data.old` files
+    OldData,
+    /// The output path for baseline `data` files
+    BaseData(String),
     /// The output path for `*.xtree` files
     Xtree,
     /// The output path for `*.xtree.old` files
@@ -90,13 +114,72 @@ pub enum ToolOutputPathKind {
     BaseXleak(String),
 }
 
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct BbvTypeKey {
+    baseline: Option<String>,
+    bbv_type: Option<String>,
+    output_type: String,
+}
+
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct CallgrindTypeKey {
+    baseline: Option<String>,
+    output_type: String,
+}
+
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct GenericTypeKey {
+    baseline: Option<String>,
+    output_type: String,
+}
+
+#[derive(Debug)]
+struct OriginalBbvFile {
+    path: PathBuf,
+    thread: usize,
+}
+
+#[derive(Debug)]
+struct OriginalCallgrindFile {
+    part: Option<u64>,
+    path: PathBuf,
+}
+
+#[derive(Debug)]
+struct OriginalGenericFile {
+    extension: Option<String>,
+    path: PathBuf,
+    pid: Option<u32>,
+}
+
+#[derive(Debug)]
+struct OriginalPerfFile {
+    part: Option<u64>,
+    path: PathBuf,
+}
+
+#[derive(Debug, Deref)]
+struct PathSanitizer<'a> {
+    output_path: &'a ToolOutputPath,
+}
+
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct PerfTypeKey {
+    baseline: Option<String>,
+    output_type: String,
+}
+
+#[derive(Debug)]
+struct SanitizedFileNameBuilder(String);
+
 /// The tool specific output path(s)
 ///
 /// In the presence of a temporary directory, the temporary directory is assumed to be the output
 /// path for any new files from the Valgrind tools and files in it are returned by methods like
-/// [`ToolOutputPath::real_paths`]. Otherwise the benchmark directory contains the new and "old"
-/// files of previous benchmark runs. The temporary files need to be transferred to the benchmark
-/// directory manually for example with [`ToolOutputPath::copy_temp`] and doesn't happen on drop.
+/// [`ToolOutputPath::sanitized_paths`] after [`ToolOutputPath::sanitize`]. Otherwise the benchmark
+/// directory contains the new and "old" files of previous benchmark runs. The temporary files need
+/// to be transferred to the benchmark directory manually for example with
+/// [`ToolOutputPath::copy_temp`] and doesn't happen on drop.
 ///
 /// If a temporary directory for the new files exists, it's best to use it as long as possible for
 /// example for parsing since nowadays the temporary directory is most likely stored an in-memory
@@ -116,7 +199,7 @@ pub struct ToolOutputPath {
     /// The temporary directory for the new valgrind output
     pub temp: Option<Arc<TempDir>>,
     /// The tool
-    pub tool: ValgrindTool,
+    pub tool: Tool,
 }
 
 impl ToolOutputPath {
@@ -127,7 +210,7 @@ impl ToolOutputPath {
     /// present join both with a dot as separator to get the final `name`.
     pub fn new(
         kind: ToolOutputPathKind,
-        tool: ValgrindTool,
+        tool: Tool,
         baseline_kind: &BaselineKind,
         base_dir: &Path,
         module: &ModulePath,
@@ -175,7 +258,7 @@ impl ToolOutputPath {
     /// This method moves the old output to `$TOOL_ID.*.out.old`
     pub fn with_init(
         kind: ToolOutputPathKind,
-        tool: ValgrindTool,
+        tool: Tool,
         baseline_kind: &BaselineKind,
         base_dir: &Path,
         module: &str,
@@ -205,9 +288,9 @@ impl ToolOutputPath {
         })
     }
 
-    /// Remove the files of this output path
+    /// Remove the sanitized files of this output path
     pub fn clear(&self) -> Result<()> {
-        for entry in self.real_paths_in(&self.dir)? {
+        for entry in self.sanitized_paths_in(&self.dir)? {
             debug!("Clearing '{}'", entry.display());
             std::fs::remove_file(&entry).with_context(|| {
                 format!("Failed to remove benchmark file: '{}'", entry.display())
@@ -215,6 +298,34 @@ impl ToolOutputPath {
         }
 
         self.clear_temp_files(false)
+    }
+
+    /// Remove sanitized files for the given part if their modifier matches one of `modifiers`.
+    ///
+    /// Files without modifiers are kept. Passing `None` for `part` targets files without a `p<N>`
+    /// part suffix.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if output paths cannot be read or if removing a matching file fails.
+    pub fn clear_part_with_modifiers(&self, part: Option<u64>, modifiers: &[&str]) -> Result<()> {
+        let parts = self.sanitized_paths_by_part()?;
+
+        if let Some(paths) = parts.get(&part) {
+            for (path, real_modifiers) in paths {
+                if let Some(real_modifiers) = real_modifiers {
+                    if modifiers.contains(&real_modifiers.as_str()) {
+                        debug!(
+                            "Clearing part {part:?} with modifier {real_modifiers}: {}",
+                            path.display()
+                        );
+                        std::fs::remove_file(path)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Delete temporary/unsanitized files in the benchmark directory
@@ -247,12 +358,12 @@ impl ToolOutputPath {
         Ok(())
     }
 
-    /// Remove the old or base files and rename the present files to "old" files
+    /// Remove the sanitized old or base files and rename the present files to "old" files
     pub fn shift(&self) -> Result<()> {
         match self.baseline_kind {
             BaselineKind::Old => {
                 self.to_base_path().clear()?;
-                for entry in self.real_paths_in(&self.dir)? {
+                for entry in self.sanitized_paths_in(&self.dir)? {
                     let extension = entry.extension().expect("An extension should be present");
                     let mut extension = extension.to_owned();
                     extension.push(".old");
@@ -277,9 +388,10 @@ impl ToolOutputPath {
         }
     }
 
-    /// Copies the files in the temporary directory to the benchmark directory
+    /// Copies all files in the temporary directory to the benchmark directory
     ///
-    /// If there is no temporary directory then this method does nothing.
+    /// This method operates on all files independent of the tool, output path kind, sanitization,
+    /// ... If there is no temporary directory then this method does nothing.
     ///
     /// # Errors
     ///
@@ -305,10 +417,11 @@ impl ToolOutputPath {
         Ok(())
     }
 
-    /// Moves the files of the temporary directory to the benchmark directory
+    /// Moves all files of the temporary directory to the benchmark directory
     ///
-    /// Like [`Self::copy_temp`] this method does nothing if there is no temporary directory. This
-    /// method does not delete the temporary directory itself and is still usable if required.
+    /// Like [`Self::copy_temp`] this method does not care about the tool, output path kind,
+    /// sanitization, ... and does nothing if there is no temporary directory. This method does not
+    /// delete the temporary directory itself which is still usable if required.
     ///
     /// # Errors
     ///
@@ -360,20 +473,21 @@ impl ToolOutputPath {
         match &self.kind {
             ToolOutputPathKind::BaseOut(name)
             | ToolOutputPathKind::BaseLog(name)
+            | ToolOutputPathKind::BaseData(name)
             | ToolOutputPathKind::BaseXtree(name)
             | ToolOutputPathKind::BaseXleak(name) => Some(BaselineName(name.clone())),
             _ => None,
         }
     }
 
-    /// Returns `true` if a real file of this output path exists.
+    /// Returns `true` if a sanitized file of this output path exists.
     pub fn exists(&self) -> bool {
-        self.real_paths().is_ok_and(|p| !p.is_empty())
+        self.sanitized_paths().is_ok_and(|p| !p.is_empty())
     }
 
-    /// Returns `true` if there are multiple real files of this output path.
+    /// Returns `true` if there are multiple sanitized files of this output path.
     pub fn is_multiple(&self) -> bool {
-        self.real_paths().is_ok_and(|p| p.len() > 1)
+        self.sanitized_paths().is_ok_and(|p| p.len() > 1)
     }
 
     /// Return `true` if this output path is an old or baseline path
@@ -381,12 +495,15 @@ impl ToolOutputPath {
         match self.kind {
             ToolOutputPathKind::Out
             | ToolOutputPathKind::Log
+            | ToolOutputPathKind::Data
             | ToolOutputPathKind::Xtree
             | ToolOutputPathKind::Xleak => false,
             ToolOutputPathKind::OldOut
             | ToolOutputPathKind::BaseOut(_)
             | ToolOutputPathKind::OldLog
             | ToolOutputPathKind::BaseLog(_)
+            | ToolOutputPathKind::OldData
+            | ToolOutputPathKind::BaseData(_)
             | ToolOutputPathKind::OldXtree
             | ToolOutputPathKind::BaseXtree(_)
             | ToolOutputPathKind::OldXleak
@@ -409,6 +526,11 @@ impl ToolOutputPath {
                     ToolOutputPathKind::Log | ToolOutputPathKind::BaseLog(_),
                     BaselineKind::Name(name),
                 ) => ToolOutputPathKind::BaseLog(name.to_string()),
+                (ToolOutputPathKind::Data, BaselineKind::Old) => ToolOutputPathKind::OldData,
+                (
+                    ToolOutputPathKind::Data | ToolOutputPathKind::BaseData(_),
+                    BaselineKind::Name(name),
+                ) => ToolOutputPathKind::BaseData(name.to_string()),
                 (ToolOutputPathKind::Xtree, BaselineKind::Old) => ToolOutputPathKind::OldXtree,
                 (
                     ToolOutputPathKind::Xtree | ToolOutputPathKind::BaseXtree(_),
@@ -430,6 +552,46 @@ impl ToolOutputPath {
         }
     }
 
+    /// Convert this tool output to the corresponding perf data output.
+    ///
+    /// For [`Tool::Perf`], output and log kinds are mapped to [`ToolOutputPathKind::Data`] or
+    /// [`ToolOutputPathKind::BaseData`] while preserving the directory, modifiers, name, temporary
+    /// directory, and baseline kind. Non-perf output paths are returned unchanged.
+    #[must_use]
+    pub fn to_data_output(&self) -> Self {
+        match self.tool {
+            Tool::Perf => {
+                let kind = match &self.kind {
+                    ToolOutputPathKind::Out
+                    | ToolOutputPathKind::OldOut
+                    | ToolOutputPathKind::Log
+                    | ToolOutputPathKind::OldLog
+                    | ToolOutputPathKind::Xtree
+                    | ToolOutputPathKind::OldXtree
+                    | ToolOutputPathKind::Xleak
+                    | ToolOutputPathKind::OldXleak => ToolOutputPathKind::Data,
+                    ToolOutputPathKind::BaseOut(name)
+                    | ToolOutputPathKind::BaseXleak(name)
+                    | ToolOutputPathKind::BaseLog(name)
+                    | ToolOutputPathKind::BaseXtree(name) => {
+                        ToolOutputPathKind::BaseData(name.clone())
+                    }
+                    kind => kind.clone(),
+                };
+                Self {
+                    baseline_kind: self.baseline_kind.clone(),
+                    dir: self.dir.clone(),
+                    kind,
+                    modifiers: self.modifiers.clone(),
+                    name: self.name.clone(),
+                    temp: self.temp.clone(),
+                    tool: self.tool,
+                }
+            }
+            _ => self.clone(),
+        }
+    }
+
     /// Convert this tool output path to the output of another tool output path
     ///
     /// A tool with no `*.out` file is log-file based. If the other tool is a out-file based tool
@@ -437,7 +599,7 @@ impl ToolOutputPath {
     /// output converted with [`ToolOutputPath::to_base_path`]) will be converted to a new
     /// `ToolOutputPath`.
     #[must_use]
-    pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
+    pub fn to_tool_output(&self, tool: Tool) -> Self {
         let kind = if tool.has_output_file() {
             match &self.kind {
                 ToolOutputPathKind::Log
@@ -485,11 +647,14 @@ impl ToolOutputPath {
             kind: match &self.kind {
                 ToolOutputPathKind::Out
                 | ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::Data
+                | ToolOutputPathKind::OldData
                 | ToolOutputPathKind::Xleak
                 | ToolOutputPathKind::OldXleak
                 | ToolOutputPathKind::Xtree
                 | ToolOutputPathKind::OldXtree => ToolOutputPathKind::Log,
                 ToolOutputPathKind::BaseOut(name)
+                | ToolOutputPathKind::BaseData(name)
                 | ToolOutputPathKind::BaseXtree(name)
                 | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::BaseLog(name.clone()),
                 kind => kind.clone(),
@@ -512,11 +677,14 @@ impl ToolOutputPath {
             kind: match &self.kind {
                 ToolOutputPathKind::Out
                 | ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::Data
+                | ToolOutputPathKind::OldData
                 | ToolOutputPathKind::Xleak
                 | ToolOutputPathKind::OldXleak
                 | ToolOutputPathKind::Log
                 | ToolOutputPathKind::OldLog => ToolOutputPathKind::Xtree,
                 ToolOutputPathKind::BaseOut(name)
+                | ToolOutputPathKind::BaseData(name)
                 | ToolOutputPathKind::BaseLog(name)
                 | ToolOutputPathKind::BaseXleak(name) => {
                     ToolOutputPathKind::BaseXtree(name.clone())
@@ -541,6 +709,8 @@ impl ToolOutputPath {
             kind: match &self.kind {
                 ToolOutputPathKind::Out
                 | ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::Data
+                | ToolOutputPathKind::OldData
                 | ToolOutputPathKind::Xtree
                 | ToolOutputPathKind::OldXtree
                 | ToolOutputPathKind::Log
@@ -578,40 +748,51 @@ impl ToolOutputPath {
         .ok()?;
 
         if let Some(suffix) = self.strip_prefix(&file_name.to_string_lossy()) {
-            let caps = REAL_FILENAME_RE.captures(suffix)?;
-            if let Some(kind) = caps.name("type") {
-                match kind.as_str() {
-                    "out" | "xtree" | "xleak" => {
-                        let mut string = self.prefix();
-                        for s in [
-                            caps.name("pid").map(|c| format!(".{}", c.as_str())),
-                            Some(".log".to_owned()),
-                            caps.name("base").map(|c| format!(".{}", c.as_str())),
-                        ]
-                        .iter()
-                        .filter_map(|s| s.as_ref())
-                        {
-                            string.push_str(s);
-                        }
-
-                        let dir = temp_path.unwrap_or(&self.dir);
-                        return Some(dir.join(string));
+            let mut is_out = false;
+            let mut string = self.prefix();
+            for split in suffix.split('.').filter(|s| !s.is_empty()) {
+                match split {
+                    "out" | "xtree" | "xleak" | "data" => {
+                        is_out = true;
+                        string.push('.');
+                        string.push_str("log");
                     }
-                    _ => return Some(path.to_owned()),
+                    "log" => return Some(path.to_owned()),
+                    "bb" | "pc" => {}
+                    // In perf each part and each modifier has an own log file
+                    _ if self.tool == Tool::Perf => {
+                        string.push('.');
+                        string.push_str(split);
+                    }
+                    _ => {
+                        let is_tid_or_part = (split.starts_with('t') || split.starts_with('p'))
+                            && split[1..].bytes().all(|b| b.is_ascii_digit());
+
+                        if !is_tid_or_part {
+                            string.push('.');
+                            string.push_str(split);
+                        }
+                    }
                 }
+            }
+
+            if is_out {
+                let dir = temp_path.unwrap_or(&self.dir);
+                return Some(dir.join(string));
             }
         }
 
         None
     }
 
-    /// If the [`log::Level`] matches dump the content of all output files into the `writer`
+    /// If the [`log::Level`] matches, dump the content of the sanitized log file(s) into the
+    /// `writer`
     pub fn dump_log<W>(&self, log_level: log::Level, writer: &mut W) -> Result<()>
     where
         W: Write,
     {
         if log_enabled!(log_level) {
-            for path in self.real_paths()? {
+            for path in self.sanitized_paths()? {
                 log::log!(
                     log_level,
                     "{} log output '{}':",
@@ -643,19 +824,29 @@ impl ToolOutputPath {
             (ToolOutputPathKind::Out, false) => format!("out.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::Log, true) => "log".to_owned(),
             (ToolOutputPathKind::Log, false) => format!("log.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::Data, true) => "data".to_owned(),
+            (ToolOutputPathKind::Data, false) => format!("data.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::OldOut, true) => "out.old".to_owned(),
             (ToolOutputPathKind::OldOut, false) => format!("out.old.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::OldLog, true) => "log.old".to_owned(),
             (ToolOutputPathKind::OldLog, false) => format!("log.old.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldData, true) => "data.old".to_owned(),
+            (ToolOutputPathKind::OldData, false) => {
+                format!("data.old.{}", self.modifiers.join("."))
+            }
+            (ToolOutputPathKind::BaseOut(name), true) => format!("out.base@{name}"),
+            (ToolOutputPathKind::BaseOut(name), false) => {
+                format!("out.base@{name}.{}", self.modifiers.join("."))
+            }
             (ToolOutputPathKind::BaseLog(name), true) => {
                 format!("log.base@{name}")
             }
             (ToolOutputPathKind::BaseLog(name), false) => {
                 format!("log.base@{name}.{}", self.modifiers.join("."))
             }
-            (ToolOutputPathKind::BaseOut(name), true) => format!("out.base@{name}"),
-            (ToolOutputPathKind::BaseOut(name), false) => {
-                format!("out.base@{name}.{}", self.modifiers.join("."))
+            (ToolOutputPathKind::BaseData(name), true) => format!("data.base@{name}"),
+            (ToolOutputPathKind::BaseData(name), false) => {
+                format!("data.base@{name}.{}", self.modifiers.join("."))
             }
             (ToolOutputPathKind::Xtree, true) => "xtree".to_owned(),
             (ToolOutputPathKind::Xtree, false) => format!("xtree.{}", self.modifiers.join(".")),
@@ -698,10 +889,22 @@ impl ToolOutputPath {
         }
     }
 
+    /// Creates a new `ToolOutputPath` with `modifiers` added to the existing modifiers
+    #[must_use]
+    pub fn with_added_modifiers<I, T>(&self, modifiers: T) -> Self
+    where
+        I: Into<String>,
+        T: IntoIterator<Item = I>,
+    {
+        let mut this = self.clone();
+        this.modifiers.extend(modifiers.into_iter().map(Into::into));
+        this
+    }
+
     /// Return the unexpanded path usable as input for `--callgrind-out-file`, ...
     ///
     /// The path returned by this method does not necessarily have to exist and can include
-    /// modifiers like `%p`. Use [`Self::real_paths`] to get the real and existing (possibly
+    /// modifiers like `%p`. Use [`Self::sanitized_paths`] to get the real and existing (possibly
     /// multiple) paths to the output files of the respective tool.
     pub fn to_path(&self) -> PathBuf {
         self.dest_dir().join(self.file_name())
@@ -748,23 +951,27 @@ impl ToolOutputPath {
         format!("{}.{}", self.tool.id(), self.name)
     }
 
-    /// Returns the `real` paths of a tool's output files.
+    /// Returns the [`sanitized`] paths of a tool's output files.
     ///
     /// A tool can have many output files so [`Self::to_path`] is not enough
-    pub fn real_paths(&self) -> Result<Vec<PathBuf>> {
+    ///
+    /// [`sanitized`]: Self::sanitize
+    pub fn sanitized_paths(&self) -> Result<Vec<PathBuf>> {
         let dir = if self.is_base_path() {
             &self.dir
         } else {
             self.dest_dir()
         };
-        self.real_paths_in(dir)
+        self.sanitized_paths_in(dir)
     }
 
-    /// Returns the `real` paths of a tool's output files.
+    /// Returns the [`sanitized`] paths of a tool's output files in this `dir`
     ///
     /// A tool can have many output files so [`Self::to_path`] is not enough
+    ///
+    /// [`sanitized`]: Self::sanitize
     #[expect(clippy::case_sensitive_file_extension_comparisons)]
-    pub fn real_paths_in(&self, dir: &Path) -> Result<Vec<PathBuf>> {
+    pub fn sanitized_paths_in(&self, dir: &Path) -> Result<Vec<PathBuf>> {
         let mut paths = vec![];
         for entry in self.walk_dir(Some(dir))? {
             let file_name = entry.file_name();
@@ -776,13 +983,18 @@ impl ToolOutputPath {
                 let is_match = || match &self.kind {
                     ToolOutputPathKind::Out => suffix.ends_with(".out"),
                     ToolOutputPathKind::Log => suffix.ends_with(".log"),
+                    ToolOutputPathKind::Data => suffix.ends_with(".data"),
                     ToolOutputPathKind::OldOut => suffix.ends_with(".out.old"),
                     ToolOutputPathKind::OldLog => suffix.ends_with(".log.old"),
+                    ToolOutputPathKind::OldData => suffix.ends_with(".data.old"),
+                    ToolOutputPathKind::BaseOut(name) => {
+                        suffix.ends_with(format!(".out.base@{name}").as_str())
+                    }
                     ToolOutputPathKind::BaseLog(name) => {
                         suffix.ends_with(format!(".log.base@{name}").as_str())
                     }
-                    ToolOutputPathKind::BaseOut(name) => {
-                        suffix.ends_with(format!(".out.base@{name}").as_str())
+                    ToolOutputPathKind::BaseData(name) => {
+                        suffix.ends_with(format!(".data.base@{name}").as_str())
                     }
                     ToolOutputPathKind::Xtree => suffix.ends_with(".xtree"),
                     ToolOutputPathKind::OldXtree => suffix.ends_with(".xtree.old"),
@@ -804,74 +1016,140 @@ impl ToolOutputPath {
         Ok(paths)
     }
 
-    /// Returns the real paths with their respective modifiers if present.
-    pub fn real_paths_with_modifier(&self) -> Result<Vec<(PathBuf, Option<String>)>> {
+    /// Returns the [`sanitized`] paths with their respective modifiers if present.
+    ///
+    /// [`sanitized`]: Self::sanitize
+    pub fn sanitized_paths_with_modifier(&self) -> Result<Vec<(PathBuf, Option<String>)>> {
         let mut paths = vec![];
         for entry in self.walk_dir(None)? {
             let file_name = entry.file_name().to_string_lossy().to_string();
 
-            // Silently ignore all paths which don't follow this scheme, for example
+            // Silently ignore all paths which don't follow this pattern, for example
             // (`summary.json`)
             if let Some(suffix) = self.strip_prefix(&file_name) {
-                let modifiers = match &self.kind {
-                    ToolOutputPathKind::Out => suffix.strip_suffix(".out"),
-                    ToolOutputPathKind::Log => suffix.strip_suffix(".log"),
-                    ToolOutputPathKind::OldOut => suffix.strip_suffix(".out.old"),
-                    ToolOutputPathKind::OldLog => suffix.strip_suffix(".log.old"),
-                    ToolOutputPathKind::BaseLog(name) => {
-                        suffix.strip_suffix(format!(".log.base@{name}").as_str())
-                    }
-                    ToolOutputPathKind::BaseOut(name) => {
-                        suffix.strip_suffix(format!(".out.base@{name}").as_str())
-                    }
-                    ToolOutputPathKind::Xtree => suffix.strip_suffix(".xtree"),
-                    ToolOutputPathKind::OldXtree => suffix.strip_suffix(".xtree.old"),
-                    ToolOutputPathKind::BaseXtree(name) => {
-                        suffix.strip_suffix(format!(".xtree.base@{name}").as_str())
-                    }
-                    ToolOutputPathKind::Xleak => suffix.strip_suffix(".xleak"),
-                    ToolOutputPathKind::OldXleak => suffix.strip_suffix(".xleak.old"),
-                    ToolOutputPathKind::BaseXleak(name) => {
-                        suffix.strip_suffix(format!(".xleak.base@{name}").as_str())
-                    }
-                };
+                let remainder = self.strip_output_kind(suffix);
 
-                paths.push((
-                    entry.path(),
-                    modifiers.and_then(|s| (!s.is_empty()).then(|| s.to_owned())),
-                ));
+                if let Some(remainder) = remainder {
+                    paths.push((
+                        entry.path(),
+                        (!remainder.is_empty()).then(|| remainder.to_owned()),
+                    ));
+                }
             }
         }
+
         Ok(paths)
     }
 
-    /// Sanitize callgrind output file names
+    /// Returns sanitized paths grouped by optional part number.
     ///
-    /// This method will remove empty files which are occasionally produced by callgrind and only
-    /// cause problems in the parser. The files are renamed from the callgrind file naming scheme to
-    /// ours which is easier to handle.
+    /// The grouping uses the modifier prefix left after removing the output kind. For example,
+    /// `perf.bench.p1.overhead.out` is grouped under part `1` with modifier `overhead`, while
+    /// `perf.bench.out` is grouped under `None` with no modifier.
     ///
-    /// The information about pids, parts and threads is obtained by parsing the header from the
-    /// callgrind output files instead of relying on the sometimes flaky file names produced by
-    /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
-    /// fast. Additionally, `callgrind` might change the naming scheme of its files, so using the
-    /// headers makes us more independent of a specific valgrind/callgrind version.
-    #[expect(clippy::too_many_lines)]
-    pub fn sanitize_callgrind(&self) -> Result<()> {
-        // path, part
-        type Grouped = (PathBuf, Option<u64>);
-        // base (i.e. base@default) => pid => thread => vec: path, part
-        type Group =
-            HashMap<Option<String>, HashMap<Option<i32>, HashMap<Option<usize>, Vec<Grouped>>>>;
+    /// # Errors
+    ///
+    /// Returns an error if the output directory cannot be read.
+    pub fn sanitized_paths_by_part(&self) -> Result<OutputPathParts> {
+        let mut paths = HashMap::new();
+        for entry in self.walk_dir(None)? {
+            let file_name = entry.file_name().to_string_lossy().to_string();
 
-        // To figure out if there are multiple pids/parts/threads present, it's necessary to group
-        // the files in this map. The order doesn't matter since we only rename the original file
-        // names, which doesn't need to follow a specific order.
-        //
-        // At first, we group by (out|log), then base, then pid and then by part in different
-        // hashmaps. The threads are grouped in a vector.
-        let mut groups: HashMap<String, Group> = HashMap::new();
+            // Silently ignore all paths which don't follow this pattern, for example
+            // (`summary.json`)
+            if let Some(suffix) = self.strip_prefix(&file_name) {
+                let remainder = self.strip_output_kind(suffix);
 
+                let Some(remainder) = remainder else {
+                    continue;
+                };
+
+                let remainder = remainder.trim_start_matches('.');
+
+                let (part, modifiers) = if remainder.is_empty() {
+                    (None, None)
+                } else if let Some((part, modifiers)) = remainder.split_once('.') {
+                    if let Some(part) = part.strip_prefix('p').and_then(|p| p.parse::<u64>().ok()) {
+                        (
+                            Some(part),
+                            (!modifiers.is_empty()).then(|| modifiers.to_owned()),
+                        )
+                    } else {
+                        (None, Some(remainder.to_owned()))
+                    }
+                } else if let Some(part) = remainder
+                    .strip_prefix('p')
+                    .and_then(|part| part.parse::<u64>().ok())
+                {
+                    (Some(part), None)
+                } else {
+                    (None, Some(remainder.to_owned()))
+                };
+
+                paths
+                    .entry(part)
+                    .and_modify(|entries: &mut Vec<(PathBuf, Option<String>)>| {
+                        entries.push((entry.path(), modifiers.clone()));
+                    })
+                    .or_insert_with(|| vec![(entry.path(), modifiers)]);
+            }
+        }
+
+        Ok(paths)
+    }
+
+    /// Returns the prefix of the `filename` with the [`ToolOutputPathKind`] removed
+    ///
+    /// The result is `None` if the output kind was not matched, otherwise the result is `Some`. The
+    /// contained prefix can be empty.
+    fn strip_output_kind<'a>(&self, filename: &'a str) -> Option<&'a str> {
+        match &self.kind {
+            ToolOutputPathKind::Out => filename.strip_suffix(".out"),
+            ToolOutputPathKind::Log => filename.strip_suffix(".log"),
+            ToolOutputPathKind::Data => filename.strip_suffix(".data"),
+            ToolOutputPathKind::OldOut => filename.strip_suffix(".out.old"),
+            ToolOutputPathKind::OldLog => filename.strip_suffix(".log.old"),
+            ToolOutputPathKind::OldData => filename.strip_suffix(".data.old"),
+            ToolOutputPathKind::BaseOut(name) => {
+                filename.strip_suffix(format!(".out.base@{name}").as_str())
+            }
+            ToolOutputPathKind::BaseLog(name) => {
+                filename.strip_suffix(format!(".log.base@{name}").as_str())
+            }
+            ToolOutputPathKind::BaseData(name) => {
+                filename.strip_suffix(format!(".data.base@{name}").as_str())
+            }
+            ToolOutputPathKind::Xtree => filename.strip_suffix(".xtree"),
+            ToolOutputPathKind::OldXtree => filename.strip_suffix(".xtree.old"),
+            ToolOutputPathKind::BaseXtree(name) => {
+                filename.strip_suffix(format!(".xtree.base@{name}").as_str())
+            }
+            ToolOutputPathKind::Xleak => filename.strip_suffix(".xleak"),
+            ToolOutputPathKind::OldXleak => filename.strip_suffix(".xleak.old"),
+            ToolOutputPathKind::BaseXleak(name) => {
+                filename.strip_suffix(format!(".xleak.base@{name}").as_str())
+            }
+        }
+    }
+
+    /// Sanitize file names for a specific tool.
+    ///
+    /// Dispatches to `PathSanitizer::sanitize`, for more details see there.
+    pub fn sanitize(&self) -> Result<()> {
+        PathSanitizer::new(self).sanitize()
+    }
+}
+
+impl<'a> PathSanitizer<'a> {
+    fn new(output_path: &'a ToolOutputPath) -> Self {
+        Self { output_path }
+    }
+
+    fn for_each_match_do(
+        &self,
+        regex: &Regex,
+        mut apply: impl FnMut(DirEntry, Captures<'_>) -> Result<()>,
+    ) -> Result<()> {
         for entry in self.walk_dir(None)? {
             let file_name = entry.file_name();
             let file_name = file_name.to_string_lossy();
@@ -880,192 +1158,156 @@ impl ToolOutputPath {
                 continue;
             };
 
-            if let Some(caps) = CALLGRIND_ORIG_FILENAME_RE.captures(haystack) {
-                // Callgrind sometimes creates empty files for no reason. We clean them
-                // up here
+            if let Some(caps) = regex.captures(haystack) {
                 if entry.metadata()?.size() == 0 {
                     std::fs::remove_file(entry.path())?;
                     continue;
                 }
 
-                // We don't sanitize old files. It's not needed if the new files are always
-                // sanitized. However, we do sanitize `base@<name>` file names.
-                let base = if let Some(base) = caps.name("base") {
-                    if base.as_str() == ".old" {
-                        continue;
-                    }
-
-                    Some(base.as_str().to_owned())
-                } else {
-                    None
-                };
-
-                let out_type = caps
-                    .name("type")
-                    .expect("A out|log type should be present")
-                    .as_str();
-
-                if out_type == ".out" {
-                    let properties = callgrind::parser::parse_header(
-                        &mut BufReader::new(File::open(entry.path())?).lines(),
-                    )?;
-                    if let Some(bases) = groups.get_mut(out_type) {
-                        if let Some(pids) = bases.get_mut(&base) {
-                            if let Some(threads) = pids.get_mut(&properties.pid) {
-                                if let Some(parts) = threads.get_mut(&properties.thread) {
-                                    parts.push((entry.path(), properties.part));
-                                } else {
-                                    threads.insert(
-                                        properties.thread,
-                                        vec![(entry.path(), properties.part)],
-                                    );
-                                }
-                            } else {
-                                pids.insert(
-                                    properties.pid,
-                                    HashMap::from([(
-                                        properties.thread,
-                                        vec![(entry.path(), properties.part)],
-                                    )]),
-                                );
-                            }
-                        } else {
-                            bases.insert(
-                                base.clone(),
-                                HashMap::from([(
-                                    properties.pid,
-                                    HashMap::from([(
-                                        properties.thread,
-                                        vec![(entry.path(), properties.part)],
-                                    )]),
-                                )]),
-                            );
-                        }
-                    } else {
-                        groups.insert(
-                            out_type.to_owned(),
-                            HashMap::from([(
-                                base.clone(),
-                                HashMap::from([(
-                                    properties.pid,
-                                    HashMap::from([(
-                                        properties.thread,
-                                        vec![(entry.path(), properties.part)],
-                                    )]),
-                                )]),
-                            )]),
-                        );
-                    }
-                } else {
-                    let pid = caps.name("pid").map(|m| {
-                        m.as_str()[2..]
-                            .parse::<i32>()
-                            .expect("The pid from the match should be number")
-                    });
-
-                    // The log files don't expose any information about parts or threads, so
-                    // these are grouped under the `None` key
-                    if let Some(bases) = groups.get_mut(out_type) {
-                        if let Some(pids) = bases.get_mut(&base) {
-                            if let Some(threads) = pids.get_mut(&pid) {
-                                if let Some(parts) = threads.get_mut(&None) {
-                                    parts.push((entry.path(), None));
-                                } else {
-                                    threads.insert(None, vec![(entry.path(), None)]);
-                                }
-                            } else {
-                                pids.insert(
-                                    pid,
-                                    HashMap::from([(None, vec![(entry.path(), None)])]),
-                                );
-                            }
-                        } else {
-                            bases.insert(
-                                base.clone(),
-                                HashMap::from([(
-                                    pid,
-                                    HashMap::from([(None, vec![(entry.path(), None)])]),
-                                )]),
-                            );
-                        }
-                    } else {
-                        groups.insert(
-                            out_type.to_owned(),
-                            HashMap::from([(
-                                base.clone(),
-                                HashMap::from([(
-                                    pid,
-                                    HashMap::from([(None, vec![(entry.path(), None)])]),
-                                )]),
-                            )]),
-                        );
-                    }
-                }
+                apply(entry, caps)?;
             }
         }
 
-        for (out_type, types) in groups {
-            for (base, bases) in types {
-                let multiple_pids = bases.len() > 1;
+        Ok(())
+    }
 
-                for (pid, threads) in bases {
-                    let multiple_threads = threads.len() > 1;
+    fn sanitizable_baseline(caps: &Captures<'_>) -> SanitizableBaseline {
+        let Some(base) = caps.name("base") else {
+            return SanitizableBaseline::NoBaseline;
+        };
 
-                    for (thread, parts) in &threads {
-                        let multiple_parts = parts.len() > 1;
+        if base.as_str() == ".old" {
+            SanitizableBaseline::OldBaseline
+        } else {
+            SanitizableBaseline::Baseline(base.as_str().to_owned())
+        }
+    }
 
-                        for (orig_path, part) in parts {
-                            let mut new_file_name = self.prefix();
+    /// Sanitize callgrind output file names
+    ///
+    /// This method will remove empty files which are occasionally produced by callgrind and only
+    /// cause problems in the parser. The files are renamed from the callgrind file naming scheme to
+    /// ours which is clearer and easier to handle.
+    ///
+    /// The information about pids, parts and threads is obtained by parsing the header from the
+    /// callgrind output files instead of relying on the sometimes flaky file names produced by
+    /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
+    /// fast. Additionally, `callgrind` might change the naming scheme of its files, so using the
+    /// headers makes us more independent of a specific valgrind/callgrind version.
+    fn sanitize_callgrind(&self) -> Result<()> {
+        type Groups = HashMap<
+            CallgrindTypeKey,
+            HashMap<Option<u32>, HashMap<Option<usize>, Vec<OriginalCallgrindFile>>>,
+        >;
 
-                            if multiple_pids {
-                                if let Some(pid) = pid {
-                                    write!(new_file_name, ".{pid}").unwrap();
-                                }
+        // To figure out if there are multiple pids/parts/threads present, it's necessary to group
+        // the files in this map. The order doesn't matter since we only rename the original file
+        // names, which doesn't need to follow a specific order.
+        //
+        // At first, we group by (out|log), then base, then pid and then by part in different
+        // hashmaps.
+        let mut groups: Groups = HashMap::new();
+
+        self.for_each_match_do(&CALLGRIND_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
+            };
+
+            let output_type = caps
+                .name("type")
+                .expect("A out|log type should be present")
+                .as_str()
+                .to_owned();
+
+            let (pid, thread, part) = if output_type == ".out" {
+                let properties = callgrind::parser::parse_header(
+                    &mut BufReader::new(File::open(entry.path())?).lines(),
+                )?;
+
+                #[expect(
+                    clippy::cast_sign_loss,
+                    reason = "The i32 pid is historical and casting to u32 is safe"
+                )]
+                (
+                    properties.pid.map(|p| p as u32),
+                    properties.thread,
+                    properties.part,
+                )
+            } else {
+                let pid = caps.name("pid").map(|m| {
+                    m.as_str()[2..]
+                        .parse::<u32>()
+                        .expect("The pid from the match should be number")
+                });
+
+                // The log files don't expose any information about parts or threads, so these are
+                // grouped under the `None` key
+                (pid, None, None)
+            };
+
+            groups
+                .entry(CallgrindTypeKey {
+                    output_type,
+                    baseline: base,
+                })
+                .or_default()
+                .entry(pid)
+                .or_default()
+                .entry(thread)
+                .or_default()
+                .push(OriginalCallgrindFile {
+                    path: entry.path(),
+                    part,
+                });
+            Ok(())
+        })?;
+
+        for (key, bases) in groups {
+            let has_multiple_pids = bases.len() > 1;
+
+            for (pid, threads) in bases {
+                let num_threads = threads.len();
+                let has_multiple_threads = num_threads > 1;
+
+                for (thread, parts) in threads {
+                    let num_parts = parts.len();
+                    let has_multiple_parts = num_parts > 1;
+
+                    for original in parts {
+                        let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
+
+                        file_name_builder.push_pid(pid, has_multiple_pids);
+
+                        if has_multiple_threads {
+                            file_name_builder.push_thread(thread, true, num_threads);
+
+                            if !has_multiple_parts {
+                                file_name_builder.push_part(original.part, num_parts);
                             }
-
-                            if multiple_threads {
-                                if let Some(thread) = thread {
-                                    let width = threads.len().ilog10() as usize + 1;
-                                    write!(new_file_name, ".t{thread:0width$}").unwrap();
-                                }
-
-                                if !multiple_parts {
-                                    if let Some(part) = part {
-                                        let width = parts.len().ilog10() as usize + 1;
-                                        write!(new_file_name, ".p{part:0width$}").unwrap();
-                                    }
-                                }
-                            }
-
-                            if multiple_parts {
-                                if !multiple_threads {
-                                    if let Some(thread) = thread {
-                                        let width = threads.len().ilog10() as usize + 1;
-                                        write!(new_file_name, ".t{thread:0width$}").unwrap();
-                                    }
-                                }
-
-                                if let Some(part) = part {
-                                    let width = parts.len().ilog10() as usize + 1;
-                                    write!(new_file_name, ".p{part:0width$}").unwrap();
-                                }
-                            }
-
-                            new_file_name.push_str(&out_type);
-                            if let Some(base) = &base {
-                                new_file_name.push_str(base);
-                            }
-
-                            let from = orig_path;
-                            let to = from.with_file_name(new_file_name);
-
-                            debug!(
-                                "Sanitizing callgrind file from '{}' to '{}'",
-                                from.display(),
-                                to.display()
-                            );
-                            std::fs::rename(from, to)?;
                         }
+
+                        if has_multiple_parts {
+                            if !has_multiple_threads {
+                                file_name_builder.push_thread(thread, true, num_threads);
+                            }
+
+                            file_name_builder.push_part(original.part, num_parts);
+                        }
+
+                        file_name_builder.push_str(key.output_type.as_str());
+                        file_name_builder.push_str(key.baseline.as_deref());
+
+                        let from = &original.path;
+                        let to = from.with_file_name(file_name_builder.build());
+
+                        debug!(
+                            "Sanitizing callgrind file from '{}' to '{}'",
+                            from.display(),
+                            to.display()
+                        );
+                        std::fs::rename(from, to)?;
                     }
                 }
             }
@@ -1088,137 +1330,78 @@ impl ToolOutputPath {
     ///
     /// `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
     /// `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
-    #[expect(clippy::too_many_lines)]
-    pub fn sanitize_bbv(&self) -> Result<()> {
-        // path, thread,
-        type Grouped = (PathBuf, String);
-        // key: bbv_type => key: pid
-        type Group =
-            HashMap<Option<String>, HashMap<Option<String>, HashMap<Option<String>, Vec<Grouped>>>>;
+    fn sanitize_bbv(&self) -> Result<()> {
+        type Groups = HashMap<BbvTypeKey, HashMap<Option<u32>, Vec<OriginalBbvFile>>>;
+        let mut groups: Groups = HashMap::new();
 
-        // key: .(out|log)
-        let mut groups: HashMap<String, Group> = HashMap::new();
-        for entry in self.walk_dir(None)? {
-            let file_name = entry.file_name();
-            let file_name = file_name.to_string_lossy();
-
-            let Some(haystack) = self.strip_prefix(&file_name) else {
-                continue;
+        self.for_each_match_do(&BBV_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
             };
 
-            if let Some(caps) = BBV_ORIG_FILENAME_RE.captures(haystack) {
-                if entry.metadata()?.size() == 0 {
-                    std::fs::remove_file(entry.path())?;
-                    continue;
-                }
+            let output_type = caps.name("type").unwrap().as_str().to_owned();
+            let bbv_type = caps.name("bbv_type").map(|m| m.as_str().to_owned());
+            let pid = caps.name("pid").map(|p| {
+                p.as_str()[2..]
+                    .parse::<u32>()
+                    .expect("The pid from the regex should be a number")
+            });
 
-                // Don't sanitize old files.
-                let base = if let Some(base) = caps.name("base") {
-                    if base.as_str() == ".old" {
-                        continue;
+            let thread = caps.name("thread").map_or(1, |t| {
+                t.as_str()[1..]
+                    .parse::<usize>()
+                    .expect("The thread from the regex should be a number")
+            });
+
+            groups
+                .entry(BbvTypeKey {
+                    output_type,
+                    baseline: base,
+                    bbv_type,
+                })
+                .or_default()
+                .entry(pid)
+                .or_default()
+                .push(OriginalBbvFile {
+                    path: entry.path(),
+                    thread,
+                });
+            Ok(())
+        })?;
+
+        for (key, pids) in groups {
+            let has_multiple_pids = pids.len() > 1;
+
+            for (pid, threads) in pids {
+                let num_threads = threads.len();
+                let has_multiple_threads = num_threads > 1;
+
+                for original in threads {
+                    let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
+
+                    file_name_builder.push_pid(pid, has_multiple_pids);
+
+                    if has_multiple_threads
+                        && key.bbv_type.as_ref().is_some_and(|b| b.starts_with(".bb"))
+                    {
+                        file_name_builder.push_thread(original.thread, true, num_threads);
                     }
 
-                    Some(base.as_str().to_owned())
-                } else {
-                    None
-                };
+                    file_name_builder.push_str(key.bbv_type.as_deref());
+                    file_name_builder.push_str(key.output_type.as_str());
+                    file_name_builder.push_str(key.baseline.as_deref());
 
-                let out_type = caps.name("type").unwrap().as_str();
-                let bbv_type = caps.name("bbv_type").map(|m| m.as_str().to_owned());
-                let pid = caps.name("pid").map(|p| format!(".{}", &p.as_str()[2..]));
+                    let from = &original.path;
+                    let to = from.with_file_name(file_name_builder.build());
 
-                let thread = caps
-                    .name("thread")
-                    .map_or_else(|| ".1".to_owned(), |t| t.as_str().to_owned());
-
-                if let Some(bases) = groups.get_mut(out_type) {
-                    if let Some(bbv_types) = bases.get_mut(&base) {
-                        if let Some(pids) = bbv_types.get_mut(&bbv_type) {
-                            if let Some(threads) = pids.get_mut(&pid) {
-                                threads.push((entry.path(), thread));
-                            } else {
-                                pids.insert(pid, vec![(entry.path(), thread)]);
-                            }
-                        } else {
-                            bbv_types.insert(
-                                bbv_type.clone(),
-                                HashMap::from([(pid, vec![(entry.path(), thread)])]),
-                            );
-                        }
-                    } else {
-                        bases.insert(
-                            base.clone(),
-                            HashMap::from([(
-                                bbv_type.clone(),
-                                HashMap::from([(pid, vec![(entry.path(), thread)])]),
-                            )]),
-                        );
-                    }
-                } else {
-                    groups.insert(
-                        out_type.to_owned(),
-                        HashMap::from([(
-                            base.clone(),
-                            HashMap::from([(
-                                bbv_type.clone(),
-                                HashMap::from([(pid, vec![(entry.path(), thread)])]),
-                            )]),
-                        )]),
+                    debug!(
+                        "Sanitizing bbv file from '{}' to '{}'",
+                        from.display(),
+                        to.display()
                     );
-                }
-            }
-        }
-
-        for (out_type, bases) in groups {
-            for (base, bbv_types) in bases {
-                for (bbv_type, pids) in &bbv_types {
-                    let multiple_pids = pids.len() > 1;
-
-                    for (pid, threads) in pids {
-                        let multiple_threads = threads.len() > 1;
-
-                        for (orig_path, thread) in threads {
-                            let mut new_file_name = self.prefix();
-
-                            if multiple_pids {
-                                if let Some(pid) = pid.as_ref() {
-                                    write!(new_file_name, "{pid}").unwrap();
-                                }
-                            }
-
-                            if multiple_threads
-                                && bbv_type.as_ref().is_some_and(|b| b.starts_with(".bb"))
-                            {
-                                let width = threads.len().ilog10() as usize + 1;
-
-                                let thread = thread[1..]
-                                    .parse::<usize>()
-                                    .expect("The thread from the regex should be a number");
-
-                                write!(new_file_name, ".t{thread:0width$}").unwrap();
-                            }
-
-                            if let Some(bbv_type) = &bbv_type {
-                                new_file_name.push_str(bbv_type);
-                            }
-
-                            new_file_name.push_str(&out_type);
-
-                            if let Some(base) = &base {
-                                new_file_name.push_str(base);
-                            }
-
-                            let from = orig_path;
-                            let to = from.with_file_name(new_file_name);
-
-                            debug!(
-                                "Sanitizing bbv file from '{}' to '{}'",
-                                from.display(),
-                                to.display()
-                            );
-                            std::fs::rename(from, to)?;
-                        }
-                    }
+                    std::fs::rename(from, to)?;
                 }
             }
         }
@@ -1230,77 +1413,127 @@ impl ToolOutputPath {
     ///
     /// The pids are removed from the file name if there was only a single process (pid).
     /// Additionally, we check for empty files and remove them.
-    pub fn sanitize_generic(&self) -> Result<()> {
-        // key: base => vec: path, pid
-        type Group = HashMap<Option<String>, Vec<(PathBuf, Option<String>)>>;
+    fn sanitize_generic(&self) -> Result<()> {
+        type Groups = HashMap<GenericTypeKey, Vec<OriginalGenericFile>>;
+        let mut groups: Groups = HashMap::new();
 
-        // key: .(out|log|xtree|xleak)
-        let mut groups: HashMap<String, Group> = HashMap::new();
-        for entry in self.walk_dir(None)? {
-            let file_name = entry.file_name();
-            let file_name = file_name.to_string_lossy();
-
-            let Some(haystack) = self.strip_prefix(&file_name) else {
-                continue;
+        self.for_each_match_do(&GENERIC_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
             };
 
-            if let Some(caps) = GENERIC_ORIG_FILENAME_RE.captures(haystack) {
-                if entry.metadata()?.size() == 0 {
-                    std::fs::remove_file(entry.path())?;
-                    continue;
-                }
+            let output_type = caps.name("type").unwrap().as_str().to_owned();
+            let pid = caps.name("pid").map(|p| {
+                p.as_str()[2..]
+                    .parse::<u32>()
+                    .expect("The pid from the regex should be a number")
+            });
+            let ext = caps.name("ext").map(|p| p.as_str().to_owned());
 
-                // Don't sanitize old files.
-                let base = if let Some(base) = caps.name("base") {
-                    if base.as_str() == ".old" {
-                        continue;
-                    }
+            groups
+                .entry(GenericTypeKey {
+                    output_type,
+                    baseline: base,
+                })
+                .or_default()
+                .push(OriginalGenericFile {
+                    path: entry.path(),
+                    pid,
+                    extension: ext,
+                });
+            Ok(())
+        })?;
 
-                    Some(base.as_str().to_owned())
-                } else {
-                    None
-                };
+        for (key, files) in groups {
+            let has_multiple_pids = files.len() > 1;
+            for original in files {
+                let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
 
-                let out_type = caps.name("type").unwrap().as_str();
-                let pid = caps.name("pid").map(|p| format!(".{}", &p.as_str()[2..]));
+                file_name_builder.push_str(original.extension.as_deref());
+                file_name_builder.push_pid(original.pid, has_multiple_pids);
+                file_name_builder.push_str(key.output_type.as_str());
+                file_name_builder.push_str(key.baseline.as_deref());
 
-                if let Some(bases) = groups.get_mut(out_type) {
-                    if let Some(pids) = bases.get_mut(&base) {
-                        pids.push((entry.path(), pid));
-                    } else {
-                        bases.insert(base, vec![(entry.path(), pid)]);
-                    }
-                } else {
-                    groups.insert(
-                        out_type.to_owned(),
-                        HashMap::from([(base, vec![(entry.path(), pid)])]),
-                    );
-                }
+                let from = &original.path;
+                let to = from.with_file_name(file_name_builder.build());
+
+                debug!("Sanitizing from '{}' to '{}'", from.display(), to.display());
+                std::fs::rename(from, to)?;
             }
         }
 
-        for (out_type, bases) in groups {
-            for (base, pids) in bases {
-                let multiple_pids = pids.len() > 1;
-                for (orig_path, pid) in pids {
-                    let mut new_file_name = self.prefix();
+        Ok(())
+    }
 
-                    if multiple_pids {
-                        if let Some(pid) = pid.as_ref() {
-                            write!(new_file_name, "{pid}").unwrap();
-                        }
+    /// Sanitize perf output files
+    ///
+    /// Perf can emit one data, log, or output file per recorded part and modifier. This method
+    /// groups matching files by output type, baseline, and modifier so part suffixes are only kept
+    /// when a modifier group contains multiple parts.
+    fn sanitize_perf(&self) -> Result<()> {
+        type Groups = HashMap<PerfTypeKey, HashMap<Option<String>, Vec<OriginalPerfFile>>>;
+
+        // At first, we group by (out|log), then base, then by modifiers, then by part
+        let mut groups: Groups = HashMap::new();
+
+        self.for_each_match_do(&PERF_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
+            };
+
+            let output_type = caps
+                .name("type")
+                .expect("A out|log type should be present")
+                .as_str()
+                .to_owned();
+            let ext = caps.name("ext").map(|p| p.as_str().to_owned());
+            let part = caps
+                .name("part")
+                .and_then(|p| p.as_str().strip_prefix(".p")?.parse::<u64>().ok());
+
+            groups
+                .entry(PerfTypeKey {
+                    output_type,
+                    baseline: base,
+                })
+                .or_default()
+                .entry(ext)
+                .or_default()
+                .push(OriginalPerfFile {
+                    path: entry.path(),
+                    part,
+                });
+            Ok(())
+        })?;
+
+        for (key, modifiers) in groups {
+            for (modifier, parts) in modifiers {
+                let num_parts = parts.len();
+                let has_multiple_parts = num_parts > 1;
+
+                for original in parts {
+                    let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
+
+                    if has_multiple_parts {
+                        file_name_builder.push_part(original.part, num_parts);
                     }
 
-                    new_file_name.push_str(&out_type);
+                    file_name_builder.push_str(modifier.as_deref());
+                    file_name_builder.push_str(key.output_type.as_str());
+                    file_name_builder.push_str(key.baseline.as_deref());
 
-                    if let Some(base) = &base {
-                        new_file_name.push_str(base);
-                    }
+                    let from = &original.path;
+                    let to = from.with_file_name(file_name_builder.build());
 
-                    let from = orig_path;
-                    let to = from.with_file_name(new_file_name);
-
-                    debug!("Sanitizing from '{}' to '{}'", from.display(), to.display());
+                    debug!(
+                        "Sanitizing perf file from '{}' to '{}'",
+                        from.display(),
+                        to.display()
+                    );
                     std::fs::rename(from, to)?;
                 }
             }
@@ -1312,15 +1545,85 @@ impl ToolOutputPath {
     /// Sanitize file names for a specific tool
     ///
     /// Empty files are cleaned up. For more details on a specific tool see the respective
-    /// `sanitize_<tool>` method.
+    /// `sanitize_<tool>` method in [`PathSanitizer`]:
+    ///
+    /// * Callgrind: [`PathSanitizer::sanitize_callgrind`]
+    /// * BBV: [`PathSanitizer::sanitize_bbv`]
+    /// * perf: [`PathSanitizer::sanitize_perf`]
+    /// * All other tools: [`PathSanitizer::sanitize`]
     pub fn sanitize(&self) -> Result<()> {
         match self.tool {
-            ValgrindTool::Callgrind => self.sanitize_callgrind()?,
-            ValgrindTool::BBV => self.sanitize_bbv()?,
+            Tool::Callgrind => self.sanitize_callgrind()?,
+            Tool::BBV => self.sanitize_bbv()?,
+            Tool::Perf => self.sanitize_perf()?,
             _ => self.sanitize_generic()?,
         }
 
         Ok(())
+    }
+}
+
+impl SanitizedFileNameBuilder {
+    fn new(prefix: impl Into<String>) -> Self {
+        Self(prefix.into())
+    }
+
+    fn push_str<'a, T>(&'a mut self, string: T) -> &'a mut Self
+    where
+        T: Into<Option<&'a str>>,
+    {
+        if let Some(suffix) = string.into() {
+            self.0.push_str(suffix);
+        }
+
+        self
+    }
+
+    fn push_pid<T>(&mut self, pid: T, has_multiple: bool) -> &mut Self
+    where
+        T: Into<Option<u32>>,
+    {
+        if has_multiple {
+            if let Some(pid) = pid.into() {
+                write!(&mut self.0, ".{pid}").unwrap();
+            }
+        }
+
+        self
+    }
+
+    fn push_thread<T>(&mut self, thread: T, has_multiple: bool, num_threads: usize) -> &mut Self
+    where
+        T: Into<Option<usize>>,
+    {
+        if has_multiple {
+            if let Some(thread) = thread.into() {
+                let width = Self::width(num_threads);
+                write!(&mut self.0, ".t{thread:0width$}").unwrap();
+            }
+        }
+
+        self
+    }
+
+    fn push_part<T>(&mut self, part: T, num_parts: usize) -> &mut Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(part) = part.into() {
+            let width = Self::width(num_parts);
+            write!(&mut self.0, ".p{part:0width$}").unwrap();
+        }
+
+        self
+    }
+
+    fn width(num: usize) -> usize {
+        num.ilog10() as usize + 1
+    }
+
+    fn build(self) -> String {
+        self.0
     }
 }
 
@@ -1336,6 +1639,128 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+    use crate::runner::perf::run::{PERF_CALIBRATION_FILE_MODIFIER, PERF_OVERHEAD_FILE_MODIFIER};
+
+    type ExpectedPath<'a> = (&'a str, Option<&'a str>);
+    type ExpectedPart<'a> = (Option<u64>, Vec<ExpectedPath<'a>>);
+
+    #[rstest]
+    #[case::skips_when_not_multiple(Some(1234), false, "tool.bench")]
+    #[case::skips_none(None, true, "tool.bench")]
+    fn test_file_name_builder_push_pid(
+        #[case] pid: Option<u32>,
+        #[case] multiple: bool,
+        #[case] expected: &str,
+    ) {
+        let mut file_name_builder = SanitizedFileNameBuilder::new("tool.bench");
+
+        file_name_builder.push_pid(pid, multiple);
+
+        assert_eq!(file_name_builder.build(), expected);
+    }
+
+    #[rstest]
+    #[case::width_1(Some(1), true, 1, "tool.bench.t1")]
+    #[case::width_2(Some(1), true, 10, "tool.bench.t01")]
+    #[case::width_3(Some(42), true, 100, "tool.bench.t042")]
+    #[case::skips_when_not_multiple(Some(1), false, 10, "tool.bench")]
+    #[case::skips_none(None, true, 10, "tool.bench")]
+    fn test_file_name_builder_push_thread(
+        #[case] thread: Option<usize>,
+        #[case] multiple: bool,
+        #[case] group_len: usize,
+        #[case] expected: &str,
+    ) {
+        let mut file_name_builder = SanitizedFileNameBuilder::new("tool.bench");
+
+        file_name_builder.push_thread(thread, multiple, group_len);
+
+        assert_eq!(file_name_builder.build(), expected);
+    }
+
+    #[rstest]
+    #[case::width_1(Some(1), 1, "tool.bench.p1")]
+    #[case::width_2(Some(1), 10, "tool.bench.p01")]
+    #[case::width_3(Some(42), 100, "tool.bench.p042")]
+    #[case::skips_none(None, 10, "tool.bench")]
+    fn test_file_name_builder_push_part(
+        #[case] part: Option<u64>,
+        #[case] group_len: usize,
+        #[case] expected: &str,
+    ) {
+        let mut file_name_builder = SanitizedFileNameBuilder::new("tool.bench");
+
+        file_name_builder.push_part(part, group_len);
+
+        assert_eq!(file_name_builder.build(), expected);
+    }
+
+    #[rstest]
+    #[case::string(Some(".bb"), Some(".base@default"), "tool.bench.bb.out.base@default")]
+    #[case::none(None, None, "tool.bench.out")]
+    fn test_file_name_builder_push_str_and_optional(
+        #[case] modifier: Option<&str>,
+        #[case] baseline: Option<&str>,
+        #[case] expected: &str,
+    ) {
+        let mut file_name_builder = SanitizedFileNameBuilder::new("tool.bench");
+
+        file_name_builder
+            .push_str(modifier)
+            .push_str(".out")
+            .push_str(baseline);
+
+        assert_eq!(file_name_builder.build(), expected);
+    }
+
+    #[rstest]
+    #[case::all_segments(
+        Some(1234),
+        Some(1),
+        Some(2),
+        Some(".cal"),
+        ".out",
+        Some(".base@default"),
+        "tool.bench.1234.t01.p02.cal.out.base@default"
+    )]
+    fn test_file_name_builder_full_sequence(
+        #[case] pid: Option<u32>,
+        #[case] thread: Option<usize>,
+        #[case] part: Option<u64>,
+        #[case] modifier: Option<&str>,
+        #[case] output_kind: &str,
+        #[case] baseline: Option<&str>,
+        #[case] expected: &str,
+    ) {
+        let mut file_name_builder = SanitizedFileNameBuilder::new("tool.bench");
+
+        file_name_builder
+            .push_pid(pid, true)
+            .push_thread(thread, true, 10)
+            .push_part(part, 10)
+            .push_str(modifier)
+            .push_str(output_kind)
+            .push_str(baseline);
+
+        assert_eq!(file_name_builder.build(), expected);
+    }
+
+    #[rstest]
+    #[case::out(".out")]
+    #[case::out_with_pid(".out.#1234")]
+    #[case::out_with_number(".out.1")]
+    #[case::out_with_some(".out.some")]
+    #[case::out_base(".out.base@default")]
+    #[case::out_base_with_pid(".out.base@default.#1234")]
+    #[case::out_base_with_number(".out.base@default.1")]
+    #[case::out_base_with_some(".out.base@default.some")]
+    #[case::log(".log")]
+    #[case::log_with_pid(".log.#1234")]
+    #[case::log_base(".log.base@default")]
+    #[case::log_base_with_pid(".log.base@default.#1234")]
+    fn test_generic_filename_regex(#[case] haystack: &str) {
+        assert!(GENERIC_ORIG_FILENAME_RE.is_match(haystack));
+    }
 
     #[rstest]
     #[case::out(".out")]
@@ -1369,158 +1794,243 @@ mod tests {
     }
 
     #[rstest]
-    #[case::out(".out", vec![("type", "out")])]
-    #[case::pid_out(".2049595.out", vec![("pid", "2049595"), ("type", "out")])]
-    #[case::pid_thread_out(
-        ".2049595.t1.out",
-        vec![("pid", "2049595"), ("tid", "1"), ("type", "out")]
-    )]
-    #[case::pid_thread_part_out(
-        ".2049595.t1.p1.out",
-        vec![("pid", "2049595"), ("tid", "1"), ("part", "1"), ("type", "out")]
-    )]
-    #[case::out_old(".out.old", vec![("type", "out"), ("base", "old")])]
-    #[case::pid_out_old(
-        ".2049595.out.old",
-        vec![("pid", "2049595"), ("type", "out"), ("base", "old")]
-    )]
-    #[case::pid_thread_out_old(
-        ".2049595.t1.out.old",
-        vec![("pid", "2049595"), ("tid", "1"), ("type", "out"), ("base", "old")]
-    )]
-    #[case::pid_thread_part_out_old(
-        ".2049595.t1.p1.out.old",
-        vec![
-            ("pid", "2049595"),
-            ("tid", "1"),
-            ("part", "1"),
-            ("type", "out"),
-            ("base", "old")
-        ]
-    )]
-    #[case::out_base(".out.base@name", vec![("type", "out"), ("base", "base@name")])]
-    #[case::pid_out_base(
-        ".2049595.out.base@name",
-        vec![("pid", "2049595"), ("type", "out"), ("base", "base@name")]
-    )]
-    #[case::pid_thread_out_base(
-        ".2049595.t1.out.base@name",
-        vec![("pid", "2049595"), ("tid", "1"), ("type", "out"), ("base", "base@name")]
-    )]
-    #[case::pid_thread_part_out_base(
-        ".2049595.t1.p1.out.base@name",
-        vec![
-            ("pid", "2049595"),
-            ("tid", "1"),
-            ("part", "1"),
-            ("type", "out"),
-            ("base", "base@name")
-        ]
-    )]
-    #[case::bb_out(".bb.out", vec![("bbv", "bb"), ("type", "out")])]
-    #[case::pc_out(".pc.out", vec![("bbv", "pc"), ("type", "out")])]
-    #[case::pid_bb_out(".123.bb.out", vec![("pid", "123"), ("bbv", "bb"), ("type", "out")])]
-    #[case::pid_thread_bb_out(
-        ".123.t1.bb.out",
-        vec![("pid", "123"), ("tid", "1"), ("bbv", "bb"), ("type", "out")]
-    )]
-    #[case::log(".log", vec![("type", "log")])]
-    #[case::xtree(".xtree", vec![("type", "xtree")])]
-    #[case::xtree_old(".xtree.old", vec![("type", "xtree"), ("base", "old")])]
-    #[case::xleak(".xleak", vec![("type", "xleak")])]
-    #[case::xleak_old(".xleak.old", vec![("type", "xleak"), ("base", "old")])]
-    fn test_real_file_name_regex(#[case] haystack: &str, #[case] expected: Vec<(&str, &str)>) {
-        assert!(REAL_FILENAME_RE.is_match(haystack));
+    #[case::out(".out")]
+    #[case::out_with_pid(".out")]
+    #[case::out_with_part(".out.p1")]
+    #[case::out_with_some(".out.some")]
+    #[case::out_with_some_and_part(".out.p1.some")]
+    #[case::out_base_with_multiple_ext(".out.p1.some.more")]
+    #[case::out_base(".out.base@default")]
+    #[case::out_base_with_part(".out.base@default.p1")]
+    #[case::out_base_with_some_and_part(".out.base@default.p1.some")]
+    #[case::out_base_with_multiple_ext(".out.base@default.p1.some.more")]
+    #[case::log(".log")]
+    #[case::log_with_part(".log.p1")]
+    #[case::log_base(".log.base@default")]
+    #[case::log_base_with_part(".log.base@default.p1")]
+    fn test_perf_filename_regex(#[case] haystack: &str) {
+        assert!(PERF_ORIG_FILENAME_RE.is_match(haystack));
+    }
 
-        let caps = REAL_FILENAME_RE.captures(haystack).unwrap();
-        for (name, value) in expected {
-            assert_eq!(caps.name(name).unwrap().as_str(), value);
+    #[rstest]
+    #[case::plain_out(
+        ToolOutputPathKind::Out,
+        &["perf.function.bench.out"],
+        &[(None, vec![("perf.function.bench.out", None)])]
+    )]
+    #[case::plain_log(
+        ToolOutputPathKind::Log,
+        &["perf.function.bench.log"],
+        &[(None, vec![("perf.function.bench.log", None)])]
+    )]
+    #[case::single_part_out(
+        ToolOutputPathKind::Out,
+        &["perf.function.bench.p1.out"],
+        &[(Some(1), vec![("perf.function.bench.p1.out", None)])]
+    )]
+    #[case::single_part_log(
+        ToolOutputPathKind::Log,
+        &["perf.function.bench.p1.log"],
+        &[(Some(1), vec![("perf.function.bench.p1.log", None)])]
+    )]
+    #[case::part_with_cal(
+        ToolOutputPathKind::Out,
+        &["perf.function.bench.p1.cal.out"],
+        &[(Some(1), vec![("perf.function.bench.p1.cal.out", Some(PERF_CALIBRATION_FILE_MODIFIER))])]
+    )]
+    #[case::part_with_overhead(
+        ToolOutputPathKind::Out,
+        &["perf.function.bench.p1.overhead.out"],
+        &[(
+                Some(1),
+                vec![("perf.function.bench.p1.overhead.out", Some(PERF_OVERHEAD_FILE_MODIFIER))]
+        )]
+    )]
+    #[case::multiple_parts_with_adjustments(
+        ToolOutputPathKind::Out,
+        &[
+            "perf.function.bench.p1.out",
+            "perf.function.bench.p1.cal.out",
+            "perf.function.bench.p1.overhead.out",
+            "perf.function.bench.p2.out",
+            "perf.function.bench.p2.cal.out",
+        ],
+        &[
+            (
+                Some(1),
+                vec![
+                    ("perf.function.bench.p1.out", None),
+                    ("perf.function.bench.p1.cal.out", Some(PERF_CALIBRATION_FILE_MODIFIER)),
+                    ("perf.function.bench.p1.overhead.out", Some(PERF_OVERHEAD_FILE_MODIFIER)),
+                ],
+            ),
+            (
+                Some(2),
+                vec![
+                    ("perf.function.bench.p2.out", None),
+                    ("perf.function.bench.p2.cal.out", Some(PERF_CALIBRATION_FILE_MODIFIER)),
+                ],
+            ),
+        ]
+    )]
+    fn test_sanitized_paths_by_part(
+        #[case] kind: ToolOutputPathKind,
+        #[case] files: &[&str],
+        #[case] expected: &[ExpectedPart<'_>],
+    ) {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = ToolOutputPath::new(
+            kind,
+            Tool::Perf,
+            &BaselineKind::Old,
+            temp_dir.path(),
+            &ModulePath::new("module"),
+            "function.bench",
+            false,
+        )
+        .unwrap();
+        output_path.init().unwrap();
+
+        for file in files {
+            std::fs::write(output_path.dir.join(file), "something").unwrap();
         }
+
+        let actual = output_path.sanitized_paths_by_part().unwrap();
+
+        let mut actual = actual
+            .into_iter()
+            .map(|(part, paths)| {
+                let mut paths = paths
+                    .into_iter()
+                    .map(|(path, modifier)| {
+                        (
+                            path.file_name().unwrap().to_string_lossy().to_string(),
+                            modifier,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                paths.sort();
+
+                (part, paths)
+            })
+            .collect::<Vec<_>>();
+        actual.sort_by_key(|(part, _)| *part);
+
+        let mut expected = expected
+            .iter()
+            .map(|(part, paths)| {
+                let mut paths = paths
+                    .iter()
+                    .map(|(path, modifier)| ((*path).to_owned(), modifier.map(str::to_owned)))
+                    .collect::<Vec<_>>();
+                paths.sort();
+
+                (*part, paths)
+            })
+            .collect::<Vec<_>>();
+        expected.sort_by_key(|(part, _)| *part);
+
+        assert_eq!(actual, expected);
     }
 
     #[rstest]
     #[case::out(
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         "callgrind.bench_thread_in_subprocess.two.out",
         "callgrind.bench_thread_in_subprocess.two.log"
     )]
+    #[case::out_with_modifier(
+        Tool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.some.out",
+        "callgrind.bench_thread_in_subprocess.two.some.log"
+    )]
     #[case::out_old(
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         "callgrind.bench_thread_in_subprocess.two.out.old",
         "callgrind.bench_thread_in_subprocess.two.log.old"
     )]
+    #[case::out_old_with_modifier(
+        Tool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.some.out.old",
+        "callgrind.bench_thread_in_subprocess.two.some.log.old"
+    )]
     #[case::pid_out(
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         "callgrind.bench_thread_in_subprocess.two.123.out",
         "callgrind.bench_thread_in_subprocess.two.123.log"
     )]
+    #[case::pid_out_with_modifier(
+        Tool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.some.123.out",
+        "callgrind.bench_thread_in_subprocess.two.some.123.log"
+    )]
     #[case::pid_tid_out(
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         "callgrind.bench_thread_in_subprocess.two.123.t1.out",
         "callgrind.bench_thread_in_subprocess.two.123.log"
     )]
     #[case::pid_tid_part_out(
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         "callgrind.bench_thread_in_subprocess.two.123.t1.p2.out",
         "callgrind.bench_thread_in_subprocess.two.123.log"
     )]
     #[case::pid_out_old(
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         "callgrind.bench_thread_in_subprocess.two.123.out.old",
         "callgrind.bench_thread_in_subprocess.two.123.log.old"
     )]
     #[case::pid_tid_part_out_old(
-        ValgrindTool::Callgrind,
+        Tool::Callgrind,
         "callgrind.bench_thread_in_subprocess.two.123.t1.p2.out.old",
         "callgrind.bench_thread_in_subprocess.two.123.log.old"
     )]
     #[case::bb_out(
-        ValgrindTool::BBV,
+        Tool::BBV,
         "exp-bbv.bench_thread_in_subprocess.two.bb.out",
         "exp-bbv.bench_thread_in_subprocess.two.log"
     )]
     #[case::bb_pid_out(
-        ValgrindTool::BBV,
+        Tool::BBV,
         "exp-bbv.bench_thread_in_subprocess.two.123.bb.out",
         "exp-bbv.bench_thread_in_subprocess.two.123.log"
     )]
     #[case::bb_pid_tid_out(
-        ValgrindTool::BBV,
+        Tool::BBV,
         "exp-bbv.bench_thread_in_subprocess.two.123.t1.bb.out",
         "exp-bbv.bench_thread_in_subprocess.two.123.log"
     )]
     #[case::xtree(
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         "memcheck.bench_thread_in_subprocess.two.xtree",
         "memcheck.bench_thread_in_subprocess.two.log"
     )]
     #[case::xtree_old(
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         "memcheck.bench_thread_in_subprocess.two.xtree.old",
         "memcheck.bench_thread_in_subprocess.two.log.old"
     )]
     #[case::xtree_pid(
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         "memcheck.bench_thread_in_subprocess.two.123.xtree",
         "memcheck.bench_thread_in_subprocess.two.123.log"
     )]
     #[case::xleak(
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         "memcheck.bench_thread_in_subprocess.two.xleak",
         "memcheck.bench_thread_in_subprocess.two.log"
     )]
     #[case::xleak_old(
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         "memcheck.bench_thread_in_subprocess.two.xleak.old",
         "memcheck.bench_thread_in_subprocess.two.log.old"
     )]
     #[case::xleak_pid(
-        ValgrindTool::Memcheck,
+        Tool::Memcheck,
         "memcheck.bench_thread_in_subprocess.two.123.xleak",
         "memcheck.bench_thread_in_subprocess.two.123.log"
     )]
     fn test_tool_output_path_log_path_of(
-        #[case] tool: ValgrindTool,
+        #[case] tool: Tool,
         #[case] input: PathBuf,
         #[case] expected: PathBuf,
     ) {
@@ -1546,7 +2056,7 @@ mod tests {
     fn test_tool_output_path_log_path_of_when_log_then_same() {
         let output_path = ToolOutputPath::new(
             ToolOutputPathKind::Log,
-            ValgrindTool::Callgrind,
+            Tool::Callgrind,
             &BaselineKind::Old,
             &PathBuf::from("/root"),
             &ModulePath::new("hello::world"),
@@ -1566,7 +2076,7 @@ mod tests {
     fn test_tool_output_path_log_path_of_when_not_in_dir_then_none() {
         let output_path = ToolOutputPath::new(
             ToolOutputPathKind::Out,
-            ValgrindTool::Callgrind,
+            Tool::Callgrind,
             &BaselineKind::Old,
             &PathBuf::from("/root"),
             &ModulePath::new("hello::world"),

@@ -12,11 +12,11 @@ search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "gungraun/Cargo.toml"
+filename = "crates/gungraun/Cargo.toml"
 search = 'path = "../gungraun-runner", version = "={current_version}"'
 replace = 'path = "../gungraun-runner", version = "={new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "gungraun/src/__internal/mod.rs"
+filename = "crates/gungraun/src/__internal/mod.rs"
 search = "const LIBRARY_VERSION: &str = \"{current_version}\""
 replace = "const LIBRARY_VERSION: &str = \"{new_version}\""

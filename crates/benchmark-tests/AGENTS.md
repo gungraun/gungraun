@@ -10,7 +10,7 @@ verification.
 ## Structure
 
 ```text
-benchmark-tests/
+crates/benchmark-tests/
 |- src/bench.rs          # Harness binary: discovers, runs, asserts
 |- src/lib.rs            # Shared helpers: bubble_sort, fibonacci, primes, env
 |- src/helper/           # Fake binaries: echo, cat, sort, exit-with, leak-memory, ...
@@ -33,7 +33,7 @@ benchmark-tests/
 | Expected file manifests | `benches/test_*/<name>/expected_files*.yml`         | Per-group/function/id file lists                                                     |
 | Helper binaries         | `src/helper/*.rs`                                   | Small tools consumed by binary benchmarks                                            |
 | Parser tests            | `tests/test_callgrind/`, `test_dhat/`, `test_tool/` | Unit tests for runner output parsers                                                 |
-| Just recipes            | `../Justfile`                                       | Targeted: `full-bench-test`, `full-bench-test-overwrite`; quick: `bench-test`        |
+| Just recipes            | `../../Justfile`                                    | Targeted: `full-bench-test`, `full-bench-test-overwrite`; quick: `bench-test`        |
 
 ## Conventions
 

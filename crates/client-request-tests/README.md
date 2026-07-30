@@ -12,7 +12,7 @@ implementation of the [gungraun](../gungraun) package.
 To be able to run these tests you need
 [cross](https://github.com/cross-rs/cross) and the rust stable toolchain
 installed. For all currently supported test targets consult the
-[Cross.toml](../Cross.toml) file.
+[Cross.toml](./Cross.toml) file.
 
 We don't need to test the client requests itself, that's the duty of `Valgrind`.
 We only need to test, that we're executing the correct client requests if we're

@@ -22,6 +22,7 @@ fn ui() {
 
     let workspace_root = PathBuf::from(cargo_meta.workspace_root);
     let from = workspace_root
+        .join("crates")
         .join("gungraun")
         .join("tests")
         .join("fixtures");
@@ -30,6 +31,7 @@ fn ui() {
         .join("tests")
         .join("trybuild")
         .join("gungraun")
+        .join("crates")
         .join("gungraun")
         .join("tests");
 

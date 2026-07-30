@@ -13,7 +13,7 @@ summary files.
 ## Structure
 
 ```text
-gungraun-runner/src/
+crates/gungraun-runner/src/
 |- main.rs              # Entry point: logging, color setup, deferred warnings
 |- runner/
 |  |- run.rs            # Top-level orchestration: CLI parse, version check, dispatch

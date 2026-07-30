@@ -4,11 +4,11 @@ commit = true
 message = "Bump gungraun-macros version v{current_version} -> v{new_version}"
 
 [[tool.bumpversion.files]]
-filename = "gungraun-macros/Cargo.toml"
+filename = "crates/gungraun-macros/Cargo.toml"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "gungraun/Cargo.toml"
+filename = "crates/gungraun/Cargo.toml"
 search = "gungraun-macros = {{ path = \"../gungraun-macros\", version = \"={current_version}\""
 replace = "gungraun-macros = {{ path = \"../gungraun-macros\", version = \"={new_version}\""

@@ -257,7 +257,7 @@ impl CargoMetadata {
 /// use std::hint::black_box;
 ///
 /// #[library_benchmark]
-/// #[benches::by_file(file = "gungraun-macros/fixtures/inputs")]
+/// #[benches::by_file(file = "crates/gungraun-macros/fixtures/inputs")]
 /// fn some_bench(line: String) -> Result<u64, String> {
 ///     black_box(my_lib::string_to_u64(black_box(line)))
 /// }

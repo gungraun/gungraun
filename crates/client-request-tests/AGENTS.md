@@ -22,7 +22,7 @@ pre-installed.
 | `tests/test_client_requests/` | Per-tool test modules (valgrind, memcheck, callgrind, cachegrind, print_macros) |
 | `tests/fixtures/`             | Target-specific stderr snapshots for cross-architecture comparison              |
 | `build.rs`                    | Sets fixture path (`CLIENT_REQUEST_TESTS_FIXTURES`) for native vs `qemu-system` |
-| `../Cross.toml`               | Cross target definitions with custom `ghcr.io/gungraun/...` images              |
+| `./Cross.toml`                | Cross target definitions with custom `ghcr.io/gungraun/...` images              |
 
 ## Conventions
 

@@ -1,4 +1,4 @@
-thread 'main' panicked at benchmark-tests/benches/test_bin_bench/setup_child_exit_with_error/test_bin_bench_setup_child_exit_with_error.rs:10:5:
+thread 'main' panicked at crates/benchmark-tests/benches/test_bin_bench/setup_child_exit_with_error/test_bin_bench_setup_child_exit_with_error.rs:10:5:
 SETUP CHILD PROCESS
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 gungraun_runner: Error: Error running 'test_bin_bench_setup_child_exit_with_error::group::benchmark::setup': Exit code was: '101'

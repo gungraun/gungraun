@@ -4,21 +4,21 @@ commit = true
 message = "Bump valgrind-requests version v{current_version} -> v{new_version}"
 
 [[tool.bumpversion.files]]
-filename = "valgrind-requests/Cargo.toml"
+filename = "crates/valgrind-requests/Cargo.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "valgrind-requests/README.md"
+filename = "crates/valgrind-requests/README.md"
 search = 'valgrind-requests = "{current_major}.{current_minor}"'
 replace = 'valgrind-requests = "{new_major}.{new_minor}"'
 
 [[tool.bumpversion.files]]
-filename = "valgrind-requests/README.md"
+filename = "crates/valgrind-requests/README.md"
 search = 'version = "{current_major}.{current_minor}"'
 replace = 'version = "{new_major}.{new_minor}"'
 
 [[tool.bumpversion.files]]
-filename = "gungraun/Cargo.toml"
+filename = "crates/gungraun/Cargo.toml"
 search = 'path = "../valgrind-requests", version = "{current_major}"'
 replace = 'path = "../valgrind-requests", version = "{new_major}"'

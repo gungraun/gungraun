@@ -65,9 +65,11 @@ impl Fixtures {
     pub fn get_path() -> PathBuf {
         let root = get_project_root();
         if root.ends_with("benchmark-tests") {
-            root.join(FIXTURES_ROOT)
+            root.join("crates").join(FIXTURES_ROOT)
         } else {
-            root.join("benchmark-tests").join(FIXTURES_ROOT)
+            root.join("crates")
+                .join("benchmark-tests")
+                .join(FIXTURES_ROOT)
         }
     }
 

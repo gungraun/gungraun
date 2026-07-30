@@ -1,4 +1,4 @@
-thread 'main' (<__PID__>) panicked at benchmark-tests/src/helper/exit-with.rs:15:9:
+thread 'main' (<__PID__>) panicked at crates/benchmark-tests/src/helper/exit-with.rs:15:9:
 Exited with panic as requested
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 gungraun_runner: Error: Error in task: Error running 'callgrind': Exit code was: '101'

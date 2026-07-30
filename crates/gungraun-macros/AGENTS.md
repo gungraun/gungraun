@@ -50,7 +50,7 @@ consumes via `library_benchmark_group!` / `binary_benchmark_group!`.
 - Do not duplicate parameter validation between `lib_bench.rs` and
   `bin_bench.rs`. Shared logic belongs in `common.rs`.
 - Do not change the `__BENCHES` struct layout or `__get_config` signature
-  without updating the consumers in `gungraun/src/macros.rs`.
+  without updating the consumers in `crates/gungraun/src/macros.rs`.
 - Do not move setup, teardown, or framework allocation into
   `__gungraun_wrapper_id_mod*` shims; doing so contaminates DHAT measurements.
 - Do not add new attribute parameters without corresponding UI tests in

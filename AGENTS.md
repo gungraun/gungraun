@@ -13,14 +13,14 @@ which executes tools, interprets metrics, and emits summaries.
 
 ```text
 gungraun/
-|- gungraun/                 # Public benchmark API and runtime transport
-|- gungraun-macros/          # Attribute and main proc-macro expansion
-|- gungraun-runner/          # Executable orchestration and metric processing
-|- gungraun-common/          # Small shared protocol primitives
-|- gungraun-summary/         # Versioned, feature-gated summary schema
-|- valgrind-requests/        # no_std Valgrind client-request API
-|- benchmark-tests/          # End-to-end benchmark harness and fixtures
-|- client-request-tests/     # Native/cross-architecture request tests
+|- crates/gungraun/                 # Public benchmark API and runtime transport
+|- crates/gungraun-macros/          # Attribute and main proc-macro expansion
+|- crates/gungraun-runner/          # Executable orchestration and metric processing
+|- crates/gungraun-common/          # Small shared protocol primitives
+|- crates/gungraun-summary/         # Versioned, feature-gated summary schema
+|- crates/valgrind-requests/        # no_std Valgrind client-request API
+|- crates/benchmark-tests/          # End-to-end benchmark harness and fixtures
+|- crates/client-request-tests/     # Native/cross-architecture request tests
 |- docs/                     # mdBook source and generated schema references
 |- scripts/                  # Release and repository maintenance helpers
 |- Justfile                  # Canonical developer and CI commands
@@ -29,35 +29,35 @@ gungraun/
 
 ## Where To Look
 
-| Task                  | Location                                                       | Notes                                              |
-| --------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
-| Public benchmark API  | `gungraun/src/`                                                | Prelude, benchmark groups, config, runtime handoff |
-| Attribute expansion   | `gungraun-macros/src/`                                         | Parsing, validation, generated runner glue         |
-| CLI startup           | `gungraun-runner/src/main.rs`                                  | Warning setup and top-level execution              |
-| Runner orchestration  | `gungraun-runner/src/runner/`                                  | Bench selection, execution, sandboxing             |
-| Tool commands         | `gungraun-runner/src/runner/tool/`                             | Valgrind command/config/path/run lifecycle         |
-| Metrics and summaries | `gungraun-runner/src/metrics/`, `gungraun-runner/src/summary/` | Keep model and processing roles distinct           |
-| Shared protocol       | `gungraun-common/src/`                                         | Exit and command-line transport types              |
-| Summary API/schema    | `gungraun-summary/src/`, `gungraun-summary/schemas/`           | Versioned public format                            |
-| Client requests       | `valgrind-requests/src/`                                       | Core API, tool modules, arch assembly              |
-| System-test harness   | `benchmark-tests/src/bench.rs`                                 | Runs fixtures and compares structured output       |
-| Benchmark cases       | `benchmark-tests/benches/`, `benchmark-tests/tests/`           | Inputs plus `.conf.yml` expectations               |
-| Cross-target tests    | `client-request-tests/`                                        | QEMU/native request execution                      |
-| Build recipes         | `Justfile`                                                     | Prefer recipes over direct tool invocations        |
-| CI matrix             | `.github/workflows/`                                           | MSRV, platforms, formatting, tests, release        |
+| Task                  | Location                                                                     | Notes                                              |
+| --------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
+| Public benchmark API  | `crates/gungraun/src/`                                                       | Prelude, benchmark groups, config, runtime handoff |
+| Attribute expansion   | `crates/gungraun-macros/src/`                                                | Parsing, validation, generated runner glue         |
+| CLI startup           | `crates/gungraun-runner/src/main.rs`                                         | Warning setup and top-level execution              |
+| Runner orchestration  | `crates/gungraun-runner/src/runner/`                                         | Bench selection, execution, sandboxing             |
+| Tool commands         | `crates/gungraun-runner/src/runner/tool/`                                    | Valgrind command/config/path/run lifecycle         |
+| Metrics and summaries | `crates/gungraun-runner/src/metrics/`, `crates/gungraun-runner/src/summary/` | Keep model and processing roles distinct           |
+| Shared protocol       | `crates/gungraun-common/src/`                                                | Exit and command-line transport types              |
+| Summary API/schema    | `crates/gungraun-summary/src/`, `crates/gungraun-summary/schemas/`           | Versioned public format                            |
+| Client requests       | `crates/valgrind-requests/src/`                                              | Core API, tool modules, arch assembly              |
+| System-test harness   | `crates/benchmark-tests/src/bench.rs`                                        | Runs fixtures and compares structured output       |
+| Benchmark cases       | `crates/benchmark-tests/benches/`, `crates/benchmark-tests/tests/`           | Inputs plus `.conf.yml` expectations               |
+| Cross-target tests    | `crates/client-request-tests/`                                               | QEMU/native request execution                      |
+| Build recipes         | `Justfile`                                                                   | Prefer recipes over direct tool invocations        |
+| CI matrix             | `.github/workflows/`                                                         | MSRV, platforms, formatting, tests, release        |
 
 ## Code Map
 
-| Symbol               | Type          | Location                           | Role                                             |
-| -------------------- | ------------- | ---------------------------------- | ------------------------------------------------ |
-| `Runner`             | runtime API   | `gungraun/src/__internal/mod.rs`   | Transfers macro-generated benchmark metadata     |
-| `library_benchmark`  | proc macro    | `gungraun-macros/src/lib.rs`       | Expands library benchmark declarations           |
-| `binary_benchmark`   | proc macro    | `gungraun-macros/src/lib.rs`       | Expands binary benchmark declarations            |
-| `main`               | entry point   | `gungraun-runner/src/main.rs`      | Starts runner and prints deferred warnings       |
-| `Tool`               | runner model  | `gungraun-runner/src/runner/tool/` | Configures and invokes Valgrind tools            |
-| `BenchmarkRunner`    | test harness  | `benchmark-tests/src/bench.rs`     | Executes benchmark fixtures and validates output |
-| `do_client_request!` | request macro | `valgrind-requests/src/lib.rs`     | Encodes architecture-specific Valgrind requests  |
-| `v6`                 | schema module | `gungraun-summary/src/lib.rs`      | Current public summary representation            |
+| Symbol               | Type          | Location                                  | Role                                             |
+| -------------------- | ------------- | ----------------------------------------- | ------------------------------------------------ |
+| `Runner`             | runtime API   | `crates/gungraun/src/__internal/mod.rs`   | Transfers macro-generated benchmark metadata     |
+| `library_benchmark`  | proc macro    | `crates/gungraun-macros/src/lib.rs`       | Expands library benchmark declarations           |
+| `binary_benchmark`   | proc macro    | `crates/gungraun-macros/src/lib.rs`       | Expands binary benchmark declarations            |
+| `main`               | entry point   | `crates/gungraun-runner/src/main.rs`      | Starts runner and prints deferred warnings       |
+| `Tool`               | runner model  | `crates/gungraun-runner/src/runner/tool/` | Configures and invokes Valgrind tools            |
+| `BenchmarkRunner`    | test harness  | `crates/benchmark-tests/src/bench.rs`     | Executes benchmark fixtures and validates output |
+| `do_client_request!` | request macro | `crates/valgrind-requests/src/lib.rs`     | Encodes architecture-specific Valgrind requests  |
+| `v6`                 | schema module | `crates/gungraun-summary/src/lib.rs`      | Current public summary representation            |
 
 ## Conventions
 
@@ -72,8 +72,8 @@ gungraun/
   are semver-sensitive. Most other `gungraun-runner` visibility is
   workspace-internal.
 - Use typed library errors. Runner user-facing errors flow through
-  `gungraun-runner/src/error.rs`; reserve `JobError(anyhow::Error)` for internal
-  jobs.
+  `crates/gungraun-runner/src/error.rs`; reserve `JobError(anyhow::Error)` for
+  internal jobs.
 
 ## Anti-Patterns
 

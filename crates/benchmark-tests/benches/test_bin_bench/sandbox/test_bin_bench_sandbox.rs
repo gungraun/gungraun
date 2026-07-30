@@ -24,7 +24,7 @@ fn check_file_exists(path: &str, should_exist: bool) {
     teardown = check_file_exists,
     config = BinaryBenchmarkConfig::default()
         .sandbox(Sandbox::new(true)
-            .fixtures(["benchmark-tests/benches/fixtures/one_line.fix"])
+            .fixtures(["crates/benchmark-tests/benches/fixtures/one_line.fix"])
         )
 )]
 #[bench::sandbox_without_fixture(

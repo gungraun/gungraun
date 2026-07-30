@@ -34,7 +34,7 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
     panic!("should be replaced by a rendered template");
 }
 "#;
-const SCHEMA_PATH: &str = "gungraun-summary/schemas";
+const SCHEMA_PATH: &str = "crates/gungraun-summary/schemas";
 const SCHEMA_VERSION: &str = "7";
 const CONTINUE_FILE_NAME: &str = "benchmark-tests.continue";
 const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
@@ -235,7 +235,7 @@ struct Benchmark {
     config_name: String,
     /// Directory containing the benchmark configuration file and expected fixtures.
     ///
-    /// Example: `benchmark-tests/benches/test_lib_bench/tools`.
+    /// Example: `crates/benchmark-tests/benches/test_lib_bench/tools`.
     dir: PathBuf,
     /// Cargo bench target name.
     ///
@@ -479,7 +479,7 @@ struct Metadata {
     ///
     /// Example: only benchmarks matching `--filter='test_lib_*'`.
     benchmarks: Vec<Benchmark>,
-    /// Path to the `benchmark-tests/benches` directory.
+    /// Path to the `crates/benchmark-tests/benches` directory.
     ///
     /// Example: used to write `test_bench_template.rs`.
     benches_dir: PathBuf,

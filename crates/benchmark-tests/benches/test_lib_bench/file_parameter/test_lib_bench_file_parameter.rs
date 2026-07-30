@@ -28,19 +28,19 @@ fn string_to_u64(line: String) -> u64 {
 }
 
 #[library_benchmark]
-#[benches::one_line(file = "benchmark-tests/benches/fixtures/one_line.fix")]
+#[benches::one_line(file = "crates/benchmark-tests/benches/fixtures/one_line.fix")]
 fn one_line(value: String) {
     assert_eq!(value, "1".to_owned());
 }
 
 #[library_benchmark]
-#[benches::one_line(file = "benchmark-tests/benches/fixtures/one_line.fix", setup = string_to_u64)]
+#[benches::one_line(file = "crates/benchmark-tests/benches/fixtures/one_line.fix", setup = string_to_u64)]
 fn one_line_with_setup(value: u64) {
     assert_eq!(value, 1);
 }
 
 #[library_benchmark]
-#[benches::two_lines(file = "benchmark-tests/benches/fixtures/two_lines.fix")]
+#[benches::two_lines(file = "crates/benchmark-tests/benches/fixtures/two_lines.fix")]
 fn two_lines(value: String) {
     let path = PathBuf::from("/tmp/gungraun.two_lines.fix");
     if !path.exists() {
@@ -56,7 +56,7 @@ fn two_lines(value: String) {
 
 #[library_benchmark]
 #[benches::two_lines(
-    file = "benchmark-tests/benches/fixtures/two_lines.fix",
+    file = "crates/benchmark-tests/benches/fixtures/two_lines.fix",
     setup = string_to_u64
 )]
 fn two_lines_with_setup(value: u64) {

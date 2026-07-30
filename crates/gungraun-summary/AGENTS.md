@@ -10,7 +10,7 @@ backwards compatibility.
 ## Structure
 
 ```text
-gungraun-summary/
+crates/gungraun-summary/
 |- src/lib.rs          # Crate root: re-exports either_or_both, indexmap; declares version modules
 |- src/v6.rs           # Re-exports gungraun-runner summary/metrics/api types; v6-specific parse helpers
 |- src/util.rs         # Version-aware parsing: probes `version` field, dispatches to matching parser
@@ -23,14 +23,14 @@ gungraun-summary/
 
 ## Where To Look
 
-| Task                | Location        | Notes                                                                         |
-| ------------------- | --------------- | ----------------------------------------------------------------------------- |
-| Versioned types     | `src/v6.rs`     | Re-exports from `gungraun-runner::summary::model`, `metrics::model`, `api`    |
-| Version-aware parse | `src/util.rs`   | `SummaryByVersion`, `Version`, `parse` / `parse_slice`                        |
-| Schema generation   | `src/main.rs`   | Uses `schemars::SchemaSettings::draft07()`; writes `summary.schema.json`      |
-| Generated schemas   | `schemas/`      | One file per schema version; v6 is current                                    |
-| Schema recipes      | `../Justfile`   | `schema-gen`, `schema-gen-diff`, `schema-gen-move`                            |
-| Compatibility tests | `tests/main.rs` | Smoke deserializes fixture; benchmark-tests also assert on `BenchmarkSummary` |
+| Task                | Location         | Notes                                                                         |
+| ------------------- | ---------------- | ----------------------------------------------------------------------------- |
+| Versioned types     | `src/v6.rs`      | Re-exports from `gungraun-runner::summary::model`, `metrics::model`, `api`    |
+| Version-aware parse | `src/util.rs`    | `SummaryByVersion`, `Version`, `parse` / `parse_slice`                        |
+| Schema generation   | `src/main.rs`    | Uses `schemars::SchemaSettings::draft07()`; writes `summary.schema.json`      |
+| Generated schemas   | `schemas/`       | One file per schema version; v6 is current                                    |
+| Schema recipes      | `../../Justfile` | `schema-gen`, `schema-gen-diff`, `schema-gen-move`                            |
+| Compatibility tests | `tests/main.rs`  | Smoke deserializes fixture; benchmark-tests also assert on `BenchmarkSummary` |
 
 ## Conventions
 
@@ -42,8 +42,8 @@ gungraun-summary/
   `gungraun-summary-schemagen` binary.
 - Schema files are generated, not hand-edited; use `just schema-gen-move` to
   update after model changes.
-- `SCHEMA_VERSION` in `gungraun-runner/src/summary/model.rs` is the single
-  source of truth for the version string.
+- `SCHEMA_VERSION` in `crates/gungraun-runner/src/summary/model.rs` is the
+  single source of truth for the version string.
 
 ## Anti-Patterns
 

@@ -102,7 +102,7 @@ jobs:
         run: |
           if grep -q '^test ui \.\.\. FAILED$' test.output; then
             just test-ui-overwrite
-            git diff gungraun/tests/ui
+            git diff crates/gungraun/tests/ui
           fi
           exit 1
 

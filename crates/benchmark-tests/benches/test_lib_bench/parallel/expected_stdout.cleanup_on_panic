@@ -1,5 +1,5 @@
 test_lib_bench_parallel_cleanup_on_panic::my_group::exit_with_panic
 
-thread 'main' (<__PID__>) panicked at benchmark-tests/benches/test_lib_bench/parallel/test_lib_bench_parallel_cleanup_on_panic.rs:24:5:
+thread 'main' (<__PID__>) panicked at crates/benchmark-tests/benches/test_lib_bench/parallel/test_lib_bench_parallel_cleanup_on_panic.rs:24:5:
 I am panicking as requested
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

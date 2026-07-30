@@ -331,31 +331,31 @@ mod test_consts_with_file {
     use super::*;
 
     #[library_benchmark]
-    #[benches::id(file = "gungraun/tests/fixtures/numbers.fix", consts = [])]
+    #[benches::id(file = "crates/gungraun/tests/fixtures/numbers.fix", consts = [])]
     fn when_file_is_valid_and_consts_empty(line: String) -> String {
         line
     }
 
     #[binary_benchmark]
-    #[benches::id(file = "gungraun/tests/fixtures/numbers.fix", consts = [])]
+    #[benches::id(file = "crates/gungraun/tests/fixtures/numbers.fix", consts = [])]
     fn when_binary_file_is_valid_and_consts_empty(line: String) -> Command {
         Command::new("some").arg(line).build()
     }
 
     #[library_benchmark]
-    #[benches::id(file = "gungraun/tests/fixtures/numbers.fix", consts = [123])]
+    #[benches::id(file = "crates/gungraun/tests/fixtures/numbers.fix", consts = [123])]
     fn when_file_is_valid_and_consts_is_one<const NUM: usize>(line: String) -> String {
         format!("{line}: {NUM}")
     }
 
     #[binary_benchmark]
-    #[benches::id(file = "gungraun/tests/fixtures/numbers.fix", consts = [123])]
+    #[benches::id(file = "crates/gungraun/tests/fixtures/numbers.fix", consts = [123])]
     fn when_binary_file_is_valid_and_consts_is_one<const NUM: usize>(line: String) -> Command {
         Command::new("some").args([line, NUM.to_string()]).build()
     }
 
     #[library_benchmark]
-    #[benches::id(file = "gungraun/tests/fixtures/numbers.fix", consts = [(123, 345)])]
+    #[benches::id(file = "crates/gungraun/tests/fixtures/numbers.fix", consts = [(123, 345)])]
     fn when_file_is_valid_and_consts_is_two<const NUM: usize, const OTHER: usize>(
         line: String,
     ) -> String {
@@ -363,7 +363,7 @@ mod test_consts_with_file {
     }
 
     #[binary_benchmark]
-    #[benches::id(file = "gungraun/tests/fixtures/numbers.fix", consts = [(123, 345)])]
+    #[benches::id(file = "crates/gungraun/tests/fixtures/numbers.fix", consts = [(123, 345)])]
     fn when_binary_file_is_valid_and_consts_is_two<const NUM: usize, const OTHER: usize>(
         line: String,
     ) -> Command {

@@ -3,8 +3,11 @@ use indexmap::{IndexMap, IndexSet};
 
 use crate::api::{self, DhatMetric};
 use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
-use crate::runner::tool::regression::RegressionConfig;
+use crate::runner::tool::regression::{DEFAULT_REGRESSION_FAIL_FAST, RegressionConfig};
 use crate::summary::model::ToolRegression;
+
+const DEFAULT_DHAT_SOFT_LIMIT_METRIC: DhatMetric = DhatMetric::TotalBytes;
+const DEFAULT_DHAT_SOFT_LIMIT_PERCENTAGE: f64 = 10.0;
 
 /// The dhat regression check configuration
 #[derive(Debug, Clone, PartialEq)]
@@ -20,9 +23,12 @@ pub struct DhatRegressionConfig {
 impl Default for DhatRegressionConfig {
     fn default() -> Self {
         Self {
-            soft_limits: vec![(DhatMetric::TotalBytes, 10f64)],
+            soft_limits: vec![(
+                DEFAULT_DHAT_SOFT_LIMIT_METRIC,
+                DEFAULT_DHAT_SOFT_LIMIT_PERCENTAGE,
+            )],
             hard_limits: Vec::default(),
-            fail_fast: Default::default(),
+            fail_fast: DEFAULT_REGRESSION_FAIL_FAST,
         }
     }
 }
@@ -80,7 +86,7 @@ impl TryFrom<api::DhatRegressionConfig> for DhatRegressionConfig {
         Ok(Self {
             soft_limits: soft_limits.into_iter().collect(),
             hard_limits: hard_limits.into_iter().collect(),
-            fail_fast: fail_fast.unwrap_or(false),
+            fail_fast: fail_fast.unwrap_or(DEFAULT_REGRESSION_FAIL_FAST),
         })
     }
 }

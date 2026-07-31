@@ -1,11 +1,5 @@
 //! This module contains elements which are common to library and binary benchmarks
 
-mod defaults {
-    pub const SANDBOX_ENABLED: bool = false;
-    pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
-    pub const COMPARE_BY_ID: bool = false;
-}
-
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
@@ -50,6 +44,10 @@ use crate::summary::model::{
     BenchmarkSummary, FlamegraphSummary, Profile, ProfileData, SummaryOutput,
 };
 use crate::util::{copy_directory, make_absolute};
+
+const DEFAULT_COMPARE_BY_ID: bool = false;
+const DEFAULT_SANDBOX_ENABLED: bool = false;
+const DEFAULT_SANDBOX_FOLLOW_SYMLINKS: bool = false;
 
 /// Analyzer tuple containing parser, output path, regression config, flamegraph config, and entry
 /// point.
@@ -1488,7 +1486,7 @@ impl Groups {
                 benches: Benches::BinBenches(vec![]),
                 compare_by_id: binary_benchmark_group
                     .compare_by_id
-                    .unwrap_or(defaults::COMPARE_BY_ID),
+                    .unwrap_or(DEFAULT_COMPARE_BY_ID),
                 max_parallel: binary_benchmark_group.max_parallel.into(),
                 module_path: group_module_path,
                 num_filtered: 0,
@@ -1643,7 +1641,7 @@ impl Groups {
                 benches: Benches::LibBenches(vec![]),
                 compare_by_id: library_benchmark_group
                     .compare_by_id
-                    .unwrap_or(defaults::COMPARE_BY_ID),
+                    .unwrap_or(DEFAULT_COMPARE_BY_ID),
                 max_parallel: library_benchmark_group.max_parallel.into(),
                 module_path: group_module_path,
                 num_filtered: 0,
@@ -2011,10 +2009,10 @@ impl Sandbox {
     /// If enabled, create a temporary directory which has a standardized length. Then copy fixtures
     /// into the temporary directory.
     pub fn setup(inner: &api::Sandbox, meta: &Metadata) -> Result<Self> {
-        let enabled = inner.enabled.unwrap_or(defaults::SANDBOX_ENABLED);
+        let enabled = inner.enabled.unwrap_or(DEFAULT_SANDBOX_ENABLED);
         let follow_symlinks = inner
             .follow_symlinks
-            .unwrap_or(defaults::SANDBOX_FIXTURES_FOLLOW_SYMLINKS);
+            .unwrap_or(DEFAULT_SANDBOX_FOLLOW_SYMLINKS);
 
         let current_dir = std::env::current_dir().map_err(|error| {
             Error::SandboxError(format!("Failed to detect current directory: {error}"))

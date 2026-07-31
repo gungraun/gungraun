@@ -4,7 +4,9 @@ use anyhow::Result;
 
 use crate::api::{RawToolArgs, Tool};
 use crate::error::Error;
-use crate::runner::tool::args::{ToolArgsLike, ValgrindArgs, ValgrindTool, defaults};
+use crate::runner::tool::args::{
+    DEFAULT_CACHE_SIM, DEFAULT_D1, DEFAULT_I1, DEFAULT_LL, ToolArgsLike, ValgrindArgs, ValgrindTool,
+};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -48,10 +50,10 @@ impl ToolArgsLike for CachegrindArgs {
 impl Default for CachegrindArgs {
     fn default() -> Self {
         Self {
-            i1: defaults::I1.into(),
-            d1: defaults::D1.into(),
-            ll: defaults::LL.into(),
-            cache_sim: defaults::CACHE_SIM,
+            i1: DEFAULT_I1.into(),
+            d1: DEFAULT_D1.into(),
+            ll: DEFAULT_LL.into(),
+            cache_sim: DEFAULT_CACHE_SIM,
             valgrind: ValgrindArgs::new(ValgrindTool::Cachegrind),
         }
     }

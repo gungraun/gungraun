@@ -432,10 +432,7 @@ impl Metadata {
                         OsString::from("GUNGRAUN_ALLOW_ASLR"),
                         self.args
                             .allow_aslr
-                            .map_or_else(
-                                || bool_to_yesno(args::defaults::ALLOW_ASLR),
-                                bool_to_yesno,
-                            )
+                            .map_or_else(|| bool_to_yesno(args::DEFAULT_ALLOW_ASLR), bool_to_yesno)
                             .into(),
                     );
                     additional_envs
@@ -539,7 +536,7 @@ fn detect_arm_p_core_list(system_cpu: &Path) -> Option<OsString> {
 /// no supported ASLR wrapper, or when the wrapper binary cannot be resolved. On Linux this resolves
 /// `setarch <arch> -R`; on FreeBSD this resolves `proccontrol -m aslr -s disable`.
 pub fn detect_aslr_wrapper(args: &CommandLineArgs, arch: &str) -> Option<Cmd> {
-    if args.allow_aslr.unwrap_or(args::defaults::ALLOW_ASLR) {
+    if args.allow_aslr.unwrap_or(args::DEFAULT_ALLOW_ASLR) {
         debug!("Running with ASLR enabled");
         None
     } else if cfg!(target_os = "linux") {

@@ -93,6 +93,9 @@ pub const DEFAULT_PERF_ALPHA: f64 = 0.05;
 /// discarded. Patterns use `simplematch` glob syntax.
 pub const DEFAULT_PERF_NON_ZERO_METRICS: &[&str] = &["task-clock*", "cpu-clock*", "*instructions*"];
 
+const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
+const DEFAULT_TOOL_ENABLED: bool = true;
+
 /// The DHAT-specific configuration stored in [`ToolConfigOptions::DHAT`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DhatConfig {
@@ -411,7 +414,7 @@ impl ToolConfigBuilder {
             args,
             self.regression_config.clone(),
             self.flamegraph_config.clone(),
-            self.entry_point.clone().unwrap_or(EntryPoint::None),
+            self.entry_point.clone().unwrap_or(DEFAULT_ENTRY_POINT),
             is_default,
             self.sanitize_output,
             part,
@@ -798,7 +801,7 @@ impl ToolConfigs {
         let extracted_tool = tool_specs.consume(default_tool);
         let default_tool_is_enabled = extracted_tool
             .as_ref()
-            .is_none_or(|t| t.enable.unwrap_or(true));
+            .is_none_or(|t| t.enable.unwrap_or(DEFAULT_TOOL_ENABLED));
 
         let default_tool_configs =
             if default_tool.is_supported(meta.supported_tools) && default_tool_is_enabled {
@@ -842,7 +845,10 @@ impl ToolConfigs {
 
         let iter = meta_tool_specs
             .into_iter()
-            .filter(|t| t.tool.is_supported(meta.supported_tools) && t.enable.unwrap_or(true))
+            .filter(|t| {
+                t.tool.is_supported(meta.supported_tools)
+                    && t.enable.unwrap_or(DEFAULT_TOOL_ENABLED)
+            })
             .map(|tool_spec| {
                 output_format.update(Some(&tool_spec));
 

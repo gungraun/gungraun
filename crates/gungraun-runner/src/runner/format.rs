@@ -54,6 +54,12 @@ pub const UNKNOWN: &str = "*********";
 /// The string used to signal that the difference is in the tolerance margin
 pub const WITHIN_TOLERANCE: &str = "Tolerance";
 
+const DEFAULT_FILTER_OUTPUT: bool = false;
+const DEFAULT_SHOW_GRID: bool = false;
+const DEFAULT_SHOW_INTERMEDIATE: bool = false;
+const DEFAULT_SHOW_ONLY_COMPARISON: bool = false;
+const DEFAULT_TRUNCATE_DESCRIPTION: Option<usize> = Some(50);
+
 #[derive(Debug)]
 enum IndentKind {
     Normal,
@@ -569,11 +575,11 @@ impl OutputFormat {
 impl Default for OutputFormat {
     fn default() -> Self {
         Self {
-            show_only_comparison: false,
+            show_only_comparison: DEFAULT_SHOW_ONLY_COMPARISON,
             kind: OutputFormatKind::default(),
-            truncate_description: Some(50),
-            show_intermediate: false,
-            show_grid: false,
+            truncate_description: DEFAULT_TRUNCATE_DESCRIPTION,
+            show_intermediate: DEFAULT_SHOW_INTERMEDIATE,
+            show_grid: DEFAULT_SHOW_GRID,
             tolerance: None,
             callgrind: IndexSet::from(CallgrindMetrics::Default),
             cachegrind: IndexSet::from(CachegrindMetrics::Default),
@@ -596,7 +602,7 @@ impl Default for OutputFormat {
                 ErrorMetric::SuppressedErrors,
                 ErrorMetric::SuppressedContexts,
             ],
-            filter_output: false,
+            filter_output: DEFAULT_FILTER_OUTPUT,
         }
     }
 }
@@ -605,9 +611,11 @@ impl From<api::OutputFormat> for OutputFormat {
     fn from(value: api::OutputFormat) -> Self {
         Self {
             kind: OutputFormatKind::Default,
-            truncate_description: value.truncate_description.unwrap_or(Some(50)),
-            show_intermediate: value.show_intermediate.unwrap_or(false),
-            show_grid: value.show_grid.unwrap_or(false),
+            truncate_description: value
+                .truncate_description
+                .unwrap_or(DEFAULT_TRUNCATE_DESCRIPTION),
+            show_intermediate: value.show_intermediate.unwrap_or(DEFAULT_SHOW_INTERMEDIATE),
+            show_grid: value.show_grid.unwrap_or(DEFAULT_SHOW_GRID),
             tolerance: value.tolerance,
             ..Default::default()
         }

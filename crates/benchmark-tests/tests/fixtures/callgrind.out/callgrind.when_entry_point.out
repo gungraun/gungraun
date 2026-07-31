@@ -1,0 +1,827 @@
+# callgrind format
+version: 1
+creator: callgrind-3.21.0
+pid: 3289659
+cmd:  target/release/benchmark-tests-exit 0
+part: 1
+
+
+desc: I1 cache: 32768 B, 64 B, 8-way associative
+desc: D1 cache: 32768 B, 64 B, 8-way associative
+desc: LL cache: 8388608 B, 64 B, 16-way associative
+
+desc: Timerange: Basic block 0 - 64288
+desc: Trigger: Program termination
+
+positions: line
+events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+summary: 3473 889 559 143 30 7 116 4 4
+
+
+ob=???
+fl=???
+fn=0x0000000004836294
+0 4 1 0 1 0 0 1
+
+fn=0x0000000004876a38
+0 4 1 0 2 0 0 2
+
+fn=0x0000000000143324
+0 4 1 0 1 0 0 1
+
+ob=/usr/lib/valgrind/vgpreload_core-amd64-linux.so
+fl=???
+fn=0x00000000000010c0
+0 9 4 2 1 1 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=__cxa_finalize
+calls=1 0
+0 73 18 12
+0 1 0 1
+cfn=0x0000000000001050
+calls=1 0
+0 5 1 0 1 0 0 1
+0 3 2 1
+
+fn=0x0000000000001050
+0 5 1 0 1 0 0 1
+
+ob=/usr/lib/ld-linux-x86-64.so.2
+fl=???
+fn=0x0000000000017b10
+0 18 6
+
+fn=0x0000000000001090
+0 85 25 23 2 3 0 2
+cob=/usr/lib/libgcc_s.so.1
+cfi=/usr/src/debug/gcc/gcc/libgcc/unwind-dw2-fde.c
+cfn=release_registered_frames
+calls=1 57
+0 12 4 3 2 1 0 1
+cob=/usr/lib/valgrind/vgpreload_core-amd64-linux.so
+cfi=???
+cfn=0x00000000000010c0
+calls=1 0
+0 91 25 16 2 1 0 2
+cob=target/release/benchmark-tests-exit
+cfi=???
+cfn=0x0000000000007ac0
+calls=1 0
+0 91 25 16 9 2 1 9 0 1
+0 1 1 1
+cob=/usr/lib/libgcc_s.so.1
+cfi=???
+cfn=0x00000000000050b0
+calls=1 0
+0 91 25 16 3 2 0 1
+0 49 20 0 1 0 0 1
+cob=???
+cfi=???
+cfn=0x0000000004876a38
+calls=1 0
+0 4 1 0 2 0 0 2
+cob=???
+cfi=???
+cfn=0x0000000004836294
+calls=1 0
+0 4 1 0 1 0 0 1
+cob=???
+cfi=???
+cfn=0x0000000000143324
+calls=1 0
+0 4 1 0 1 0 0 1
+0 8 8
+
+fn=0x0000000000011010
+0 211 64 35 3 3 0 1
+
+fn=0x0000000000011110
+0 127 24 21 7 1
+cfn=0x0000000000011010
+calls=10 0
+0 211 64 35 3 3 0 1
+0 25 7 1 2
+cfn=0x0000000000022300
+calls=2 0
+0 19 5 4 3
+0 4 1
+
+fn=0x0000000000004d70
+0 27 2 8 3 0 0 3
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=pthread_mutex_lock
+calls=1 0
+0 42 11 5
+0 13 3 3 1 0 0 1
+cfn=0x0000000000017b10
+calls=1 0
+0 9 3
+0 96 12 17 3 0 3 3
+cfn=0x0000000000011110
+calls=1 0
+0 386 101 61 15 4 0 1
+0 2 1 1 1 0 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=pthread_mutex_unlock
+calls=1 0
+0 39 7 4
+0 61 11 20 1 0 0 1
+cfn=0x0000000000001090
+calls=5 0
+0 440 136 75 23 9 1 20 0 1
+0 10 0 5
+cfn=0x0000000000017cc0
+calls=5 0
+0 25 10 0 1 0 0 1
+0 18 10 1
+cfn=0x0000000000017b10
+calls=1 0
+0 9 3
+0 21 11 2 1 0 0 1
+
+fn=0x0000000000022300
+0 19 5 4 3
+
+fn=0x000000000001b530
+cob=target/release/benchmark-tests-exit
+cfi=???
+cfn=(below main)
+calls=1 0
+0 3473 889 559 143 30 7 116 4 4
+
+fn=0x0000000000017cc0
+0 25 10 0 1 0 0 1
+
+ob=/usr/lib/libc.so.6
+fl=???
+fn=(below main)
+cfn=0x0000000000027c50
+calls=1 0
+0 3473 889 559 143 30 7 116 4 4
+
+fn=memcpy
+0 41 11 9 1 0 0 1
+
+fn=0x0000000000040b70
+0 51 8 12 4 0 0 4
+cfn=_Exit
+calls=1 0
+0 6 1 0 2 0 0 2
+0 13 4 3 2 0 0 2
+cob=/usr/lib/ld-linux-x86-64.so.2
+cfi=???
+cfn=0x0000000000004d70
+calls=1 0
+0 1198 321 202 49 13 4 32 0 1
+0 9 1 3 2 0 0 2
+cfn=__call_tls_dtors
+calls=1 0
+0 292 94 46 4 0 0 4
+0 2 0 1
+cfn=0x0000000000087130
+calls=1 0
+0 356 118 78 25 8 0 25 3
+0 1
+
+fn=0x0000000000027c50
+cob=target/release/benchmark-tests-exit
+cfi=???
+cfn=main
+calls=1 0
+0 3473 889 559 143 30 7 116 4 4
+
+fn=getpagesize
+0 12 6 0 1
+
+fn=0x0000000000087130
+0 13 1 8 2 0 0 2
+cfn=_IO_flush_all
+calls=1 0
+0 182 65 37 11 8 0 11 3
+0 6 0 3
+cfn=0x00000000000895a0
+calls=1 0
+0 13 4 3
+0 74 25 11 6 0 0 6
+cfn=0x00000000000895f0
+calls=1 0
+0 9 5 1
+0 59 18 15 6 0 0 6
+
+fn=sigaltstack
+0 6 1
+
+fn=sysconf
+0 90 18 12 6
+cfn=getpagesize
+calls=6 0
+0 12 6 0 1
+0 8 0 0 2
+
+fn=0x00000000000989c0
+0 12 6
+
+fn=_IO_flush_all
+0 17 1 10 2 0 0 2
+cfn=0x00000000000895a0
+calls=1 0
+0 13 4 3
+0 114 44 15 7 8 0 7 3
+cfn=0x00000000000895f0
+calls=1 0
+0 9 5 1
+0 29 11 8 2 0 0 2
+
+fn=exit
+0 8 1 2 2 0 0 2
+cfn=0x0000000000040b70
+calls=1 0
+0 1928 547 345 88 21 4 71 3 1
+
+fn=0x000000000009b500
+0 375 63 27
+cfn=0x00000000000989c0
+calls=14 0
+0 12 6
+0 54 3 9 0 0 3 0 0 3
+
+fn=0x00000000000895f0
+0 18 10 2
+
+fn=0x000000000009a870
+0 255 70 35
+
+fn=0x00000000000ae990
+0 78 15
+
+fn=pthread_mutex_unlock
+0 39 7 4
+
+fn=munmap
+0 6 1 0 1 0 0 1
+
+fn=0x00000000000f8270
+0 48 12 9 3 0 1 3 0 1
+
+fn=_Exit
+0 4 1 0 2 0 0 2
+
+fn=malloc
+0 108 30 12
+cfn=0x000000000009b500
+calls=10 0
+0 441 72 36 0 0 3 0 0 3
+0 21 3
+
+fn=0x00000000000895a0
+0 26 8 6
+
+fn=free
+0 100 25 15
+cfn=0x000000000009a870
+calls=11 0
+0 255 70 35
+0 25 15 5
+
+fn=pthread_mutex_lock
+0 42 11 5
+
+fn=__call_tls_dtors
+0 16 6 4 1 0 0 1
+cob=target/release/benchmark-tests-exit
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/thread/local.rs
+cfn=std::sys_common::thread_info::THREAD_INFO::__getit::destroy
+calls=1 219
+0 189 59 29 3 0 0 3
+0 4 3 2
+cfn=free
+calls=1 0
+0 76 22 11
+0 7 4
+
+fn=__cxa_finalize
+0 135 18 24 4 2 0 4
+cfn=0x00000000000f8270
+calls=3 0
+0 48 12 9 3 0 1 3 0 1
+0 36 24 3 1 0 0 1
+
+ob=/usr/lib/libgcc_s.so.1
+fl=/usr/src/debug/gcc/gcc/libgcc/unwind-dw2-fde.c
+fn=release_registered_frames
+57 2 0 1 1 0 0 1
+fi=/usr/src/debug/gcc/gcc/libgcc/unwind-dw2-btree.h
+359 2 1 1 0 1
+360 2
+364 3 1
+fe=/usr/src/debug/gcc/gcc/libgcc/unwind-dw2-fde.c
+61 1 0 1
+62 2 2 0 1
+
+fl=???
+fn=0x00000000000050b0
+0 9 4 2 2 2 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=__cxa_finalize
+calls=1 0
+0 73 18 12
+0 1 0 1
+cfn=0x0000000000005040
+calls=1 0
+0 5 1 0 1
+0 3 2 1
+
+fn=0x0000000000005040
+0 5 1 0 1
+
+ob=target/release/benchmark-tests-exit
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/alloc.rs
+fn=__rdl_alloc
+350 6 0 3
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/alloc.rs
+13 12
+14 9 6
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=malloc
+calls=5 0
+14 570 105 48 0 0 3 0 0 3
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/alloc.rs
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/process.rs
+fn=std::process::exit
+1933 2 0 1 1 0 0 1
+1934 1 0 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/rt.rs
+cfn=std::rt::cleanup
+calls=1 93
+1934 230 60 47 25 3 0 15 1
+1935 2 0 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/os.rs
+cfn=std::sys::unix::os::exit
+calls=1 625
+1935 1938 549 349 91 22 4 74 3 1
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/os.rs
+fn=std::sys::unix::os::exit
+625 1 0 1 1 0 0 1
+626 1 1 1 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=exit
+calls=1 0
+626 1936 548 347 90 21 4 73 3 1
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/thread/local.rs
+fn=std::sys_common::thread_info::THREAD_INFO::__getit::destroy
+219 2 0 1 1 0 0 1
+224 2 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+188 2 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/sync.rs
+1653 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2413 1 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/sync.rs
+1653 1
+1688 3 2
+cfn=alloc::sync::Arc<T>::drop_slow
+calls=1 1089
+1688 177 53 26 2 0 0 2
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/thread/local.rs
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/sync.rs
+fn=alloc::sync::Arc<T>::drop_slow
+1089 2 0 1 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+188 3 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/ffi/c_str.rs
+813 1 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+188 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/alloc.rs
+239 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+188 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/alloc.rs
+105 2 1 1
+cfi=???
+cfn=__rust_dealloc
+calls=1 0
+105 78 23 11
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/rc.rs
+2123 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/sync.rs
+2003 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2413 1 1 1 1 0 0 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/sync.rs
+2158 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/alloc.rs
+105 5 2
+cfi=???
+cfn=__rust_dealloc
+calls=1 0
+105 78 23 11
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/sync.rs
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/alloc.rs
+fn=__rdl_dealloc
+42 4 4 0 1 0 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=free
+calls=4 0
+42 304 88 44
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/mod.rs
+fn=core::num::<impl core::str::traits::FromStr for i32>::from_str
+961 1 0 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/str/mod.rs
+164 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/mod.rs
+1003 1
+1015 5 1 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/ptr/const_ptr.rs
+0 4
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/slice/iter/macros.rs
+146 4
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/mod.rs
+1027 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/uint_macros.rs
+1226 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/char/methods.rs
+358 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/mod.rs
+1028 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/int_macros.rs
+1612 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/mod.rs
+1032 1
+0 1
+1036 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/int_macros.rs
+1511 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/mod.rs
+1036 1 0 0 1 0 0 1
+1059 6 0 0 1 0 0 1
+963 1 1
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/str/converts.rs
+fn=core::str::converts::from_utf8
+86 12 0 8 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/str/validations.rs
+134 6
+137 4
+0 16 0 0 1 0 0 1
+156 2 2 0 1 0 0 1
+157 4
+0 2
+214 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/uint_macros.rs
+1226 4
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/str/validations.rs
+214 6
+230 5
+216 14
+224 5 5
+121 5 5
+226 10
+233 14 4 0 1 0 0 1
+234 4
+233 10
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/str/converts.rs
+91 10 0 6 2 0 0 2
+95 10 10
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/rt.rs
+fn=std::rt::lang_start_internal
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ops/function.rs
+cfi=???
+cfn=std::rt::lang_start::{{closure}}
+calls=1 0
+259 3473 889 559 143 30 7 116 4 4
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/rt.rs
+
+fn=std::rt::cleanup
+93 1 0 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2365 1 1 0 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+378 1
+264 1
+268 2 0 1
+269 6 1 2 1
+cfn=std::sync::once::Once::call_inner
+calls=1 393
+269 216 57 44 23 2 0 14
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/rt.rs
+101 2 1
+
+fl=???
+fn=0x0000000000007ac0
+0 9 4 2 1 0 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=__cxa_finalize
+calls=1 0
+0 73 18 12 8 2 1 8 0 1
+0 1 0 1
+cfn=0x0000000000007a50
+calls=1 0
+0 5 1
+0 3 2 1
+
+fn=main
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/rt.rs
+cfn=std::rt::lang_start_internal
+calls=1 106
+0 3473 889 559 143 30 7 116 4 4
+
+fn=(below main)
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=(below main)
+calls=1 0
+0 3473 889 559 143 30 7 116 4 4
+
+fn=benchmark_tests_exit::main
+0 10 1 7 1 1 0 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
+cfn=std::env::args
+calls=1 762
+0 844 165 92 8 1 3 8 0 3
+0 3 1 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
+cfn=<std::env::Args as core::iter::traits::iterator::Iterator>::next
+calls=1 810
+0 128 31 16 9 1 0 9
+0 8 3 1 1 1 0 1
+cfn=__rust_dealloc
+calls=1 0
+0 78 23 11 1 0 0 1
+0 3 1 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
+cfn=<std::env::Args as core::iter::traits::iterator::Iterator>::next
+calls=1 810
+0 83 19 16
+0 24 8 2 2 0 0 2
+cfn=__rust_dealloc
+calls=1 0
+0 78 23 11
+0 3 1 1 0 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/num/mod.rs
+cfn=core::num::<impl core::str::traits::FromStr for i32>::from_str
+calls=1 961
+0 33 3 0 4 0 0 4
+0 5 1 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/process.rs
+cfn=std::process::exit
+calls=1 1933
+0 2173 609 399 117 25 4 90 4 1
+
+fn=0x0000000000007a50
+0 5 1
+
+fn=__rust_alloc
+0 3
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/alloc.rs
+cfn=__rdl_alloc
+calls=5 350
+0 597 111 51 0 0 3 0 0 3
+
+fn=__rust_dealloc
+0 4
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/alloc.rs
+cfn=__rdl_dealloc
+calls=4 42
+0 308 92 44 1 0 0 1
+
+fn=std::sys_common::backtrace::__rust_begin_short_backtrace
+cfn=benchmark_tests_exit::main
+calls=1 0
+0 3473 889 559 143 30 7 116 4 4
+
+fn=std::rt::lang_start::{{closure}}
+cfn=std::sys_common::backtrace::__rust_begin_short_backtrace
+calls=1 0
+0 3473 889 559 143 30 7 116 4 4
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+fn=std::sync::once::Once::call_inner
+393 11 0 9 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2365 4 2
+2433 3 0 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+410 1
+0 1 0 0 1 0 0 1
+396 2
+416 2 0 2 2 0 0 2
+423 1
+422 5 2 2
+426 1 1 1 0 1
+cfn=std::sync::once::Once::call_once::{{closure}}
+calls=1 269
+426 154 36 22 14 1 0 5
+427 3 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+188 1 1 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+cfn=<std::sync::once::WaiterQueue as core::ops::drop::Drop>::drop
+calls=1 497
+188 19 7 5 4 0 0 4
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+439 8 7 0 1 0 0 1
+
+fn=std::sync::once::Once::call_once::{{closure}}
+269 4 1 2 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/option.rs
+750 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+892 1 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/option.rs
+750 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2365 1 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+378 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/io/stdio.rs
+689 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2366 1 1 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mut_ptr.rs
+504 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/stack_overflow.rs
+186 1
+187 4 0 3 1 0 0 1
+196 2 1 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=sigaltstack
+calls=1 0
+196 6 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/os.rs
+565 3 1 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=sysconf
+calls=1 0
+565 55 12 6 9
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mut_ptr.rs
+307 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/os.rs
+565 2 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=sysconf
+calls=1 0
+565 55 12 6
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/stack_overflow.rs
+199 3 1 1 1 1 0 1
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=munmap
+calls=1 0
+199 6 1 0 1 0 0 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+269 4 3
+
+fn=<std::sync::once::WaiterQueue as core::ops::drop::Drop>::drop
+497 4 0 3 1 0 0 1
+500 2 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2382 1 1 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+503 5 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/const_ptr.rs
+482 1
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sync/once.rs
+513 1 0 0 1 0 0 1
+523 5 4 0 2 0 0 2
+
+fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
+fn=std::env::args_os
+797 8 0 6 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2366 2 1 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mut_ptr.rs
+504 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/args.rs
+142 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/sync/atomic.rs
+2366 2 1
+0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/cmp.rs
+1400 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/iter/range.rs
+716 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/alloc/layout.rs
+408 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/num/uint_macros.rs
+1683 3
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/alloc/layout.rs
+408 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/raw_vec.rs
+176 1
+0 2 0 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/alloc.rs
+165 2
+87 3 1 1
+cfi=???
+cfn=__rust_alloc
+calls=1 0
+87 202 37 17 0 0 1 0 0 1
+87 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/raw_vec.rs
+188 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/cmp.rs
+1400 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/iter/range.rs
+621 1
+0 8 0 4 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/intrinsics.rs
+2104 8 2 2
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=memcpy
+calls=2 0
+2104 41 11 9 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+892 6 0 6
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/iter/range.rs
+621 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/cmp.rs
+1400 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/iter/range.rs
+621 2
+0 2 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/args.rs
+145 2 2 0 1 1 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/ffi/c_str.rs
+1236 4 2 2
+cob=/usr/lib/libc.so.6
+cfi=???
+cfn=0x00000000000ae990
+calls=2 0
+1236 78 15
+1236 4
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/raw_vec.rs
+0 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/alloc.rs
+165 2
+87 6 2 2
+cfi=???
+cfn=__rust_alloc
+calls=2 0
+87 398 74 34 0 0 2 0 0 2
+87 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/raw_vec.rs
+188 4
+0 4 3 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mut_ptr.rs
+307 3
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
+798 4 0 4 1 0 0 1
+799 9 7
+
+fn=std::env::args
+762 4 0 1 1 0 0 1
+763 1 1 1
+cfn=std::env::args_os
+calls=1 797
+763 831 160 88 7 1 3 7 0 3
+763 4 2 2
+764 4 2
+
+fn=<std::env::Args as core::iter::traits::iterator::Iterator>::next
+810 12 0 8 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/vec/into_iter.rs
+136 6 4
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/const_ptr.rs
+295 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/vec/into_iter.rs
+148 2 0 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/ptr/mod.rs
+702 2 2 0 1 0 0 1
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/option.rs
+905 4
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
+0 6 4
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/string.rs
+500 6 2 2 0 1
+cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/core/src/str/converts.rs
+cfn=core::str::converts::from_utf8
+calls=2 86
+500 145 26 14 6 0 0 6
+500 4 2
+fi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/core/src/option.rs
+906 8 0 6
+fe=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
+812 14 10 0 1 0 0 1
+
+totals: 3471 889 559 143 30 7 116 4 4

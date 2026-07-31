@@ -1,0 +1,17 @@
+# callgrind format
+version: 2
+creator: callgrind-3.21.0
+pid: 1828900
+cmd:  /some/project/target/release/deps/my-bin-3d69ca9f0e146ded --gungraun-run group 0 0 bench_file::group::library_benchmark
+part: 1
+
+
+desc: I1 cache: 32768 B, 64 B, 8-way associative
+desc: D1 cache: 32768 B, 64 B, 8-way associative
+desc: LL cache: 8388608 B, 64 B, 16-way associative
+
+desc: Timerange: Basic block 0 - 69507
+desc: Trigger: Program termination
+
+positions: line
+events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw

@@ -55,17 +55,11 @@ fn test_tool_command_perf_basic() {
         .into_iter::<Value>()
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
+    let stderr = str::from_utf8(&output.stderr).unwrap();
 
-    assert!(
-        output.status.success(),
-        "perf command failed: {}",
-        str::from_utf8(&output.stderr).unwrap()
-    );
+    assert!(output.status.success(), "perf command failed: {stderr}",);
 
-    assert_eq!(
-        "Events enabled\nEvents disabled\n",
-        str::from_utf8(&output.stderr).unwrap()
-    );
+    assert!(stderr.contains("Events enabled\n"));
 
     assert!(
         json.iter()

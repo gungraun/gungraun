@@ -27,14 +27,14 @@ save a summary file for each benchmark with `--save-summary=json|pretty-json`
 usual benchmark output files in the `target/gungraun` directory.
 
 [summary.v1.schema.json]:
-    https://github.com/gungraun/gungraun/blob/main/gungraun-summary/schemas/summary.v1.schema.json
+    https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/schemas/summary.v1.schema.json
 [summary.v2.schema.json]:
-    https://github.com/gungraun/gungraun/blob/main/gungraun-summary/schemas/summary.v2.schema.json
+    https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/schemas/summary.v2.schema.json
 [summary.v3.schema.json]:
-    https://github.com/gungraun/gungraun/blob/main/gungraun-summary/schemas/summary.v3.schema.json
+    https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/schemas/summary.v3.schema.json
 [summary.v4.schema.json]:
-    https://github.com/gungraun/gungraun/blob/main/gungraun-summary/schemas/summary.v4.schema.json
+    https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/schemas/summary.v4.schema.json
 [summary.v5.schema.json]:
-    https://github.com/gungraun/gungraun/blob/main/gungraun-summary/schemas/summary.v5.schema.json
+    https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/schemas/summary.v5.schema.json
 [summary.v6.schema.json]:
-    https://github.com/gungraun/gungraun/blob/main/gungraun-summary/schemas/summary.v6.schema.json
+    https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/schemas/summary.v6.schema.json

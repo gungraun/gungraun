@@ -30,7 +30,7 @@ jobs:
         with:
           filters: |
             valgrind_requests:
-              - 'valgrind-requests/**'
+              - 'crates/valgrind-requests/**'
       - id: config
         run: |
           {

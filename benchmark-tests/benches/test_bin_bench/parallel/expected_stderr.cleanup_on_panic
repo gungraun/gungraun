@@ -1,8 +1,0 @@
-thread 'main' (<__PID__>) panicked at benchmark-tests/src/helper/exit-with.rs:15:9:
-Exited with panic as requested
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-gungraun_runner: Error: Error in task: Error running 'callgrind': Exit code was: '101'
-error: bench failed, to rerun pass `-p benchmark-tests --bench test_bin_bench_parallel_cleanup_on_panic`
-
-Caused by:
-  process didn't exit successfully: `<__PATH__>` (exit status: 1)

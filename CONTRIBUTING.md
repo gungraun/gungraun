@@ -166,15 +166,16 @@ Patches have to include tests to verify (at a minimum) that the whole pipeline
 runs through without errors.
 
 The benches in the `benchmark-tests` package are system tests and run the whole
-pipeline. We use a wrapper around `cargo bench` (`benchmark-tests/src/bench`) to
-run the `benchmark-tests`. In order to run a single benchmark-tests use
-`just full-bench-test $BENCHMARK_NAME` or all with `just full-bench-test-all`
-(This might take a while). See the [`README`](./benchmark-tests/DEVELOPERS.md)
-of the benchmark-tests package for more details.
+pipeline. We use a wrapper around `cargo bench`
+(`crates/benchmark-tests/src/bench`) to run the `benchmark-tests`. In order to
+run a single benchmark-tests use `just full-bench-test $BENCHMARK_NAME` or all
+with `just full-bench-test-all` (This might take a while). See the
+[`README`](./crates/benchmark-tests/DEVELOPERS.md) of the benchmark-tests
+package for more details.
 
-The user interface is tested in `gungraun/tests/ui`. The ui tests error fixtures
-are fixed to the MSRV compiler since the compiler error messages differ between
-the rust toolchains. For example to run the ui tests
+The user interface is tested in `crates/gungraun/tests/ui`. The ui tests error
+fixtures are fixed to the MSRV compiler since the compiler error messages differ
+between the rust toolchains. For example to run the ui tests
 
 ```shell
 just test-ui

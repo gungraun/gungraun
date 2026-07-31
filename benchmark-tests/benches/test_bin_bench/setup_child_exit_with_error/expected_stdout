@@ -1,6 +1,0 @@
-test_bin_bench_setup_child_exit_with_error::group::benchmark :() -> target/release/pipe
-
-thread 'main' (<__PID__>) panicked at benchmark-tests/benches/test_bin_bench/setup_child_exit_with_error/test_bin_bench_setup_child_exit_with_error.rs:11:5:
-SETUP CHILD PROCESS
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-STDIN was:

@@ -6,8 +6,10 @@ lcov*.info
 .opencode-tasks/
 .opencode
 callgrind.out*
+!callgrind.out/
 callgrind.log*
 cachegrind.out*
+!cachegrind.out/
 cachegrind.log*
 graphify-out/
 entities.json

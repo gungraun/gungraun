@@ -255,13 +255,13 @@ schema-gen:
 # Run the json summary schema generator and diff the generated file with the latest schema file (Uses: 'diff', 'find', 'coreutils')
 [group('summary schema')]
 schema-gen-diff: schema-gen
-    diff {{ schema_path }} `find gungraun-summary/schemas -iname 'summary.*.schema.json' | sort -n \
+    diff {{ schema_path }} `find crates/gungraun-summary/schemas -iname 'summary.*.schema.json' | sort -n \
         | tail -n 1` && rm {{ schema_path }}
 
 # Run the json summary schema generator and replace the old schema file (Uses: 'coreutils')
 [group('summary schema')]
 schema-gen-move: schema-gen
-    mv {{ schema_path }} `ls -1 gungraun-summary/schemas/summary.*.schema.json | sort -n | tail -n 1`
+    mv {{ schema_path }} `ls -1 crates/gungraun-summary/schemas/summary.*.schema.json | sort -n | tail -n 1`
 
 # Run all tests in a package. (Uses: 'cargo')
 [group('test')]
@@ -341,13 +341,13 @@ test-all: test-ui
 
 # List supported targets of client request tests (Uses: 'sed')
 [group('test')]
-[working-directory('client-request-tests')]
+[working-directory('crates/client-request-tests')]
 reqs-test-targets:
     @sed -En 's/\[target\.([^.]+)\]/\1/p' Cross.toml
 
 # Run the client request tests for a specific target on the stable toolchain. (Uses: 'cross', 'docker', 'grep')
 [group('test')]
-[working-directory('client-request-tests')]
+[working-directory('crates/client-request-tests')]
 reqs-test target *args:
     @just reqs-test-targets | grep -q '{{ target }}' \
         || { echo "Unsupported target: '{{ target }}'. \
@@ -375,7 +375,7 @@ bench-test-all *args: build-runner
         -p benchmark-tests {{ args }}
 
 # Note: A single benchmark may run multiple times depending on the test
-#       configuration. See the `benchmark-tests/benches` folder.
+#       configuration. See the `crates/benchmark-tests/benches` folder.
 
 # Run a single benchmark test with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
 [group('test')]

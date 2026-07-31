@@ -1,7 +1,7 @@
 *.j2
 *.toml
 **/*fixtures*/**
-benchmark-tests/benches/**/expected_std*
+crates/benchmark-tests/benches/**/expected_std*
 docs/book
 docs/theme
 .dicts/

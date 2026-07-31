@@ -23,7 +23,7 @@ fn get_cachegrind_hard_limits() -> Vec<(CachegrindMetric, Limit)> {
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .soft_limits([(EventKind::Ir, 0.0)]).fail_fast({{ callgrind_fail_fast | default(false) }})
+            .soft_limits([(EventKind::Ir, {{ callgrind_soft_limit | default (5.0) }})]).fail_fast({{ callgrind_fail_fast | default(false) }})
         )
 )]
 #[bench::regress_cachegrind(
@@ -32,7 +32,7 @@ fn get_cachegrind_hard_limits() -> Vec<(CachegrindMetric, Limit)> {
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::default()
-            .soft_limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ cachegrind_fail_fast | default(false) }})
+            .soft_limits([(CachegrindMetric::Ir, {{ cachegrind_soft_limit | default(5.0) }})]).fail_fast({{ cachegrind_fail_fast | default(false) }})
         )
 )]
 #[bench::regress_dhat(
@@ -52,7 +52,7 @@ fn get_cachegrind_hard_limits() -> Vec<(CachegrindMetric, Limit)> {
         .default_tool(Tool::Perf)
         .tool(Perf::default()
             .event_set("task-clock,cpu-clock,faults,context-switches")
-            .soft_limits([("*task-clock*", 0.0)]).fail_fast({{ perf_fail_fast | default(false) }})
+            .soft_limits([("*task-clock*", {{ perf_soft_limit | default(10.0) }})]).fail_fast({{ perf_fail_fast | default(false) }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]

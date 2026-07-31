@@ -101,6 +101,7 @@ groups:
         template_data:
           callgrind_array_length: 100
           callgrind_fail_fast: true
+          callgrind_soft_limit: 0.0
       # 2.3 regress cachegrind fail fast
       - args: []
         expected:
@@ -113,6 +114,7 @@ groups:
         template_data:
           cachegrind_array_length: 500
           cachegrind_fail_fast: true
+          cachegrind_soft_limit: 0.0
       # 2.4 regress dhat fail fast
       - args: []
         expected:
@@ -139,8 +141,13 @@ groups:
             no_stderr: true
             exit_code: 0
         template_data:
+          # Sometimes cachegrind metrics have changes and sometimes not in the
+          # ci, so we introduce a minimal change which doesn't trigger the limit
+          # to get constant terminal output
+          cachegrind_array_length: 10
           perf_array_length: 10000
           perf_fail_fast: true
+          perf_soft_limit: 0.0
   # 3 regress all without fail fast
   - runs:
       # 3.1
@@ -170,9 +177,12 @@ groups:
             exit_code: 3
         template_data:
           callgrind_array_length: 100
+          callgrind_soft_limit: 0.0
           cachegrind_array_length: 500
+          cachegrind_soft_limit: 0.0
           dhat_array_length: 5
           perf_array_length: 10000
+          perf_soft_limit: 0.0
           page_faults: 100
   # 4 regress all with limits set per command-line arguments
   - runs:
@@ -228,6 +238,9 @@ groups:
           exit_code: 3
         template_data:
           callgrind_array_length: 200
+          callgrind_soft_limit: 0.0
           cachegrind_array_length: 1000
+          cachegrind_soft_limit: 0.0
           dhat_array_length: 6
           perf_array_length: 20000
+          perf_soft_limit: 0.0

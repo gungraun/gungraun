@@ -1,12 +1,5 @@
 //! The module responsible for running a binary benchmark
 
-mod defaults {
-    use crate::api::Stdin;
-
-    pub const STDIN: Stdin = Stdin::Pipe;
-    pub const WORKSPACE_ROOT_ENV: &str = "_WORKSPACE_ROOT";
-}
-
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -42,6 +35,16 @@ use crate::runner::common::{
 use crate::summary::model::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput,
 };
+
+const DEFAULT_STDIN: Stdin = Stdin::Pipe;
+const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
+const DEFAULT_PERF_RUN_MODE: PerfRunMode = PerfRunMode::Direct;
+const DEFAULT_DELAY_POLL: Duration = Duration::from_millis(10);
+const DEFAULT_DELAY_TIMEOUT: Duration = Duration::from_secs(600);
+const DEFAULT_SETUP_PARALLEL: bool = false;
+
+const MIN_DELAY_TIMEOUT: Duration = Duration::from_millis(10);
+const WORKSPACE_ROOT_ENV_VAR: &str = "_WORKSPACE_ROOT";
 
 #[derive(Debug)]
 struct BaselineBenchmark {
@@ -425,7 +428,7 @@ impl BinBench {
         // to add the potential passthrough env vars again.
         assistant_envs.extend(meta_envs.clone());
         assistant_envs.push((
-            OsString::from(defaults::WORKSPACE_ROOT_ENV),
+            OsString::from(WORKSPACE_ROOT_ENV_VAR),
             meta.project_root.clone().into(),
         ));
 
@@ -444,10 +447,10 @@ impl BinBench {
             id.as_ref(),
             meta,
             default_tool,
-            &EntryPoint::None,
+            &DEFAULT_ENTRY_POINT,
             &config.valgrind_args,
             &HashMap::default(),
-            Some(PerfRunMode::Direct),
+            Some(DEFAULT_PERF_RUN_MODE),
         )
         .map_err(|error| {
             Error::ConfigurationError(module_path.clone(), id.clone(), error.to_string())
@@ -470,7 +473,7 @@ impl BinBench {
                 }
             }),
             assistant_envs.clone(),
-            config.setup_parallel.unwrap_or(false),
+            config.setup_parallel.unwrap_or(DEFAULT_SETUP_PARALLEL),
         ));
         let teardown = has_teardown.then_some(Assistant::new_bench_assistant(
             AssistantKind::Teardown,
@@ -491,9 +494,9 @@ impl BinBench {
                 env_clear: meta
                     .args
                     .env_clear
-                    .unwrap_or_else(|| config.env_clear.unwrap_or(args::defaults::ENV_CLEAR)),
+                    .unwrap_or_else(|| config.env_clear.unwrap_or(args::DEFAULT_ENV_CLEAR)),
                 envs,
-                stdin: stdin.or(Some(defaults::STDIN)),
+                stdin: stdin.or(Some(DEFAULT_STDIN)),
                 stdout,
                 stderr,
                 exit_with: config.exit_with,
@@ -673,13 +676,13 @@ impl From<api::Delay> for Delay {
             }
             (Duration::ZERO, Duration::ZERO)
         } else {
-            let mut poll = value.poll.unwrap_or_else(|| Duration::from_millis(10));
+            let mut poll = value.poll.unwrap_or(DEFAULT_DELAY_POLL);
             let timeout = value.timeout.map_or_else(
-                || Duration::from_secs(600),
+                || DEFAULT_DELAY_TIMEOUT,
                 |t| {
-                    if t < Duration::from_millis(10) {
-                        warn!("The minimum timeout setting is 10ms");
-                        Duration::from_millis(10)
+                    if t < MIN_DELAY_TIMEOUT {
+                        warn!("The minimum timeout setting is {MIN_DELAY_TIMEOUT:?}");
+                        MIN_DELAY_TIMEOUT
                     } else {
                         t
                     }

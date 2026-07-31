@@ -2,25 +2,6 @@
 
 // spell-checker: ignore totalbytes totalblocks writeback writebackbehaviour
 
-/// Default values for command-line arguments
-///
-/// This module contains constants that define the default behavior when corresponding command-line
-/// arguments are not specified.
-pub mod defaults {
-    /// Default value for `--allow-aslr`
-    ///
-    /// When `false` (the default), Gungraun attempts to disable Address Space Layout Randomization
-    /// (ASLR) for more consistent benchmark results by using `setarch` on Linux or `proccontrol`
-    /// on FreeBSD.
-    pub const ALLOW_ASLR: bool = false;
-
-    /// Default value for `--env-clear`
-    ///
-    /// When `true` (the default), Gungraun clears most environment variables before running the
-    /// benchmark. Only essential variables like `LD_PRELOAD`, `LD_LIBRARY_PATH` are preserved.
-    pub const ENV_CLEAR: bool = true;
-}
-
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::hash::Hash;
@@ -54,6 +35,19 @@ use crate::runner::common::CapturedOutput;
 use crate::summary::model::{BaselineName, SummaryFormat};
 use crate::units::Unit;
 use crate::util;
+
+/// Default value for `--allow-aslr`
+///
+/// When `false` (the default), Gungraun attempts to disable Address Space Layout Randomization
+/// (ASLR) for more consistent benchmark results by using `setarch` on Linux or `proccontrol` on
+/// FreeBSD.
+pub const DEFAULT_ALLOW_ASLR: bool = false;
+
+/// Default value for `--env-clear`
+///
+/// When `true` (the default), Gungraun clears most environment variables before running the
+/// benchmark. Only essential variables like `LD_PRELOAD`, `LD_LIBRARY_PATH` are preserved.
+pub const DEFAULT_ENV_CLEAR: bool = true;
 
 const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
 

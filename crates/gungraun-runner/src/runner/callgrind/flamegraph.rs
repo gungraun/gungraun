@@ -19,6 +19,13 @@ use crate::summary::model::{BaselineKind, BaselineName, FlamegraphSummaries, Fla
 
 type ParserOutput = Vec<(PathBuf, CallgrindProperties, FlamegraphMap)>;
 
+const DEFAULT_DIRECTION: Direction = Direction::Inverted;
+const DEFAULT_EVENT_KIND: EventKind = EventKind::Ir;
+const DEFAULT_FLAMEGRAPH_KIND: FlamegraphKind = FlamegraphKind::All;
+const DEFAULT_MIN_WIDTH: f64 = 0.1;
+const DEFAULT_NEGATE_DIFFERENTIAL: bool = false;
+const DEFAULT_NORMALIZE_DIFFERENTIAL: bool = false;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum OutputPathKind {
     Regular,
@@ -256,16 +263,22 @@ impl FlamegraphGenerator for BaselineAndSaveFlamegraphGenerator {
 impl From<api::FlamegraphConfig> for Config {
     fn from(value: api::FlamegraphConfig) -> Self {
         Self {
-            kind: value.kind.unwrap_or(FlamegraphKind::All),
-            negate_differential: value.negate_differential.unwrap_or_default(),
-            normalize_differential: value.normalize_differential.unwrap_or(false),
-            event_kinds: value.event_kinds.unwrap_or_else(|| vec![EventKind::Ir]),
+            kind: value.kind.unwrap_or(DEFAULT_FLAMEGRAPH_KIND),
+            negate_differential: value
+                .negate_differential
+                .unwrap_or(DEFAULT_NEGATE_DIFFERENTIAL),
+            normalize_differential: value
+                .normalize_differential
+                .unwrap_or(DEFAULT_NORMALIZE_DIFFERENTIAL),
+            event_kinds: value
+                .event_kinds
+                .unwrap_or_else(|| vec![DEFAULT_EVENT_KIND]),
             direction: value
                 .direction
-                .map_or_else(|| Direction::Inverted, std::convert::Into::into),
+                .map_or_else(|| DEFAULT_DIRECTION, std::convert::Into::into),
             title: value.title.clone(),
             subtitle: value.subtitle.clone(),
-            min_width: value.min_width.unwrap_or(0.1f64),
+            min_width: value.min_width.unwrap_or(DEFAULT_MIN_WIDTH),
         }
     }
 }

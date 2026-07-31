@@ -1,46 +1,5 @@
 //! The module containing all elements for [`ValgrindArgs`]
 
-/// Module containing the Gungraun defaults for the command line arguments of all tools
-#[expect(missing_docs)]
-pub mod defaults {
-    use super::{FairSched, Vgdb};
-
-    ////////////////////////////////////////////////////
-    // Shared defaults between cachegrind and callgrind
-    // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes, since
-    // otherwise callgrind would take them from the CPU and make benchmark runs even more
-    // incomparable between machines.
-    pub const I1: &str = "32768,8,64";
-    pub const D1: &str = "32768,8,64";
-    pub const LL: &str = "8388608,16,64";
-    pub const CACHE_SIM: bool = true;
-    ////////////////////////////////////////////////////
-
-    ////////////////////////////////////////////////////
-    // Defaults specific to callgrind
-    pub const COMPRESS_POS: bool = false;
-    pub const COMPRESS_STRINGS: bool = false;
-    pub const COMBINE_DUMPS: bool = false;
-    pub const DUMP_LINE: bool = true;
-    pub const DUMP_INSTR: bool = false;
-    pub const SEPARATE_THREADS: bool = true;
-    ////////////////////////////////////////////////////
-
-    ////////////////////////////////////////////////////
-    // Shared defaults between error emitting tools like Memcheck
-    pub const ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
-    pub const ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
-    ////////////////////////////////////////////////////
-
-    ////////////////////////////////////////////////////
-    // Shared defaults between all tools
-    pub const TRACE_CHILDREN: bool = true;
-    pub const FAIR_SCHED: FairSched = FairSched::Try;
-    pub const VERBOSE: bool = false;
-    pub const VGDB: Vgdb = Vgdb::No;
-    ////////////////////////////////////////////////////
-}
-
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::Path;
@@ -66,6 +25,42 @@ pub enum FairSched {
     /// Corresponds to `try`
     Try,
 }
+
+/// Default Valgrind level-one instruction cache configuration.
+pub const DEFAULT_I1: &str = "32768,8,64";
+/// Default Valgrind level-one data cache configuration.
+pub const DEFAULT_D1: &str = "32768,8,64";
+/// Default Valgrind last-level cache configuration.
+pub const DEFAULT_LL: &str = "8388608,16,64";
+/// Default value for Callgrind and Cachegrind cache simulation.
+pub const DEFAULT_CACHE_SIM: bool = true;
+
+/// Default value for Callgrind position compression.
+pub const DEFAULT_COMPRESS_POS: bool = false;
+/// Default value for Callgrind string compression.
+pub const DEFAULT_COMPRESS_STRINGS: bool = false;
+/// Default value for combining Callgrind dump files.
+pub const DEFAULT_COMBINE_DUMPS: bool = false;
+/// Default value for including source-line information in Callgrind dumps.
+pub const DEFAULT_DUMP_LINE: bool = true;
+/// Default value for including instruction information in Callgrind dumps.
+pub const DEFAULT_DUMP_INSTR: bool = false;
+/// Default value for producing separate Callgrind dumps per thread.
+pub const DEFAULT_SEPARATE_THREADS: bool = true;
+
+/// Default error exit code for Valgrind tools that report errors.
+pub const DEFAULT_ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
+/// Default error exit code for Valgrind tools that do not report errors.
+pub const DEFAULT_ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
+
+/// Default value for tracing child processes under Valgrind.
+pub const DEFAULT_TRACE_CHILDREN: bool = true;
+/// Default Valgrind scheduler fairness mode.
+pub const DEFAULT_FAIR_SCHED: FairSched = FairSched::Try;
+/// Default value for verbose Valgrind output.
+pub const DEFAULT_VERBOSE: bool = false;
+/// Default Valgrind debugger server mode.
+pub const DEFAULT_VGDB: Vgdb = Vgdb::No;
 
 /// Normalizes per-tool command-line argument construction for Valgrind and perf.
 ///
@@ -340,19 +335,19 @@ impl ValgrindArgs {
             xleak_path: Option::default(),
             error_exitcode: match tool {
                 ValgrindTool::Memcheck | ValgrindTool::Helgrind | ValgrindTool::DRD => {
-                    defaults::ERROR_EXIT_CODE_ERROR_TOOL.to_owned()
+                    DEFAULT_ERROR_EXIT_CODE_ERROR_TOOL.to_owned()
                 }
                 ValgrindTool::Callgrind
                 | ValgrindTool::Massif
                 | ValgrindTool::DHAT
                 | ValgrindTool::BBV
-                | ValgrindTool::Cachegrind => defaults::ERROR_EXIT_CODE_OTHER_TOOL.to_owned(),
+                | ValgrindTool::Cachegrind => DEFAULT_ERROR_EXIT_CODE_OTHER_TOOL.to_owned(),
             },
-            verbose: defaults::VERBOSE,
+            verbose: DEFAULT_VERBOSE,
             other: Vec::default(),
-            trace_children: defaults::TRACE_CHILDREN,
-            fair_sched: defaults::FAIR_SCHED,
-            vgdb: defaults::VGDB,
+            trace_children: DEFAULT_TRACE_CHILDREN,
+            fair_sched: DEFAULT_FAIR_SCHED,
+            vgdb: DEFAULT_VGDB,
         }
     }
 

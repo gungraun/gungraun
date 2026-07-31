@@ -40,7 +40,9 @@ use simplematch::{DoWild, Options};
 use crate::api::{self, PerfMetric};
 use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
 use crate::runner::tool::config::resolve_perf_alpha;
-use crate::runner::tool::regression::{RegressionConfig, RegressionMetrics};
+use crate::runner::tool::regression::{
+    DEFAULT_REGRESSION_FAIL_FAST, RegressionConfig, RegressionMetrics,
+};
 use crate::stats::runner::DiffStats;
 use crate::summary::model::ToolRegression;
 use crate::units::Unit;
@@ -281,7 +283,7 @@ impl TryFrom<api::PerfRegressionConfig> for PerfRegressionConfig {
                 .into_iter()
                 .map(|(k, (u, l))| (k, u, l))
                 .collect(),
-            fail_fast: fail_fast.unwrap_or(false),
+            fail_fast: fail_fast.unwrap_or(DEFAULT_REGRESSION_FAIL_FAST),
         })
     }
 }

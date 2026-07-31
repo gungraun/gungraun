@@ -456,7 +456,7 @@ impl LibBench {
                 env_clear: meta
                     .args
                     .env_clear
-                    .unwrap_or_else(|| config.env_clear.unwrap_or(args::defaults::ENV_CLEAR)),
+                    .unwrap_or_else(|| config.env_clear.unwrap_or(args::DEFAULT_ENV_CLEAR)),
                 envs,
                 sandbox: config.sandbox,
                 current_dir: config.current_dir,

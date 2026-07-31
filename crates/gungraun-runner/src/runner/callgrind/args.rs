@@ -6,7 +6,11 @@ use log::warn;
 
 use crate::api::{RawToolArgs, Tool};
 use crate::error::Error;
-use crate::runner::tool::args::{ToolArgsLike, ValgrindArgs, ValgrindTool, defaults};
+use crate::runner::tool::args::{
+    DEFAULT_CACHE_SIM, DEFAULT_COMBINE_DUMPS, DEFAULT_COMPRESS_POS, DEFAULT_COMPRESS_STRINGS,
+    DEFAULT_D1, DEFAULT_DUMP_INSTR, DEFAULT_DUMP_LINE, DEFAULT_I1, DEFAULT_LL,
+    DEFAULT_SEPARATE_THREADS, ToolArgsLike, ValgrindArgs, ValgrindTool,
+};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -86,17 +90,17 @@ impl Default for CallgrindArgs {
             // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
             // since otherwise callgrind would take them from the CPU and make benchmark runs
             // even more incomparable between machines.
-            i1: defaults::I1.into(),
-            d1: defaults::D1.into(),
-            ll: defaults::LL.into(),
-            cache_sim: defaults::CACHE_SIM,
-            compress_pos: defaults::COMPRESS_POS,
-            compress_strings: defaults::COMPRESS_STRINGS,
-            combine_dumps: defaults::COMBINE_DUMPS,
-            dump_line: defaults::DUMP_LINE,
-            dump_instr: defaults::DUMP_INSTR,
+            i1: DEFAULT_I1.into(),
+            d1: DEFAULT_D1.into(),
+            ll: DEFAULT_LL.into(),
+            cache_sim: DEFAULT_CACHE_SIM,
+            compress_pos: DEFAULT_COMPRESS_POS,
+            compress_strings: DEFAULT_COMPRESS_STRINGS,
+            combine_dumps: DEFAULT_COMBINE_DUMPS,
+            dump_line: DEFAULT_DUMP_LINE,
+            dump_instr: DEFAULT_DUMP_INSTR,
             toggle_collect: VecDeque::default(),
-            separate_threads: defaults::SEPARATE_THREADS,
+            separate_threads: DEFAULT_SEPARATE_THREADS,
             valgrind_args: ValgrindArgs::new(ValgrindTool::Callgrind),
         }
     }

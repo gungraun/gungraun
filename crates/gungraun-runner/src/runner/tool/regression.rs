@@ -14,6 +14,9 @@ use crate::runner::perf::regression::PerfRegressionConfig;
 use crate::summary::model::{ToolMetricSummary, ToolRegression};
 use crate::units::Unit;
 
+/// The default value for regression fail fast
+pub const DEFAULT_REGRESSION_FAIL_FAST: bool = false;
+
 /// A short-lived utility enum used to hold the raw regressions until they can be transformed into a
 /// real [`ToolRegression`]
 #[derive(Debug)]

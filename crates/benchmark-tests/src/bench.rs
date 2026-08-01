@@ -55,14 +55,18 @@ static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
     )
     .expect("Regex should compile")
 });
+
 // Do not match (*********); those placeholder lines should stay unchanged.
 static NUMBERS_DIFF_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\([^)*]*\)(?:\s+\[[^\]]+\])?$").expect("Regex should compile"));
+
 static UNIT_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?<prefix>)(?<unit>\s*\[[^\]]+\])(?<suffix>:\s*)").expect("Regex should compile")
 });
+
 static RUNNING_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[ ]+Running .*$").expect("Regex should compile"));
+
 static PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
         .expect("Regex should compile")
@@ -108,6 +112,7 @@ static REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
     )
     .expect("Regex should compile")
 });
+
 // Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
 // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
 static SUMMARY_REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -126,6 +131,7 @@ static SUMMARY_REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
     )
     .expect("Regex should compile")
 });
+
 // * Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
 // * Perf: cpu_core/instructions/u [*instructions*] (7002804): 7002804 exceeds limit of 5000 by
 //   6997804
@@ -147,28 +153,36 @@ static SUMMARY_REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
     )
     .expect("Regex should compile")
 });
+
 // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
 static COMMAND_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
         .expect("Regex should compile")
 });
+
 static PID_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(p?pid:\s*)([0-9]+)(\s+)?").expect("Regex should compile"));
+
 static DETAILS_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^Details:").expect("Regex should compile"));
+
 static NOT_DETAILS_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(?:(?:\S)|(?:[a-zA-Z]))").expect("Regex should compile"));
+
 // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
 static FRAGMENT_HEADER_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile")
 });
+
 static ABSOLUTE_PATH_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(\s+|^|')([/][^/]*)+").expect("Regex should compile"));
+
 // Gungraun result: Success. 2 completed without regressions; 0 regressed; 0 filtered;
 // 2 benchmarks finished in 0.296s
 static SUMMARY_LINE_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(Gungraun result:.*finished in\s*)([0-9.]+)(s$)").expect("Regex should compile")
 });
+
 static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
         r"^(?<start>thread '.*' )(?<pid>\([0-9]+\))?",
@@ -176,17 +190,9 @@ static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
     ))
     .expect("Regex should compile")
 });
+
 static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[']([/][^/']+)+[']").expect("Regex should compile"));
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-enum TargetedRunExpectations {
-    /// Per-target mapping; `default` is the fallback key
-    Targets(HashMap<String, RunExpectations>),
-    /// Backward-compatible scalar path
-    Scalar(Box<RunExpectations>),
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
@@ -208,6 +214,15 @@ enum TargetedPath {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
+enum TargetedRunExpectations {
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, RunExpectations>),
+    /// Backward-compatible scalar path
+    Scalar(Box<RunExpectations>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
 enum TargetedString {
     /// Backward-compatible scalar path
     Scalar(String),
@@ -222,38 +237,6 @@ enum TargetedStrings {
     Scalar(Vec<String>),
     /// Per-target mapping; `default` is the fallback key
     Targets(HashMap<String, Vec<String>>),
-}
-
-/// Benchmark test case derived from a `.conf.yml` file.
-///
-/// Example: `test_lib_bench_tools.conf.yml` becomes one `SystemTest` value.
-#[derive(Debug, Clone)]
-struct SystemTest {
-    /// Original `.conf.yml` file stem.
-    ///
-    /// This identifies the benchmark configuration and is unique for templated benchmarks too.
-    config_name: String,
-    /// Directory containing the benchmark configuration file and expected fixtures.
-    ///
-    /// Example: `crates/benchmark-tests/benches/test_lib_bench/tools`.
-    dir: PathBuf,
-    /// Cargo bench target name.
-    ///
-    /// This is usually the same as `config_name`, but templated benchmarks all use
-    /// `test_bench_template`.
-    bench_name: String,
-    /// Parsed YAML configuration for this benchmark.
-    ///
-    /// Contains all groups and runs from `test_lib_bench_tools.conf.yml`.
-    config: SystemTestConfig,
-    /// Directory where this benchmark writes regular output files.
-    ///
-    /// Example: `target/gungraun/benchmark-tests/test_lib_bench_tools`.
-    dest_dir: PathBuf,
-    /// Root directory for benchmark test output below cargo's target directory.
-    ///
-    /// Example: `target/gungraun`.
-    home_dir: PathBuf,
 }
 
 /// Captured result of one cargo bench invocation.
@@ -272,16 +255,63 @@ struct CapturedOutput {
     is_tolerance: bool,
 }
 
-/// Top-level benchmark test runner.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Expected files and globs for one benchmark output directory.
 ///
-/// Owns the metadata used by `bench --filter='test_lib_*'`.
-#[derive(Debug)]
-pub struct SystemTestRunner {
-    /// Resolved workspace, target directory, compiler, and selected benchmark list.
+/// Example: requires `summary.json` and one `callgrind.out.*` glob match.
+struct ExpectedFiles {
+    /// Exact files expected to exist and be non-empty.
     ///
-    /// Contains only the selected benchmarks when `--partition`, `--filter` or `--continue` is
-    /// used.
-    tests: SystemTests,
+    /// Example: `["summary.json"]`.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    files: Vec<PathBuf>,
+    /// Glob patterns with required match counts.
+    ///
+    /// Example: `callgrind.out.*` with `count = 1`.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    globs: Vec<ExpectedFilesGlob>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+/// Expected glob assertion for benchmark output files.
+struct ExpectedFilesGlob {
+    /// Glob pattern relative to an expected run directory.
+    pattern: String,
+    /// Required number of files matching `pattern`.
+    count: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+/// Expected-files manifest referenced by [`RunExpectations`].
+///
+/// Example: a YAML file listing all expected benchmark function output directories.
+struct ExpectedFilesManifest {
+    /// Optional alternate home directory for expected output lookup.
+    ///
+    /// Example: a target-triple-specific output root.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    home_dir: Option<PathBuf>,
+    /// Expected output directories and files to assert.
+    ///
+    /// Example: entries for all functions generated by a templated benchmark.
+    data: Vec<ExpectedFilesManifestEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Expected files for one benchmark `function.id` or `function` output directory.
+struct ExpectedFilesManifestEntry {
+    /// Benchmark group directory below the benchmark output root.
+    group: String,
+    /// Benchmark function name or template string used to locate the output directory.
+    function: String,
+    /// Optional benchmark id appended to the function directory name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    /// Expected files and globs for the resolved function directory.
+    expected: ExpectedFiles,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -316,183 +346,6 @@ pub struct GroupExpectations {
     ///
     /// The script is executed with `bash -ex` in the benchmark output base directory.
     script: Option<TargetedString>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-/// YAML configuration loaded from one benchmark `.conf.yml` file.
-///
-/// Example: `test_lib_bench_tools.conf.yml` with an optional template and groups.
-struct SystemTestConfig {
-    /// Optional Rust source template rendered before a run.
-    ///
-    /// Example: `templates/tool_bench.rs.j2`.
-    template: Option<PathBuf>,
-    /// Grouped runs defined by this benchmark configuration.
-    ///
-    /// Example: groups for default and filtered benchmark invocations.
-    groups: Vec<Group>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-/// Expected files and globs for one benchmark output directory.
-///
-/// Example: requires `summary.json` and one `callgrind.out.*` glob match.
-struct ExpectedFiles {
-    /// Exact files expected to exist and be non-empty.
-    ///
-    /// Example: `["summary.json"]`.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    files: Vec<PathBuf>,
-    /// Glob patterns with required match counts.
-    ///
-    /// Example: `callgrind.out.*` with `count = 1`.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    globs: Vec<ExpectedFilesGlob>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-/// Expected side effects and process result for a run.
-///
-/// Example: compare stdout against `expected.stdout` and require exit code `0`.
-#[serde(deny_unknown_fields)]
-struct RunExpectations {
-    /// Path to an expected-files manifest relative to the benchmark config directory.
-    ///
-    /// Example: `expected/files.yml`.
-    #[serde(default)]
-    files: Option<TargetedPath>,
-    /// Path to expected stdout relative to the benchmark config directory.
-    ///
-    /// Example: `expected.stdout`.
-    #[serde(default)]
-    stdout: Option<TargetedPath>,
-    /// A string which should be contained in the stdout output
-    ///
-    /// Example: `stdout: expected.stdout`.
-    #[serde(default)]
-    stdout_contains: TargetedStrings,
-    /// Path to expected stderr relative to the benchmark config directory.
-    ///
-    /// Example: `stderr: expected.stderr`.
-    #[serde(default)]
-    stderr: Option<TargetedPath>,
-    /// A string which should be contained in the stderr output
-    ///
-    /// Example: `stderr: expected.stderr`.
-    #[serde(default)]
-    stderr_contains: TargetedStrings,
-    /// Expected process exit code.
-    ///
-    /// Example: `101` for a benchmark expected to panic.
-    #[serde(default)]
-    exit_code: Option<TargetedI32>,
-    /// Whether all-zero metrics are allowed in generated summaries.
-    ///
-    /// Example: `true` for a run that intentionally does not collect costs.
-    #[serde(default)]
-    zero_metrics: bool,
-    /// Whether no benchmark output directory is expected.
-    ///
-    /// Example: `true` for an early argument validation failure.
-    #[serde(default)]
-    no_files: bool,
-    /// Whether filtered stdout must be empty.
-    ///
-    /// Example: `true` for a quiet successful run.
-    #[serde(default)]
-    no_stdout: bool,
-    /// Whether filtered stderr must be empty.
-    ///
-    /// Example: `true` when cargo should not emit benchmark diagnostics.
-    #[serde(default)]
-    no_stderr: bool,
-    /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory
-    ///
-    /// For example this is the directory of the `test_something` benchmark in which the script is
-    /// executed: `project_root/target/benchmark-tests/test_something`
-    #[serde(default)]
-    script: Option<TargetedString>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-/// Expected glob assertion for benchmark output files.
-struct ExpectedFilesGlob {
-    /// Glob pattern relative to an expected run directory.
-    pattern: String,
-    /// Required number of files matching `pattern`.
-    count: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-/// Expected files for one benchmark `function.id` or `function` output directory.
-struct ExpectedFilesManifestEntry {
-    /// Benchmark group directory below the benchmark output root.
-    group: String,
-    /// Benchmark function name or template string used to locate the output directory.
-    function: String,
-    /// Optional benchmark id appended to the function directory name.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<String>,
-    /// Expected files and globs for the resolved function directory.
-    expected: ExpectedFiles,
-}
-
-impl ExpectedFilesManifestEntry {
-    fn equals(&self, other: &Self) -> bool {
-        self.group == other.group && self.function == other.function && self.id == other.id
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-/// Expected-files manifest referenced by [`RunExpectations`].
-///
-/// Example: a YAML file listing all expected benchmark function output directories.
-struct ExpectedFilesManifest {
-    /// Optional alternate home directory for expected output lookup.
-    ///
-    /// Example: a target-triple-specific output root.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    home_dir: Option<PathBuf>,
-    /// Expected output directories and files to assert.
-    ///
-    /// Example: entries for all functions generated by a templated benchmark.
-    data: Vec<ExpectedFilesManifestEntry>,
-}
-
-#[derive(Debug, Clone)]
-/// Selected system tests and shared execution metadata.
-///
-/// Example: produced once from cargo metadata before running benchmark tests.
-struct SystemTests {
-    /// Cargo workspace root.
-    ///
-    /// Example: repository root containing `Cargo.toml`.
-    workspace_root: PathBuf,
-    /// Cargo target directory from cargo metadata.
-    ///
-    /// Example: `target` or a custom `CARGO_TARGET_DIR`.
-    target_directory: PathBuf,
-    /// Benchmarks selected by CLI arguments, filters, partitioning, and resume state.
-    ///
-    /// Example: only benchmarks matching `--filter='test_lib_*'`.
-    benchmarks: Vec<SystemTest>,
-    /// Path to the `crates/benchmark-tests/benches` directory.
-    ///
-    /// Example: used to write `test_bench_template.rs`.
-    benches_dir: PathBuf,
-    /// Rust compiler version metadata used for version-gated runs.
-    ///
-    /// Example: channel `nightly` or semver `1.86.0`.
-    rust_version: VersionMeta,
-    /// Whether the run is a llvm coverage run
-    ///
-    /// This is usually true when CARGO_LLVM_COV=1 is set. Coverage instrumentation changes the
-    /// benchmarked machine code, so DHAT read/write metrics can differ from normal benchmark
-    /// fixtures.
-    is_coverage_run: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -577,360 +430,160 @@ struct Run {
     teardown: Option<String>,
 }
 
-impl SystemTest {
-    pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
-        let config: SystemTestConfig = serde_yaml::from_reader(
-            File::open(path)
-                .with_context(|| format!("File should exist: '{}'", path.display()))
-                .unwrap(),
-        )
-        .map_err(|error| format!("Failed to deserialize '{}': {error}", path.display()))
-        .expect("File should be deserializable");
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// Expected side effects and process result for a run.
+///
+/// Example: compare stdout against `expected.stdout` and require exit code `0`.
+#[serde(deny_unknown_fields)]
+struct RunExpectations {
+    /// Path to an expected-files manifest relative to the benchmark config directory.
+    ///
+    /// Example: `expected/files.yml`.
+    #[serde(default)]
+    files: Option<TargetedPath>,
+    /// Path to expected stdout relative to the benchmark config directory.
+    ///
+    /// Example: `expected.stdout`.
+    #[serde(default)]
+    stdout: Option<TargetedPath>,
+    /// A string which should be contained in the stdout output
+    ///
+    /// Example: `stdout: expected.stdout`.
+    #[serde(default)]
+    stdout_contains: TargetedStrings,
+    /// Path to expected stderr relative to the benchmark config directory.
+    ///
+    /// Example: `stderr: expected.stderr`.
+    #[serde(default)]
+    stderr: Option<TargetedPath>,
+    /// A string which should be contained in the stderr output
+    ///
+    /// Example: `stderr: expected.stderr`.
+    #[serde(default)]
+    stderr_contains: TargetedStrings,
+    /// Expected process exit code.
+    ///
+    /// Example: `101` for a benchmark expected to panic.
+    #[serde(default)]
+    exit_code: Option<TargetedI32>,
+    /// Whether all-zero metrics are allowed in generated summaries.
+    ///
+    /// Example: `true` for a run that intentionally does not collect costs.
+    #[serde(default)]
+    zero_metrics: bool,
+    /// Whether no benchmark output directory is expected.
+    ///
+    /// Example: `true` for an early argument validation failure.
+    #[serde(default)]
+    no_files: bool,
+    /// Whether filtered stdout must be empty.
+    ///
+    /// Example: `true` for a quiet successful run.
+    #[serde(default)]
+    no_stdout: bool,
+    /// Whether filtered stderr must be empty.
+    ///
+    /// Example: `true` when cargo should not emit benchmark diagnostics.
+    #[serde(default)]
+    no_stderr: bool,
+    /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory
+    ///
+    /// For example this is the directory of the `test_something` benchmark in which the script is
+    /// executed: `project_root/target/benchmark-tests/test_something`
+    #[serde(default)]
+    script: Option<TargetedString>,
+}
 
-        let config_name = path.file_name().unwrap().to_string_lossy();
-        let config_name = config_name.strip_suffix(".conf.yml").unwrap().to_owned();
-        let bench_name = if config.template.is_some() {
-            String::from(TEMPLATE_BENCH_NAME)
-        } else {
-            config_name.clone()
-        };
+/// Benchmark test case derived from a `.conf.yml` file.
+///
+/// Example: `test_lib_bench_tools.conf.yml` becomes one `SystemTest` value.
+#[derive(Debug, Clone)]
+struct SystemTest {
+    /// Original `.conf.yml` file stem.
+    ///
+    /// This identifies the benchmark configuration and is unique for templated benchmarks too.
+    config_name: String,
+    /// Directory containing the benchmark configuration file and expected fixtures.
+    ///
+    /// Example: `crates/benchmark-tests/benches/test_lib_bench/tools`.
+    dir: PathBuf,
+    /// Cargo bench target name.
+    ///
+    /// This is usually the same as `config_name`, but templated benchmarks all use
+    /// `test_bench_template`.
+    bench_name: String,
+    /// Parsed YAML configuration for this benchmark.
+    ///
+    /// Contains all groups and runs from `test_lib_bench_tools.conf.yml`.
+    config: SystemTestConfig,
+    /// Directory where this benchmark writes regular output files.
+    ///
+    /// Example: `target/gungraun/benchmark-tests/test_lib_bench_tools`.
+    dest_dir: PathBuf,
+    /// Root directory for benchmark test output below cargo's target directory.
+    ///
+    /// Example: `target/gungraun`.
+    home_dir: PathBuf,
+}
 
-        SystemTest {
-            home_dir: target_dir.join("gungraun"),
-            dest_dir: target_dir.join("gungraun").join(PACKAGE).join(&bench_name),
-            bench_name,
-            config_name,
-            config,
-            dir: path.parent().unwrap().to_path_buf(),
-        }
-    }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// YAML configuration loaded from one benchmark `.conf.yml` file.
+///
+/// Example: `test_lib_bench_tools.conf.yml` with an optional template and groups.
+struct SystemTestConfig {
+    /// Optional Rust source template rendered before a run.
+    ///
+    /// Example: `templates/tool_bench.rs.j2`.
+    template: Option<PathBuf>,
+    /// Grouped runs defined by this benchmark configuration.
+    ///
+    /// Example: groups for default and filtered benchmark invocations.
+    groups: Vec<Group>,
+}
 
-    pub fn clean_benchmark(&self) {
-        if self.dest_dir.is_dir() {
-            std::fs::remove_dir_all(&self.dest_dir).unwrap();
-        }
-        let alt_dir = self
-            .home_dir
-            .join(env!("GR_BUILD_TRIPLE"))
-            .join(PACKAGE)
-            .join(&self.bench_name);
-        if alt_dir.is_dir() {
-            std::fs::remove_dir_all(&alt_dir).unwrap();
-        }
-    }
+/// Top-level benchmark test runner.
+///
+/// Owns the metadata used by `bench --filter='test_lib_*'`.
+#[derive(Debug)]
+pub struct SystemTestRunner {
+    /// Resolved workspace, target directory, compiler, and selected benchmark list.
+    ///
+    /// Contains only the selected benchmarks when `--partition`, `--filter` or `--continue` is
+    /// used.
+    tests: SystemTests,
+}
 
-    pub fn backup(&self) -> Option<TempDir> {
-        if self.dest_dir.is_dir() {
-            let dir = tempdir().expect("Creating temporary directory should succeed");
-            fs_extra::copy_items(&[&self.dest_dir], dir.path(), &CopyOptions::new()).unwrap();
-            Some(dir)
-        } else {
-            None
-        }
-    }
-
-    pub fn restore(&self, temp_dir: Option<&TempDir>) {
-        self.clean_benchmark();
-
-        if let Some(temp_dir) = temp_dir {
-            let from = temp_dir.path().join(self.dest_dir.file_name().unwrap());
-            fs_extra::copy_items(
-                &[from],
-                self.dest_dir
-                    .parent()
-                    .expect("Parent of benchmark directory should exist"),
-                &CopyOptions::new(),
-            )
-            .expect("Restoring backup should succeed");
-        }
-    }
-
-    #[expect(clippy::too_many_arguments)]
-    pub fn run_bench(
-        &self,
-        cargo_args: &[String],
-        args: &[String],
-        envs: &HashMap<String, String>,
-        capture: bool,
-        tolerance: Option<f64>,
-        setup: Option<&str>,
-        teardown: Option<&str>,
-    ) -> CapturedOutput {
-        let stdio = if capture {
-            // SAFETY: Benchmarks are run serially
-            unsafe { std::env::set_var("GUNGRAUN_COLOR", "never") };
-            Stdio::piped
-        } else {
-            // SAFETY: Benchmarks are run serially
-            unsafe { std::env::set_var("GUNGRAUN_COLOR", "auto") };
-            Stdio::inherit
-        };
-
-        let dir = tempdir().expect(
-            "Creating a temporary directory for setup and teardown
-            should succeed",
-        );
-
-        if let Some(setup) = setup {
-            let setup_path = dir.path().join("setup");
-            std::fs::write(&setup_path, setup)
-                .expect("Preparing the file with the setup content should succeed");
-            print_info("Running setup:");
-            let status = Command::new("bash")
-                .args(["-ex"])
-                .arg(setup_path)
-                .status()
-                .expect("Spawning the setup process should succeed");
-
-            if !status.success() {
-                panic!("Running setup failed with {status:?}");
-            }
-        }
-
-        std::fs::create_dir_all(&self.home_dir)
-            .expect("Creating the gungraun home directory should succeed");
-        std::fs::write(self.home_dir.join(CONTINUE_FILE_NAME), &self.config_name)
-            .expect("Writing to the continue file should succeed");
-
-        let mut command = Command::new(env!("CARGO"));
-        command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
-        command.args(cargo_args);
-
-        if !envs.is_empty() {
-            let envs_string = envs
-                .iter()
-                .map(|(key, value)| format!("  {key}={value}"))
-                .collect::<Vec<String>>()
-                .join("\n");
-            command.envs(envs);
-            print_info(format!("Environment variables:\n{envs_string}"));
-        }
-        if capture {
-            command.args(["--color", "never"]);
-        }
-        if !args.is_empty() {
-            command.arg("--");
-            command.args(args);
-        }
-        if let Some(tolerance) = tolerance {
-            command.arg(format!("--tolerance={tolerance}"));
-        }
-
-        let output = command
-            .stderr(stdio())
-            .stdout(stdio())
-            .output()
-            .expect("Launching benchmark should succeed");
-
-        if let Some(teardown) = teardown {
-            let teardown_path = dir.path().join("teardown");
-            std::fs::write(&teardown_path, teardown)
-                .expect("Preparing the file with the teardown content should succeed");
-
-            print_info("Running teardown:");
-            let status = Command::new("bash")
-                .args(["-eux"])
-                .arg(teardown_path)
-                .status()
-                .expect("Spawning the teardown process should succeed");
-
-            if !status.success() {
-                panic!("Running teardown failed with {status:?}");
-            }
-        }
-
-        CapturedOutput {
-            output,
-            is_tolerance: tolerance.is_some(),
-        }
-    }
-
-    #[expect(clippy::too_many_arguments)]
-    pub fn run_template(
-        &self,
-        template_path: &Path,
-        cargo_args: &[String],
-        args: &[String],
-        envs: &HashMap<String, String>,
-        template_data: &HashMap<String, minijinja::Value>,
-        tests: &SystemTests,
-        capture: bool,
-        tolerance: Option<f64>,
-        setup: Option<&str>,
-        teardown: Option<&str>,
-    ) -> CapturedOutput {
-        let mut template_string = String::new();
-        File::open(self.dir.join(template_path))
-            .with_context(|| format!("File should exist: '{}'", template_path.display()))
-            .unwrap()
-            .read_to_string(&mut template_string)
-            .expect("Reading to string should succeed");
-
-        let mut env = Environment::new();
-        env.add_template(&self.bench_name, &template_string)
-            .unwrap();
-        let template = env.get_template(&self.bench_name).unwrap();
-
-        let dest = File::create(tests.get_template()).unwrap();
-        template.render_captured_to(template_data, dest).unwrap();
-
-        self.run_bench(cargo_args, args, envs, capture, tolerance, setup, teardown)
-    }
-
-    pub fn run(
-        &self,
-        num_groups: usize,
-        group_index: usize,
-        group: &Group,
-        tests: &SystemTests,
-        schema: &ScopedSchema<'_>,
-    ) {
-        let triple = env!("GR_BUILD_TRIPLE");
-
-        if !group.runs_on.as_ref().is_none_or(|(is_target, target)| {
-            if *is_target {
-                target == triple
-            } else {
-                target != triple
-            }
-        }) || !group
-            .rust_version
-            .as_ref()
-            .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
-        {
-            return;
-        }
-
-        self.clean_benchmark();
-
-        let num_runs = group.runs.len();
-        for (index, run) in group
-            .runs
-            .iter()
-            .filter(|r| {
-                r.runs_on.as_ref().is_none_or(|(is_target, target)| {
-                    if *is_target {
-                        target == triple
-                    } else {
-                        target != triple
-                    }
-                }) && r
-                    .rust_version
-                    .as_ref()
-                    .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
-            })
-            .enumerate()
-        {
-            let max_tries = run.flaky.unwrap_or(0);
-            let backup_dir = if max_tries > 0 { self.backup() } else { None };
-
-            for tries in 0..=max_tries {
-                print_info(format!(
-                    "Running {}: Group: ({}/{num_groups}), Run: ({}/{})",
-                    self.config_name,
-                    group_index + 1,
-                    index + 1,
-                    num_runs
-                ));
-
-                for r in run.rmdirs.iter().filter(|r| r.is_dir()) {
-                    print_info(format!(
-                        "rmdirs is set: Removing directory '{}'",
-                        r.display()
-                    ));
-                    std::fs::remove_dir_all(r).unwrap();
-                }
-
-                if !run.cargo_args.is_empty() {
-                    print_info(format!("Cargo arguments: {}", run.cargo_args.join(" ")))
-                }
-
-                if !run.args.is_empty() {
-                    print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
-                }
-
-                let capture = run.expected.as_ref().is_some_and(|target_config| {
-                    target_config.resolve(triple).is_some_and(|e| {
-                        e.stdout.is_some()
-                            || e.no_stdout
-                            || !e.stdout_contains.resolve(triple).is_empty()
-                            || e.stderr.is_some()
-                            || e.no_stderr
-                            || !e.stderr_contains.resolve(triple).is_empty()
-                    })
-                });
-
-                let output = if let Some(template) = &self.config.template {
-                    let output = self.run_template(
-                        template,
-                        &run.cargo_args,
-                        &run.args,
-                        &run.envs,
-                        &run.template_data,
-                        tests,
-                        capture,
-                        run.tolerance,
-                        run.setup.as_deref(),
-                        run.teardown.as_deref(),
-                    );
-                    self.reset_template(tests);
-                    output
-                } else {
-                    self.run_bench(
-                        &run.cargo_args,
-                        &run.args,
-                        &run.envs,
-                        capture,
-                        run.tolerance,
-                        run.setup.as_deref(),
-                        run.teardown.as_deref(),
-                    )
-                };
-
-                if tries < max_tries {
-                    if panic::catch_unwind(AssertUnwindSafe(|| {
-                        run.assert(
-                            &self.dir,
-                            tests,
-                            output,
-                            schema,
-                            &self.home_dir,
-                            &self.bench_name,
-                            group.expected.as_ref(),
-                        )
-                    }))
-                    .is_ok()
-                    {
-                        break;
-                    } else {
-                        print_info(format!(
-                            "Flaky test: Re-running {}: ({}/{max_tries})",
-                            self.config_name,
-                            tries + 1,
-                        ));
-                        self.restore(backup_dir.as_ref());
-                    }
-                } else {
-                    run.assert(
-                        &self.dir,
-                        tests,
-                        output,
-                        schema,
-                        &self.home_dir,
-                        &self.bench_name,
-                        group.expected.as_ref(),
-                    )
-                }
-            }
-
-            drop(backup_dir);
-        }
-    }
-
-    fn reset_template(&self, tests: &SystemTests) {
-        let mut file = File::create(tests.get_template()).unwrap();
-        file.write_all(TEMPLATE_CONTENT.as_bytes()).unwrap();
-    }
+#[derive(Debug, Clone)]
+/// Selected system tests and shared execution metadata.
+///
+/// Example: produced once from cargo metadata before running benchmark tests.
+struct SystemTests {
+    /// Cargo workspace root.
+    ///
+    /// Example: repository root containing `Cargo.toml`.
+    workspace_root: PathBuf,
+    /// Cargo target directory from cargo metadata.
+    ///
+    /// Example: `target` or a custom `CARGO_TARGET_DIR`.
+    target_directory: PathBuf,
+    /// Benchmarks selected by CLI arguments, filters, partitioning, and resume state.
+    ///
+    /// Example: only benchmarks matching `--filter='test_lib_*'`.
+    benchmarks: Vec<SystemTest>,
+    /// Path to the `crates/benchmark-tests/benches` directory.
+    ///
+    /// Example: used to write `test_bench_template.rs`.
+    benches_dir: PathBuf,
+    /// Rust compiler version metadata used for version-gated runs.
+    ///
+    /// Example: channel `nightly` or semver `1.86.0`.
+    rust_version: VersionMeta,
+    /// Whether the run is a llvm coverage run
+    ///
+    /// This is usually true when CARGO_LLVM_COV=1 is set. Coverage instrumentation changes the
+    /// benchmarked machine code, so DHAT read/write metrics can differ from normal benchmark
+    /// fixtures.
+    is_coverage_run: bool,
 }
 
 impl CapturedOutput {
@@ -1390,175 +1043,6 @@ impl CapturedOutput {
     }
 }
 
-impl SystemTestRunner {
-    pub fn new(
-        benches: &[String],
-        filter: Option<String>,
-        partition: Option<Partition>,
-        resume: bool,
-    ) -> Self {
-        Self {
-            tests: SystemTests::new(benches, filter, partition, resume),
-        }
-    }
-
-    pub fn run(&self) -> Result<(), String> {
-        // We need the `summary.json` files to verify that not all costs are zero. Extracting this
-        // info from the summary is much easier than doing it from the output.
-        // SAFETY: Benchmarks are run serially
-        unsafe { std::env::set_var("GUNGRAUN_SAVE_SUMMARY", "json") };
-        // SAFETY: Benchmarks are run serially
-        unsafe {
-            std::env::set_var(
-                "GUNGRAUN_RUNNER",
-                self.tests.target_directory.join("release/gungraun-runner"),
-            )
-        };
-
-        let schema: serde_json::Value = serde_json::from_reader(
-            File::open(
-                self.tests
-                    .workspace_root
-                    .join(SCHEMA_PATH)
-                    .join(format!("summary.v{SCHEMA_VERSION}.schema.json")),
-            )
-            .unwrap(),
-        )
-        .unwrap();
-        let mut scope = json_schema::Scope::new();
-        let compiled = scope.compile_and_return(schema, false).unwrap();
-
-        build_gungraun_runner();
-
-        for bench in &self.tests.benchmarks {
-            let num_groups = bench.config.groups.len();
-            for (index, group) in bench.config.groups.iter().enumerate() {
-                bench.run(num_groups, index, group, &self.tests, &compiled);
-            }
-        }
-
-        let _ = std::fs::remove_file(
-            self.tests
-                .target_directory
-                .join("gungraun")
-                .join(CONTINUE_FILE_NAME),
-        );
-
-        Ok(())
-    }
-}
-
-impl ExpectedFilesManifestEntry {
-    fn expected_dir(&self, base_dir: &Path) -> PathBuf {
-        let mut env = Environment::default();
-        env.add_template("function", &self.function).unwrap();
-        let template = env.get_template("function").unwrap();
-        let function = template.render(TEMPLATE_DATA.get().unwrap()).unwrap();
-
-        if let Some(id) = &self.id {
-            base_dir.join(&self.group).join(format!("{function}.{id}"))
-        } else {
-            base_dir.join(&self.group).join(&function)
-        }
-    }
-
-    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) -> PathBuf {
-        let dir = self.expected_dir(base_dir);
-
-        print_info(format!(
-            "Running assertions in directory '{}'",
-            dir.display()
-        ));
-
-        assert!(
-            dir.exists(),
-            "Expected benchmark directory '{}' to exist",
-            dir.display()
-        );
-
-        let mut real_files = glob(&format!("{}/*", dir.display()))
-            .expect("Glob pattern should compile")
-            .map(Result::unwrap)
-            .collect::<HashSet<PathBuf>>();
-
-        let mut summary = None;
-        for file in self.expected.files.iter().map(|f| dir.join(f)) {
-            if let Some(file_name) = file.file_name() {
-                if file_name == "summary.json" {
-                    summary = Some(file.clone());
-                }
-            }
-            // Gungraun does not produce empty files and if so we treat it as an error
-            assert!(
-                real_files.remove(&file),
-                "Expected file '{}' does not exist",
-                file.display()
-            );
-            assert_ne!(
-                std::fs::metadata(&file).unwrap().len(),
-                0,
-                "Expected file '{}' was empty",
-                file.display()
-            );
-        }
-
-        for ExpectedFilesGlob { pattern, count } in self.expected.globs.iter() {
-            let pattern = &dir.join(pattern).display().to_string();
-            let files = glob(pattern)
-                .expect("Glob pattern should compile")
-                .map(Result::unwrap)
-                .collect::<Vec<PathBuf>>();
-
-            assert_eq!(
-                files.len(),
-                *count,
-                "Expected file count for glob '{pattern}' was {} but found {} files",
-                *count,
-                files.len()
-            );
-
-            for file in files.into_iter() {
-                if let Some(file_name) = file.file_name() {
-                    if file_name == "summary.json" {
-                        summary = Some(file.clone());
-                    }
-                }
-                real_files.remove(&file);
-            }
-        }
-
-        if let Some(summary) = summary {
-            print_info(format!("Validating summary '{}'", summary.display()));
-            let instance: serde_json::Value =
-                serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
-            let result = schema.validate(&instance);
-            if !result.is_valid() {
-                for error in result.errors {
-                    print_error(format!("{}: Validation error: {error}", summary.display()))
-                }
-            }
-            let (_, value) = instance
-                .as_object()
-                .unwrap()
-                .get_key_value("version")
-                .unwrap();
-            assert_eq!(
-                value, SCHEMA_VERSION,
-                "summary json schema version mismatch"
-            );
-        }
-
-        assert!(
-            real_files.is_empty(),
-            "Expected no other files in directory '{}' but found: {:#?}",
-            dir.display(),
-            real_files
-        );
-
-        dir
-    }
-}
-
 impl ExpectedFilesManifest {
     /// Regenerates an expected-files manifest from a benchmark's current output files.
     ///
@@ -1745,109 +1229,118 @@ impl ExpectedFilesManifest {
     }
 }
 
-impl SystemTests {
-    pub fn new(
-        benches: &[String],
-        filter: Option<String>,
-        partition: Option<Partition>,
-        resume: bool,
-    ) -> Self {
-        let meta = cargo_metadata::MetadataCommand::new()
-            .no_deps()
-            .exec()
-            .unwrap();
-
-        let package_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let benches_dir = package_dir.join("benches");
-        let workspace_root = meta.workspace_root.clone().into_std_path_buf();
-        let target_directory = meta.target_directory.clone().into_std_path_buf();
-
-        let mut benchmarks = glob(&format!("{}/**/*.conf.yml", benches_dir.display()))
-            .unwrap()
-            .map(Result::unwrap)
-            .filter(|path| {
-                let file_name = path.file_name().unwrap().to_string_lossy();
-                let name = &file_name.strip_suffix(".conf.yml").unwrap().to_string();
-                if let Some(filter) = filter.as_ref() {
-                    filter.as_str().dowild(name) && (benches.is_empty() || benches.contains(name))
-                } else if benches.is_empty() {
-                    true
-                } else {
-                    benches.contains(name)
-                }
-            })
-            .map(|path| SystemTest::new(&path, &package_dir, &target_directory))
-            .collect::<Vec<SystemTest>>();
-
-        benchmarks.sort_by_key(|b| b.config_name.clone());
-        if let Some(partition) = partition {
-            let chunk_size = benchmarks.len().div_ceil(partition.total);
-            let chunk = benchmarks
-                .chunks(chunk_size)
-                .nth(partition.part - 1)
-                .map(|c| c.to_vec());
-            benchmarks = chunk.expect("The partition should map to a chunk of all benchmarks");
-        }
-
-        // We do not check the exact command, so it is possible to resume at any point. The only
-        // condition is that the benchmark name must be part of the new command.
-        if resume {
-            let benchmark =
-                std::fs::read_to_string(target_directory.join("gungraun").join(CONTINUE_FILE_NAME))
-                    .expect("The continue file should exist");
-            let benchmark = benchmark.trim();
-            print_info(format!("Continue with {benchmark}"));
-
-            let index = benchmarks
-                .iter()
-                .position(|b| b.config_name == benchmark)
-                .unwrap_or_else(|| {
-                    panic!("Benchmark '{benchmark}' from continue file was not found")
-                });
-
-            benchmarks.drain(..index);
-        }
-
-        print_info("Benchmarks to run:");
-        benchmarks
-            .iter()
-            .for_each(|b| println!("  {}", b.config_name));
-
-        let rust_version = get_rust_version().expect("Rust version should be present");
-
-        Self {
-            workspace_root,
-            target_directory,
-            benchmarks,
-            benches_dir,
-            rust_version,
-            is_coverage_run: std::env::var(CARGO_LLVM_COV).is_ok_and(|v| v == "1"),
-        }
+impl ExpectedFilesManifestEntry {
+    fn equals(&self, other: &Self) -> bool {
+        self.group == other.group && self.function == other.function && self.id == other.id
     }
 
-    pub fn get_template(&self) -> PathBuf {
-        self.benches_dir.join(format!("{TEMPLATE_BENCH_NAME}.rs"))
-    }
+    fn expected_dir(&self, base_dir: &Path) -> PathBuf {
+        let mut env = Environment::default();
+        env.add_template("function", &self.function).unwrap();
+        let template = env.get_template("function").unwrap();
+        let function = template.render(TEMPLATE_DATA.get().unwrap()).unwrap();
 
-    pub fn compare_rust_version(&self, cmp: version_compare::Cmp, version: &str) -> bool {
-        if version.starts_with(|p: char| p.is_ascii_digit()) {
-            version_compare::compare_to(self.rust_version.semver.to_string(), version, cmp).unwrap()
+        if let Some(id) = &self.id {
+            base_dir.join(&self.group).join(format!("{function}.{id}"))
         } else {
-            let channel = match version {
-                "nightly" => Channel::Nightly,
-                "stable" => Channel::Stable,
-                "dev" => Channel::Dev,
-                "beta" => Channel::Beta,
-                _ => panic!("Invalid version string: {version}"),
-            };
-            match cmp {
-                version_compare::Cmp::Eq => self.rust_version.channel == channel,
-                version_compare::Cmp::Ne => self.rust_version.channel != channel,
-                _ => panic!(
-                    "Invalid comparator for channel: {version}. Only '=' and '!=' are allowed."
-                ),
+            base_dir.join(&self.group).join(&function)
+        }
+    }
+
+    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) -> PathBuf {
+        let dir = self.expected_dir(base_dir);
+
+        print_info(format!(
+            "Running assertions in directory '{}'",
+            dir.display()
+        ));
+
+        assert!(
+            dir.exists(),
+            "Expected benchmark directory '{}' to exist",
+            dir.display()
+        );
+
+        let mut real_files = glob(&format!("{}/*", dir.display()))
+            .expect("Glob pattern should compile")
+            .map(Result::unwrap)
+            .collect::<HashSet<PathBuf>>();
+
+        let mut summary = None;
+        for file in self.expected.files.iter().map(|f| dir.join(f)) {
+            if let Some(file_name) = file.file_name() {
+                if file_name == "summary.json" {
+                    summary = Some(file.clone());
+                }
+            }
+            // Gungraun does not produce empty files and if so we treat it as an error
+            assert!(
+                real_files.remove(&file),
+                "Expected file '{}' does not exist",
+                file.display()
+            );
+            assert_ne!(
+                std::fs::metadata(&file).unwrap().len(),
+                0,
+                "Expected file '{}' was empty",
+                file.display()
+            );
+        }
+
+        for ExpectedFilesGlob { pattern, count } in self.expected.globs.iter() {
+            let pattern = &dir.join(pattern).display().to_string();
+            let files = glob(pattern)
+                .expect("Glob pattern should compile")
+                .map(Result::unwrap)
+                .collect::<Vec<PathBuf>>();
+
+            assert_eq!(
+                files.len(),
+                *count,
+                "Expected file count for glob '{pattern}' was {} but found {} files",
+                *count,
+                files.len()
+            );
+
+            for file in files.into_iter() {
+                if let Some(file_name) = file.file_name() {
+                    if file_name == "summary.json" {
+                        summary = Some(file.clone());
+                    }
+                }
+                real_files.remove(&file);
             }
         }
+
+        if let Some(summary) = summary {
+            print_info(format!("Validating summary '{}'", summary.display()));
+            let instance: serde_json::Value =
+                serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
+            let result = schema.validate(&instance);
+            if !result.is_valid() {
+                for error in result.errors {
+                    print_error(format!("{}: Validation error: {error}", summary.display()))
+                }
+            }
+            let (_, value) = instance
+                .as_object()
+                .unwrap()
+                .get_key_value("version")
+                .unwrap();
+            assert_eq!(
+                value, SCHEMA_VERSION,
+                "summary json schema version mismatch"
+            );
+        }
+
+        assert!(
+            real_files.is_empty(),
+            "Expected no other files in directory '{}' but found: {:#?}",
+            dir.display(),
+            real_files
+        );
+
+        dir
     }
 }
 
@@ -2015,11 +1508,522 @@ impl Run {
     }
 }
 
-impl TargetedRunExpectations {
-    fn resolve(&self, triple: &str) -> Option<&RunExpectations> {
-        match self {
-            Self::Scalar(config) => Some(config),
-            Self::Targets(map) => map.get(triple).or_else(|| map.get("default")),
+impl SystemTest {
+    pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
+        let config: SystemTestConfig = serde_yaml::from_reader(
+            File::open(path)
+                .with_context(|| format!("File should exist: '{}'", path.display()))
+                .unwrap(),
+        )
+        .map_err(|error| format!("Failed to deserialize '{}': {error}", path.display()))
+        .expect("File should be deserializable");
+
+        let config_name = path.file_name().unwrap().to_string_lossy();
+        let config_name = config_name.strip_suffix(".conf.yml").unwrap().to_owned();
+        let bench_name = if config.template.is_some() {
+            String::from(TEMPLATE_BENCH_NAME)
+        } else {
+            config_name.clone()
+        };
+
+        SystemTest {
+            home_dir: target_dir.join("gungraun"),
+            dest_dir: target_dir.join("gungraun").join(PACKAGE).join(&bench_name),
+            bench_name,
+            config_name,
+            config,
+            dir: path.parent().unwrap().to_path_buf(),
+        }
+    }
+
+    pub fn clean_benchmark(&self) {
+        if self.dest_dir.is_dir() {
+            std::fs::remove_dir_all(&self.dest_dir).unwrap();
+        }
+        let alt_dir = self
+            .home_dir
+            .join(env!("GR_BUILD_TRIPLE"))
+            .join(PACKAGE)
+            .join(&self.bench_name);
+        if alt_dir.is_dir() {
+            std::fs::remove_dir_all(&alt_dir).unwrap();
+        }
+    }
+
+    pub fn backup(&self) -> Option<TempDir> {
+        if self.dest_dir.is_dir() {
+            let dir = tempdir().expect("Creating temporary directory should succeed");
+            fs_extra::copy_items(&[&self.dest_dir], dir.path(), &CopyOptions::new()).unwrap();
+            Some(dir)
+        } else {
+            None
+        }
+    }
+
+    pub fn restore(&self, temp_dir: Option<&TempDir>) {
+        self.clean_benchmark();
+
+        if let Some(temp_dir) = temp_dir {
+            let from = temp_dir.path().join(self.dest_dir.file_name().unwrap());
+            fs_extra::copy_items(
+                &[from],
+                self.dest_dir
+                    .parent()
+                    .expect("Parent of benchmark directory should exist"),
+                &CopyOptions::new(),
+            )
+            .expect("Restoring backup should succeed");
+        }
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    pub fn run_bench(
+        &self,
+        cargo_args: &[String],
+        args: &[String],
+        envs: &HashMap<String, String>,
+        capture: bool,
+        tolerance: Option<f64>,
+        setup: Option<&str>,
+        teardown: Option<&str>,
+    ) -> CapturedOutput {
+        let stdio = if capture {
+            // SAFETY: Benchmarks are run serially
+            unsafe { std::env::set_var("GUNGRAUN_COLOR", "never") };
+            Stdio::piped
+        } else {
+            // SAFETY: Benchmarks are run serially
+            unsafe { std::env::set_var("GUNGRAUN_COLOR", "auto") };
+            Stdio::inherit
+        };
+
+        let dir = tempdir().expect(
+            "Creating a temporary directory for setup and teardown
+            should succeed",
+        );
+
+        if let Some(setup) = setup {
+            let setup_path = dir.path().join("setup");
+            std::fs::write(&setup_path, setup)
+                .expect("Preparing the file with the setup content should succeed");
+            print_info("Running setup:");
+            let status = Command::new("bash")
+                .args(["-ex"])
+                .arg(setup_path)
+                .status()
+                .expect("Spawning the setup process should succeed");
+
+            if !status.success() {
+                panic!("Running setup failed with {status:?}");
+            }
+        }
+
+        std::fs::create_dir_all(&self.home_dir)
+            .expect("Creating the gungraun home directory should succeed");
+        std::fs::write(self.home_dir.join(CONTINUE_FILE_NAME), &self.config_name)
+            .expect("Writing to the continue file should succeed");
+
+        let mut command = Command::new(env!("CARGO"));
+        command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
+        command.args(cargo_args);
+
+        if !envs.is_empty() {
+            let envs_string = envs
+                .iter()
+                .map(|(key, value)| format!("  {key}={value}"))
+                .collect::<Vec<String>>()
+                .join("\n");
+            command.envs(envs);
+            print_info(format!("Environment variables:\n{envs_string}"));
+        }
+        if capture {
+            command.args(["--color", "never"]);
+        }
+        if !args.is_empty() {
+            command.arg("--");
+            command.args(args);
+        }
+        if let Some(tolerance) = tolerance {
+            command.arg(format!("--tolerance={tolerance}"));
+        }
+
+        let output = command
+            .stderr(stdio())
+            .stdout(stdio())
+            .output()
+            .expect("Launching benchmark should succeed");
+
+        if let Some(teardown) = teardown {
+            let teardown_path = dir.path().join("teardown");
+            std::fs::write(&teardown_path, teardown)
+                .expect("Preparing the file with the teardown content should succeed");
+
+            print_info("Running teardown:");
+            let status = Command::new("bash")
+                .args(["-eux"])
+                .arg(teardown_path)
+                .status()
+                .expect("Spawning the teardown process should succeed");
+
+            if !status.success() {
+                panic!("Running teardown failed with {status:?}");
+            }
+        }
+
+        CapturedOutput {
+            output,
+            is_tolerance: tolerance.is_some(),
+        }
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    pub fn run_template(
+        &self,
+        template_path: &Path,
+        cargo_args: &[String],
+        args: &[String],
+        envs: &HashMap<String, String>,
+        template_data: &HashMap<String, minijinja::Value>,
+        tests: &SystemTests,
+        capture: bool,
+        tolerance: Option<f64>,
+        setup: Option<&str>,
+        teardown: Option<&str>,
+    ) -> CapturedOutput {
+        let mut template_string = String::new();
+        File::open(self.dir.join(template_path))
+            .with_context(|| format!("File should exist: '{}'", template_path.display()))
+            .unwrap()
+            .read_to_string(&mut template_string)
+            .expect("Reading to string should succeed");
+
+        let mut env = Environment::new();
+        env.add_template(&self.bench_name, &template_string)
+            .unwrap();
+        let template = env.get_template(&self.bench_name).unwrap();
+
+        let dest = File::create(tests.get_template()).unwrap();
+        template.render_captured_to(template_data, dest).unwrap();
+
+        self.run_bench(cargo_args, args, envs, capture, tolerance, setup, teardown)
+    }
+
+    pub fn run(
+        &self,
+        num_groups: usize,
+        group_index: usize,
+        group: &Group,
+        tests: &SystemTests,
+        schema: &ScopedSchema<'_>,
+    ) {
+        let triple = env!("GR_BUILD_TRIPLE");
+
+        if !group.runs_on.as_ref().is_none_or(|(is_target, target)| {
+            if *is_target {
+                target == triple
+            } else {
+                target != triple
+            }
+        }) || !group
+            .rust_version
+            .as_ref()
+            .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
+        {
+            return;
+        }
+
+        self.clean_benchmark();
+
+        let num_runs = group.runs.len();
+        for (index, run) in group
+            .runs
+            .iter()
+            .filter(|r| {
+                r.runs_on.as_ref().is_none_or(|(is_target, target)| {
+                    if *is_target {
+                        target == triple
+                    } else {
+                        target != triple
+                    }
+                }) && r
+                    .rust_version
+                    .as_ref()
+                    .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
+            })
+            .enumerate()
+        {
+            let max_tries = run.flaky.unwrap_or(0);
+            let backup_dir = if max_tries > 0 { self.backup() } else { None };
+
+            for tries in 0..=max_tries {
+                print_info(format!(
+                    "Running {}: Group: ({}/{num_groups}), Run: ({}/{})",
+                    self.config_name,
+                    group_index + 1,
+                    index + 1,
+                    num_runs
+                ));
+
+                for r in run.rmdirs.iter().filter(|r| r.is_dir()) {
+                    print_info(format!(
+                        "rmdirs is set: Removing directory '{}'",
+                        r.display()
+                    ));
+                    std::fs::remove_dir_all(r).unwrap();
+                }
+
+                if !run.cargo_args.is_empty() {
+                    print_info(format!("Cargo arguments: {}", run.cargo_args.join(" ")))
+                }
+
+                if !run.args.is_empty() {
+                    print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
+                }
+
+                let capture = run.expected.as_ref().is_some_and(|target_config| {
+                    target_config.resolve(triple).is_some_and(|e| {
+                        e.stdout.is_some()
+                            || e.no_stdout
+                            || !e.stdout_contains.resolve(triple).is_empty()
+                            || e.stderr.is_some()
+                            || e.no_stderr
+                            || !e.stderr_contains.resolve(triple).is_empty()
+                    })
+                });
+
+                let output = if let Some(template) = &self.config.template {
+                    let output = self.run_template(
+                        template,
+                        &run.cargo_args,
+                        &run.args,
+                        &run.envs,
+                        &run.template_data,
+                        tests,
+                        capture,
+                        run.tolerance,
+                        run.setup.as_deref(),
+                        run.teardown.as_deref(),
+                    );
+                    self.reset_template(tests);
+                    output
+                } else {
+                    self.run_bench(
+                        &run.cargo_args,
+                        &run.args,
+                        &run.envs,
+                        capture,
+                        run.tolerance,
+                        run.setup.as_deref(),
+                        run.teardown.as_deref(),
+                    )
+                };
+
+                if tries < max_tries {
+                    if panic::catch_unwind(AssertUnwindSafe(|| {
+                        run.assert(
+                            &self.dir,
+                            tests,
+                            output,
+                            schema,
+                            &self.home_dir,
+                            &self.bench_name,
+                            group.expected.as_ref(),
+                        )
+                    }))
+                    .is_ok()
+                    {
+                        break;
+                    } else {
+                        print_info(format!(
+                            "Flaky test: Re-running {}: ({}/{max_tries})",
+                            self.config_name,
+                            tries + 1,
+                        ));
+                        self.restore(backup_dir.as_ref());
+                    }
+                } else {
+                    run.assert(
+                        &self.dir,
+                        tests,
+                        output,
+                        schema,
+                        &self.home_dir,
+                        &self.bench_name,
+                        group.expected.as_ref(),
+                    )
+                }
+            }
+
+            drop(backup_dir);
+        }
+    }
+
+    fn reset_template(&self, tests: &SystemTests) {
+        let mut file = File::create(tests.get_template()).unwrap();
+        file.write_all(TEMPLATE_CONTENT.as_bytes()).unwrap();
+    }
+}
+
+impl SystemTestRunner {
+    pub fn new(
+        benches: &[String],
+        filter: Option<String>,
+        partition: Option<Partition>,
+        resume: bool,
+    ) -> Self {
+        Self {
+            tests: SystemTests::new(benches, filter, partition, resume),
+        }
+    }
+
+    pub fn run(&self) -> Result<(), String> {
+        // We need the `summary.json` files to verify that not all costs are zero. Extracting this
+        // info from the summary is much easier than doing it from the output.
+        // SAFETY: Benchmarks are run serially
+        unsafe { std::env::set_var("GUNGRAUN_SAVE_SUMMARY", "json") };
+        // SAFETY: Benchmarks are run serially
+        unsafe {
+            std::env::set_var(
+                "GUNGRAUN_RUNNER",
+                self.tests.target_directory.join("release/gungraun-runner"),
+            )
+        };
+
+        let schema: serde_json::Value = serde_json::from_reader(
+            File::open(
+                self.tests
+                    .workspace_root
+                    .join(SCHEMA_PATH)
+                    .join(format!("summary.v{SCHEMA_VERSION}.schema.json")),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let mut scope = json_schema::Scope::new();
+        let compiled = scope.compile_and_return(schema, false).unwrap();
+
+        build_gungraun_runner();
+
+        for bench in &self.tests.benchmarks {
+            let num_groups = bench.config.groups.len();
+            for (index, group) in bench.config.groups.iter().enumerate() {
+                bench.run(num_groups, index, group, &self.tests, &compiled);
+            }
+        }
+
+        let _ = std::fs::remove_file(
+            self.tests
+                .target_directory
+                .join("gungraun")
+                .join(CONTINUE_FILE_NAME),
+        );
+
+        Ok(())
+    }
+}
+
+impl SystemTests {
+    pub fn new(
+        benches: &[String],
+        filter: Option<String>,
+        partition: Option<Partition>,
+        resume: bool,
+    ) -> Self {
+        let meta = cargo_metadata::MetadataCommand::new()
+            .no_deps()
+            .exec()
+            .unwrap();
+
+        let package_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let benches_dir = package_dir.join("benches");
+        let workspace_root = meta.workspace_root.clone().into_std_path_buf();
+        let target_directory = meta.target_directory.clone().into_std_path_buf();
+
+        let mut benchmarks = glob(&format!("{}/**/*.conf.yml", benches_dir.display()))
+            .unwrap()
+            .map(Result::unwrap)
+            .filter(|path| {
+                let file_name = path.file_name().unwrap().to_string_lossy();
+                let name = &file_name.strip_suffix(".conf.yml").unwrap().to_string();
+                if let Some(filter) = filter.as_ref() {
+                    filter.as_str().dowild(name) && (benches.is_empty() || benches.contains(name))
+                } else if benches.is_empty() {
+                    true
+                } else {
+                    benches.contains(name)
+                }
+            })
+            .map(|path| SystemTest::new(&path, &package_dir, &target_directory))
+            .collect::<Vec<SystemTest>>();
+
+        benchmarks.sort_by_key(|b| b.config_name.clone());
+        if let Some(partition) = partition {
+            let chunk_size = benchmarks.len().div_ceil(partition.total);
+            let chunk = benchmarks
+                .chunks(chunk_size)
+                .nth(partition.part - 1)
+                .map(|c| c.to_vec());
+            benchmarks = chunk.expect("The partition should map to a chunk of all benchmarks");
+        }
+
+        // We do not check the exact command, so it is possible to resume at any point. The only
+        // condition is that the benchmark name must be part of the new command.
+        if resume {
+            let benchmark =
+                std::fs::read_to_string(target_directory.join("gungraun").join(CONTINUE_FILE_NAME))
+                    .expect("The continue file should exist");
+            let benchmark = benchmark.trim();
+            print_info(format!("Continue with {benchmark}"));
+
+            let index = benchmarks
+                .iter()
+                .position(|b| b.config_name == benchmark)
+                .unwrap_or_else(|| {
+                    panic!("Benchmark '{benchmark}' from continue file was not found")
+                });
+
+            benchmarks.drain(..index);
+        }
+
+        print_info("Benchmarks to run:");
+        benchmarks
+            .iter()
+            .for_each(|b| println!("  {}", b.config_name));
+
+        let rust_version = get_rust_version().expect("Rust version should be present");
+
+        Self {
+            workspace_root,
+            target_directory,
+            benchmarks,
+            benches_dir,
+            rust_version,
+            is_coverage_run: std::env::var(CARGO_LLVM_COV).is_ok_and(|v| v == "1"),
+        }
+    }
+
+    pub fn get_template(&self) -> PathBuf {
+        self.benches_dir.join(format!("{TEMPLATE_BENCH_NAME}.rs"))
+    }
+
+    pub fn compare_rust_version(&self, cmp: version_compare::Cmp, version: &str) -> bool {
+        if version.starts_with(|p: char| p.is_ascii_digit()) {
+            version_compare::compare_to(self.rust_version.semver.to_string(), version, cmp).unwrap()
+        } else {
+            let channel = match version {
+                "nightly" => Channel::Nightly,
+                "stable" => Channel::Stable,
+                "dev" => Channel::Dev,
+                "beta" => Channel::Beta,
+                _ => panic!("Invalid version string: {version}"),
+            };
+            match cmp {
+                version_compare::Cmp::Eq => self.rust_version.channel == channel,
+                version_compare::Cmp::Ne => self.rust_version.channel != channel,
+                _ => panic!(
+                    "Invalid comparator for channel: {version}. Only '=' and '!=' are allowed."
+                ),
+            }
         }
     }
 }
@@ -2044,6 +2048,15 @@ impl TargetedPath {
                 .get(triple)
                 .or_else(|| map.get("default"))
                 .map(|p| p.as_path()),
+        }
+    }
+}
+
+impl TargetedRunExpectations {
+    fn resolve(&self, triple: &str) -> Option<&RunExpectations> {
+        match self {
+            Self::Scalar(config) => Some(config),
+            Self::Targets(map) => map.get(triple).or_else(|| map.get("default")),
         }
     }
 }
@@ -2098,6 +2111,10 @@ fn filter_unit(desc: &str) -> Cow<'_, str> {
     })
 }
 
+fn get_rust_version() -> Option<VersionMeta> {
+    rustc_version::version_meta().ok()
+}
+
 fn print_error<T>(message: T)
 where
     T: AsRef<str>,
@@ -2115,10 +2132,6 @@ where
     T: AsRef<str>,
 {
     eprintln!("{}: {}", "bench".purple().bold(), message.as_ref());
-}
-
-fn get_rust_version() -> Option<VersionMeta> {
-    rustc_version::version_meta().ok()
 }
 
 fn main() {

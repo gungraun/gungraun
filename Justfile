@@ -23,8 +23,8 @@ required_tools := 'valgrind|the essential tool
 clang|to be able to build Gungraun with the client-requests feature'
 cargo_tools := 'cargo-hack
 cargo-minimal-versions'
-tools := 'docker|to be able to run the client request tests
-cross|to be able to run the client request tests
+tools := 'docker|to be able to run the valgrind requests tests
+cross|to be able to run the valgrind requests tests
 cspell|check spelling
 mdbook|build and develop the guide
 npx|to be able to run some recipes in this Justfile
@@ -35,13 +35,13 @@ adjust clippy execution to `cargo +stable clippy` and rustfmt execution to
 `cargo +nightly rustfmt`. If possible, it is recommended to run the respective
 `just` rules to run these tools with the set of options as they are used in the
 CI (which might change in the future, so you stay updated).'
-client_request_recommends := 'If you want to start working on the client requests interface you need
-the following tools installed:
+valgrind_request_comments := 'If you want to start working on the valgrind requests interface you
+need the following tools installed:
 
 * cross
 * docker
 
-to run the tests and to be able to build the client requests:
+to run the tests and to be able to build the valgrind requests:
 
 * clang >= 5
 
@@ -144,7 +144,7 @@ show-tips:
     @echo '################################################################################'
     @echo '{{ ide_recommends }}'
     @echo
-    @echo '{{ client_request_recommends }}'
+    @echo '{{ valgrind_request_comments }}'
     @echo
     @echo '{{ schema_gen_recommends }}'
 
@@ -297,7 +297,7 @@ test-cov-all:
     cargo llvm-cov clean --workspace
     source <(cargo llvm-cov show-env --sh)
 
-    cargo nextest run --workspace --exclude client-request-tests --exclude gungraun \
+    cargo nextest run --workspace --exclude valgrind-requests-tests --exclude gungraun \
         --all-features --no-fail-fast
     cargo nextest run -p gungraun --no-fail-fast
     RUSTUP_TOOLCHAIN="${toolchain}" cargo test --package gungraun \
@@ -334,20 +334,20 @@ test-ui-overwrite:
     RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" TRYBUILD=overwrite cargo test \
         --package gungraun --test ui_tests --features __ui_tests
 
-# Test all packages. This excludes client request and benchmark tests which need to be run separately (Uses: 'cargo')
+# Test all packages. This excludes valgrind requests and benchmark tests which need to be run separately (Uses: 'cargo')
 [group('test')]
 test-all: test-ui
-    cargo test --workspace --exclude client-request-tests
+    cargo test --workspace --exclude valgrind-requests-tests
 
-# List supported targets of client request tests (Uses: 'sed')
+# List supported targets of valgrind requests tests (Uses: 'sed')
 [group('test')]
-[working-directory('crates/client-request-tests')]
+[working-directory('crates/valgrind-requests-tests')]
 reqs-test-targets:
     @sed -En 's/\[target\.([^.]+)\]/\1/p' Cross.toml
 
-# Run the client request tests for a specific target on the stable toolchain. (Uses: 'cross', 'docker', 'grep')
+# Run the valgrind requests tests for a specific target on the stable toolchain. (Uses: 'cross', 'docker', 'grep')
 [group('test')]
-[working-directory('crates/client-request-tests')]
+[working-directory('crates/valgrind-requests-tests')]
 reqs-test target *args:
     @just reqs-test-targets | grep -q '{{ target }}' \
         || { echo "Unsupported target: '{{ target }}'. \

@@ -1,4 +1,4 @@
-# Client Request Tests
+# Valgrind Requests Tests
 
 Tests for the `valgrind-requests` crate's architecture-specific client request
 implementation. Not published; excluded from `just test-all`.
@@ -15,18 +15,18 @@ pre-installed.
 
 ## Structure
 
-| Path                          | Role                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------- |
-| `src/bin/`                    | Test binaries (`*-reqs-test.rs`) plus `valgrind-wrapper.rs`                     |
-| `tests/common/mod.rs`         | Test harness: runner detection, fixture loading, matchers                       |
-| `tests/test_client_requests/` | Per-tool test modules (valgrind, memcheck, callgrind, cachegrind, print_macros) |
-| `tests/fixtures/`             | Target-specific stderr snapshots for cross-architecture comparison              |
-| `build.rs`                    | Sets fixture path (`CLIENT_REQUEST_TESTS_FIXTURES`) for native vs `qemu-system` |
-| `./Cross.toml`                | Cross target definitions with custom `ghcr.io/gungraun/...` images              |
+| Path                            | Role                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/bin/`                      | Test binaries (`*-reqs-test.rs`) plus `valgrind-wrapper.rs`                        |
+| `tests/common/mod.rs`           | Test harness: runner detection, fixture loading, matchers                          |
+| `tests/test_valgrind_requests/` | Per-tool test modules (valgrind, memcheck, callgrind, cachegrind, print_macros)    |
+| `tests/fixtures/`               | Target-specific stderr snapshots for cross-architecture comparison                 |
+| `build.rs`                      | Sets fixture path (`valgrind_requests_TESTS_FIXTURES`) for native vs `qemu-system` |
+| `./Cross.toml`                  | Cross target definitions with custom `ghcr.io/gungraun/...` images                 |
 
 ## Conventions
 
-- **Native path**: `cargo test -p client-request-tests --test tests` runs
+- **Native path**: `cargo test -p valgrind-requests-tests --test tests` runs
   binaries directly.
 - **Cross path**: `just reqs-test <target>` (e.g. `x86_64-unknown-linux-gnu`)
   runs via `cross` + QEMU.
@@ -48,7 +48,7 @@ pre-installed.
 - Do not expect `just test-all` to cover this crate; cross-target runs require
   `cross` and Docker.
 - Do not conflate these with `benchmark-tests`; they test different layers.
-- Do not add new test binaries without updating `tests/test_client_requests/`
+- Do not add new test binaries without updating `tests/test_valgrind_requests/`
   and fixtures.
 - Do not assume all targets share the same stderr output; always provide a
   target-specific fixture when output differs.

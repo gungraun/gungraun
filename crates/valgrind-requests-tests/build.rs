@@ -49,22 +49,22 @@ fn main() {
             fs_extra::copy_items(&[fixtures], &target, &CopyOptions::new()).unwrap();
 
             set_env_var(
-                "CLIENT_REQUEST_TESTS_FIXTURES",
+                "VALGRIND_REQUESTS_TESTS_FIXTURES",
                 fixtures_dest.display().to_string(),
             );
         } else {
             set_env_var(
-                "CLIENT_REQUEST_TESTS_FIXTURES",
+                "VALGRIND_REQUESTS_TESTS_FIXTURES",
                 fixtures.display().to_string(),
             );
         }
     } else {
         set_env_var(
-            "CLIENT_REQUEST_TESTS_FIXTURES",
+            "VALGRIND_REQUESTS_TESTS_FIXTURES",
             fixtures.display().to_string(),
         );
     }
 
     let rust_version = get_rust_version();
-    set_env_var("CLIENT_REQUEST_TESTS_RUST_VERSION", rust_version);
+    set_env_var("VALGRIND_REQUESTS_TESTS_RUST_VERSION", rust_version);
 }

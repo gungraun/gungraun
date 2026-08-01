@@ -1,12 +1,12 @@
 [package]
 authors = ["Joining7943 <joining@posteo.de>"]
 categories.workspace = true
-description = "Tests for gungraun client requests"
+description = "Tests for gungraun valgrind-requests"
 edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
-name = "client-request-tests"
+name = "valgrind-requests-tests"
 publish = false
 readme = "../README.md"
 repository.workspace = true

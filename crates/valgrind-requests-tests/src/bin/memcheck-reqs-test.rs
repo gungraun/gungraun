@@ -1,5 +1,5 @@
-use client_request_tests::MARKER;
 use valgrind_requests::{self, cstring, memcheck, valgrind, valgrind_println_unchecked};
+use valgrind_requests_tests::MARKER;
 
 fn leak_memory() {
     for _ in 0..1 {

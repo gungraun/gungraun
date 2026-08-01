@@ -1,4 +1,4 @@
 #[cfg(test)]
 mod common;
 #[cfg(test)]
-mod test_client_requests;
+mod test_valgrind_requests;

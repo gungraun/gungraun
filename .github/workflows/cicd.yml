@@ -31,6 +31,7 @@ jobs:
           filters: |
             valgrind_requests:
               - 'crates/valgrind-requests/**'
+              - 'crates/valgrind-requests-tests/**'
       - id: config
         run: |
           {

@@ -26,12 +26,12 @@ cargo clean
 
 # This excludes the ui tests
 echo Run normal tests
-cargo test --workspace --exclude client-request-tests
+cargo test --workspace --exclude valgrind-requests-tests
 
 cargo clean
 
-echo Run client request tests
-cargo +stable test -p client-request-tests --test tests --release -- --nocapture
+echo Run valgrind requests tests
+cargo +stable test -p valgrind-requests-tests --test tests --release -- --nocapture
 
 cargo clean
 

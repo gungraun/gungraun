@@ -77,7 +77,7 @@ jobs:
         run: just test valgrind-requests
 
   test_linux:
-    name: Run client request tests on linux targets
+    name: Run valgrind requests tests on linux targets
     needs: [build, test_basic]
     strategy:
       fail-fast: false
@@ -104,7 +104,7 @@ jobs:
       - uses: taiki-e/install-action@just
       - name: Install valgrind
         run: ./scripts/install_valgrind.sh "$VALGRIND_VERSION"
-      - name: Test client requests
+      - name: Test valgrind requests
         run: just reqs-test ${{ matrix.target }}
         env:
           RUSTUP_TOOLCHAIN: "stable"
@@ -140,7 +140,7 @@ jobs:
 
             . ~/.cargo/env
             cargo update
-            cargo test -p client-request-tests --test tests --release -- --nocapture
+            cargo test -p valgrind-requests-tests --test tests --release -- --nocapture
 
             echo Disk usage
             df -h
@@ -166,7 +166,7 @@ jobs:
       - name: Update dependencies
         run: cargo update
       - name: Test client requests
-        run: cargo test -p client-request-tests --test tests --release -- --nocapture
+        run: cargo test -p valgrind-requests-tests --test tests --release -- --nocapture
         env:
           VALGRIND_REQUESTS_STRATEGY: strict
 
@@ -214,7 +214,7 @@ jobs:
 
             . ~/.cargo/env
             cargo update
-            cargo test -p client-request-tests --test tests --release -- --nocapture
+            cargo test -p valgrind-requests-tests --test tests --release -- --nocapture
 
             echo Disk usage
             df -h

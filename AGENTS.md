@@ -20,7 +20,7 @@ gungraun/
 |- crates/gungraun-summary/         # Versioned, feature-gated summary schema
 |- crates/valgrind-requests/        # no_std Valgrind client-request API
 |- crates/benchmark-tests/          # End-to-end benchmark harness and fixtures
-|- crates/client-request-tests/     # Native/cross-architecture request tests
+|- crates/valgrind-requests-tests/     # Native/cross-architecture request tests
 |- docs/                     # mdBook source and generated schema references
 |- scripts/                  # Release and repository maintenance helpers
 |- Justfile                  # Canonical developer and CI commands
@@ -42,7 +42,7 @@ gungraun/
 | Client requests       | `crates/valgrind-requests/src/`                                              | Core API, tool modules, arch assembly              |
 | System-test harness   | `crates/benchmark-tests/src/bench.rs`                                        | Runs fixtures and compares structured output       |
 | Benchmark cases       | `crates/benchmark-tests/benches/`, `crates/benchmark-tests/tests/`           | Inputs plus `.conf.yml` expectations               |
-| Cross-target tests    | `crates/client-request-tests/`                                               | QEMU/native request execution                      |
+| Cross-target tests    | `crates/valgrind-requests-tests/`                                            | QEMU/native request execution                      |
 | Build recipes         | `Justfile`                                                                   | Prefer recipes over direct tool invocations        |
 | CI matrix             | `.github/workflows/`                                                         | MSRV, platforms, formatting, tests, release        |
 
@@ -106,8 +106,8 @@ just build-hack-valgrind-requests # Feature-power-set request builds
 
 ## Notes
 
-- `just test-all` excludes client-request tests and benchmark system tests; run
-  their dedicated recipes when changing those domains.
+- `just test-all` excludes valgrind-requests tests and benchmark system tests;
+  run their dedicated recipes when changing those domains.
 - `stubs` is the minimum `valgrind-requests` API feature. `act` implies `stubs`;
   `alloc` only enables allocation-backed conveniences.
 - Run `just fmt-prettier` after editing any `AGENTS.md` file.

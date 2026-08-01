@@ -5,13 +5,13 @@ use version_compare::Cmp;
 use crate::common;
 
 #[test]
-fn test_client_request_print_macros_when_running_native() {
+fn test_valgrind_requests_print_macros_when_running_native() {
     let mut cmd = common::get_test_bin_command("print-macros-test");
     cmd.assert().code(0).stdout("").stderr("");
 }
 
 #[test]
-fn test_client_request_print_macros_when_running_on_valgrind() {
+fn test_valgrind_requests_print_macros_when_running_on_valgrind() {
     let mut cmd = common::get_valgrind_wrapper_command();
     cmd.args([
         "1",

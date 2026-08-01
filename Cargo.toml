@@ -8,7 +8,7 @@ members = [
   "crates/gungraun-summary",
   "crates/valgrind-requests",
   "crates/benchmark-tests",
-  "crates/client-request-tests",
+  "crates/valgrind-requests-tests",
 ]
 resolver = "3"
 

@@ -8,8 +8,8 @@ use std::process::Command;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
-use client_request_tests::MARKER;
 use regex::Regex;
+use valgrind_requests_tests::MARKER;
 
 static STRIP_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^\s*(==|--|\*\*)([0-9:.]+\s+)?[0-9]+(==|--|\*\*)\s*(?<rest>.*)$")

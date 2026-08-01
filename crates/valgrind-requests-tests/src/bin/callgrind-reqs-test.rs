@@ -1,10 +1,10 @@
 #![allow(unused_imports)]
 
-use client_request_tests::MARKER;
 use valgrind_requests::{
     self, callgrind, cstring, valgrind, valgrind_printf, valgrind_println,
     valgrind_println_unchecked,
 };
+use valgrind_requests_tests::MARKER;
 
 fn do_work(start: i32) -> i32 {
     let mut sum = start;

@@ -40,7 +40,7 @@ mod tests {
     use crate::__alloc::string::ToString;
 
     #[test]
-    fn test_client_request_error_display_valgrind_print_error() {
+    fn test_valgrind_requests_error_display_valgrind_print_error() {
         let expected = "client requests: print error: data provided contains an interior nul byte \
                         at pos 1: 'f\0o'";
         let error: ClientRequestError =

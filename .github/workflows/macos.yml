@@ -53,4 +53,4 @@ jobs:
       - name: Build all tests with the feature powerset
         run: just build-tests-hack
       - name: Run the tests
-        run: cargo test --workspace --exclude client-request-tests
+        run: cargo test --workspace --exclude valgrind-requests-tests

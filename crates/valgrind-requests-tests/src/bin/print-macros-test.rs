@@ -1,11 +1,11 @@
 #![allow(unused_imports)]
 
-use client_request_tests::MARKER;
 use valgrind_requests::{
     self, valgrind, valgrind_printf, valgrind_printf_backtrace,
     valgrind_printf_backtrace_unchecked, valgrind_printf_unchecked, valgrind_println,
     valgrind_println_backtrace, valgrind_println_backtrace_unchecked, valgrind_println_unchecked,
 };
+use valgrind_requests_tests::MARKER;
 
 fn main() {
     let invalid_cstring = "INV\0LID";

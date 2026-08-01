@@ -51,11 +51,11 @@ higher exit codes than `1`.
 
 Testing for `x86_64`:
 
-`cross +stable test -p client-request-tests --test tests --target x86_64-unknown-linux-gnu --release -- --nocapture`
+`cross +stable test -p valgrind-requests-tests --test tests --target x86_64-unknown-linux-gnu --release -- --nocapture`
 
 Testing for `s390x`:
 
-`cross +stable test -p client-request-tests --test tests --target s390x-unknown-linux-gnu --release -- --nocapture`
+`cross +stable test -p valgrind-requests-tests --test tests --target s390x-unknown-linux-gnu --release -- --nocapture`
 
 You might need to export the environment variable
 `CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096'` to be able to run the tests.

@@ -10,8 +10,8 @@ use tempfile::{TempDir, tempdir};
 use version_compare::Cmp;
 
 pub const VALGRIND_WRAPPER: &str = env!("CARGO_BIN_EXE_valgrind-wrapper");
-pub const FIXTURES_DIR: &str = env!("CLIENT_REQUEST_TESTS_FIXTURES");
-pub const RUST_VERSION: &str = env!("CLIENT_REQUEST_TESTS_RUST_VERSION");
+pub const FIXTURES_DIR: &str = env!("VALGRIND_REQUESTS_TESTS_FIXTURES");
+pub const RUST_VERSION: &str = env!("VALGRIND_REQUESTS_TESTS_RUST_VERSION");
 
 #[derive(Debug, Clone)]
 pub enum Matcher {

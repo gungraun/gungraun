@@ -1,5 +1,5 @@
-use client_request_tests::MARKER;
 use valgrind_requests::{self, valgrind, valgrind_println_unchecked};
+use valgrind_requests_tests::MARKER;
 
 fn main() {
     unsafe { valgrind_println_unchecked!("{MARKER}") };

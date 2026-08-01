@@ -22,7 +22,7 @@ no-ops in stubs-only builds.
 | `src/valgrind.rs`                                                      | Core requests from `valgrind.h`: `running_on_valgrind`, mempool/stack helpers, `monitor_command`, etc.                  |
 | `src/{callgrind,cachegrind,memcheck,helgrind,drd,dhat}.rs`             | Tool-specific request modules mirroring their header files.                                                             |
 | `src/error.rs`                                                         | `ClientRequestError` type (requires `alloc`).                                                                           |
-| `../client-request-tests/`                                             | Cross-target integration tests and QEMU runners (outside this crate).                                                   |
+| `../valgrind-requests-tests/`                                          | Cross-target integration tests and QEMU runners (outside this crate).                                                   |
 
 ## Conventions
 
@@ -48,7 +48,7 @@ no-ops in stubs-only builds.
 - Do not make `act` imply `alloc`; keep the feature dependency graph exactly as
   `act -> stubs`, `std -> alloc`.
 - Do not edit `build.rs` without checking cross-target behavior in
-  `client-request-tests`; the build script is the primary source of platform
+  `valgrind-requests-tests`; the build script is the primary source of platform
   support truth.
 
 ## Verification

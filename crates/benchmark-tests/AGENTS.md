@@ -24,16 +24,16 @@ crates/benchmark-tests/
 
 ## Where To Look
 
-| Task                    | Location                                            | Notes                                                                                |
-| ----------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Harness orchestration   | `src/bench.rs`                                      | `BenchmarkRunner` loads `.conf.yml`, runs `cargo bench`, filters and compares output |
-| Benchmark case source   | `benches/test_*/<name>/<name>.rs`                   | Library or binary benchmark under test                                               |
-| Case configuration      | `benches/test_*/<name>/<name>.conf.yml`             | Groups, runs, args, envs, expectations                                               |
-| Expected stdout/stderr  | `benches/test_*/<name>/expected_stdout*`            | Filtered before comparison (numbers normalized)                                      |
-| Expected file manifests | `benches/test_*/<name>/expected_files*.yml`         | Per-group/function/id file lists                                                     |
-| Helper binaries         | `src/helper/*.rs`                                   | Small tools consumed by binary benchmarks                                            |
-| Parser tests            | `tests/test_callgrind/`, `test_dhat/`, `test_tool/` | Unit tests for runner output parsers                                                 |
-| Just recipes            | `../../Justfile`                                    | Targeted: `full-bench-test`, `full-bench-test-overwrite`; quick: `bench-test`        |
+| Task                    | Location                                            | Notes                                                                                 |
+| ----------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Harness orchestration   | `src/bench.rs`                                      | `SystemTestRunner` loads `.conf.yml`, runs `cargo bench`, filters and compares output |
+| Benchmark case source   | `benches/test_*/<name>/<name>.rs`                   | Library or binary benchmark under test                                                |
+| Case configuration      | `benches/test_*/<name>/<name>.conf.yml`             | Groups, runs, args, envs, expectations                                                |
+| Expected stdout/stderr  | `benches/test_*/<name>/expected_stdout*`            | Filtered before comparison (numbers normalized)                                       |
+| Expected file manifests | `benches/test_*/<name>/expected_files*.yml`         | Per-group/function/id file lists                                                      |
+| Helper binaries         | `src/helper/*.rs`                                   | Small tools consumed by binary benchmarks                                             |
+| Parser tests            | `tests/test_callgrind/`, `test_dhat/`, `test_tool/` | Unit tests for runner output parsers                                                  |
+| Just recipes            | `../../Justfile`                                    | Targeted: `full-bench-test`, `full-bench-test-overwrite`; quick: `bench-test`         |
 
 ## Conventions
 

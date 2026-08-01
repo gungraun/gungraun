@@ -55,7 +55,7 @@ gungraun/
 | `binary_benchmark`   | proc macro    | `crates/gungraun-macros/src/lib.rs`       | Expands binary benchmark declarations            |
 | `main`               | entry point   | `crates/gungraun-runner/src/main.rs`      | Starts runner and prints deferred warnings       |
 | `Tool`               | runner model  | `crates/gungraun-runner/src/runner/tool/` | Configures and invokes Valgrind tools            |
-| `BenchmarkRunner`    | test harness  | `crates/benchmark-tests/src/bench.rs`     | Executes benchmark fixtures and validates output |
+| `SystemTestRunner`   | test harness  | `crates/benchmark-tests/src/bench.rs`     | Executes benchmark fixtures and validates output |
 | `do_client_request!` | request macro | `crates/valgrind-requests/src/lib.rs`     | Encodes architecture-specific Valgrind requests  |
 | `v6`                 | schema module | `crates/gungraun-summary/src/lib.rs`      | Current public summary representation            |
 

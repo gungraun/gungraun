@@ -181,16 +181,16 @@ static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-enum TargetExpectedConfig {
+enum TargetedRunExpectations {
     /// Per-target mapping; `default` is the fallback key
-    Targets(HashMap<String, ExpectedConfig>),
+    Targets(HashMap<String, RunExpectations>),
     /// Backward-compatible scalar path
-    Scalar(Box<ExpectedConfig>),
+    Scalar(Box<RunExpectations>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-enum TargetI32 {
+enum TargetedI32 {
     /// Backward-compatible scalar path
     Scalar(i32),
     /// Per-target mapping; `default` is the fallback key
@@ -199,7 +199,7 @@ enum TargetI32 {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-enum TargetPath {
+enum TargetedPath {
     /// Backward-compatible scalar path
     Scalar(PathBuf),
     /// Per-target mapping; `default` is the fallback key
@@ -208,7 +208,7 @@ enum TargetPath {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-enum TargetString {
+enum TargetedString {
     /// Backward-compatible scalar path
     Scalar(String),
     /// Per-target mapping; `default` is the fallback key
@@ -217,7 +217,7 @@ enum TargetString {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-enum TargetVecString {
+enum TargetedStrings {
     /// Backward-compatible scalar path
     Scalar(Vec<String>),
     /// Per-target mapping; `default` is the fallback key
@@ -226,9 +226,9 @@ enum TargetVecString {
 
 /// Benchmark test case derived from a `.conf.yml` file.
 ///
-/// Example: `test_lib_bench_tools.conf.yml` becomes one `Benchmark` value.
+/// Example: `test_lib_bench_tools.conf.yml` becomes one `SystemTest` value.
 #[derive(Debug, Clone)]
-struct Benchmark {
+struct SystemTest {
     /// Original `.conf.yml` file stem.
     ///
     /// This identifies the benchmark configuration and is unique for templated benchmarks too.
@@ -245,7 +245,7 @@ struct Benchmark {
     /// Parsed YAML configuration for this benchmark.
     ///
     /// Contains all groups and runs from `test_lib_bench_tools.conf.yml`.
-    config: Config,
+    config: SystemTestConfig,
     /// Directory where this benchmark writes regular output files.
     ///
     /// Example: `target/gungraun/benchmark-tests/test_lib_bench_tools`.
@@ -261,7 +261,7 @@ struct Benchmark {
 /// Example:
 /// * stdout/stderr from `cargo bench --package benchmark-tests --bench test_lib_bench_tools`.
 #[derive(Debug)]
-struct BenchmarkOutput {
+struct CapturedOutput {
     /// Process output returned by `std::process::Command::output`.
     ///
     /// Example: includes the benchmark process exit status and captured stderr.
@@ -276,23 +276,23 @@ struct BenchmarkOutput {
 ///
 /// Owns the metadata used by `bench --filter='test_lib_*'`.
 #[derive(Debug)]
-pub struct BenchmarkRunner {
+pub struct SystemTestRunner {
     /// Resolved workspace, target directory, compiler, and selected benchmark list.
     ///
     /// Contains only the selected benchmarks when `--partition`, `--filter` or `--continue` is
     /// used.
-    metadata: Metadata,
+    tests: SystemTests,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 /// YAML group containing multiple benchmark runs under shared conditions.
 ///
 /// A group can gate all runs to Linux only.
-pub struct GroupConfig {
+pub struct Group {
     /// Assertions shared by every run in this group.
     ///
     /// A run-level assertion script takes precedence over the group-level script.
-    expected: Option<GroupExpected>,
+    expected: Option<GroupExpectations>,
     /// Optional target triple include or exclude condition for the whole group.
     ///
     /// Example: `x86_64-unknown-linux-gnu`.
@@ -306,23 +306,23 @@ pub struct GroupConfig {
     /// Runs executed for this group after group-level filters match.
     ///
     /// Example: two runs comparing default output and `--show-grid=true` output.
-    runs: Vec<RunConfig>,
+    runs: Vec<Run>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-/// Expected output checks shared by all runs ([`RunConfig`]) in a [`GroupConfig`].
-pub struct GroupExpected {
+/// Expected output checks shared by all runs ([`Run`]) in a [`Group`].
+pub struct GroupExpectations {
     /// Shell script run as a fallback when a run has no assertion script of its own.
     ///
     /// The script is executed with `bash -ex` in the benchmark output base directory.
-    script: Option<TargetString>,
+    script: Option<TargetedString>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 /// YAML configuration loaded from one benchmark `.conf.yml` file.
 ///
 /// Example: `test_lib_bench_tools.conf.yml` with an optional template and groups.
-struct Config {
+struct SystemTestConfig {
     /// Optional Rust source template rendered before a run.
     ///
     /// Example: `templates/tool_bench.rs.j2`.
@@ -330,14 +330,14 @@ struct Config {
     /// Grouped runs defined by this benchmark configuration.
     ///
     /// Example: groups for default and filtered benchmark invocations.
-    groups: Vec<GroupConfig>,
+    groups: Vec<Group>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 /// Expected files and globs for one benchmark output directory.
 ///
 /// Example: requires `summary.json` and one `callgrind.out.*` glob match.
-struct Expected {
+struct ExpectedFiles {
     /// Exact files expected to exist and be non-empty.
     ///
     /// Example: `["summary.json"]`.
@@ -349,7 +349,7 @@ struct Expected {
     /// Example: `callgrind.out.*` with `count = 1`.
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    globs: Vec<ExpectedGlob>,
+    globs: Vec<ExpectedFilesGlob>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -357,37 +357,37 @@ struct Expected {
 ///
 /// Example: compare stdout against `expected.stdout` and require exit code `0`.
 #[serde(deny_unknown_fields)]
-struct ExpectedConfig {
+struct RunExpectations {
     /// Path to an expected-files manifest relative to the benchmark config directory.
     ///
     /// Example: `expected/files.yml`.
     #[serde(default)]
-    files: Option<TargetPath>,
+    files: Option<TargetedPath>,
     /// Path to expected stdout relative to the benchmark config directory.
     ///
     /// Example: `expected.stdout`.
     #[serde(default)]
-    stdout: Option<TargetPath>,
+    stdout: Option<TargetedPath>,
     /// A string which should be contained in the stdout output
     ///
     /// Example: `stdout: expected.stdout`.
     #[serde(default)]
-    stdout_contains: TargetVecString,
+    stdout_contains: TargetedStrings,
     /// Path to expected stderr relative to the benchmark config directory.
     ///
     /// Example: `stderr: expected.stderr`.
     #[serde(default)]
-    stderr: Option<TargetPath>,
+    stderr: Option<TargetedPath>,
     /// A string which should be contained in the stderr output
     ///
     /// Example: `stderr: expected.stderr`.
     #[serde(default)]
-    stderr_contains: TargetVecString,
+    stderr_contains: TargetedStrings,
     /// Expected process exit code.
     ///
     /// Example: `101` for a benchmark expected to panic.
     #[serde(default)]
-    exit_code: Option<TargetI32>,
+    exit_code: Option<TargetedI32>,
     /// Whether all-zero metrics are allowed in generated summaries.
     ///
     /// Example: `true` for a run that intentionally does not collect costs.
@@ -413,12 +413,12 @@ struct ExpectedConfig {
     /// For example this is the directory of the `test_something` benchmark in which the script is
     /// executed: `project_root/target/benchmark-tests/test_something`
     #[serde(default)]
-    script: Option<TargetString>,
+    script: Option<TargetedString>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Expected glob assertion for benchmark output files.
-struct ExpectedGlob {
+struct ExpectedFilesGlob {
     /// Glob pattern relative to an expected run directory.
     pattern: String,
     /// Required number of files matching `pattern`.
@@ -427,7 +427,7 @@ struct ExpectedGlob {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 /// Expected files for one benchmark `function.id` or `function` output directory.
-struct ExpectedRun {
+struct ExpectedFilesManifestEntry {
     /// Benchmark group directory below the benchmark output root.
     group: String,
     /// Benchmark function name or template string used to locate the output directory.
@@ -436,20 +436,20 @@ struct ExpectedRun {
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     /// Expected files and globs for the resolved function directory.
-    expected: Expected,
+    expected: ExpectedFiles,
 }
 
-impl ExpectedRun {
+impl ExpectedFilesManifestEntry {
     fn equals(&self, other: &Self) -> bool {
         self.group == other.group && self.function == other.function && self.id == other.id
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-/// Expected-files manifest referenced by an `ExpectedConfig`.
+/// Expected-files manifest referenced by [`RunExpectations`].
 ///
 /// Example: a YAML file listing all expected benchmark function output directories.
-struct ExpectedRuns {
+struct ExpectedFilesManifest {
     /// Optional alternate home directory for expected output lookup.
     ///
     /// Example: a target-triple-specific output root.
@@ -459,14 +459,14 @@ struct ExpectedRuns {
     /// Expected output directories and files to assert.
     ///
     /// Example: entries for all functions generated by a templated benchmark.
-    data: Vec<ExpectedRun>,
+    data: Vec<ExpectedFilesManifestEntry>,
 }
 
 #[derive(Debug, Clone)]
-/// Workspace and benchmark selection metadata.
+/// Selected system tests and shared execution metadata.
 ///
 /// Example: produced once from cargo metadata before running benchmark tests.
-struct Metadata {
+struct SystemTests {
     /// Cargo workspace root.
     ///
     /// Example: repository root containing `Cargo.toml`.
@@ -478,7 +478,7 @@ struct Metadata {
     /// Benchmarks selected by CLI arguments, filters, partitioning, and resume state.
     ///
     /// Example: only benchmarks matching `--filter='test_lib_*'`.
-    benchmarks: Vec<Benchmark>,
+    benchmarks: Vec<SystemTest>,
     /// Path to the `crates/benchmark-tests/benches` directory.
     ///
     /// Example: used to write `test_bench_template.rs`.
@@ -514,7 +514,7 @@ pub struct Partition {
 /// YAML configuration for one benchmark invocation.
 ///
 /// Example: one run can pass extra cargo args, benchmark args, envs, and expectations.
-struct RunConfig {
+struct Run {
     /// Extra cargo arguments passed before `--`.
     ///
     /// Example: `["--features", "client-requests"]`.
@@ -534,7 +534,7 @@ struct RunConfig {
     ///
     /// Example: compare stdout with `expected.stdout` and validate `summary.json`.
     #[serde(default)]
-    expected: Option<TargetExpectedConfig>,
+    expected: Option<TargetedRunExpectations>,
     /// Optional target triple include or exclude condition for this run.
     ///
     /// Example: skip a run on `aarch64-apple-darwin`.
@@ -577,9 +577,9 @@ struct RunConfig {
     teardown: Option<String>,
 }
 
-impl Benchmark {
+impl SystemTest {
     pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
-        let config: Config = serde_yaml::from_reader(
+        let config: SystemTestConfig = serde_yaml::from_reader(
             File::open(path)
                 .with_context(|| format!("File should exist: '{}'", path.display()))
                 .unwrap(),
@@ -595,7 +595,7 @@ impl Benchmark {
             config_name.clone()
         };
 
-        Benchmark {
+        SystemTest {
             home_dir: target_dir.join("gungraun"),
             dest_dir: target_dir.join("gungraun").join(PACKAGE).join(&bench_name),
             bench_name,
@@ -655,7 +655,7 @@ impl Benchmark {
         tolerance: Option<f64>,
         setup: Option<&str>,
         teardown: Option<&str>,
-    ) -> BenchmarkOutput {
+    ) -> CapturedOutput {
         let stdio = if capture {
             // SAFETY: Benchmarks are run serially
             unsafe { std::env::set_var("GUNGRAUN_COLOR", "never") };
@@ -739,7 +739,7 @@ impl Benchmark {
             }
         }
 
-        BenchmarkOutput {
+        CapturedOutput {
             output,
             is_tolerance: tolerance.is_some(),
         }
@@ -753,12 +753,12 @@ impl Benchmark {
         args: &[String],
         envs: &HashMap<String, String>,
         template_data: &HashMap<String, minijinja::Value>,
-        meta: &Metadata,
+        tests: &SystemTests,
         capture: bool,
         tolerance: Option<f64>,
         setup: Option<&str>,
         teardown: Option<&str>,
-    ) -> BenchmarkOutput {
+    ) -> CapturedOutput {
         let mut template_string = String::new();
         File::open(self.dir.join(template_path))
             .with_context(|| format!("File should exist: '{}'", template_path.display()))
@@ -771,7 +771,7 @@ impl Benchmark {
             .unwrap();
         let template = env.get_template(&self.bench_name).unwrap();
 
-        let dest = File::create(meta.get_template()).unwrap();
+        let dest = File::create(tests.get_template()).unwrap();
         template.render_captured_to(template_data, dest).unwrap();
 
         self.run_bench(cargo_args, args, envs, capture, tolerance, setup, teardown)
@@ -781,8 +781,8 @@ impl Benchmark {
         &self,
         num_groups: usize,
         group_index: usize,
-        group: &GroupConfig,
-        meta: &Metadata,
+        group: &Group,
+        tests: &SystemTests,
         schema: &ScopedSchema<'_>,
     ) {
         let triple = env!("GR_BUILD_TRIPLE");
@@ -796,7 +796,7 @@ impl Benchmark {
         }) || !group
             .rust_version
             .as_ref()
-            .is_none_or(|(cmp, version)| meta.compare_rust_version(*cmp, version))
+            .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
         {
             return;
         }
@@ -817,7 +817,7 @@ impl Benchmark {
                 }) && r
                     .rust_version
                     .as_ref()
-                    .is_none_or(|(cmp, version)| meta.compare_rust_version(*cmp, version))
+                    .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
             })
             .enumerate()
         {
@@ -867,13 +867,13 @@ impl Benchmark {
                         &run.args,
                         &run.envs,
                         &run.template_data,
-                        meta,
+                        tests,
                         capture,
                         run.tolerance,
                         run.setup.as_deref(),
                         run.teardown.as_deref(),
                     );
-                    self.reset_template(meta);
+                    self.reset_template(tests);
                     output
                 } else {
                     self.run_bench(
@@ -891,7 +891,7 @@ impl Benchmark {
                     if panic::catch_unwind(AssertUnwindSafe(|| {
                         run.assert(
                             &self.dir,
-                            meta,
+                            tests,
                             output,
                             schema,
                             &self.home_dir,
@@ -913,7 +913,7 @@ impl Benchmark {
                 } else {
                     run.assert(
                         &self.dir,
-                        meta,
+                        tests,
                         output,
                         schema,
                         &self.home_dir,
@@ -927,14 +927,20 @@ impl Benchmark {
         }
     }
 
-    fn reset_template(&self, meta: &Metadata) {
-        let mut file = File::create(meta.get_template()).unwrap();
+    fn reset_template(&self, tests: &SystemTests) {
+        let mut file = File::create(tests.get_template()).unwrap();
         file.write_all(TEMPLATE_CONTENT.as_bytes()).unwrap();
     }
 }
 
-impl BenchmarkOutput {
-    fn assert(&self, bench_dir: &Path, meta: &Metadata, expected: &ExpectedConfig, triple: &str) {
+impl CapturedOutput {
+    fn assert(
+        &self,
+        bench_dir: &Path,
+        tests: &SystemTests,
+        expected: &RunExpectations,
+        triple: &str,
+    ) {
         let output = &self.output;
 
         print_info("STDERR:");
@@ -1058,7 +1064,7 @@ impl BenchmarkOutput {
                     ));
                 }
             } else {
-                if meta.is_coverage_run {
+                if tests.is_coverage_run {
                     filtered = Self::normalize_coverage_stdout(filtered);
                     expected_string = Self::normalize_coverage_stdout(expected_string);
                 }
@@ -1384,7 +1390,7 @@ impl BenchmarkOutput {
     }
 }
 
-impl BenchmarkRunner {
+impl SystemTestRunner {
     pub fn new(
         benches: &[String],
         filter: Option<String>,
@@ -1392,7 +1398,7 @@ impl BenchmarkRunner {
         resume: bool,
     ) -> Self {
         Self {
-            metadata: Metadata::new(benches, filter, partition, resume),
+            tests: SystemTests::new(benches, filter, partition, resume),
         }
     }
 
@@ -1405,15 +1411,13 @@ impl BenchmarkRunner {
         unsafe {
             std::env::set_var(
                 "GUNGRAUN_RUNNER",
-                self.metadata
-                    .target_directory
-                    .join("release/gungraun-runner"),
+                self.tests.target_directory.join("release/gungraun-runner"),
             )
         };
 
         let schema: serde_json::Value = serde_json::from_reader(
             File::open(
-                self.metadata
+                self.tests
                     .workspace_root
                     .join(SCHEMA_PATH)
                     .join(format!("summary.v{SCHEMA_VERSION}.schema.json")),
@@ -1426,15 +1430,15 @@ impl BenchmarkRunner {
 
         build_gungraun_runner();
 
-        for bench in &self.metadata.benchmarks {
+        for bench in &self.tests.benchmarks {
             let num_groups = bench.config.groups.len();
             for (index, group) in bench.config.groups.iter().enumerate() {
-                bench.run(num_groups, index, group, &self.metadata, &compiled);
+                bench.run(num_groups, index, group, &self.tests, &compiled);
             }
         }
 
         let _ = std::fs::remove_file(
-            self.metadata
+            self.tests
                 .target_directory
                 .join("gungraun")
                 .join(CONTINUE_FILE_NAME),
@@ -1444,7 +1448,7 @@ impl BenchmarkRunner {
     }
 }
 
-impl ExpectedRun {
+impl ExpectedFilesManifestEntry {
     fn expected_dir(&self, base_dir: &Path) -> PathBuf {
         let mut env = Environment::default();
         env.add_template("function", &self.function).unwrap();
@@ -1498,7 +1502,7 @@ impl ExpectedRun {
             );
         }
 
-        for ExpectedGlob { pattern, count } in self.expected.globs.iter() {
+        for ExpectedFilesGlob { pattern, count } in self.expected.globs.iter() {
             let pattern = &dir.join(pattern).display().to_string();
             let files = glob(pattern)
                 .expect("Glob pattern should compile")
@@ -1555,7 +1559,7 @@ impl ExpectedRun {
     }
 }
 
-impl ExpectedRuns {
+impl ExpectedFilesManifest {
     /// Regenerates an expected-files manifest from a benchmark's current output files.
     ///
     /// `output_dir` is the benchmark output root, such as
@@ -1627,11 +1631,11 @@ impl ExpectedRuns {
             real_files
                 .into_iter()
                 .fold(Vec::new(), |mut acc, ((group, function, id), files)| {
-                    let mut run = ExpectedRun {
+                    let mut run = ExpectedFilesManifestEntry {
                         group,
                         function,
                         id,
-                        expected: Expected {
+                        expected: ExpectedFiles {
                             files,
                             globs: vec![],
                         },
@@ -1645,7 +1649,7 @@ impl ExpectedRuns {
                         // Multiple globs can match the same files, so we have to collect the
                         // matched files first before removing them from `run.expected.files`
                         let mut matched = HashSet::new();
-                        for ExpectedGlob { pattern, .. } in existing.expected.globs.iter() {
+                        for ExpectedFilesGlob { pattern, .. } in existing.expected.globs.iter() {
                             let glob = Pattern::new(pattern).expect("The pattern should be valid");
 
                             let num_matches = run
@@ -1659,7 +1663,7 @@ impl ExpectedRuns {
                                 .count();
 
                             if num_matches > 0 {
-                                let new_glob = ExpectedGlob {
+                                let new_glob = ExpectedFilesGlob {
                                     pattern: pattern.clone(),
                                     count: num_matches,
                                 };
@@ -1677,7 +1681,7 @@ impl ExpectedRuns {
                     acc
                 });
 
-        let new_data = ExpectedRuns {
+        let new_data = ExpectedFilesManifest {
             home_dir: self.home_dir,
             data: new_runs,
         };
@@ -1741,7 +1745,7 @@ impl ExpectedRuns {
     }
 }
 
-impl Metadata {
+impl SystemTests {
     pub fn new(
         benches: &[String],
         filter: Option<String>,
@@ -1772,8 +1776,8 @@ impl Metadata {
                     benches.contains(name)
                 }
             })
-            .map(|path| Benchmark::new(&path, &package_dir, &target_directory))
-            .collect::<Vec<Benchmark>>();
+            .map(|path| SystemTest::new(&path, &package_dir, &target_directory))
+            .collect::<Vec<SystemTest>>();
 
         benchmarks.sort_by_key(|b| b.config_name.clone());
         if let Some(partition) = partition {
@@ -1847,17 +1851,17 @@ impl Metadata {
     }
 }
 
-impl RunConfig {
+impl Run {
     #[allow(clippy::too_many_arguments)]
     fn assert(
         &self,
         bench_dir: &Path,
-        meta: &Metadata,
-        output: BenchmarkOutput,
+        tests: &SystemTests,
+        output: CapturedOutput,
         schema: &ScopedSchema<'_>,
         home_dir: &Path,
         bench_name: &str,
-        group_expected: Option<&GroupExpected>,
+        group_expected: Option<&GroupExpectations>,
     ) {
         let triple = env!("GR_BUILD_TRIPLE");
         let expected = self.expected.as_ref().and_then(|e| e.resolve(triple));
@@ -1870,7 +1874,7 @@ impl RunConfig {
                 || expected.no_stderr
                 || !expected.stderr_contains.resolve(triple).is_empty()
             {
-                output.assert(bench_dir, meta, expected, triple);
+                output.assert(bench_dir, tests, expected, triple);
             }
             output.assert_exit(expected.exit_code.as_ref().and_then(|e| e.resolve(triple)));
 
@@ -1907,7 +1911,7 @@ impl RunConfig {
                 let manifest_content = fs::read_to_string(&manifest_path)
                     .with_context(|| format!("File should exist: '{}'", manifest.display()))
                     .unwrap();
-                let expected_runs: ExpectedRuns = serde_yaml::from_str(&manifest_content)
+                let expected_runs: ExpectedFilesManifest = serde_yaml::from_str(&manifest_content)
                     .map_err(|error| {
                         format!("Failed to deserialize '{}': {error}", manifest.display())
                     })
@@ -2011,8 +2015,8 @@ impl RunConfig {
     }
 }
 
-impl TargetExpectedConfig {
-    fn resolve(&self, triple: &str) -> Option<&ExpectedConfig> {
+impl TargetedRunExpectations {
+    fn resolve(&self, triple: &str) -> Option<&RunExpectations> {
         match self {
             Self::Scalar(config) => Some(config),
             Self::Targets(map) => map.get(triple).or_else(|| map.get("default")),
@@ -2020,7 +2024,7 @@ impl TargetExpectedConfig {
     }
 }
 
-impl TargetI32 {
+impl TargetedI32 {
     fn resolve(&self, triple: &str) -> Option<i32> {
         match self {
             Self::Scalar(scalar) => Some(*scalar),
@@ -2032,7 +2036,7 @@ impl TargetI32 {
     }
 }
 
-impl TargetPath {
+impl TargetedPath {
     fn resolve(&self, triple: &str) -> Option<&Path> {
         match self {
             Self::Scalar(path) => Some(path.as_path()),
@@ -2044,7 +2048,7 @@ impl TargetPath {
     }
 }
 
-impl TargetString {
+impl TargetedString {
     fn resolve(&self, triple: &str) -> Option<&str> {
         match self {
             Self::Scalar(string) => Some(string.as_str()),
@@ -2056,7 +2060,7 @@ impl TargetString {
     }
 }
 
-impl TargetVecString {
+impl TargetedStrings {
     fn resolve(&self, triple: &str) -> &[String] {
         match self {
             Self::Scalar(strings) => strings.as_slice(),
@@ -2068,9 +2072,9 @@ impl TargetVecString {
     }
 }
 
-impl Default for TargetVecString {
+impl Default for TargetedStrings {
     fn default() -> Self {
-        TargetVecString::Scalar(vec![])
+        TargetedStrings::Scalar(vec![])
     }
 }
 
@@ -2152,14 +2156,14 @@ fn main() {
         }
     }
 
-    let runner = BenchmarkRunner::new(&benches, filter, partition, resume);
+    let runner = SystemTestRunner::new(&benches, filter, partition, resume);
 
     let mut map = HashMap::new();
     map.insert(
         "target_dir_sanitized".to_owned(),
         minijinja::Value::from_serialize(
             runner
-                .metadata
+                .tests
                 .target_directory
                 .display()
                 .to_string()

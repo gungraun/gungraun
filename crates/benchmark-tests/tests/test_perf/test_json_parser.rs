@@ -229,6 +229,7 @@ fn test_perf_repeated_event_records() {
         .pid(34567)
         .fx();
 
+    #[expect(clippy::cast_precision_loss)]
     let expected_metrics = tool_metrics_perf_f()
         .metrics((1..=10).map(|x| {
             metric_perf_f()
@@ -285,9 +286,15 @@ fn test_perf_duplicates_write_back() {
         .metrics([
             metric_perf_f()
                 .event("event_dup_01")
-                .value(66.66666666666667)
+                .value(66.666_666_666_666_67)
                 .unit(Unit::Unknown("count".to_owned()))
-                .qualities(PerfQualities::new(None, None, 0.5, 2, 66.66666666666667))
+                .qualities(PerfQualities::new(
+                    None,
+                    None,
+                    0.5,
+                    2,
+                    66.666_666_666_666_67,
+                ))
                 .fx(),
             metric_perf_f()
                 .event("event_control_01")
@@ -307,7 +314,7 @@ fn test_perf_duplicates_write_back() {
         json!({
             "counter-value": "66.666667",
             "event": "event_dup_01",
-            "gungraun-mean": 66.66666666666667,
+            "gungraun-mean": 66.666_666_666_666_67,
             "gungraun-n": 2,
             "unit": "count",
             "variance": 50.0,
@@ -439,10 +446,10 @@ fn test_perf_filtered_empty_min_running() {
 
     assert_eq!(outputs.len(), 1);
     let output = &outputs[0];
-    assert!(matches!(output.metrics, ToolMetrics::Perf(ref m) if m.is_empty()));
+    assert!(matches!(&output.metrics, ToolMetrics::Perf(m) if m.is_empty()));
     assert_eq!(fs::read(&fixture_path).unwrap(), original);
 
-    temp_dir.close().unwrap()
+    temp_dir.close().unwrap();
 }
 
 #[test]
@@ -460,7 +467,7 @@ fn test_perf_filtered_empty_non_zero() {
 
     assert_eq!(outputs.len(), 1);
     let output = &outputs[0];
-    assert!(matches!(output.metrics, ToolMetrics::Perf(ref m) if m.is_empty()));
+    assert!(matches!(&output.metrics, ToolMetrics::Perf(m) if m.is_empty()));
     assert_eq!(fs::read(&fixture_path).unwrap(), original);
 
     temp_dir.close().unwrap();

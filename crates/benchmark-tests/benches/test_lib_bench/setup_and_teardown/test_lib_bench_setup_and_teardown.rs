@@ -23,15 +23,17 @@ fn setup_no_argument() -> u64 {
 }
 
 fn teardown((result, expected): (u64, u64)) {
-    if result != expected {
-        panic!("Expected: {expected} but result was {result}");
-    }
+    assert!(
+        result == expected,
+        "Expected: {expected} but result was {result}"
+    );
 }
 
 fn teardown_other((result, expected): (u64, u64)) {
-    if result != expected {
-        panic!("Other Teardown: Expected: {expected} but result was {result}");
-    }
+    assert!(
+        result == expected,
+        "Other Teardown: Expected: {expected} but result was {result}"
+    );
 }
 
 #[library_benchmark]

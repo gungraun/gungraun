@@ -1,6 +1,6 @@
 use std::hint::black_box;
 
-/// See issue https://github.com/gungraun/gungraun/issues/198
+/// See issue <https://github.com/gungraun/gungraun/issues/198>
 /// Generic bench arguments cause compilation failure
 ///
 /// After the fix the benchmark should now compile
@@ -42,7 +42,7 @@ fn teardown_with_type_parameter<T>(arg_t: T)
 where
     T: std::fmt::Debug,
 {
-    println!("TEARDOWN: arg: {arg_t:?}")
+    println!("TEARDOWN: arg: {arg_t:?}");
 }
 
 fn setup_with_const_parameter<const C: usize>() -> usize {
@@ -55,7 +55,7 @@ fn teardown_with_const_parameter<const C: usize, T>(arg_t: T)
 where
     T: std::fmt::Debug,
 {
-    println!("TEARDOWN: const: {C}, arg: {arg_t:?}")
+    println!("TEARDOWN: const: {C}, arg: {arg_t:?}");
 }
 
 #[library_benchmark]
@@ -111,6 +111,7 @@ fn single_consts_parameter_without_args<const C: usize>() -> usize {
     consts = [{ 1 + 20 }, { 2 + 20 }]
 )]
 fn single_consts_parameter_with_args<const C: usize>(arg: i32) -> usize {
+    #[expect(clippy::cast_sign_loss)]
     black_box(print_debug(black_box(C + arg as usize)))
 }
 
@@ -120,6 +121,7 @@ fn single_consts_parameter_with_args<const C: usize>(arg: i32) -> usize {
 #[benches::single_consts(consts = [(321, 654)])]
 #[benches::multiple_consts(consts = [(321, 654), (654, 987)])]
 fn multiple_consts_parameters<const C: usize, const D: i32>() -> usize {
+    #[expect(clippy::cast_sign_loss)]
     black_box(print_debug(C + D as usize))
 }
 
@@ -304,6 +306,7 @@ fn with_setup_when_type_and_const_parameter(arg: usize) -> usize {
     teardown = teardown_with_const_parameter::<{ 1 + 20 }, usize>
 )]
 fn with_teardown_when_type_and_const_parameter(arg: u64) -> usize {
+    #[expect(clippy::cast_possible_truncation)]
     black_box(black_box(arg) as usize)
 }
 

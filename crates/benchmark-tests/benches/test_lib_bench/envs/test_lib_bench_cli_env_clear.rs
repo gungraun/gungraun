@@ -18,7 +18,7 @@ fn expected_env_clear_value(env_clear: bool) -> bool {
 #[bench::yes_explicit(args = [true], config = LibraryBenchmarkConfig::default().env_clear(true))]
 #[bench::no(args = [false], config = LibraryBenchmarkConfig::default().env_clear(false))]
 fn env_clear(env_clear: bool) {
-    benchmark_tests::check_env(black_box(expected_env_clear_value(env_clear)))
+    benchmark_tests::check_env(black_box(expected_env_clear_value(env_clear)));
 }
 
 library_benchmark_group!(name = my_group, benchmarks = [env_clear]);

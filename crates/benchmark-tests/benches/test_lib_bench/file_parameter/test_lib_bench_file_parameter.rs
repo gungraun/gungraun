@@ -8,10 +8,12 @@ fn consume_line(path: &PathBuf) -> String {
     let mut file = File::open(path).expect("Opening the file for reading should succeed");
 
     let mut buffer = String::new();
+    #[expect(clippy::verbose_file_reads)]
     file.read_to_string(&mut buffer)
         .expect("Reading the content of the file to a string should succeed");
     std::fs::remove_file(path).expect("Deleting the file should succeed");
-    if let Some((line, remainder)) = buffer.split_once("\n") {
+
+    if let Some((line, remainder)) = buffer.split_once('\n') {
         if !remainder.is_empty() {
             let mut file = File::create(path).expect("(Re-)creating the file should succeed");
             file.write_all(remainder.as_bytes())
@@ -23,6 +25,7 @@ fn consume_line(path: &PathBuf) -> String {
     }
 }
 
+#[expect(clippy::needless_pass_by_value)]
 fn string_to_u64(line: String) -> u64 {
     line.parse().unwrap()
 }

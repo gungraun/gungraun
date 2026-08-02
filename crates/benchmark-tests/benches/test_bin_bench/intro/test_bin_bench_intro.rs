@@ -139,9 +139,10 @@ fn benches_from_iter(line: String) -> gungraun::Command {
 // `benches_from_file` and the setup function `setup_file` and the moment the input file format
 // changes we only need to change the code in this function.
 fn split_line(line: &str) -> (&str, &str) {
-    line.split_once(";").unwrap()
+    line.split_once(';').unwrap()
 }
 
+#[expect(clippy::needless_pass_by_value)]
 fn setup_file(line: String) {
     let (path, content) = split_line(&line);
     // Let's reuse the setup function `create_file_with_content`.
@@ -159,9 +160,8 @@ fn benches_from_file(line: String) -> gungraun::Command {
     // As opposed to library benchmarks, we can put any code in this function, since this function
     // is evaluated only once when gungraun collects all benchmarks. The function's sole
     // purpose is to __build__ the `Command` which is getting executed later.
-    let (path, content) = split_line(&line);
     gungraun::Command::new(READ_FILE_EXE)
-        .args([path, content])
+        .args(<[&str; 2]>::from(split_line(&line)))
         .build()
 }
 

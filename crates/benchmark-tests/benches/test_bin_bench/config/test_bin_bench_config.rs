@@ -14,7 +14,7 @@ fn check_args() -> Vec<String> {
     ];
     if let Ok(value) = std::env::var("CLI_ENV_TEST") {
         if value == "true" {
-            default_args.push("CLI_ENV=0".to_string());
+            default_args.push("CLI_ENV=0".to_owned());
         }
     }
 

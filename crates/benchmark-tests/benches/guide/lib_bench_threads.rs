@@ -1,8 +1,3 @@
-use std::hint::black_box;
-
-use gungraun::prelude::*;
-use gungraun::{Callgrind, EntryPoint, OutputFormat};
-
 /// Suppose this is your library
 pub mod my_lib {
     /// Return true if `num` is a prime number
@@ -11,6 +6,9 @@ pub mod my_lib {
             return false;
         }
 
+        #[expect(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_sign_loss)]
+        #[expect(clippy::cast_precision_loss)]
         for i in 2..=(num as f64).sqrt() as u64 {
             if num % i == 0 {
                 return false;
@@ -39,12 +37,17 @@ pub mod my_lib {
         let mut primes = vec![];
         for handle in handles {
             let result = handle.join();
-            primes.extend(result.unwrap())
+            primes.extend(result.unwrap());
         }
 
         primes
     }
 }
+
+use std::hint::black_box;
+
+use gungraun::prelude::*;
+use gungraun::{Callgrind, EntryPoint, OutputFormat};
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()

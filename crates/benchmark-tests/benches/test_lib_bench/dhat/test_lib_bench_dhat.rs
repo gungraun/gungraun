@@ -84,10 +84,18 @@ fn copy(mut src: Vec<i32>) -> (Vec<i32>, Vec<i32>) {
     let mut dst: Vec<i32> = Vec::with_capacity(src.len());
     let src_len = src.len();
 
+    // SAFETY: `src` contains `src_len` initialized `i32`s and `dst` has capacity for `src_len`
+    // elements, so the non-overlapping source and destination ranges are valid.
+    unsafe {
+        std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src_len);
+    }
+    // SAFETY: Shortening a vector to zero is within its capacity and prevents dropping the copied
+    // elements twice.
     unsafe {
         src.set_len(0);
-
-        std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src_len);
+    }
+    // SAFETY: The preceding copy initialized exactly `src_len` elements in `dst`.
+    unsafe {
         dst.set_len(src_len);
     }
 

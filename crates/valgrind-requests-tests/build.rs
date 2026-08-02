@@ -23,7 +23,7 @@ pub fn get_rust_version() -> String {
         .split(' ')
         .nth(1)
         .expect("The rust version should be present")
-        .to_string()
+        .to_owned()
 }
 
 fn main() {

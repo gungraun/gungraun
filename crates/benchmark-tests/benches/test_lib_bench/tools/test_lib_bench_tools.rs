@@ -1,18 +1,17 @@
 use std::cell::RefCell;
 use std::ffi::OsString;
+use std::hint::black_box;
 use std::io;
 use std::process::Output;
 use std::rc::Rc;
 
-struct Left(Option<Rc<Right>>);
-#[expect(dead_code)]
-struct Right(Option<Rc<RefCell<Left>>>);
-
-use std::hint::black_box;
-
 use benchmark_tests::{bubble_sort, bubble_sort_allocate, setup_worst_case_array, subprocess};
 use gungraun::prelude::*;
 use gungraun::{Bbv, Callgrind, Dhat, Drd, EventKind, Helgrind, Massif, Memcheck, OutputFormat};
+
+struct Left(Option<Rc<Right>>);
+#[expect(dead_code)]
+struct Right(Option<Rc<RefCell<Left>>>);
 
 #[library_benchmark]
 #[bench::empty(

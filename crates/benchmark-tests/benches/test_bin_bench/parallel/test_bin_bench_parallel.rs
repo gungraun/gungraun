@@ -38,9 +38,10 @@ fn remove_test_file(panic_if_not_exists: bool) {
         std::fs::remove_file(test_file).unwrap();
     }
 
-    if panic_if_not_exists && !exists {
-        panic!("The test file was expected to be removed but did not exist");
-    }
+    assert!(
+        !panic_if_not_exists || exists,
+        "The test file was expected to be removed but did not exist"
+    );
 }
 
 fn max_parallel() -> usize {

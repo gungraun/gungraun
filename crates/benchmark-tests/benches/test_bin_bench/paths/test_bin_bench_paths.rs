@@ -18,7 +18,7 @@ fn create_script(path: &str) {
 }
 
 fn create_file() {
-    std::fs::write("some.txt", b"content of file\n").unwrap()
+    std::fs::write("some.txt", b"content of file\n").unwrap();
 }
 
 #[binary_benchmark(

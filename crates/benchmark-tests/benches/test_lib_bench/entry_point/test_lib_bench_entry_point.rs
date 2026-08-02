@@ -61,7 +61,7 @@ fn assert_none() {
                 .unwrap()
                 .metrics
                 .unwrap_left();
-            new_ir > Metric::Int(400000)
+            new_ir > Metric::Int(400_000)
         })
         .unwrap();
 }

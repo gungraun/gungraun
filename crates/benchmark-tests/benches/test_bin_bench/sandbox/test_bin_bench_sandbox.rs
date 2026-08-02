@@ -10,10 +10,10 @@ const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
 fn check_file_exists(path: &str, should_exist: bool) {
     if should_exist {
         assert!(PathBuf::from(path).is_file());
-        println!("File exists: '{path}'")
+        println!("File exists: '{path}'");
     } else {
         assert!(!PathBuf::from(path).exists());
-        println!("File does not exist: '{path}'")
+        println!("File does not exist: '{path}'");
     }
 }
 
@@ -56,6 +56,10 @@ fn without_sandbox(path: &str, should_exist: bool) -> gungraun::Command {
 }
 
 fn setup_directory_and_file() {
+    #[expect(
+        clippy::create_dir,
+        reason = "the setup must fail when a repeated invocation leaves the directory behind"
+    )]
     std::fs::create_dir("foo").unwrap();
     std::fs::write("foo/bar.txt", "bar").unwrap();
     println!("Created directory 'foo' with file 'bar.txt'");

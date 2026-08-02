@@ -351,12 +351,12 @@ fn test_start_bench_when_setup_not_parallel_with_error_then_no_bench_and_setup_e
                     .code()
                     .expect("The exit status code should be present"),
                 expected_exit_code
-            )
+            );
         }
         _ => {
             panic!("The error should be a process error")
         }
-    };
+    }
 
     cleanup_test_process_handler(handler);
 }

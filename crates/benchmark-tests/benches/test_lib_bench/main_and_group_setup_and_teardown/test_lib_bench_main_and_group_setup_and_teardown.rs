@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::PathBuf;
 
 use gungraun::prelude::*;
@@ -8,25 +8,25 @@ const GROUP_SETUP_FILE: &str = "/tmp/gungraun.group_setup.tmp";
 
 #[library_benchmark]
 fn simple_bench() {
-    let mut file = File::open(GROUP_SETUP_FILE).unwrap();
-    let mut actual = String::new();
-    file.read_to_string(&mut actual).unwrap();
+    let actual = std::fs::read_to_string(GROUP_SETUP_FILE).unwrap();
     let expected = format!("simple_group_with_setup: {GROUP_SETUP_FILE}");
     assert_eq!(expected, actual);
 }
 
 #[library_benchmark]
 fn check_file_exists() {
-    if !PathBuf::from(GROUP_SETUP_FILE).exists() {
-        panic!("The setup file '{GROUP_SETUP_FILE}' should exist");
-    }
+    assert!(
+        PathBuf::from(GROUP_SETUP_FILE).exists(),
+        "The setup file '{GROUP_SETUP_FILE}' should exist"
+    );
 }
 
 #[library_benchmark]
 fn check_file_not_exists() {
-    if PathBuf::from(GROUP_SETUP_FILE).exists() {
-        panic!("The setup file '{GROUP_SETUP_FILE}' should not exist");
-    }
+    assert!(
+        !PathBuf::from(GROUP_SETUP_FILE).exists(),
+        "The setup file '{GROUP_SETUP_FILE}' should not exist"
+    );
 }
 
 #[library_benchmark]

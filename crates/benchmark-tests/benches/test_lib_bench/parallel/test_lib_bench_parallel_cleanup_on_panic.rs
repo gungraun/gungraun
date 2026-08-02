@@ -53,9 +53,10 @@ fn remove_test_files(panic_if_not_exists: bool) {
         exists = true;
     }
 
-    if panic_if_not_exists && !exists {
-        panic!("The test file was expected to be removed but did not exist");
-    }
+    assert!(
+        !panic_if_not_exists || exists,
+        "The test file was expected to be removed but did not exist"
+    );
 }
 
 library_benchmark_group!(

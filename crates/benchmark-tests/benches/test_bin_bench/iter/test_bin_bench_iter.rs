@@ -37,7 +37,7 @@ fn print_files() {
         .collect::<Result<Vec<_>, std::io::Error>>()
         .unwrap()
     {
-        println!("{}", entry.path().display())
+        println!("{}", entry.path().display());
     }
 }
 

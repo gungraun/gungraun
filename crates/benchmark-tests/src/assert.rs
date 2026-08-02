@@ -13,15 +13,15 @@ use crate::common::Summary;
 #[expect(unused)]
 #[derive(Debug)]
 pub struct Assert {
-    module_path: ModulePath,
-    group: String,
     function: String,
+    group: String,
     id: String,
-    workspace_root: PathBuf,
-    target_dir: PathBuf,
+    module_path: ModulePath,
     out_dir: PathBuf,
     out_path: PathBuf,
     summary_path: Option<PathBuf>,
+    target_dir: PathBuf,
+    workspace_root: PathBuf,
 }
 
 impl Assert {
@@ -40,12 +40,11 @@ impl Assert {
 
         let out_path = out_dir.join(format!("callgrind.{name}.out"));
 
-        if !out_path.exists() {
-            panic!(
-                "Callgrind output file '{}' should exist",
-                out_path.display()
-            );
-        }
+        assert!(
+            out_path.exists(),
+            "Callgrind output file '{}' should exist",
+            out_path.display()
+        );
 
         let summary_path = out_dir.join("summary.json");
 

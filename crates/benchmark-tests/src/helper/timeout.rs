@@ -7,11 +7,10 @@
 //!
 //! * `[timeout_ms]` - Number of milliseconds to sleep (default: 20000).
 
-use std::io::Error;
 use std::thread::sleep;
 use std::time::Duration;
 
-fn main() -> Result<(), Error> {
+fn main() {
     println!("Started the timeout program");
 
     let timeout = std::env::args()
@@ -22,5 +21,4 @@ fn main() -> Result<(), Error> {
     sleep(Duration::from_millis(timeout));
 
     println!("I terminated normally after a timeout of {timeout} ms");
-    Ok(())
 }

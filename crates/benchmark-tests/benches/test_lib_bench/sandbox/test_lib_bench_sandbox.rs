@@ -14,12 +14,13 @@ fn check_file_exists(path: &str, should_exist: bool) {
 }
 
 fn create_dir(path: &str) -> &str {
+    #[expect(clippy::create_dir)]
     std::fs::create_dir(path).unwrap();
     path
 }
 
 fn remove_dir(dir: String) {
-    std::fs::remove_dir(&dir).unwrap();
+    std::fs::remove_dir(dir).unwrap();
 }
 
 #[library_benchmark]

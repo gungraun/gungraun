@@ -1,3 +1,14 @@
+#[macro_export]
+macro_rules! assert_not_elapsed {
+    ($time:expr, $body:expr) => {{
+        let start = std::time::Instant::now();
+        let result = $body;
+        let elapsed = start.elapsed();
+        assert!(elapsed < $time);
+        result
+    }};
+}
+
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
@@ -16,17 +27,6 @@ use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_TOOL: Tool = Tool::Callgrind;
 pub const FIXTURES_ROOT: &str = "tests/fixtures";
-
-#[macro_export]
-macro_rules! assert_not_elapsed {
-    ($time:expr, $body:expr) => {{
-        let start = std::time::Instant::now();
-        let result = $body;
-        let elapsed = start.elapsed();
-        assert!(elapsed < $time);
-        result
-    }};
-}
 
 pub static BENCH_BIN_FAKE_EXE: LazyLock<PathBuf> =
     LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_bench-bin-fake")));

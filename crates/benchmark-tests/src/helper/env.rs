@@ -14,9 +14,9 @@ fn main() {
     let next = args.next().unwrap();
     if next == "--check" {
         for arg in args {
-            let (key, value) = arg.split_once("=").unwrap();
+            let (key, value) = arg.split_once('=').unwrap();
             assert_eq!(std::env::var(key).unwrap(), value);
-            println!("Found env: '{key}' with value '{value}'")
+            println!("Found env: '{key}' with value '{value}'");
         }
     } else if next == "--is-cleared=true" {
         assert!(!std::env::vars().any(|(key, _)| key == "PATH"));

@@ -49,6 +49,9 @@ bon = { workspace = true }
 glob = { workspace = true }
 rstest = { workspace = true }
 
+[lints]
+workspace = true
+
 [[bin]]
 name = "bench"
 path = "src/bench.rs"
@@ -454,6 +457,3 @@ path = "benches/test_lib_bench/tool_runner/test_lib_bench_valgrind_runner.rs"
 harness = false
 name = "test_lib_bench_xtree"
 path = "benches/test_lib_bench/xtree/test_lib_bench_xtree.rs"
-
-[lints]
-workspace = true

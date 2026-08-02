@@ -11,25 +11,25 @@ pub const TEST_VAR_2: &str = "__GUNGRAUN_TEST_VAR_2";
 #[library_benchmark]
 #[bench::single(&[TEST_VAR_1])]
 fn bench_print_env_single(args: &[&str]) {
-    black_box(print_env(black_box(args)))
+    black_box(print_env(black_box(args)));
 }
 
 #[library_benchmark]
 #[bench::multiple(&[TEST_VAR_1, TEST_VAR_2])]
 fn bench_print_env_multiple(args: &[&str]) {
-    black_box(print_env(black_box(args)))
+    black_box(print_env(black_box(args)));
 }
 
 #[library_benchmark]
 #[bench::single(&["FOO=BAR"])]
 fn bench_print_env_custom_single(args: &[&str]) {
-    black_box(print_env(black_box(args)))
+    black_box(print_env(black_box(args)));
 }
 
 #[library_benchmark]
 #[bench::multiple(&["FOO=BAR", "BAR=BAZ"])]
 fn bench_print_env_custom_multiple(args: &[&str]) {
-    black_box(print_env(black_box(args)))
+    black_box(print_env(black_box(args)));
 }
 
 #[library_benchmark(config = LibraryBenchmarkConfig::default().env("FOO", "BAR"))]
@@ -38,7 +38,7 @@ fn bench_print_env_custom_multiple(args: &[&str]) {
     config = LibraryBenchmarkConfig::default().env("BAR", "BAZ")
 )]
 fn bench_print_env_when_config(args: &[&str]) {
-    black_box(print_env(black_box(args)))
+    black_box(print_env(black_box(args)));
 }
 
 library_benchmark_group!(

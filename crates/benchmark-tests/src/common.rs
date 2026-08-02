@@ -21,7 +21,7 @@ impl Summary {
         if let Some(id) = self.0.id.as_ref() {
             format!("{} {id}", self.0.module_path)
         } else {
-            self.0.module_path.to_string()
+            self.0.module_path.clone()
         }
     }
 

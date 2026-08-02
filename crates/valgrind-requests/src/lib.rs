@@ -165,7 +165,10 @@
 #![doc(test(attr(warn(unused))))]
 #![doc(test(attr(allow(unused_extern_crates))))]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![expect(clippy::arbitrary_source_item_ordering)]
+#![cfg_attr(
+    all(feature = "act", feature = "alloc", feature = "std"),
+    expect(clippy::arbitrary_source_item_ordering)
+)]
 #![expect(clippy::inline_always)]
 #![warn(missing_docs)]
 
@@ -759,4 +762,4 @@ pub unsafe fn __valgrind_print_backtrace(ptr: *const cty::c_char) {
 
 #[doc(hidden)]
 #[inline(always)]
-pub unsafe fn __no_op() {}
+pub fn __no_op() {}

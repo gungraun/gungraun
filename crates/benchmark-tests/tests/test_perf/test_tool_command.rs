@@ -57,7 +57,7 @@ fn test_tool_command_perf_basic() {
         .unwrap();
     let stderr = str::from_utf8(&output.stderr).unwrap();
 
-    assert!(output.status.success(), "perf command failed: {stderr}",);
+    assert!(output.status.success(), "perf command failed: {stderr}");
 
     assert!(stderr.contains("Events enabled\n"));
 

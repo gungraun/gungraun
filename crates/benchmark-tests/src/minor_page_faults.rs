@@ -84,12 +84,16 @@ impl AnonymousMapping {
         Ok(())
     }
 
-    fn touch_pages(&mut self, page_size: usize) {
+    fn touch_pages(&self, page_size: usize) {
         let base = self.address().cast::<u8>().as_ptr();
         for offset in (0..self.length).step_by(page_size) {
-            // SAFETY: Categories 10/11 (bounds and provenance). `base` comes from the live
-            // mapping, every offset is below `length`, and writing one byte stays in bounds.
-            unsafe { base.add(offset).write_volatile(0) };
+            // SAFETY: Category 11 (provenance). `base` comes from the live mapping, and `offset`
+            // is below its length, so deriving this byte pointer is in bounds.
+            let page = unsafe { base.add(offset) };
+            // SAFETY: Category 10 (bounds). `page` points to a byte in the live writable mapping.
+            unsafe {
+                page.write_volatile(0);
+            }
         }
     }
 
@@ -144,7 +148,7 @@ pub fn cause_minor_page_faults(page_count: usize) -> io::Result<()> {
         .checked_mul(page_size)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "mapping length overflowed"))?;
 
-    let mut mapping = AnonymousMapping::new(length)?;
+    let mapping = AnonymousMapping::new(length)?;
     mapping.disable_huge_pages()?;
     mapping.touch_pages(page_size);
     mapping.close()

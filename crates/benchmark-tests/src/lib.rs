@@ -29,6 +29,9 @@ pub fn is_prime(num: u64) -> bool {
         return false;
     }
 
+    #[expect(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_precision_loss)]
+    #[expect(clippy::cast_sign_loss)]
     for i in 2..=(num as f64).sqrt() as u64 {
         if num % i == 0 {
             return false;
@@ -56,7 +59,7 @@ pub fn find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
     let mut primes = vec![];
     for handle in handles {
         let result = handle.join();
-        primes.extend(result.unwrap())
+        primes.extend(result.unwrap());
     }
 
     println!(
@@ -87,7 +90,7 @@ pub fn find_primes_multi_thread_with_instrumentation(num_threads: usize) -> Vec<
     let mut primes = vec![];
     for handle in handles {
         let result = handle.join();
-        primes.extend(result.unwrap())
+        primes.extend(result.unwrap());
     }
 
     println!(
@@ -166,28 +169,24 @@ pub fn fibonacci(n: u64) -> u64 {
 
 pub fn check_env(env_clear: bool) {
     if env_clear {
-        assert!(std::env::var("__GUNGRAUN_TEST_VAR").is_err());
+        std::env::var("__GUNGRAUN_TEST_VAR").unwrap_err();
         println!("Asserting that environment has been cleared succeeded");
     } else {
-        assert!(std::env::var("__GUNGRAUN_TEST_VAR").is_ok());
+        std::env::var("__GUNGRAUN_TEST_VAR").unwrap();
         println!("Asserting that environment has not been cleared succeeded");
     }
 }
 
 pub fn print_env(args: &[&str]) {
     for arg in args {
-        let (key, value) = match arg.split_once('=') {
-            Some((key, value)) => {
-                let actual_value =
-                    std::env::var(key).expect("Environment variable must be present");
-                assert_eq!(&actual_value, value, "Environment variable value differs");
-                (key.to_owned(), actual_value)
-            }
-            None => {
-                let value =
-                    std::env::var(arg).expect("Pass-through environment variable must be present");
-                (arg.to_string(), value)
-            }
+        let (key, value) = if let Some((key, value)) = arg.split_once('=') {
+            let actual_value = std::env::var(key).expect("Environment variable must be present");
+            assert_eq!(&actual_value, value, "Environment variable value differs");
+            (key.to_owned(), actual_value)
+        } else {
+            let value =
+                std::env::var(arg).expect("Pass-through environment variable must be present");
+            (arg.to_string(), value)
         };
         println!("{key}={value}");
     }

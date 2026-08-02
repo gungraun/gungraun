@@ -2,7 +2,6 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write, stderr};
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
@@ -16,9 +15,9 @@ static STRIP_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Regex should compile")
 });
 static CALLGRIND_EXCLUDED_LINES_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(For interactive control,)").expect("Regex should compile"));
+    LazyLock::new(|| Regex::new("^(For interactive control,)").expect("Regex should compile"));
 static CALLGRIND_RM_DUMP_TO_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(Dump to).*$").expect("Regex should compile"));
+    LazyLock::new(|| Regex::new("^(Dump to).*$").expect("Regex should compile"));
 static CALLGRIND_RM_BB_NUM_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(at BB\s+)([0-9]+)(\s+.*)$").expect("Regex should compile"));
 static CALLGRIND_RM_ADDR_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -32,7 +31,7 @@ static CALLGRIND_RM_NUM_MISS_RE: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Regex should compile")
 });
 static CALLGRIND_RM_NUM_RATE_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"((Branches|Mispredicts|Mispred rate):)[ 0-9,()+condi%.]*$")
+    Regex::new("((Branches|Mispredicts|Mispred rate):)[ 0-9,()+condi%.]*$")
         .expect("Regex should compile")
 });
 static CALLGRIND_RM_NUM_COLLECTED_RE: LazyLock<Regex> =
@@ -56,21 +55,21 @@ static MEMCHECK_LEAK_SUMMARY_RE: LazyLock<Regex> = LazyLock::new(|| {
     .expect("Regex should compile")
 });
 static MEMCHECK_RM_NUMBERS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"[+-]?[0-9][0-9,.]*").expect("Regex should compile"));
+    LazyLock::new(|| Regex::new("[+-]?[0-9][0-9,.]*").expect("Regex should compile"));
 static MEMORY_ADDRESS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"0x[0-9A-Za-z]+").expect("Regex should compile"));
+    LazyLock::new(|| Regex::new("0x[0-9A-Za-z]+").expect("Regex should compile"));
 static CACHEGRIND_NUM_REFS_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"((I|D|LL)\s*refs:\s*)([ 0-9,()+rdw]*)\s*$").expect("Regex should compile")
 });
 static WARNING_EXIDX_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[ ]*Warning: whilst reading EXIDX:.*$").expect("Regex should compile")
+    Regex::new("^[ ]*Warning: whilst reading EXIDX:.*$").expect("Regex should compile")
 });
 static READING_EXIDX_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^[ ]*Reading EXIDX entries:.*$").expect("Regex should compile"));
+    LazyLock::new(|| Regex::new("^[ ]*Reading EXIDX entries:.*$").expect("Regex should compile"));
 static NUMBER_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"[0-9]+").expect("Regex should compile"));
+    LazyLock::new(|| Regex::new("[0-9]+").expect("Regex should compile"));
 static REDIR_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(REDIR:)(.*)").expect("Regex should compile"));
+    LazyLock::new(|| Regex::new("^(REDIR:)(.*)").expect("Regex should compile"));
 
 #[derive(Debug)]
 enum Tool {
@@ -85,10 +84,10 @@ impl FromStr for Tool {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
-            "callgrind" => Ok(Tool::Callgrind),
-            "memcheck" => Ok(Tool::Memcheck),
-            "helgrind" => Ok(Tool::Helgrind),
-            "cachegrind" => Ok(Tool::Cachegrind),
+            "callgrind" => Ok(Self::Callgrind),
+            "memcheck" => Ok(Self::Memcheck),
+            "helgrind" => Ok(Self::Helgrind),
+            "cachegrind" => Ok(Self::Cachegrind),
             tool => Err(format!("Unsupported tool: {tool}")),
         }
     }
@@ -101,14 +100,14 @@ impl Display for Tool {
 }
 
 fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
-    let path_re =
-        Regex::new(format!(r"({})", path.display()).as_str()).expect("Regex should compile");
-
     #[derive(Debug, PartialEq, Eq)]
     enum State {
         Header,
         Body,
     }
+
+    let path_re =
+        Regex::new(format!("({})", path.display()).as_str()).expect("Regex should compile");
     let mut state = State::Header;
     let mut is_backtrace = false;
     for line in BufReader::new(bytes).lines().map(Result::unwrap) {
@@ -130,7 +129,7 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
 
         if rest.starts_with("Symbol match:") {
             continue;
-        };
+        }
 
         // backtraces are too different on different targets
         if BACKTRACE_RE.is_match(rest) {
@@ -139,15 +138,14 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
                 is_backtrace = true;
             }
             continue;
-        } else {
-            is_backtrace = false;
         }
+        is_backtrace = false;
 
         let replaced = path_re.replace_all(rest, "<__FILTER__>");
         let replaced = CALLGRIND_RM_ADDR_RE.replace_all(&replaced, "$1<__FILTER__>");
         let replaced = CALLGRIND_RM_BB_NUM_RE.replace_all(&replaced, "$1<__FILTER__>$3");
         let replaced = CALLGRIND_RM_LINE_NUM_RE.replace_all(&replaced, "$1<__FILTER__>$3");
-        let rest = replaced.deref();
+        let rest = &*replaced;
         if !CALLGRIND_EXCLUDED_LINES_RE.is_match(rest) {
             if let Some(caps) = CALLGRIND_RM_NUM_REFS_RE.captures(rest) {
                 writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
@@ -197,9 +195,8 @@ fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
                 is_backtrace = true;
             }
             continue;
-        } else {
-            is_backtrace = false;
         }
+        is_backtrace = false;
 
         let replaced = REDIR_RE.replace_all(rest, "$1 <__FILTER__>");
         let replaced = MEMCHECK_CHECKED_RE.replace_all(&replaced, "$1<__FILTER__>$3");
@@ -307,7 +304,7 @@ fn main() {
                 Tool::Callgrind => callgrind_filter(&bin, &output.stderr, &mut stderr()),
                 Tool::Cachegrind => cachegrind_filter(&output.stderr, &mut stderr()),
                 Tool::Memcheck => memcheck_filter(&output.stderr, &mut stderr()),
-                _ => {
+                Tool::Helgrind => {
                     stderr().write_all(&output.stderr).unwrap();
                 }
             }

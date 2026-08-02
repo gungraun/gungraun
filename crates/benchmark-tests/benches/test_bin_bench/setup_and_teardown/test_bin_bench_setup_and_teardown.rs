@@ -1,3 +1,15 @@
+mod setup {
+    pub fn setup_in_module(arg: u64) {
+        println!("SETUP: setup::setup_in_module function: {arg}");
+    }
+}
+
+mod teardown {
+    pub fn teardown_in_module(arg: u64) {
+        println!("TEARDOWN: teardown::teardown_in_module function: {arg}");
+    }
+}
+
 use std::time::Duration;
 
 use gungraun::prelude::*;
@@ -25,20 +37,9 @@ fn teardown_one_argument(arg: u64) {
 }
 
 fn create_dir(path: &str) -> &str {
+    #[expect(clippy::create_dir)]
     std::fs::create_dir(path).unwrap();
     path
-}
-
-mod setup {
-    pub fn setup_in_module(arg: u64) {
-        println!("SETUP: setup::setup_in_module function: {arg}");
-    }
-}
-
-mod teardown {
-    pub fn teardown_in_module(arg: u64) {
-        println!("TEARDOWN: teardown::teardown_in_module function: {arg}");
-    }
 }
 
 #[binary_benchmark(setup = setup_no_argument(), teardown = teardown_no_argument())]

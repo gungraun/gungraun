@@ -1,6 +1,6 @@
 use std::hint::black_box;
 
-fn main() -> std::io::Result<()> {
+fn main() {
     let mut value = 0_u64;
 
     let lock = gungraun::perf_enable!();
@@ -10,6 +10,4 @@ fn main() -> std::io::Result<()> {
     gungraun::perf_disable!(lock);
 
     black_box(value);
-
-    Ok(())
 }

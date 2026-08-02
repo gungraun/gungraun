@@ -166,6 +166,8 @@
 #![doc(test(attr(allow(unused_extern_crates))))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![expect(clippy::arbitrary_source_item_ordering)]
+#![expect(clippy::inline_always)]
+#![warn(missing_docs)]
 
 #[cfg(feature = "alloc")]
 #[doc(hidden)]

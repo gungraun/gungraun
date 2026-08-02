@@ -39,3 +39,6 @@ rstest = { workspace = true }
 tempfile = { workspace = true }
 valgrind-requests = { path = "../valgrind-requests" }
 version-compare = { workspace = true }
+
+[lints]
+workspace = true

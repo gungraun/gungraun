@@ -5,6 +5,11 @@
 //! for the runner. This describes compile-target support only; it does not guarantee that a tool
 //! executable is installed or that the current process has permission to use it.
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![doc(test(attr(warn(unused))))]
+#![doc(test(attr(allow(unused_extern_crates))))]
+#![warn(missing_docs)]
+
 use std::fmt::Display;
 use std::str::FromStr;
 

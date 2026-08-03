@@ -418,3 +418,4 @@ MADV
 NOHUGEPAGE
 minflt
 Prefaulting
+rmdirs

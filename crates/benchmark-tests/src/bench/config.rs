@@ -1,0 +1,328 @@
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::process::Output;
+
+use benchmark_tests::serde::runs_on::RunsOn;
+use serde::{Deserialize, Serialize};
+
+pub(super) const PACKAGE: &str = "benchmark-tests";
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub(super) enum TargetedI32 {
+    /// Backward-compatible scalar path
+    Scalar(i32),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Option<i32>>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub(super) enum TargetedPath {
+    /// Backward-compatible scalar path
+    Scalar(PathBuf),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, PathBuf>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub(super) enum TargetedRunExpectations {
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, RunExpectations>),
+    /// Backward-compatible scalar path
+    Scalar(Box<RunExpectations>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub(super) enum TargetedString {
+    /// Backward-compatible scalar path
+    Scalar(String),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Option<String>>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub(super) enum TargetedStrings {
+    /// Backward-compatible scalar path
+    Scalar(Vec<String>),
+    /// Per-target mapping; `default` is the fallback key
+    Targets(HashMap<String, Vec<String>>),
+}
+
+/// Captured result of one cargo bench invocation.
+///
+/// Example:
+/// * stdout/stderr from `cargo bench --package benchmark-tests --bench test_lib_bench_tools`.
+#[derive(Debug)]
+pub(super) struct CapturedOutput {
+    /// Whether the run used an explicit tolerance argument.
+    ///
+    /// Example: `true` when `--tolerance=0.01` was forwarded to the benchmark.
+    pub(super) has_tolerance: bool,
+    /// Process output returned by `std::process::Command::output`.
+    ///
+    /// Example: includes the benchmark process exit status and captured stderr.
+    pub(super) output: Output,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// YAML group containing multiple benchmark runs under shared conditions.
+///
+/// A group can gate all runs to Linux only.
+pub(super) struct Group {
+    /// Assertions shared by every run in this group.
+    ///
+    /// A run-level assertion script takes precedence over the group-level script.
+    pub(super) expected: Option<GroupExpectations>,
+    /// Runs executed for this group after group-level filters match.
+    ///
+    /// Example: two runs comparing default output and `--show-grid=true` output.
+    pub(super) runs: Vec<Run>,
+    /// Optional target triple include or exclude condition for the whole group.
+    ///
+    /// Example: `x86_64-unknown-linux-gnu`.
+    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    pub(super) runs_on: Option<RunsOn>,
+    /// Optional Rust compiler version or channel condition for the whole group.
+    ///
+    /// Example: `>=1.86.0` or `=nightly`.
+    #[serde(default, with = "benchmark_tests::serde::rust_version")]
+    pub(super) rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// Expected output checks shared by all runs ([`Run`]) in a [`Group`].
+pub(super) struct GroupExpectations {
+    /// Shell script run as a fallback when a run has no assertion script of its own.
+    ///
+    /// The script is executed with `bash -ex` in the benchmark output base directory.
+    pub(super) script: Option<TargetedString>,
+}
+
+#[derive(Debug, Clone, Copy)]
+/// Selected partition of the benchmark list.
+///
+/// Example: `part = 2`, `total = 4` runs the second quarter of benchmarks.
+pub(super) struct Partition {
+    /// One-based partition number to run.
+    ///
+    /// Example: `2` in `--partition=2/4`.
+    pub(super) part: usize,
+    /// Total number of partitions.
+    ///
+    /// Example: `4` in `--partition=2/4`.
+    pub(super) total: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// YAML configuration for one benchmark invocation.
+///
+/// Example: one run can pass extra cargo args, benchmark args, envs, and expectations.
+pub(super) struct Run {
+    /// Extra cargo arguments passed before `--`.
+    ///
+    /// Example: `["--features", "client-requests"]`.
+    #[serde(default)]
+    pub(super) cargo_args: Vec<String>,
+    /// Environment variables set for the cargo bench command.
+    ///
+    /// Example: `{ "RUSTFLAGS": "-C target-feature=-avx2" }`.
+    #[serde(default)]
+    pub(super) envs: HashMap<String, String>,
+    /// Expected process output, exit status, and generated files.
+    ///
+    /// Example: compare stdout with `expected.stdout` and validate `summary.json`.
+    #[serde(default)]
+    pub(super) expected: Option<TargetedRunExpectations>,
+    /// Number of retries allowed for flaky assertion failures.
+    ///
+    /// Example: `2` allows up to two retries after the first failed attempt.
+    #[serde(default)]
+    pub(super) flaky: Option<usize>,
+    /// Benchmark binary arguments passed after `--`.
+    ///
+    /// Example: `["--show-grid=true"]`.
+    #[serde(default, rename = "args")]
+    pub(super) gungraun_args: Vec<String>,
+    /// Directories removed before this run starts.
+    ///
+    /// Example: `target/gungraun/benchmark-tests/test_lib_bench_tools`.
+    #[serde(default)]
+    pub(super) rmdirs: Vec<PathBuf>,
+    /// Optional target triple include or exclude condition for this run.
+    ///
+    /// Example: skip a run on `aarch64-apple-darwin`.
+    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    pub(super) runs_on: Option<RunsOn>,
+    /// Optional Rust compiler version or channel condition for this run.
+    ///
+    /// Example: `>=1.86.0` or `!=nightly`.
+    #[serde(default, with = "benchmark_tests::serde::rust_version")]
+    pub(super) rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
+    /// Shell snippet executed before the benchmark command.
+    ///
+    /// Example: `mkdir -p /tmp/gungraun-fixture`.
+    #[serde(default)]
+    pub(super) setup: Option<String>,
+    /// Shell snippet executed after the benchmark command.
+    ///
+    /// Example: `rm -rf /tmp/gungraun-fixture`.
+    #[serde(default)]
+    pub(super) teardown: Option<String>,
+    /// Data passed to the benchmark source template renderer.
+    ///
+    /// Example: `{ "tool": "callgrind" }`.
+    #[serde(default)]
+    pub(super) template_data: HashMap<String, minijinja::Value>,
+    /// Optional benchmark tolerance forwarded as `--tolerance=<value>`.
+    ///
+    /// Example: `0.01`.
+    #[serde(default)]
+    pub(super) tolerance: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// Expected side effects and process result for a run.
+///
+/// Example: compare stdout against `expected.stdout` and require exit code `0`.
+#[expect(clippy::struct_excessive_bools)]
+#[serde(deny_unknown_fields)]
+pub(super) struct RunExpectations {
+    /// Expected process exit code.
+    ///
+    /// Example: `101` for a benchmark expected to panic.
+    #[serde(default)]
+    pub(super) exit_code: Option<TargetedI32>,
+    /// Path to an expected-files manifest relative to the benchmark config directory.
+    ///
+    /// Example: `expected/files.yml`.
+    #[serde(default)]
+    pub(super) files: Option<TargetedPath>,
+    /// Whether no benchmark output directory is expected.
+    ///
+    /// Example: `true` for an early argument validation failure.
+    #[serde(default)]
+    pub(super) no_files: bool,
+    /// Whether filtered stderr must be empty.
+    ///
+    /// Example: `true` when cargo should not emit benchmark diagnostics.
+    #[serde(default)]
+    pub(super) no_stderr: bool,
+    /// Whether filtered stdout must be empty.
+    ///
+    /// Example: `true` for a quiet successful run.
+    #[serde(default)]
+    pub(super) no_stdout: bool,
+    /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory
+    ///
+    /// For example this is the directory of the `test_something` benchmark in which the script is
+    /// executed: `project_root/target/benchmark-tests/test_something`
+    #[serde(default)]
+    pub(super) script: Option<TargetedString>,
+    /// Path to expected stderr relative to the benchmark config directory.
+    ///
+    /// Example: `stderr: expected.stderr`.
+    #[serde(default)]
+    pub(super) stderr: Option<TargetedPath>,
+    /// A string which should be contained in the stderr output
+    ///
+    /// Example: `stderr: expected.stderr`.
+    #[serde(default)]
+    pub(super) stderr_contains: TargetedStrings,
+    /// Path to expected stdout relative to the benchmark config directory.
+    ///
+    /// Example: `expected.stdout`.
+    #[serde(default)]
+    pub(super) stdout: Option<TargetedPath>,
+    /// A string which should be contained in the stdout output
+    ///
+    /// Example: `stdout: expected.stdout`.
+    #[serde(default)]
+    pub(super) stdout_contains: TargetedStrings,
+    /// Whether all-zero metrics are allowed in generated summaries.
+    ///
+    /// Example: `true` for a run that intentionally does not collect costs.
+    #[serde(default)]
+    pub(super) zero_metrics: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// YAML configuration loaded from one benchmark `.conf.yml` file.
+///
+/// Example: `test_lib_bench_tools.conf.yml` with an optional template and groups.
+pub(super) struct SystemTestConfig {
+    /// Grouped runs defined by this benchmark configuration.
+    ///
+    /// Example: groups for default and filtered benchmark invocations.
+    pub(super) groups: Vec<Group>,
+    /// Optional Rust source template rendered before a run.
+    ///
+    /// Example: `templates/tool_bench.rs.j2`.
+    pub(super) template: Option<PathBuf>,
+}
+
+impl TargetedI32 {
+    pub(super) fn resolve(&self, target_triple: &str) -> Option<i32> {
+        match self {
+            Self::Scalar(scalar) => Some(*scalar),
+            Self::Targets(map) => map
+                .get(target_triple)
+                .or_else(|| map.get("default"))
+                .and_then(|p| *p),
+        }
+    }
+}
+
+impl TargetedPath {
+    pub(super) fn resolve(&self, target_triple: &str) -> Option<&Path> {
+        match self {
+            Self::Scalar(path) => Some(path.as_path()),
+            Self::Targets(map) => map
+                .get(target_triple)
+                .or_else(|| map.get("default"))
+                .map(PathBuf::as_path),
+        }
+    }
+}
+
+impl TargetedRunExpectations {
+    pub(super) fn resolve(&self, target_triple: &str) -> Option<&RunExpectations> {
+        match self {
+            Self::Scalar(config) => Some(config),
+            Self::Targets(map) => map.get(target_triple).or_else(|| map.get("default")),
+        }
+    }
+}
+
+impl TargetedString {
+    pub(super) fn resolve(&self, target_triple: &str) -> Option<&str> {
+        match self {
+            Self::Scalar(string) => Some(string.as_str()),
+            Self::Targets(map) => map
+                .get(target_triple)
+                .or_else(|| map.get("default"))
+                .and_then(|p| p.as_deref()),
+        }
+    }
+}
+
+impl TargetedStrings {
+    pub(super) fn resolve(&self, target_triple: &str) -> &[String] {
+        match self {
+            Self::Scalar(strings) => strings.as_slice(),
+            Self::Targets(map) => map
+                .get(target_triple)
+                .or_else(|| map.get("default"))
+                .map_or_else(|| &[], Vec::as_slice),
+        }
+    }
+}
+
+impl Default for TargetedStrings {
+    fn default() -> Self {
+        Self::Scalar(vec![])
+    }
+}

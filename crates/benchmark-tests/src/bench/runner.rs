@@ -5,7 +5,7 @@ use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use anyhow::Context;
+use anyhow::{Context, anyhow, bail};
 use fs_extra::dir::CopyOptions;
 use glob::glob;
 use minijinja::Environment;
@@ -108,8 +108,8 @@ pub(super) struct SystemTests {
 }
 
 impl SystemTest {
-    fn new(config_path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
-        let config: SystemTestConfig = deserialize_yaml(config_path);
+    fn new(config_path: &Path, _package_dir: &Path, target_dir: &Path) -> anyhow::Result<Self> {
+        let config: SystemTestConfig = deserialize_yaml(config_path)?;
 
         let config_name = config_path.file_name().unwrap().to_string_lossy();
         let config_name = config_name.strip_suffix(".conf.yml").unwrap().to_owned();
@@ -122,19 +122,24 @@ impl SystemTest {
 
         let home_dir = target_dir.join("gungraun");
 
-        Self {
+        Ok(Self {
             output_dir: home_dir.join(PACKAGE).join(&bench_name),
             bench_name,
             config_name,
             config,
             config_dir: config_path.parent().unwrap().to_path_buf(),
             home_dir,
-        }
+        })
     }
 
-    fn clean_benchmark(&self) {
+    fn clean_benchmark(&self) -> anyhow::Result<()> {
         if self.output_dir.is_dir() {
-            std::fs::remove_dir_all(&self.output_dir).unwrap();
+            std::fs::remove_dir_all(&self.output_dir).with_context(|| {
+                format!(
+                    "Failed to remove benchmark directory '{}'",
+                    self.output_dir.display()
+                )
+            })?;
         }
         let alt_dir = self
             .home_dir
@@ -142,21 +147,35 @@ impl SystemTest {
             .join(PACKAGE)
             .join(&self.bench_name);
         if alt_dir.is_dir() {
-            std::fs::remove_dir_all(&alt_dir).unwrap();
+            std::fs::remove_dir_all(&alt_dir).with_context(|| {
+                format!(
+                    "Failed to remove benchmark directory '{}'",
+                    alt_dir.display()
+                )
+            })?;
         }
+
+        Ok(())
     }
 
-    fn backup(&self) -> Option<TempDir> {
-        self.output_dir.is_dir().then(|| {
-            let temp_dir = tempdir().expect("Creating temporary directory should succeed");
-            fs_extra::copy_items(&[&self.output_dir], temp_dir.path(), &CopyOptions::new())
-                .unwrap();
-            temp_dir
-        })
+    fn backup(&self) -> anyhow::Result<Option<TempDir>> {
+        if !self.output_dir.is_dir() {
+            return Ok(None);
+        }
+
+        let temp_dir = tempdir().context("Failed to create temporary backup directory")?;
+        fs_extra::copy_items(&[&self.output_dir], temp_dir.path(), &CopyOptions::new())
+            .with_context(|| {
+                format!(
+                    "Failed to back up benchmark directory '{}'",
+                    self.output_dir.display()
+                )
+            })?;
+        Ok(Some(temp_dir))
     }
 
-    fn restore(&self, temp_dir: Option<&TempDir>) {
-        self.clean_benchmark();
+    fn restore(&self, temp_dir: Option<&TempDir>) -> anyhow::Result<()> {
+        self.clean_benchmark()?;
 
         if let Some(temp_dir) = temp_dir {
             let from = temp_dir.path().join(self.output_dir.file_name().unwrap());
@@ -167,8 +186,15 @@ impl SystemTest {
                     .expect("Parent of benchmark directory should exist"),
                 &CopyOptions::new(),
             )
-            .expect("Restoring backup should succeed");
+            .with_context(|| {
+                format!(
+                    "Failed to restore benchmark directory '{}'",
+                    self.output_dir.display()
+                )
+            })?;
         }
+
+        Ok(())
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -181,7 +207,7 @@ impl SystemTest {
         tolerance: Option<f64>,
         setup: Option<&str>,
         teardown: Option<&str>,
-    ) -> CapturedOutput {
+    ) -> anyhow::Result<CapturedOutput> {
         let stdio = if is_capture {
             // SAFETY: Benchmarks are run serially
             unsafe {
@@ -196,31 +222,40 @@ impl SystemTest {
             Stdio::inherit
         };
 
-        let temp_dir = tempdir().expect(
-            "Creating a temporary directory for setup and teardown
-            should succeed",
-        );
+        let temp_dir =
+            tempdir().context("Failed to create a temporary directory for setup and teardown")?;
 
         if let Some(setup) = setup {
             let setup_path = temp_dir.path().join("setup");
 
-            std::fs::write(&setup_path, setup)
-                .expect("Preparing the file with the setup content should succeed");
+            std::fs::write(&setup_path, setup).with_context(|| {
+                format!("Failed to write setup script '{}'", setup_path.display())
+            })?;
 
             print_info("Running setup:");
             let status = Command::new("bash")
                 .args(["-ex"])
                 .arg(setup_path)
                 .status()
-                .expect("Spawning the setup process should succeed");
+                .context("Failed to spawn the setup process")?;
 
             assert!(status.success(), "Running setup failed with {status:?}");
         }
 
-        std::fs::create_dir_all(&self.home_dir)
-            .expect("Creating the gungraun home directory should succeed");
-        std::fs::write(self.home_dir.join(CONTINUE_FILE_NAME), &self.config_name)
-            .expect("Writing to the continue file should succeed");
+        std::fs::create_dir_all(&self.home_dir).with_context(|| {
+            format!(
+                "Failed to create gungraun home directory '{}'",
+                self.home_dir.display()
+            )
+        })?;
+        std::fs::write(self.home_dir.join(CONTINUE_FILE_NAME), &self.config_name).with_context(
+            || {
+                format!(
+                    "Failed to write continue file '{}'",
+                    self.home_dir.join(CONTINUE_FILE_NAME).display()
+                )
+            },
+        )?;
 
         let mut command = Command::new(env!("CARGO"));
         command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
@@ -253,27 +288,31 @@ impl SystemTest {
             .stderr(stdio())
             .stdout(stdio())
             .output()
-            .expect("Launching benchmark should succeed");
+            .with_context(|| format!("Failed to launch benchmark '{}'", self.config_name))?;
 
         if let Some(teardown) = teardown {
             let teardown_path = temp_dir.path().join("teardown");
-            std::fs::write(&teardown_path, teardown)
-                .expect("Preparing the file with the teardown content should succeed");
+            std::fs::write(&teardown_path, teardown).with_context(|| {
+                format!(
+                    "Failed to write teardown script '{}'",
+                    teardown_path.display()
+                )
+            })?;
 
             print_info("Running teardown:");
             let status = Command::new("bash")
                 .args(["-eux"])
                 .arg(teardown_path)
                 .status()
-                .expect("Spawning the teardown process should succeed");
+                .context("Failed to spawn the teardown process")?;
 
             assert!(status.success(), "Running teardown failed with {status:?}");
         }
 
-        CapturedOutput {
+        Ok(CapturedOutput {
             output,
             has_tolerance: tolerance.is_some(),
-        }
+        })
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -289,21 +328,31 @@ impl SystemTest {
         tolerance: Option<f64>,
         setup: Option<&str>,
         teardown: Option<&str>,
-    ) -> CapturedOutput {
+    ) -> anyhow::Result<CapturedOutput> {
         let mut template_string = String::new();
-        File::open(self.config_dir.join(template_path))
-            .with_context(|| format!("File should exist: '{}'", template_path.display()))
-            .unwrap()
+        let source_path = self.config_dir.join(template_path);
+        File::open(&source_path)
+            .with_context(|| format!("Failed to open template '{}'", source_path.display()))?
             .read_to_string(&mut template_string)
-            .expect("Reading to string should succeed");
+            .with_context(|| format!("Failed to read template '{}'", source_path.display()))?;
 
         let mut env = Environment::new();
         env.add_template(&self.bench_name, &template_string)
-            .unwrap();
-        let template = env.get_template(&self.bench_name).unwrap();
+            .with_context(|| format!("Failed to compile template '{}'", source_path.display()))?;
+        let template = env
+            .get_template(&self.bench_name)
+            .with_context(|| format!("Failed to load template '{}'", self.bench_name))?;
 
-        let dest = File::create(tests.get_template()).unwrap();
-        template.render_captured_to(template_data, dest).unwrap();
+        let destination = tests.get_template();
+        let dest = File::create(&destination).with_context(|| {
+            format!(
+                "Failed to create rendered template '{}'",
+                destination.display()
+            )
+        })?;
+        template
+            .render_captured_to(template_data, dest)
+            .with_context(|| format!("Failed to render template '{}'", source_path.display()))?;
 
         self.run_bench(
             cargo_args,
@@ -323,7 +372,7 @@ impl SystemTest {
         group: &Group,
         tests: &SystemTests,
         schema: &ScopedSchema<'_>,
-    ) {
+    ) -> anyhow::Result<()> {
         let target_triple = env!("GR_BUILD_TRIPLE");
 
         if !group.runs_on.as_ref().is_none_or(|(is_target, target)| {
@@ -337,10 +386,10 @@ impl SystemTest {
             .as_ref()
             .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
         {
-            return;
+            return Ok(());
         }
 
-        self.clean_benchmark();
+        self.clean_benchmark()?;
 
         let num_runs = group.runs.len();
         for (index, run) in group
@@ -361,7 +410,7 @@ impl SystemTest {
             .enumerate()
         {
             let max_tries = run.flaky.unwrap_or(0);
-            let backup_dir = if max_tries > 0 { self.backup() } else { None };
+            let backup_dir = if max_tries > 0 { self.backup()? } else { None };
 
             for tries in 0..=max_tries {
                 print_info(format!(
@@ -377,7 +426,9 @@ impl SystemTest {
                         "rmdirs is set: Removing directory '{}'",
                         r.display()
                     ));
-                    std::fs::remove_dir_all(r).unwrap();
+                    std::fs::remove_dir_all(r).with_context(|| {
+                        format!("Failed to remove rmdirs directory '{}'", r.display())
+                    })?;
                 }
 
                 if !run.cargo_args.is_empty() {
@@ -414,8 +465,8 @@ impl SystemTest {
                         run.tolerance,
                         run.setup.as_deref(),
                         run.teardown.as_deref(),
-                    );
-                    Self::reset_template(tests);
+                    )?;
+                    Self::reset_template(tests)?;
                     output
                 } else {
                     self.run_bench(
@@ -426,11 +477,11 @@ impl SystemTest {
                         run.tolerance,
                         run.setup.as_deref(),
                         run.teardown.as_deref(),
-                    )
+                    )?
                 };
 
                 if tries < max_tries {
-                    if panic::catch_unwind(AssertUnwindSafe(|| {
+                    let result = panic::catch_unwind(AssertUnwindSafe(|| {
                         run.assert(
                             &self.config_dir,
                             tests.is_coverage_run,
@@ -439,19 +490,18 @@ impl SystemTest {
                             &self.home_dir,
                             &self.bench_name,
                             group.expected.as_ref(),
-                        );
-                    }))
-                    .is_ok()
-                    {
+                        )
+                    }));
+                    if let Ok(result) = result {
+                        result?;
                         break;
                     }
-
                     print_info(format!(
                         "Flaky test: Re-running {}: ({}/{max_tries})",
                         self.config_name,
                         tries + 1,
                     ));
-                    self.restore(backup_dir.as_ref());
+                    self.restore(backup_dir.as_ref())?;
                 } else {
                     run.assert(
                         &self.config_dir,
@@ -461,17 +511,22 @@ impl SystemTest {
                         &self.home_dir,
                         &self.bench_name,
                         group.expected.as_ref(),
-                    );
+                    )?;
                 }
             }
 
             drop(backup_dir);
         }
+
+        Ok(())
     }
 
-    fn reset_template(tests: &SystemTests) {
-        let mut file = File::create(tests.get_template()).unwrap();
-        file.write_all(TEMPLATE_CONTENT.as_bytes()).unwrap();
+    fn reset_template(tests: &SystemTests) -> anyhow::Result<()> {
+        let path = tests.get_template();
+        let mut file = File::create(&path)
+            .with_context(|| format!("Failed to reset template '{}'", path.display()))?;
+        file.write_all(TEMPLATE_CONTENT.as_bytes())
+            .with_context(|| format!("Failed to write reset template '{}'", path.display()))
     }
 }
 
@@ -481,14 +536,13 @@ impl SystemTestRunner {
         filter: Option<&str>,
         partition: Option<Partition>,
         resume: bool,
-    ) -> Self {
-        Self {
-            tests: SystemTests::new(benches, filter, partition, resume),
-        }
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            tests: SystemTests::new(benches, filter, partition, resume)?,
+        })
     }
 
-    #[expect(clippy::unnecessary_wraps)]
-    pub(super) fn run(&self) -> Result<(), String> {
+    pub(super) fn run(&self) -> anyhow::Result<()> {
         // We need the `summary.json` files to verify that not all costs are zero. Extracting this
         // info from the summary is much easier than doing it from the output.
         // SAFETY: Benchmarks are run serially
@@ -509,25 +563,36 @@ impl SystemTestRunner {
                 .workspace_root
                 .join(SCHEMA_PATH)
                 .join(format!("summary.v{SCHEMA_VERSION}.schema.json")),
-        );
+        )?;
         let mut scope = json_schema::Scope::new();
-        let compiled = scope.compile_and_return(schema, false).unwrap();
+        let compiled = scope
+            .compile_and_return(schema, false)
+            .map_err(|error| anyhow!("Failed to compile summary schema: {error:?}"))?;
 
-        build_gungraun_runner();
+        build_gungraun_runner()?;
 
         for test in &self.tests.cases {
             let num_groups = test.config.groups.len();
             for (index, group) in test.config.groups.iter().enumerate() {
-                test.run(num_groups, index, group, &self.tests, &compiled);
+                test.run(num_groups, index, group, &self.tests, &compiled)?;
             }
         }
 
-        let _ = std::fs::remove_file(
-            self.tests
-                .target_directory
-                .join("gungraun")
-                .join(CONTINUE_FILE_NAME),
-        );
+        let continue_path = self
+            .tests
+            .target_directory
+            .join("gungraun")
+            .join(CONTINUE_FILE_NAME);
+        if let Err(error) = std::fs::remove_file(&continue_path) {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                return Err(error).with_context(|| {
+                    format!(
+                        "Failed to remove continue file '{}'",
+                        continue_path.display()
+                    )
+                });
+            }
+        }
 
         Ok(())
     }
@@ -539,20 +604,24 @@ impl SystemTests {
         filter: Option<&str>,
         partition: Option<Partition>,
         resume: bool,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let meta = cargo_metadata::MetadataCommand::new()
             .no_deps()
             .exec()
-            .unwrap();
+            .context("Failed to read cargo metadata")?;
 
         let package_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let benches_dir = package_dir.join("benches");
         let workspace_root = meta.workspace_root.clone().into_std_path_buf();
         let target_directory = meta.target_directory.into_std_path_buf();
 
-        let mut cases = glob(&format!("{}/**/*.conf.yml", benches_dir.display()))
-            .unwrap()
-            .map(Result::unwrap)
+        let config_pattern = format!("{}/**/*.conf.yml", benches_dir.display());
+        let config_paths = glob(&config_pattern)
+            .with_context(|| format!("Failed to compile benchmark glob '{config_pattern}'"))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .with_context(|| format!("Failed to discover benchmarks with '{config_pattern}'"))?;
+        let mut cases = config_paths
+            .into_iter()
             .filter(|path| {
                 let file_name = path.file_name().unwrap().to_string_lossy();
                 let name = &file_name.strip_suffix(".conf.yml").unwrap().to_owned();
@@ -565,16 +634,19 @@ impl SystemTests {
                 }
             })
             .map(|config_path| SystemTest::new(&config_path, &package_dir, &target_directory))
-            .collect::<Vec<SystemTest>>();
+            .collect::<anyhow::Result<Vec<SystemTest>>>()?;
 
         cases.sort_by_key(|b| b.config_name.clone());
         if let Some(partition) = partition {
+            if cases.is_empty() {
+                bail!("The partition did not match any benchmarks");
+            }
             let chunk_size = cases.len().div_ceil(partition.total);
             let chunk = cases
                 .chunks(chunk_size)
                 .nth(partition.part - 1)
                 .map(<[SystemTest]>::to_vec);
-            cases = chunk.expect("The partition should map to a chunk of all benchmarks");
+            cases = chunk.ok_or_else(|| anyhow!("The partition did not match any benchmarks"))?;
         }
 
         // We do not check the exact command, so it is possible to resume at any point. The only
@@ -582,14 +654,14 @@ impl SystemTests {
         if resume {
             let test =
                 std::fs::read_to_string(target_directory.join("gungraun").join(CONTINUE_FILE_NAME))
-                    .expect("The continue file should exist");
+                    .context("Failed to read the continue file")?;
             let test = test.trim();
             print_info(format!("Continue with {test}"));
 
             let index = cases
                 .iter()
                 .position(|b| b.config_name == test)
-                .unwrap_or_else(|| panic!("Benchmark '{test}' from continue file was not found"));
+                .ok_or_else(|| anyhow!("Benchmark '{test}' from continue file was not found"))?;
 
             cases.drain(..index);
         }
@@ -599,16 +671,17 @@ impl SystemTests {
             println!("  {}", b.config_name);
         }
 
-        let rust_version = get_rust_version().expect("Rust version should be present");
+        let rust_version =
+            get_rust_version().ok_or_else(|| anyhow!("Failed to determine Rust version"))?;
 
-        Self {
+        Ok(Self {
             workspace_root,
             target_directory,
             cases,
             benches_dir,
             rust_version,
             is_coverage_run: std::env::var(CARGO_LLVM_COV).is_ok_and(|v| v == "1"),
-        }
+        })
     }
 
     fn get_template(&self) -> PathBuf {
@@ -637,11 +710,14 @@ impl SystemTests {
     }
 }
 
-fn build_gungraun_runner() {
+fn build_gungraun_runner() -> anyhow::Result<()> {
     print_info("Building gungraun-runner");
     let status = Command::new(env!("CARGO"))
         .args(["build", "--package", "gungraun-runner", "--release"])
         .status()
-        .unwrap();
-    assert!(status.success());
+        .context("Failed to spawn gungraun-runner build")?;
+    if !status.success() {
+        bail!("Building gungraun-runner failed with {status}");
+    }
+    Ok(())
 }

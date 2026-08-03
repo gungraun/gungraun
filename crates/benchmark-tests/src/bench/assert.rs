@@ -23,13 +23,17 @@ impl super::config::CapturedOutput {
         is_coverage_run: bool,
         expected: &RunExpectations,
         target_triple: &str,
-    ) {
+    ) -> anyhow::Result<()> {
         let output = &self.output;
 
         print_info("STDERR:");
-        stderr().write_all(&output.stderr).unwrap();
+        stderr()
+            .write_all(&output.stderr)
+            .context("Failed to write captured stderr")?;
         print_info("STDOUT:");
-        stdout().write_all(&output.stdout).unwrap();
+        stdout()
+            .write_all(&output.stdout)
+            .context("Failed to write captured stdout")?;
 
         if expected.no_stderr {
             let filtered = Self::filter_stderr(&output.stderr);
@@ -54,10 +58,9 @@ impl super::config::CapturedOutput {
         {
             let mut expected_stderr: Vec<u8> = Vec::new();
             File::open(config_dir.join(stderr))
-                .with_context(|| format!("File should exist: '{}'", stderr.display()))
-                .unwrap()
+                .with_context(|| format!("File should exist: '{}'", stderr.display()))?
                 .read_to_end(&mut expected_stderr)
-                .expect("Reading file should succeed");
+                .with_context(|| format!("Failed to read '{}'", stderr.display()))?;
 
             let filtered = Self::filter_stderr(&output.stderr);
             let expected_string: String = String::from_utf8_lossy(&expected_stderr).into();
@@ -75,9 +78,13 @@ impl super::config::CapturedOutput {
                     );
 
                     File::create(config_dir.join(stderr))
-                        .expect("Opening expected stderr for writing should succeed")
+                        .with_context(|| {
+                            format!("Failed to create expected stderr '{}'", stderr.display())
+                        })?
                         .write_all(filtered.as_bytes())
-                        .expect("Writing to expected stderr should succeed");
+                        .with_context(|| {
+                            format!("Failed to write expected stderr '{}'", stderr.display())
+                        })?;
 
                     print_info(format!(
                         "Overwriting stderr '{}' successful",
@@ -124,10 +131,9 @@ impl super::config::CapturedOutput {
         {
             let mut expected_stdout: Vec<u8> = Vec::new();
             File::open(config_dir.join(stdout))
-                .with_context(|| format!("File should exist: '{}'", stdout.display()))
-                .unwrap()
+                .with_context(|| format!("File should exist: '{}'", stdout.display()))?
                 .read_to_end(&mut expected_stdout)
-                .expect("Reading file should succeed");
+                .with_context(|| format!("Failed to read '{}'", stdout.display()))?;
 
             let mut filtered = self.filter_stdout(&output.stdout);
             let mut expected_string = String::from_utf8_lossy(&expected_stdout).into_owned();
@@ -145,10 +151,13 @@ impl super::config::CapturedOutput {
                     );
 
                     File::create(config_dir.join(stdout))
-                        .with_context(|| format!("File: '{}'", stdout.display()))
-                        .expect("Opening expected stdout for writing should succeed")
+                        .with_context(|| {
+                            format!("Failed to create expected stdout '{}'", stdout.display())
+                        })?
                         .write_all(filtered.as_bytes())
-                        .expect("Writing to expected stdout should succeed");
+                        .with_context(|| {
+                            format!("Failed to write expected stdout '{}'", stdout.display())
+                        })?;
 
                     print_info(format!(
                         "Overwriting stdout '{}' successful",
@@ -174,6 +183,8 @@ impl super::config::CapturedOutput {
         } else {
             // do nothing
         }
+
+        Ok(())
     }
 
     pub(super) fn assert_exit(&self, exit_code: Option<i32>) {
@@ -213,7 +224,7 @@ impl super::config::Run {
         home_dir: &Path,
         bench_name: &str,
         group_expectations: Option<&GroupExpectations>,
-    ) {
+    ) -> anyhow::Result<()> {
         let target_triple = env!("GR_BUILD_TRIPLE");
         let expected = self
             .expected
@@ -228,7 +239,7 @@ impl super::config::Run {
                 || expected.no_stderr
                 || !expected.stderr_contains.resolve(target_triple).is_empty()
             {
-                output.assert(config_dir, is_coverage_run, expected, target_triple);
+                output.assert(config_dir, is_coverage_run, expected, target_triple)?;
             }
             output.assert_exit(
                 expected
@@ -245,22 +256,25 @@ impl super::config::Run {
                 },
                 |s| s.resolve(target_triple),
             ) {
-                let temp_dir = tempdir().expect(
-                    "Creating a temporary directory for the assertion script should succeed",
-                );
+                let temp_dir = tempdir()
+                    .context("Failed to create a temporary directory for the assertion script")?;
 
                 let output_dir = home_dir.join(PACKAGE).join(bench_name);
                 let assert_path = temp_dir.path().join("assert");
 
-                std::fs::write(&assert_path, script)
-                    .expect("Preparing the file with the script content should succeed");
+                std::fs::write(&assert_path, script).with_context(|| {
+                    format!(
+                        "Failed to write assertion script '{}'",
+                        assert_path.display()
+                    )
+                })?;
                 print_info("Running assertion script:");
                 let status = Command::new("bash")
                     .current_dir(output_dir)
                     .args(["-ex"])
                     .arg(assert_path)
                     .status()
-                    .expect("Spawning the assertion script should succeed");
+                    .context("Failed to spawn the assertion script")?;
 
                 assert!(
                     status.success(),
@@ -276,10 +290,9 @@ impl super::config::Run {
                 let manifest_path = config_dir.join(manifest);
 
                 let manifest_content = fs::read_to_string(&manifest_path)
-                    .with_context(|| format!("File should exist: '{}'", manifest.display()))
-                    .unwrap();
+                    .with_context(|| format!("Failed to read '{}'", manifest.display()))?;
                 let expected_files_manifest: ExpectedFilesManifest =
-                    deserialize_yaml_str(&manifest_content, &manifest_path);
+                    deserialize_yaml_str(&manifest_content, &manifest_path)?;
 
                 let output_dir = if let Some(home_dir) = &expected_files_manifest.home_dir {
                     home_dir.join(PACKAGE).join(bench_name)
@@ -293,8 +306,8 @@ impl super::config::Run {
                         &manifest_content,
                         &manifest.display().to_string(),
                         &manifest_path,
-                    );
-                    return;
+                    )?;
+                    return Ok(());
                 }
 
                 let mut dirs_by_group = HashMap::new();
@@ -314,7 +327,7 @@ impl super::config::Run {
                             .collect::<HashSet<PathBuf>>()
                         });
 
-                    let expected_dir = manifest_entry.assert(&output_dir, schema);
+                    let expected_dir = manifest_entry.assert(&output_dir, schema)?;
                     visited_dirs
                         .entry(manifest_entry.group)
                         .and_modify(|s: &mut HashSet<PathBuf>| {
@@ -379,10 +392,13 @@ impl super::config::Run {
                 .unwrap()
                 .map(Result::unwrap)
             {
-                let summary = Summary::new(&path).unwrap();
+                let summary = Summary::new(&path)
+                    .with_context(|| format!("Failed to read summary '{}'", path.display()))?;
                 summary.assert_costs_not_all_zero();
                 print_info("Verifying costs not all zero successful");
             }
         }
+
+        Ok(())
     }
 }

@@ -15,10 +15,10 @@ mod runner;
 
 use std::collections::HashMap;
 
-use io::print_error;
+use anyhow::{Context, anyhow, bail};
 use runner::{Partition, SystemTestRunner, TEMPLATE_DATA};
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     // The cli args:
     // positional arguments
     let mut benches = Vec::default();
@@ -33,35 +33,32 @@ fn main() {
         match arg.split_once('=') {
             Some(("--filter", value)) => filter = Some(value.to_owned()),
             Some(("--partition", value)) => {
-                if let Some((part_str, total_str)) = value.split_once('/') {
-                    let part = part_str
-                        .parse::<usize>()
-                        .expect("The partition nominator should be a valid number");
-                    let total = total_str
-                        .parse::<usize>()
-                        .expect("The partition nominator should be a valid number");
+                let (part_str, total_str) = value
+                    .split_once('/')
+                    .ok_or_else(|| anyhow!("Invalid partition: {value}"))?;
+                let part = part_str
+                    .parse::<usize>()
+                    .with_context(|| format!("Invalid partition part: {part_str}"))?;
+                let total = total_str
+                    .parse::<usize>()
+                    .with_context(|| format!("Invalid partition total: {total_str}"))?;
 
-                    assert!(
-                        total > 0,
-                        "The total or a partition should be greater than zero"
-                    );
-                    assert!(
-                        part > 0 && part <= total,
-                        "The part of a partition should be within bounds: 0 < x <= total"
-                    );
-
-                    partition = Some(Partition { part, total });
-                } else {
-                    panic!("Invalid partition: {value}");
+                if total == 0 {
+                    bail!("The total of a partition should be greater than zero");
                 }
+                if part == 0 || part > total {
+                    bail!("The part of a partition should be within bounds: 0 < x <= total");
+                }
+
+                partition = Some(Partition { part, total });
             }
-            Some(_) => panic!("Invalid argument: {arg}"),
+            Some(_) => bail!("Invalid argument: {arg}"),
             None if arg == "--continue" => resume = true,
             None => benches.push(arg),
         }
     }
 
-    let runner = SystemTestRunner::new(&benches, filter.as_deref(), partition, resume);
+    let runner = SystemTestRunner::new(&benches, filter.as_deref(), partition, resume)?;
 
     let mut map = HashMap::new();
     map.insert(
@@ -76,11 +73,12 @@ fn main() {
         ),
     );
 
-    TEMPLATE_DATA.set(map).unwrap();
+    TEMPLATE_DATA
+        .set(map)
+        .map_err(|_| anyhow!("Failed to initialize template data"))?;
 
-    if let Err(error) = runner.run() {
-        print_error(error);
-    }
+    runner.run()?;
+    Ok(())
 }
 
 #[cfg(test)]

@@ -100,7 +100,7 @@ impl ExpectedFilesManifest {
         old_manifest_content: &str,
         manifest: &str,
         manifest_path: &Path,
-    ) {
+    ) -> anyhow::Result<()> {
         let discovered_files = glob(&format!("{}/**/*", output_dir.display()))
             .unwrap()
             .map(Result::unwrap)
@@ -202,7 +202,7 @@ impl ExpectedFilesManifest {
             home_dir: self.home_dir,
         };
 
-        serialize_yaml(manifest_path, &updated_manifest);
+        serialize_yaml(manifest_path, &updated_manifest)?;
 
         let status = std::process::Command::new("npx")
             .args(["-y", "prettier", "-w"])
@@ -211,8 +211,7 @@ impl ExpectedFilesManifest {
             .status();
 
         let new_manifest_content = fs::read_to_string(manifest_path)
-            .with_context(|| format!("File should exists: '{}'", manifest_path.display()))
-            .expect("Reading new manifest to string should succeed");
+            .with_context(|| format!("Failed to read '{}'", manifest_path.display()))?;
 
         if old_manifest_content == new_manifest_content {
             if status.is_ok_and(|s| s.success()) {
@@ -246,6 +245,8 @@ impl ExpectedFilesManifest {
                 );
             }
         }
+
+        Ok(())
     }
 }
 
@@ -269,7 +270,11 @@ impl ExpectedFilesManifestEntry {
         }
     }
 
-    pub(super) fn assert(&self, output_dir: &Path, schema: &ScopedSchema) -> PathBuf {
+    pub(super) fn assert(
+        &self,
+        output_dir: &Path,
+        schema: &ScopedSchema,
+    ) -> anyhow::Result<PathBuf> {
         let expected_dir = self.expected_dir(output_dir);
 
         print_info(format!(
@@ -336,7 +341,7 @@ impl ExpectedFilesManifestEntry {
 
         if let Some(summary) = summary {
             print_info(format!("Validating summary '{}'", summary.display()));
-            let value: serde_json::Value = deserialize_json(&summary);
+            let value: serde_json::Value = deserialize_json(&summary)?;
 
             let result = schema.validate(&value);
             if !result.is_valid() {
@@ -358,6 +363,6 @@ impl ExpectedFilesManifestEntry {
             discovered_files
         );
 
-        expected_dir
+        Ok(expected_dir)
     }
 }

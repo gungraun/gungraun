@@ -1,3 +1,32 @@
+macro_rules! targeted_enum {
+    (
+        $name:ident {
+            $(
+                $(#[$variant_attribute:meta])*
+                $variant:ident($binding:ident: $value:ty) => $resolved:expr
+            ),+ $(,)?
+        }
+        resolve($target_triple:ident) -> $resolved_type:ty
+    ) => {
+        #[derive(Debug, Serialize, Deserialize, Clone)]
+        #[serde(untagged)]
+        pub(super) enum $name {
+            $(
+                $(#[$variant_attribute])*
+                $variant($value),
+            )+
+        }
+
+        impl $name {
+            pub(super) fn resolve(&self, $target_triple: &str) -> $resolved_type {
+                match self {
+                    $(Self::$variant($binding) => $resolved,)+
+                }
+            }
+        }
+    };
+}
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Output;
@@ -7,49 +36,68 @@ use serde::{Deserialize, Serialize};
 
 pub(super) const PACKAGE: &str = "benchmark-tests";
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub(super) enum TargetedI32 {
-    /// Backward-compatible scalar path
-    Scalar(i32),
-    /// Per-target mapping; `default` is the fallback key
-    Targets(HashMap<String, Option<i32>>),
+targeted_enum! {
+    TargetedI32 {
+        /// Backward-compatible scalar path
+        Scalar(scalar: i32) => Some(*scalar),
+        /// Per-target mapping; `default` is the fallback key
+        Targets(map: HashMap<String, Option<i32>>) => map
+            .get(target_triple)
+            .or_else(|| map.get("default"))
+            .and_then(|p| *p),
+    }
+    resolve(target_triple) -> Option<i32>
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub(super) enum TargetedPath {
-    /// Backward-compatible scalar path
-    Scalar(PathBuf),
-    /// Per-target mapping; `default` is the fallback key
-    Targets(HashMap<String, PathBuf>),
+targeted_enum! {
+    TargetedPath {
+        /// Backward-compatible scalar path
+        Scalar(path: PathBuf) => Some(path.as_path()),
+        /// Per-target mapping; `default` is the fallback key
+        Targets(map: HashMap<String, PathBuf>) => map
+            .get(target_triple)
+            .or_else(|| map.get("default"))
+            .map(PathBuf::as_path),
+    }
+    resolve(target_triple) -> Option<&Path>
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub(super) enum TargetedRunExpectations {
-    /// Per-target mapping; `default` is the fallback key
-    Targets(HashMap<String, RunExpectations>),
-    /// Backward-compatible scalar path
-    Scalar(Box<RunExpectations>),
+targeted_enum! {
+    TargetedRunExpectations {
+        /// Per-target mapping; `default` is the fallback key
+        Targets(map: HashMap<String, RunExpectations>) => {
+            map.get(target_triple).or_else(|| map.get("default"))
+        },
+        /// Backward-compatible scalar path
+        Scalar(config: Box<RunExpectations>) => Some(config),
+    }
+    resolve(target_triple) -> Option<&RunExpectations>
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub(super) enum TargetedString {
-    /// Backward-compatible scalar path
-    Scalar(String),
-    /// Per-target mapping; `default` is the fallback key
-    Targets(HashMap<String, Option<String>>),
+targeted_enum! {
+    TargetedString {
+        /// Backward-compatible scalar path
+        Scalar(string: String) => Some(string.as_str()),
+        /// Per-target mapping; `default` is the fallback key
+        Targets(map: HashMap<String, Option<String>>) => map
+            .get(target_triple)
+            .or_else(|| map.get("default"))
+            .and_then(|p| p.as_deref()),
+    }
+    resolve(target_triple) -> Option<&str>
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub(super) enum TargetedStrings {
-    /// Backward-compatible scalar path
-    Scalar(Vec<String>),
-    /// Per-target mapping; `default` is the fallback key
-    Targets(HashMap<String, Vec<String>>),
+targeted_enum! {
+    TargetedStrings {
+        /// Backward-compatible scalar path
+        Scalar(strings: Vec<String>) => strings.as_slice(),
+        /// Per-target mapping; `default` is the fallback key
+        Targets(map: HashMap<String, Vec<String>>) => map
+            .get(target_triple)
+            .or_else(|| map.get("default"))
+            .map_or_else(|| &[], Vec::as_slice),
+    }
+    resolve(target_triple) -> &[String]
 }
 
 /// Captured result of one cargo bench invocation.
@@ -262,63 +310,6 @@ pub(super) struct SystemTestConfig {
     ///
     /// Example: `templates/tool_bench.rs.j2`.
     pub(super) template: Option<PathBuf>,
-}
-
-impl TargetedI32 {
-    pub(super) fn resolve(&self, target_triple: &str) -> Option<i32> {
-        match self {
-            Self::Scalar(scalar) => Some(*scalar),
-            Self::Targets(map) => map
-                .get(target_triple)
-                .or_else(|| map.get("default"))
-                .and_then(|p| *p),
-        }
-    }
-}
-
-impl TargetedPath {
-    pub(super) fn resolve(&self, target_triple: &str) -> Option<&Path> {
-        match self {
-            Self::Scalar(path) => Some(path.as_path()),
-            Self::Targets(map) => map
-                .get(target_triple)
-                .or_else(|| map.get("default"))
-                .map(PathBuf::as_path),
-        }
-    }
-}
-
-impl TargetedRunExpectations {
-    pub(super) fn resolve(&self, target_triple: &str) -> Option<&RunExpectations> {
-        match self {
-            Self::Scalar(config) => Some(config),
-            Self::Targets(map) => map.get(target_triple).or_else(|| map.get("default")),
-        }
-    }
-}
-
-impl TargetedString {
-    pub(super) fn resolve(&self, target_triple: &str) -> Option<&str> {
-        match self {
-            Self::Scalar(string) => Some(string.as_str()),
-            Self::Targets(map) => map
-                .get(target_triple)
-                .or_else(|| map.get("default"))
-                .and_then(|p| p.as_deref()),
-        }
-    }
-}
-
-impl TargetedStrings {
-    pub(super) fn resolve(&self, target_triple: &str) -> &[String] {
-        match self {
-            Self::Scalar(strings) => strings.as_slice(),
-            Self::Targets(map) => map
-                .get(target_triple)
-                .or_else(|| map.get("default"))
-                .map_or_else(|| &[], Vec::as_slice),
-        }
-    }
 }
 
 impl Default for TargetedStrings {

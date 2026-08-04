@@ -15,18 +15,17 @@ use tempfile::{TempDir, tempdir};
 use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
-pub(super) use super::config::Partition;
 use super::config::{CapturedOutput, Group, PACKAGE, SystemTestConfig};
 use super::expected_files::SCHEMA_VERSION;
-pub(super) use super::expected_files::TEMPLATE_DATA;
 use super::io::{deserialize_json, deserialize_yaml, get_rust_version, print_info};
+use crate::config::Partition;
+use crate::expected_files::{SCHEMA_PATH, TEMPLATE_DATA};
 
 const TEMPLATE_BENCH_NAME: &str = "test_bench_template";
 const TEMPLATE_CONTENT: &str = r#"fn main() {
     panic!("should be replaced by a rendered template");
 }
 "#;
-const SCHEMA_PATH: &str = "crates/gungraun-summary/schemas";
 const CONTINUE_FILE_NAME: &str = "benchmark-tests.continue";
 const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
 
@@ -66,19 +65,19 @@ struct SystemTest {
 ///
 /// Owns the metadata used by `bench --filter='test_lib_*'`.
 #[derive(Debug)]
-pub(super) struct SystemTestRunner {
+pub struct SystemTestRunner {
     /// Resolved workspace, target directory, compiler, and selected benchmark list.
     ///
     /// Contains only the selected benchmarks when `--partition`, `--filter` or `--continue` is
     /// used.
-    pub(super) tests: SystemTests,
+    tests: SystemTests,
 }
 
 #[derive(Debug, Clone)]
 /// Selected system tests and shared execution metadata.
 ///
 /// Example: produced once from cargo metadata before running benchmark tests.
-pub(super) struct SystemTests {
+struct SystemTests {
     /// Path to the `crates/benchmark-tests/benches` directory.
     ///
     /// Example: used to write `test_bench_template.rs`.
@@ -100,7 +99,7 @@ pub(super) struct SystemTests {
     /// Cargo target directory from cargo metadata.
     ///
     /// Example: `target` or a custom `CARGO_TARGET_DIR`.
-    pub(super) target_directory: PathBuf,
+    target_directory: PathBuf,
     /// Cargo workspace root.
     ///
     /// Example: repository root containing `Cargo.toml`.
@@ -531,18 +530,34 @@ impl SystemTest {
 }
 
 impl SystemTestRunner {
-    pub(super) fn new(
+    pub fn new(
         benches: &[String],
         filter: Option<&str>,
         partition: Option<Partition>,
         resume: bool,
     ) -> anyhow::Result<Self> {
-        Ok(Self {
-            tests: SystemTests::new(benches, filter, partition, resume)?,
-        })
+        let tests = SystemTests::new(benches, filter, partition, resume)?;
+
+        let mut map = HashMap::new();
+        map.insert(
+            "target_dir_sanitized".to_owned(),
+            minijinja::Value::from_serialize(
+                tests
+                    .target_directory
+                    .display()
+                    .to_string()
+                    .replace('/', "_"),
+            ),
+        );
+
+        TEMPLATE_DATA
+            .set(map)
+            .map_err(|_| anyhow!("Failed to initialize template data"))?;
+
+        Ok(Self { tests })
     }
 
-    pub(super) fn run(&self) -> anyhow::Result<()> {
+    pub fn run(&self) -> anyhow::Result<()> {
         // We need the `summary.json` files to verify that not all costs are zero. Extracting this
         // info from the summary is much easier than doing it from the output.
         // SAFETY: Benchmarks are run serially

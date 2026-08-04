@@ -54,7 +54,7 @@ workspace = true
 
 [[bin]]
 name = "bench"
-path = "src/bench.rs"
+path = "src/bench/main.rs"
 
 [[bin]]
 name = "bench-bin-fake"

@@ -17,7 +17,7 @@ use super::expected_files::ExpectedFilesManifest;
 use super::io::{deserialize_yaml_str, print_info};
 
 impl super::config::CapturedOutput {
-    pub(super) fn assert(
+    pub fn assert(
         &self,
         config_dir: &Path,
         is_coverage_run: bool,
@@ -187,7 +187,7 @@ impl super::config::CapturedOutput {
         Ok(())
     }
 
-    pub(super) fn assert_exit(&self, exit_code: Option<i32>) {
+    pub fn assert_exit(&self, exit_code: Option<i32>) {
         match exit_code {
             Some(expected) => match self.output.status.code() {
                 Some(actual) => {
@@ -215,7 +215,7 @@ impl super::config::CapturedOutput {
 
 impl super::config::Run {
     #[expect(clippy::too_many_arguments)]
-    pub(super) fn assert(
+    pub fn assert(
         &self,
         config_dir: &Path,
         is_coverage_run: bool,

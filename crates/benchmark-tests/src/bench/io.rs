@@ -7,7 +7,7 @@ use rustc_version::VersionMeta;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-pub(super) fn deserialize_json<T>(path: &Path) -> Result<T>
+pub fn deserialize_json<T>(path: &Path) -> Result<T>
 where
     T: DeserializeOwned,
 {
@@ -16,7 +16,7 @@ where
         .with_context(|| format!("Failed to deserialize '{}'", path.display()))
 }
 
-pub(super) fn deserialize_yaml<T>(path: &Path) -> Result<T>
+pub fn deserialize_yaml<T>(path: &Path) -> Result<T>
 where
     T: DeserializeOwned,
 {
@@ -25,7 +25,7 @@ where
         .with_context(|| format!("Failed to deserialize '{}'", path.display()))
 }
 
-pub(super) fn deserialize_yaml_str<T>(string: &str, path: &Path) -> Result<T>
+pub fn deserialize_yaml_str<T>(string: &str, path: &Path) -> Result<T>
 where
     T: DeserializeOwned,
 {
@@ -33,11 +33,11 @@ where
         .with_context(|| format!("Failed to deserialize '{}'", path.display()))
 }
 
-pub(super) fn get_rust_version() -> Option<VersionMeta> {
+pub fn get_rust_version() -> Option<VersionMeta> {
     rustc_version::version_meta().ok()
 }
 
-pub(super) fn print_error<T>(message: T)
+pub fn print_error<T>(message: T)
 where
     T: AsRef<str>,
 {
@@ -49,14 +49,14 @@ where
     );
 }
 
-pub(super) fn print_info<T>(message: T)
+pub fn print_info<T>(message: T)
 where
     T: AsRef<str>,
 {
     eprintln!("{}: {}", "bench".purple().bold(), message.as_ref());
 }
 
-pub(super) fn serialize_yaml<T>(path: &Path, data: &T) -> Result<()>
+pub fn serialize_yaml<T>(path: &Path, data: &T) -> Result<()>
 where
     T: Serialize,
 {

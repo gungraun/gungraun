@@ -1,7 +1,7 @@
 gungraun_runner: Error: Misconfiguration in: test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat
 Caused by:
   Invalid limits for dhat: Invalid hard limit for 'TotalBytes/SingleMetric(TotalBytes)': Expected a 'Int' but found 'Float(5.0)'
-error: bench failed, to rerun pass `-p benchmark-tests --bench test_bench_template`
+error: bench failed, to rerun pass `-p gungraun-tests --bench test_bench_template`
 
 Caused by:
   process didn't exit successfully: `<__PATH__>` (exit status: 1)

@@ -23,14 +23,14 @@ crates/gungraun-summary/
 
 ## Where To Look
 
-| Task                | Location         | Notes                                                                         |
-| ------------------- | ---------------- | ----------------------------------------------------------------------------- |
-| Versioned types     | `src/v6.rs`      | Re-exports from `gungraun-runner::summary::model`, `metrics::model`, `api`    |
-| Version-aware parse | `src/util.rs`    | `SummaryByVersion`, `Version`, `parse` / `parse_slice`                        |
-| Schema generation   | `src/main.rs`    | Uses `schemars::SchemaSettings::draft07()`; writes `summary.schema.json`      |
-| Generated schemas   | `schemas/`       | One file per schema version; v6 is current                                    |
-| Schema recipes      | `../../Justfile` | `schema-gen`, `schema-gen-diff`, `schema-gen-move`                            |
-| Compatibility tests | `tests/main.rs`  | Smoke deserializes fixture; benchmark-tests also assert on `BenchmarkSummary` |
+| Task                | Location         | Notes                                                                        |
+| ------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| Versioned types     | `src/v6.rs`      | Re-exports from `gungraun-runner::summary::model`, `metrics::model`, `api`   |
+| Version-aware parse | `src/util.rs`    | `SummaryByVersion`, `Version`, `parse` / `parse_slice`                       |
+| Schema generation   | `src/main.rs`    | Uses `schemars::SchemaSettings::draft07()`; writes `summary.schema.json`     |
+| Generated schemas   | `schemas/`       | One file per schema version; v6 is current                                   |
+| Schema recipes      | `../../Justfile` | `schema-gen`, `schema-gen-diff`, `schema-gen-move`                           |
+| Compatibility tests | `tests/main.rs`  | Smoke deserializes fixture; gungraun-tests also assert on `BenchmarkSummary` |
 
 ## Conventions
 

@@ -1,9 +1,9 @@
 use std::hint::black_box;
 use std::time::Duration;
 
-use benchmark_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 use gungraun::prelude::*;
 use gungraun::{Callgrind, Perf, PerfRunMode, Tool, perf_disable, perf_enable, perf_log};
+use gungraun_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 
 fn print_debug<T>(input: T) -> usize
 where

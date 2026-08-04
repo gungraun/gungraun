@@ -64,11 +64,11 @@ pub struct Version {
 impl Fixtures {
     pub fn get_path() -> PathBuf {
         let root = get_project_root();
-        if root.ends_with("benchmark-tests") {
+        if root.ends_with("gungraun-tests") {
             root.join("crates").join(FIXTURES_ROOT)
         } else {
             root.join("crates")
-                .join("benchmark-tests")
+                .join("gungraun-tests")
                 .join(FIXTURES_ROOT)
         }
     }

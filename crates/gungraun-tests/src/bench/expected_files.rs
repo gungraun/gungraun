@@ -93,7 +93,7 @@ impl ExpectedFilesManifest {
     /// Regenerates an expected-files manifest from a benchmark's current output files.
     ///
     /// `output_dir` is the benchmark output root, such as
-    /// `<target-dir>/gungraun/benchmark-tests/test_...`. `manifest` is the manifest path relative
+    /// `<target-dir>/gungraun/gungraun-tests/test_...`. `manifest` is the manifest path relative
     /// to the system-test directory as given in the system test configuration file, and
     /// `manifest_path` is the absolute path to the manifest file to replace.
     ///

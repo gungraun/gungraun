@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::hint::black_box;
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use gungraun::prelude::*;
 use gungraun::{
     Cachegrind, CachegrindMetric, CachegrindMetrics, Callgrind, CallgrindMetrics, Dhat, DhatMetric,
     Drd, ErrorMetric, EventKind, Helgrind, Memcheck, OutputFormat, Tool,
 };
+use gungraun_tests::{bubble_sort, setup_worst_case_array};
 
 fn make_hashmap(num: usize) -> HashMap<String, usize> {
     (0..num).fold(HashMap::new(), |mut acc, e| {

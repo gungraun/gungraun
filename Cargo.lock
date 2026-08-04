@@ -142,37 +142,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
-name = "benchmark-tests"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bon",
- "cargo_metadata",
- "colored",
- "either-or-both",
- "fs_extra",
- "glob",
- "gungraun",
- "gungraun-runner",
- "indexmap",
- "minijinja",
- "nix",
- "once_cell",
- "pretty_assertions",
- "regex",
- "rstest",
- "rustc_version",
- "serde",
- "serde_json",
- "serde_yaml",
- "signal-hook",
- "simplematch",
- "tempfile",
- "valico",
- "version-compare",
-]
-
-[[package]]
 name = "bincode-next"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -957,6 +926,37 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.19",
+]
+
+[[package]]
+name = "gungraun-tests"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bon",
+ "cargo_metadata",
+ "colored",
+ "either-or-both",
+ "fs_extra",
+ "glob",
+ "gungraun",
+ "gungraun-runner",
+ "indexmap",
+ "minijinja",
+ "nix",
+ "once_cell",
+ "pretty_assertions",
+ "regex",
+ "rstest",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "signal-hook",
+ "simplematch",
+ "tempfile",
+ "valico",
+ "version-compare",
 ]
 
 [[package]]

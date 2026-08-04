@@ -6,7 +6,7 @@ use rstest::rstest;
 use crate::util::common::{Fixtures, get_project_root};
 
 #[rstest]
-#[case::when_entry_point("when_entry_point", Some(Sentinel::new("benchmark_tests_exit::main")))]
+#[case::when_entry_point("when_entry_point", Some(Sentinel::new("gungraun_tests_exit::main")))]
 #[case::no_entry_point("no_entry_point", None)]
 fn test_flamegraph_parser(#[case] name: &str, #[case] sentinel: Option<Sentinel>) {
     use gungraun_runner::api::Tool;

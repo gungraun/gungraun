@@ -1,6 +1,6 @@
-use benchmark_tests::{bubble_sort, leak_memory, setup_worst_case_array, subprocess};
 use gungraun::prelude::*;
 use gungraun::{Helgrind, Massif, Memcheck, Tool};
+use gungraun_tests::{bubble_sort, leak_memory, setup_worst_case_array, subprocess};
 
 #[library_benchmark(setup = setup_worst_case_array)]
 #[bench::memcheck_xtree(

@@ -7,7 +7,7 @@
 //!
 //! * `<num>` - Number of memory leak cycles to create.
 
-use benchmark_tests::leak_memory;
+use gungraun_tests::leak_memory;
 
 fn main() {
     let mut args = std::env::args().skip(1);

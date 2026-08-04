@@ -2,7 +2,7 @@
 //! macro. There's a lot of overlap with the way how library benchmarks are set up, so I recommend
 //! reading the documentation for library benchmarks first. Or, have a look at the equivalent of
 //! this file but for library benchmarks in
-//! `crates/benchmark-tests/benches/test_lib_bench/intro/test_lib_bench_intro.rs`
+//! `crates/gungraun-tests/benches/test_lib_bench/intro/test_lib_bench_intro.rs`
 //!
 //! It's best to read all the comments from top to bottom to get a better understanding of the api.
 
@@ -155,7 +155,7 @@ fn setup_file(line: String) {
 // line in the input file represents a single benchmark. The whole line as `String` is passed to the
 // function. Here, we also pass the line to the `setup_file` function. The file has to be encoded in
 // valid UTF-8.
-#[benches::file(file = "crates/benchmark-tests/benches/fixtures/file_content.inputs", setup = setup_file)]
+#[benches::file(file = "crates/gungraun-tests/benches/fixtures/file_content.inputs", setup = setup_file)]
 fn benches_from_file(line: String) -> gungraun::Command {
     // As opposed to library benchmarks, we can put any code in this function, since this function
     // is evaluated only once when gungraun collects all benchmarks. The function's sole

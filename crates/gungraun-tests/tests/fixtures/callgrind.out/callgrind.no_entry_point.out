@@ -2,7 +2,7 @@
 version: 1
 creator: callgrind-3.21.0
 pid: 3289652
-cmd:  target/release/benchmark-tests-exit 0
+cmd:  target/release/gungraun-tests-exit 0
 part: 1
 
 
@@ -191,7 +191,7 @@ fn=pthread_mutex_lock
 
 fn=__call_tls_dtors
 0 16 6 4 1 0 0 1
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/thread/local.rs
 cfn=std::sys_common::thread_info::THREAD_INFO::__getit::destroy
 calls=1 219
@@ -246,13 +246,13 @@ cfn=0x000000000010e000
 calls=1 0
 0 7 2 0 1 1 0 1
 0 20 6 2 1 2 0 1
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=???
 cfn=0x0000000000007b10
 calls=1 0
 0 12 1 0 2 0 0 2
 0 4 1 1
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/args.rs
 cfn=std::sys::unix::args::imp::ARGV_INIT_ARRAY::init_wrapper
 calls=1 121
@@ -460,7 +460,7 @@ cfn=_setjmp
 calls=1 0
 0 34 7 10 4 1 0 4
 0 15 7 4 1 2 0 1
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=???
 cfn=main
 calls=1 0
@@ -1327,7 +1327,7 @@ fn=0x0000000000005040
 fn=0x0000000000005100
 0 12 1 0 3 0 0 3
 
-ob=target/release/benchmark-tests-exit
+ob=target/release/gungraun-tests-exit
 fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/library/alloc/src/sync.rs
 fn=alloc::sync::Arc<T>::drop_slow
 1089 2 0 1 1 0 0 1
@@ -1757,7 +1757,7 @@ calls=4 42
 
 fn=std::sys_common::backtrace::__rust_begin_short_backtrace
 0 2 0 2
-cfn=benchmark_tests_exit::main
+cfn=gungraun_tests_exit::main
 calls=1 0
 0 3473 889 559 143 30 7 116 4 4
 
@@ -1795,7 +1795,7 @@ cfn=(below main)
 calls=1 0
 0 103210 23067 13398 604 126 90 577 53 69
 
-fn=benchmark_tests_exit::main
+fn=gungraun_tests_exit::main
 0 10 1 7 1 1 0 1
 cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
 cfn=std::env::args
@@ -2434,7 +2434,7 @@ cfn=0x0000000000005170
 calls=1 0
 0 887 171 97 63 37 4 63 4 1
 0 3
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=???
 cfn=(below main)
 calls=1 0
@@ -3581,7 +3581,7 @@ cfi=???
 cfn=0x00000000000010c0
 calls=1 0
 0 91 25 16 2 1 0 2
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=???
 cfn=0x0000000000007ac0
 calls=1 0

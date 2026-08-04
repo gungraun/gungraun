@@ -47,7 +47,7 @@ pre-installed.
 
 - Do not expect `just test-all` to cover this crate; cross-target runs require
   `cross` and Docker.
-- Do not conflate these with `benchmark-tests`; they test different layers.
+- Do not conflate these with `gungraun-tests`; they test different layers.
 - Do not add new test binaries without updating `tests/test_valgrind_requests/`
   and fixtures.
 - Do not assume all targets share the same stderr output; always provide a

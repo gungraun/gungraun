@@ -1,8 +1,8 @@
 use std::hint::black_box;
 
-use benchmark_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 use gungraun::prelude::*;
 use gungraun::{Dhat, DhatMetric, OutputFormat};
+use gungraun_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 
 #[inline(never)]
 fn setup_with_alloc(num: i32) -> Vec<i32> {

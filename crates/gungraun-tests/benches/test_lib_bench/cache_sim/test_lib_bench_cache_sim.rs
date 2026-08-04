@@ -1,8 +1,8 @@
 use std::hint::black_box;
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use gungraun::prelude::*;
 use gungraun::{Callgrind, EventKind, FlamegraphConfig};
+use gungraun_tests::{bubble_sort, setup_worst_case_array};
 
 #[library_benchmark(config = LibraryBenchmarkConfig::default()
     .tool(Callgrind::with_args(["--cache-sim=yes"]))

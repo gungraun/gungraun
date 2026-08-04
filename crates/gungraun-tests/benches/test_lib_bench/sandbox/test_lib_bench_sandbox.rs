@@ -28,7 +28,7 @@ fn remove_dir(dir: String) {
     args = ("one_line.fix", true),
     config = LibraryBenchmarkConfig::default()
         .sandbox(Sandbox::new(true)
-            .fixtures(["crates/benchmark-tests/benches/fixtures/one_line.fix"])
+            .fixtures(["crates/gungraun-tests/benches/fixtures/one_line.fix"])
         )
 )]
 #[bench::when_true_without_fixture(
@@ -40,7 +40,7 @@ fn remove_dir(dir: String) {
     config = LibraryBenchmarkConfig::default()
         .sandbox(Sandbox::new(false)
             // Specifying fixtures should do nothing
-            .fixtures(["crates/benchmark-tests/benches/fixtures/one_line.fix"])
+            .fixtures(["crates/gungraun-tests/benches/fixtures/one_line.fix"])
         )
 )]
 #[bench::when_false_without_fixture(
@@ -55,7 +55,7 @@ fn sandbox(path: &str, should_exist: bool) {
 #[bench::with_sandbox(
     config = LibraryBenchmarkConfig::default()
         .sandbox(Sandbox::new(true)
-            .fixtures(["crates/benchmark-tests/benches/fixtures/foo"])
+            .fixtures(["crates/gungraun-tests/benches/fixtures/foo"])
         )
         .current_dir("foo")
 )]
@@ -71,7 +71,7 @@ fn current_dir() {
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
         .sandbox(Sandbox::new(true)
-            .fixtures(["crates/benchmark-tests/benches/fixtures/foo"])
+            .fixtures(["crates/gungraun-tests/benches/fixtures/foo"])
         )
         .current_dir("foo"),
     setup = create_dir,

@@ -8,12 +8,12 @@ use gungraun::{Dhat, EntryPoint, Tool};
         .default_tool(Tool::DHAT)
         .tool(Dhat::default()
             .entry_point(
-                EntryPoint::Custom("benchmark_tests::find_primes".to_owned())
+                EntryPoint::Custom("gungraun_tests::find_primes".to_owned())
             )
         )
 )]
 fn bench_library() -> Vec<u64> {
-    black_box(benchmark_tests::find_primes_multi_thread(black_box(1)))
+    black_box(gungraun_tests::find_primes_multi_thread(black_box(1)))
 }
 
 library_benchmark_group!(name = my_group, benchmarks = bench_library);

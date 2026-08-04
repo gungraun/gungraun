@@ -1,8 +1,8 @@
 use std::hint::black_box;
 
-use benchmark_tests::{bubble_sort, setup_best_case_array, setup_worst_case_array};
 use gungraun::prelude::*;
 use gungraun::{Dhat, DhatMetric, EntryPoint, SanitizeOutput, Tool};
+use gungraun_tests::{bubble_sort, setup_best_case_array, setup_worst_case_array};
 
 #[inline(never)]
 fn custom_setup(start: i32) -> Vec<i32> {

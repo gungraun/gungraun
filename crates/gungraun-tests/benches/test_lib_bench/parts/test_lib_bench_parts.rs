@@ -1,9 +1,9 @@
 use std::hint::black_box;
 use std::process::{Command, ExitStatus};
 
-use benchmark_tests::{find_primes, find_primes_multi_thread_with_instrumentation};
 use gungraun::prelude::*;
 use gungraun::{Callgrind, EntryPoint, OutputFormat};
+use gungraun_tests::{find_primes, find_primes_multi_thread_with_instrumentation};
 
 #[library_benchmark]
 #[bench::dump_every_bb(

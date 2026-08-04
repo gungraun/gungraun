@@ -49,7 +49,7 @@ crates/gungraun-runner/src/
 | Summary model          | `summary/model.rs`                           | `BenchmarkSummary`, `ToolMetricSummary` — serializable schema                                      |
 | Summary processing     | `summary/logic.rs`                           | Building summaries from parsed tool output                                                         |
 | Error handling         | `error.rs`                                   | `Error` enum for user-facing messages; `JobError(anyhow::Error)` for internal thread-pool failures |
-| Integration tests      | `../benchmark-tests/tests/`                  | Runner behavior tested via fixture benchmarks and `.conf.yml` expectations                         |
+| Integration tests      | `../gungraun-tests/tests/`                   | Runner behavior tested via fixture benchmarks and `.conf.yml` expectations                         |
 
 ## Conventions
 

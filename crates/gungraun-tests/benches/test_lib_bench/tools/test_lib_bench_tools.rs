@@ -5,9 +5,9 @@ use std::io;
 use std::process::Output;
 use std::rc::Rc;
 
-use benchmark_tests::{bubble_sort, bubble_sort_allocate, setup_worst_case_array, subprocess};
 use gungraun::prelude::*;
 use gungraun::{Bbv, Callgrind, Dhat, Drd, EventKind, Helgrind, Massif, Memcheck, OutputFormat};
+use gungraun_tests::{bubble_sort, bubble_sort_allocate, setup_worst_case_array, subprocess};
 
 struct Left(Option<Rc<Right>>);
 #[expect(dead_code)]

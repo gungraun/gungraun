@@ -19,7 +19,7 @@ gungraun/
 |- crates/gungraun-common/          # Small shared protocol primitives
 |- crates/gungraun-summary/         # Versioned, feature-gated summary schema
 |- crates/valgrind-requests/        # no_std Valgrind client-request API
-|- crates/benchmark-tests/          # End-to-end benchmark harness and fixtures
+|- crates/gungraun-tests/          # End-to-end benchmark harness and fixtures
 |- crates/valgrind-requests-tests/     # Native/cross-architecture request tests
 |- docs/                     # mdBook source and generated schema references
 |- scripts/                  # Release and repository maintenance helpers
@@ -40,8 +40,8 @@ gungraun/
 | Shared protocol       | `crates/gungraun-common/src/`                                                | Exit and command-line transport types              |
 | Summary API/schema    | `crates/gungraun-summary/src/`, `crates/gungraun-summary/schemas/`           | Versioned public format                            |
 | Client requests       | `crates/valgrind-requests/src/`                                              | Core API, tool modules, arch assembly              |
-| System-test harness   | `crates/benchmark-tests/src/bench.rs`                                        | Runs fixtures and compares structured output       |
-| Benchmark cases       | `crates/benchmark-tests/benches/`, `crates/benchmark-tests/tests/`           | Inputs plus `.conf.yml` expectations               |
+| System-test harness   | `crates/gungraun-tests/src/bench.rs`                                         | Runs fixtures and compares structured output       |
+| Benchmark cases       | `crates/gungraun-tests/benches/`, `crates/gungraun-tests/tests/`             | Inputs plus `.conf.yml` expectations               |
 | Cross-target tests    | `crates/valgrind-requests-tests/`                                            | QEMU/native request execution                      |
 | Build recipes         | `Justfile`                                                                   | Prefer recipes over direct tool invocations        |
 | CI matrix             | `.github/workflows/`                                                         | MSRV, platforms, formatting, tests, release        |
@@ -55,7 +55,7 @@ gungraun/
 | `binary_benchmark`   | proc macro    | `crates/gungraun-macros/src/lib.rs`       | Expands binary benchmark declarations            |
 | `main`               | entry point   | `crates/gungraun-runner/src/main.rs`      | Starts runner and prints deferred warnings       |
 | `Tool`               | runner model  | `crates/gungraun-runner/src/runner/tool/` | Configures and invokes Valgrind tools            |
-| `SystemTestRunner`   | test harness  | `crates/benchmark-tests/src/bench.rs`     | Executes benchmark fixtures and validates output |
+| `SystemTestRunner`   | test harness  | `crates/gungraun-tests/src/bench.rs`      | Executes benchmark fixtures and validates output |
 | `do_client_request!` | request macro | `crates/valgrind-requests/src/lib.rs`     | Encodes architecture-specific Valgrind requests  |
 | `v6`                 | schema module | `crates/gungraun-summary/src/lib.rs`      | Current public summary representation            |
 
@@ -67,7 +67,7 @@ gungraun/
 - Import order is standard library, external crates, then workspace modules;
   sort imports and module declarations alphabetically.
 - Co-locate unit tests in `mod tests`; use crate `tests/` for integration tests.
-- Runner integration behavior is primarily exercised through `benchmark-tests`.
+- Runner integration behavior is primarily exercised through `gungraun-tests`.
 - Public items exposed by feature-gated `api`, `summary`, or `schema` modules
   are semver-sensitive. Most other `gungraun-runner` visibility is
   workspace-internal.

@@ -1,6 +1,6 @@
 Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% (>+<__NUM__>%)
 gungraun_runner: Error: Performance has regressed. Fail-fast is set. Aborting ...
-error: bench failed, to rerun pass `-p benchmark-tests --bench test_bench_template`
+error: bench failed, to rerun pass `-p gungraun-tests --bench test_bench_template`
 
 Caused by:
   process didn't exit successfully: `<__PATH__>` (exit status: 3)

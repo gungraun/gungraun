@@ -5,10 +5,10 @@ use std::fs::File;
 use std::hint::black_box;
 use std::io::{BufRead, BufReader};
 
-// These two functions from the benchmark-tests library serve as functions we want to benchmark
-use benchmark_tests::{bubble_sort, fibonacci};
 use gungraun::prelude::*;
 use gungraun::{Callgrind, Dhat, EntryPoint, EventKind, Massif};
+// These two functions from the gungraun-tests library serve as functions we want to benchmark
+use gungraun_tests::{bubble_sort, fibonacci};
 
 // This function is used to create the worst case array we want to sort with our implementation of
 // bubble sort

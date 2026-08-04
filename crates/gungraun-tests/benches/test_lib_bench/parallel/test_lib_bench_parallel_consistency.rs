@@ -1,8 +1,8 @@
 use std::hint::black_box;
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use gungraun::Dhat;
 use gungraun::prelude::*;
+use gungraun_tests::{bubble_sort, setup_worst_case_array};
 
 #[inline(never)]
 fn setup_with_output(input: i32) -> Vec<i32> {

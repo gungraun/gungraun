@@ -9,7 +9,7 @@ pub fn get_data_collections_options_yes() -> LibraryBenchmarkConfig {
         .tool(Callgrind::with_args([
             "instr-atstart=yes",
             "collect-atstart=yes",
-            "toggle-collect=benchmark_tests::fibonacci",
+            "toggle-collect=gungraun_tests::fibonacci",
             "collect-jumps=yes",
             "collect-systime=yes",
             "collect-bus=yes",
@@ -23,7 +23,7 @@ pub fn get_data_collections_options_yes() -> LibraryBenchmarkConfig {
         .tool(Callgrind::with_args([
             "instr-atstart=yes",
             "collect-atstart=yes",
-            "toggle-collect=benchmark_tests::fibonacci",
+            "toggle-collect=gungraun_tests::fibonacci",
             "collect-jumps=yes",
             "collect-systime=nsec",
             "collect-bus=yes",
@@ -56,9 +56,9 @@ pub fn get_data_collections_options_yes() -> LibraryBenchmarkConfig {
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::with_args([
             "dump-every-bb=10000",
-            "dump-before=benchmark_tests::fibonacci",
-            "zero-before=benchmark_tests::fibonacci",
-            "dump-after=benchmark_tests::fibonacci"
+            "dump-before=gungraun_tests::fibonacci",
+            "zero-before=gungraun_tests::fibonacci",
+            "dump-after=gungraun_tests::fibonacci"
         ]))
 )]
 #[bench::data_collection_options_yes(
@@ -73,7 +73,7 @@ pub fn get_data_collections_options_yes() -> LibraryBenchmarkConfig {
 #[bench::separate_callers_func_1(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::with_args([
-            "separate-callers1=benchmark_tests::fibonacci",
+            "separate-callers1=gungraun_tests::fibonacci",
         ]))
 )]
 #[bench::separate_recs_3(
@@ -85,7 +85,7 @@ pub fn get_data_collections_options_yes() -> LibraryBenchmarkConfig {
 #[bench::separate_recs_func_3(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::with_args([
-            "separate-recs3=benchmark_tests::fibonacci",
+            "separate-recs3=gungraun_tests::fibonacci",
         ]))
 )]
 #[bench::skip_plt_yes(
@@ -103,7 +103,7 @@ pub fn get_data_collections_options_yes() -> LibraryBenchmarkConfig {
 #[bench::fn_skip(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::with_args([
-            "fn-skip=benchmark_tests::fibonacci",
+            "fn-skip=gungraun_tests::fibonacci",
         ]))
 )]
 #[bench::simulation_options_yes(
@@ -148,7 +148,7 @@ pub fn get_data_collections_options_yes() -> LibraryBenchmarkConfig {
         ]))
 )]
 fn bench_library() -> u64 {
-    black_box(benchmark_tests::fibonacci(black_box(10)))
+    black_box(gungraun_tests::fibonacci(black_box(10)))
 }
 
 #[library_benchmark]
@@ -168,7 +168,7 @@ fn bench_library() -> u64 {
 fn bench_with_client_request() -> u64 {
     gungraun::client_requests::callgrind::start_instrumentation();
     gungraun::client_requests::callgrind::toggle_collect();
-    black_box(benchmark_tests::fibonacci(black_box(10)))
+    black_box(gungraun_tests::fibonacci(black_box(10)))
 }
 
 #[library_benchmark(
@@ -190,7 +190,7 @@ fn bench_with_client_request() -> u64 {
         ]))
 )]
 fn bench_multi_threads() -> Vec<u64> {
-    black_box(benchmark_tests::find_primes_multi_thread_with_instrumentation(black_box(2)))
+    black_box(gungraun_tests::find_primes_multi_thread_with_instrumentation(black_box(2)))
 }
 
 library_benchmark_group!(

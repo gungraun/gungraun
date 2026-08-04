@@ -1,8 +1,8 @@
 use std::hint::black_box;
 
-use benchmark_tests as my_lib;
 use gungraun::prelude::*;
 use gungraun::{Callgrind, EventKind};
+use gungraun_tests as my_lib;
 
 #[library_benchmark]
 #[bench::worst_case(vec![3, 2, 1])]

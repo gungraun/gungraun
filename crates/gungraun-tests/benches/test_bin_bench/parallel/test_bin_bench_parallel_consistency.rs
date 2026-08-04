@@ -1,5 +1,5 @@
-use benchmark_tests::fibonacci;
 use gungraun::prelude::*;
+use gungraun_tests::fibonacci;
 
 fn setup_no_output() {
     fibonacci(5);

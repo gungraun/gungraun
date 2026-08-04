@@ -1,4 +1,4 @@
-# Benchmark Tests Domain Knowledge
+# System Tests Domain Knowledge
 
 ## Overview
 
@@ -10,7 +10,7 @@ verification.
 ## Structure
 
 ```text
-crates/benchmark-tests/
+crates/gungraun-tests/
 |- src/bench.rs          # Harness binary: discovers, runs, asserts
 |- src/lib.rs            # Shared helpers: bubble_sort, fibonacci, primes, env
 |- src/helper/           # Fake binaries: echo, cat, sort, exit-with, leak-memory, ...

@@ -1,15 +1,15 @@
 use std::hint::black_box;
 
-use benchmark_tests::assert::Assert;
 use gungraun::prelude::*;
 use gungraun::{Callgrind, EntryPoint, EventKind, FlamegraphConfig, Tool};
 use gungraun_runner::metrics::model::Metric;
 use gungraun_runner::runner::callgrind::hashmap_parser::SourcePath;
 use gungraun_runner::summary::model::{BenchmarkSummary, ToolMetricSummary};
+use gungraun_tests::assert::Assert;
 
 #[inline(never)]
 fn nested() -> u64 {
-    benchmark_tests::fibonacci(10)
+    gungraun_tests::fibonacci(10)
 }
 
 #[inline(never)]

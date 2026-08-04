@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Ok, Result};
-use benchmark_tests::common::Summary;
 use glob::glob;
+use gungraun_tests::common::Summary;
 use tempfile::tempdir;
 use valico::json_schema::schema::ScopedSchema;
 

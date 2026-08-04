@@ -27,7 +27,7 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
     panic!("should be replaced by a rendered template");
 }
 "#;
-const CONTINUE_FILE_NAME: &str = "benchmark-tests.continue";
+const CONTINUE_FILE_NAME: &str = "gungraun-tests.continue";
 const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
 
 struct ExecContext<'a> {
@@ -40,7 +40,7 @@ struct ExecContext<'a> {
     tolerance: Option<f64>,
 }
 
-/// Benchmark test case derived from a `.conf.yml` file.
+/// System test case derived from a `.conf.yml` file.
 ///
 /// Example: `test_lib_bench_tools.conf.yml` becomes one `SystemTest` value.
 #[derive(Debug, Clone)]
@@ -56,23 +56,23 @@ struct SystemTest {
     config: SystemTestConfig,
     /// Directory containing the benchmark configuration file and expected fixtures.
     ///
-    /// Example: `crates/benchmark-tests/benches/test_lib_bench/tools`.
+    /// Example: `crates/gungraun-tests/benches/test_lib_bench/tools`.
     config_dir: PathBuf,
     /// Original `.conf.yml` file stem.
     ///
     /// This identifies the benchmark configuration and is unique for templated benchmarks too.
     config_name: String,
-    /// Root directory for benchmark test output below cargo's target directory.
+    /// Root directory for system test output below cargo's target directory.
     ///
     /// Example: `target/gungraun`.
     home_dir: PathBuf,
     /// Directory where this benchmark writes regular output files.
     ///
-    /// Example: `target/gungraun/benchmark-tests/test_lib_bench_tools`.
+    /// Example: `target/gungraun/gungraun-tests/test_lib_bench_tools`.
     output_dir: PathBuf,
 }
 
-/// Top-level benchmark test runner.
+/// Top-level system test runner.
 ///
 /// Owns the metadata used by `bench --filter='test_lib_*'`.
 #[derive(Debug)]
@@ -87,9 +87,9 @@ pub struct SystemTestRunner {
 #[derive(Debug, Clone)]
 /// Selected system tests and shared execution metadata.
 ///
-/// Example: produced once from cargo metadata before running benchmark tests.
+/// Example: produced once from cargo metadata before running system tests.
 struct SystemTests {
-    /// Path to the `crates/benchmark-tests/benches` directory.
+    /// Path to the `crates/gungraun-tests/benches` directory.
     ///
     /// Example: used to write `test_bench_template.rs`.
     benches_dir: PathBuf,

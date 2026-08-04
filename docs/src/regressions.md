@@ -194,7 +194,7 @@ Regressions:
     <b>Instructions</b> (152 -> <b>264</b>): <b><span style="color:#F55">+73.6842</span></b><b><span style="color:#F55">%</span></b> exceeds limit of <span style="color:#555">+5.00000</span><span style="color:#555">%</span>
 
 Gungraun result: <b><span style="color:#F55">Regressed</span></b>. 0 without regressions; 1 regressed; 0 filtered; 1 benchmarks finished in 0.14849s
-error: bench failed, to rerun pass `-p benchmark-tests --bench lib_bench_regression`
+error: bench failed, to rerun pass `-p gungraun-tests --bench lib_bench_regression`
 
 Caused by:
   process didn't exit successfully: `/home/lenny/workspace/programming/gungraun/target/release/deps/lib_bench_regression-98382b533bca8f56 --bench` (exit status: 3)</code></pre>

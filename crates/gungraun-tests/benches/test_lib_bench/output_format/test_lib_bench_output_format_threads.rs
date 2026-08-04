@@ -16,7 +16,7 @@ use gungraun::{Callgrind, Dhat, EntryPoint, OutputFormat};
 )]
 fn bench_with_format(a: &str) -> Vec<u64> {
     println!("{a}");
-    black_box(benchmark_tests::find_primes_multi_thread(2))
+    black_box(gungraun_tests::find_primes_multi_thread(2))
 }
 
 #[library_benchmark]
@@ -25,7 +25,7 @@ fn bench_with_format(a: &str) -> Vec<u64> {
 )]
 fn bench_without_format(a: &str) -> Vec<u64> {
     println!("{a}");
-    black_box(benchmark_tests::find_primes_multi_thread(1))
+    black_box(gungraun_tests::find_primes_multi_thread(1))
 }
 
 library_benchmark_group!(
@@ -33,8 +33,8 @@ library_benchmark_group!(
     config = LibraryBenchmarkConfig::default()
         .tool(
             Callgrind::with_args([
-                "--toggle-collect=benchmark_tests::find_primes_multi_thread",
-                "--toggle-collect=benchmark_tests::find_primes"
+                "--toggle-collect=gungraun_tests::find_primes_multi_thread",
+                "--toggle-collect=gungraun_tests::find_primes"
             ])
             .entry_point(EntryPoint::None)
         )

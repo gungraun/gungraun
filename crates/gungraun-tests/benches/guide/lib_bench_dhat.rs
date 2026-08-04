@@ -1,11 +1,11 @@
 mod my_lib {
-    pub use benchmark_tests::bubble_sort;
+    pub use gungraun_tests::bubble_sort;
 }
 use std::hint::black_box;
 
-use benchmark_tests::setup_worst_case_array;
 use gungraun::prelude::*;
 use gungraun::{Dhat, EntryPoint};
+use gungraun_tests::setup_worst_case_array;
 
 #[library_benchmark]
 #[bench::worst_case_3(setup_worst_case_array(3))]

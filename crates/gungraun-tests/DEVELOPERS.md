@@ -6,9 +6,9 @@ This is the package for system tests of the interaction of `gungraun`,
 `gungraun-runner` and `gungraun-macros`. Most of the benchmarks in this package
 can be run as usual with `cargo bench` or `just bench $BENCH_NAME`. But, to be
 able to intercept and validate the output (and other validations) of the
-`cargo bench` run of a benchmark test there is a wrapper around `cargo bench` in
-`benchmark-test/src/bench.rs` with which the benchmarks tests should be run. For
-example, you can use `just system-test $BENCH_NAME`.
+`cargo bench` run of a system test there is a wrapper around `cargo bench` in
+`gungraun-tests/src/bench/main.rs` with which the system tests should be run.
+For example, you can use `just system-test $BENCH_NAME`.
 
 ## Notes
 
@@ -18,7 +18,7 @@ improvements in the testing practice.
 
 ## Usage
 
-`$ cargo run -p benchmark-tests --profile=bench bench [-- [FLAGS] [BENCH]]`
+`$ cargo run -p gungraun-tests --profile=bench bench [-- [FLAGS] [BENCH]]`
 
 or
 
@@ -42,13 +42,13 @@ Other `FLAGS`:
   `--partition=1/2` splits the benchmarks in half and then runs the first half
   of it.
 
-## Adding a new benchmark test
+## Adding a new system test
 
 ### Basic structure
 
-Library benchmark tests go into `benches/lib_bench` and binary benchmark tests
-into `benches/bin_bench`. The naming scheme of a new file is for example for a
-binary benchmark `benches/bin_bench/foo/test_bin_bench_foo.rs` and for a library
+Library system tests go into `benches/lib_bench` and binary system tests into
+`benches/bin_bench`. The naming scheme of a new file is for example for a binary
+benchmark `benches/bin_bench/foo/test_bin_bench_foo.rs` and for a library
 benchmark `benches/lib_bench/foo/test_lib_bench_foo.rs`. After you have created
 the new directory and file, have a look at the `Cargo.toml` of this package and
 then add
@@ -179,7 +179,7 @@ test_bin_bench_foo::group::function id:() -> target/release/echo
 ```
 
 We do this, because the numbers can differ a little bit depending on the target,
-toolchain in use etc. Having all benchmark tests to update every time something
+toolchain in use etc. Having all system tests to update every time something
 changes by `1` or `2` up or down is unmanageable. So, this is a simple method to
 check if there are numbers, but we do not check the numbers themselves. Most
 often, this is sufficient but stills needs improvement. For example being able

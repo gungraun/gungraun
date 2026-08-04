@@ -1,9 +1,9 @@
 use std::hint::black_box;
 use std::process::Command;
 
-use benchmark_tests::find_primes_multi_thread;
 use gungraun::prelude::*;
 use gungraun::{Bbv, Callgrind, Dhat, Drd, Massif, Memcheck, OutputFormat};
+use gungraun_tests::find_primes_multi_thread;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()

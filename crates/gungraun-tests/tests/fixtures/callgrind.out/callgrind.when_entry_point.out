@@ -2,7 +2,7 @@
 version: 1
 creator: callgrind-3.21.0
 pid: 3289659
-cmd:  target/release/benchmark-tests-exit 0
+cmd:  target/release/gungraun-tests-exit 0
 part: 1
 
 
@@ -64,7 +64,7 @@ cfi=???
 cfn=0x00000000000010c0
 calls=1 0
 0 91 25 16 2 1 0 2
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=???
 cfn=0x0000000000007ac0
 calls=1 0
@@ -146,7 +146,7 @@ fn=0x0000000000022300
 0 19 5 4 3
 
 fn=0x000000000001b530
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=???
 cfn=(below main)
 calls=1 0
@@ -187,7 +187,7 @@ calls=1 0
 0 1
 
 fn=0x0000000000027c50
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=???
 cfn=main
 calls=1 0
@@ -291,7 +291,7 @@ fn=pthread_mutex_lock
 
 fn=__call_tls_dtors
 0 16 6 4 1 0 0 1
-cob=target/release/benchmark-tests-exit
+cob=target/release/gungraun-tests-exit
 cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/thread/local.rs
 cfn=std::sys_common::thread_info::THREAD_INFO::__getit::destroy
 calls=1 219
@@ -338,7 +338,7 @@ calls=1 0
 fn=0x0000000000005040
 0 5 1 0 1
 
-ob=target/release/benchmark-tests-exit
+ob=target/release/gungraun-tests-exit
 fl=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/alloc.rs
 fn=__rdl_alloc
 350 6 0 3
@@ -549,7 +549,7 @@ cfn=(below main)
 calls=1 0
 0 3473 889 559 143 30 7 116 4 4
 
-fn=benchmark_tests_exit::main
+fn=gungraun_tests_exit::main
 0 10 1 7 1 1 0 1
 cfi=/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/env.rs
 cfn=std::env::args
@@ -602,7 +602,7 @@ calls=4 42
 0 308 92 44 1 0 0 1
 
 fn=std::sys_common::backtrace::__rust_begin_short_backtrace
-cfn=benchmark_tests_exit::main
+cfn=gungraun_tests_exit::main
 calls=1 0
 0 3473 889 559 143 30 7 116 4 4
 

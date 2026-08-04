@@ -2,8 +2,8 @@
 
 use std::hint::black_box;
 
-use benchmark_tests::print_env;
 use gungraun::prelude::*;
+use gungraun_tests::print_env;
 
 pub const TEST_VAR_1: &str = "__GUNGRAUN_TEST_VAR_1";
 pub const TEST_VAR_2: &str = "__GUNGRAUN_TEST_VAR_2";

@@ -32,14 +32,14 @@ use std::path::{Path, PathBuf};
 use std::process::Output;
 
 use anyhow::Result;
-use benchmark_tests::serde::runs_on::RunsOn;
+use gungraun_tests::serde::runs_on::RunsOn;
 use rustc_version::{Channel, VersionMeta};
 use serde::{Deserialize, Serialize};
 use version_compare::Cmp;
 
 use crate::assert::{Assert, AssertContext};
 
-pub const PACKAGE: &str = "benchmark-tests";
+pub const PACKAGE: &str = "gungraun-tests";
 
 targeted_enum! {
     TargetedI32 {
@@ -108,7 +108,7 @@ targeted_enum! {
 /// Captured result of one cargo bench invocation.
 ///
 /// Example:
-/// * stdout/stderr from `cargo bench --package benchmark-tests --bench test_lib_bench_tools`.
+/// * stdout/stderr from `cargo bench --package gungraun-tests --bench test_lib_bench_tools`.
 #[derive(Debug)]
 pub struct CapturedOutput {
     /// Whether the run used an explicit tolerance argument.
@@ -137,13 +137,13 @@ pub struct Group {
     /// Optional target triple include or exclude condition for the whole group.
     ///
     /// Example: `x86_64-unknown-linux-gnu`.
-    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    #[serde(default, with = "gungraun_tests::serde::runs_on")]
     pub runs_on: Option<RunsOn>,
     /// Optional Rust compiler version or channel condition for the whole group.
     ///
     /// Example: `>=1.86.0` or `=nightly`.
-    #[serde(default, with = "benchmark_tests::serde::rust_version")]
-    pub rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
+    #[serde(default, with = "gungraun_tests::serde::rust_version")]
+    pub rust_version: Option<gungraun_tests::serde::rust_version::VersionComparator>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -202,19 +202,19 @@ pub struct Run {
     pub gungraun_args: Vec<String>,
     /// Directories removed before this run starts.
     ///
-    /// Example: `target/gungraun/benchmark-tests/test_lib_bench_tools`.
+    /// Example: `target/gungraun/gungraun-tests/test_lib_bench_tools`.
     #[serde(default)]
     pub rmdirs: Vec<PathBuf>,
     /// Optional target triple include or exclude condition for this run.
     ///
     /// Example: skip a run on `aarch64-apple-darwin`.
-    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    #[serde(default, with = "gungraun_tests::serde::runs_on")]
     pub runs_on: Option<RunsOn>,
     /// Optional Rust compiler version or channel condition for this run.
     ///
     /// Example: `>=1.86.0` or `!=nightly`.
-    #[serde(default, with = "benchmark_tests::serde::rust_version")]
-    pub rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
+    #[serde(default, with = "gungraun_tests::serde::rust_version")]
+    pub rust_version: Option<gungraun_tests::serde::rust_version::VersionComparator>,
     /// Shell snippet executed before the benchmark command.
     ///
     /// Example: `mkdir -p /tmp/gungraun-fixture`.
@@ -272,7 +272,7 @@ pub struct RunExpectations {
     /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory
     ///
     /// For example this is the directory of the `test_something` benchmark in which the script is
-    /// executed: `project_root/target/benchmark-tests/test_something`
+    /// executed: `project_root/target/gungraun-tests/test_something`
     #[serde(default)]
     pub script: Option<TargetedString>,
     /// Path to expected stderr relative to the benchmark config directory.

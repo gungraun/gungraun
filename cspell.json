@@ -22,9 +22,9 @@
     "*.supp",
     "expected_stdout*",
     "expected_stderr*",
-    "crates/benchmark-tests/fixtures",
-    "crates/benchmark-tests/fixtures-with-symlinks",
-    "crates/benchmark-tests/benches/test_bin_bench_groups.fixtures",
+    "crates/gungraun-tests/fixtures",
+    "crates/gungraun-tests/fixtures-with-symlinks",
+    "crates/gungraun-tests/benches/test_bin_bench_groups.fixtures",
     "docs/theme/*",
     "**/*.svg"
   ]

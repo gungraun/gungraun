@@ -165,12 +165,12 @@ main!(library_benchmark_groups = some_group);
 Patches have to include tests to verify (at a minimum) that the whole pipeline
 runs through without errors.
 
-The benches in the `benchmark-tests` package are system tests and run the whole
+The benches in the `gungraun-tests` package are system tests and run the whole
 pipeline. We use a wrapper around `cargo bench`
-(`crates/benchmark-tests/src/bench`) to run the `benchmark-tests`. In order to
-run a single benchmark-tests use `just system-test $BENCHMARK_NAME` or all with
+(`crates/gungraun-tests/src/bench`) to run the `gungraun-tests`. In order to run
+a single gungraun-tests use `just system-test $BENCHMARK_NAME` or all with
 `just system-test-all` (This might take a while). See
-[`DEVELOPERS`](./crates/benchmark-tests/DEVELOPERS.md) of the benchmark-tests
+[`DEVELOPERS`](./crates/gungraun-tests/DEVELOPERS.md) of the gungraun-tests
 package for more details.
 
 The user interface is tested in `crates/gungraun/tests/ui`. The ui tests error
@@ -187,11 +187,11 @@ or overwrite the error message fixtures:
 
 If you made changes in the `gungraun-runner` package, you can point the
 `GUNGRAUN_RUNNER` environment variable to your modified version of the
-`gungraun-runner` binary and run the benchmark-tests with:
+`gungraun-runner` binary and run the gungraun-tests with:
 
 ```shell
 cargo build -p gungraun-runner --release
-GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests --bench test_lib_bench_tools
+GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p gungraun-tests --bench test_lib_bench_tools
 ```
 
 or with `just` in a single command:

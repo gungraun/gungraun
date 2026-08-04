@@ -1,8 +1,8 @@
 use std::hint::black_box;
 
-use benchmark_tests::setup_worst_case_array;
 use gungraun::prelude::*;
 use gungraun::{Callgrind, FlamegraphConfig, FlamegraphKind};
+use gungraun_tests::setup_worst_case_array;
 
 #[library_benchmark]
 #[bench::all_kinds(
@@ -50,7 +50,7 @@ use gungraun::{Callgrind, FlamegraphConfig, FlamegraphKind};
         )
 )]
 fn bench_level_flamegraphs(array: Vec<i32>) -> Vec<i32> {
-    black_box(benchmark_tests::bubble_sort(black_box(array)))
+    black_box(gungraun_tests::bubble_sort(black_box(array)))
 }
 
 #[library_benchmark(
@@ -62,13 +62,13 @@ fn bench_level_flamegraphs(array: Vec<i32>) -> Vec<i32> {
         )
 )]
 fn without_bench_attribute() -> Vec<i32> {
-    black_box(benchmark_tests::bubble_sort(black_box(vec![])))
+    black_box(gungraun_tests::bubble_sort(black_box(vec![])))
 }
 
 #[library_benchmark]
 #[bench::worst_case(setup_worst_case_array(10))]
 fn main_level_flamegraph_config(array: Vec<i32>) -> Vec<i32> {
-    black_box(benchmark_tests::bubble_sort(black_box(array)))
+    black_box(gungraun_tests::bubble_sort(black_box(array)))
 }
 
 #[library_benchmark]
@@ -89,7 +89,7 @@ library_benchmark_group!(
 #[library_benchmark]
 #[bench::fibonacci(5)]
 fn recursive_function(n: u64) -> u64 {
-    black_box(benchmark_tests::fibonacci(black_box(n)))
+    black_box(gungraun_tests::fibonacci(black_box(n)))
 }
 
 library_benchmark_group!(

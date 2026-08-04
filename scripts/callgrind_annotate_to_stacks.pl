@@ -75,9 +75,9 @@ my $sentinel_count;
 #
 # 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:0x000000000001b530 [/usr/lib/ld-linux-x86-64.so.2]
 # 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:0x0000000000027c50 [/usr/lib/libc.so.6]
-# 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:benchmark_tests_exit::main [/home/lenny/workspace/programming/gungraun/target/release/benchmark-tests-exit]
-# 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:main [/home/lenny/workspace/programming/gungraun/target/release/benchmark-tests-exit]
-# 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:std::rt::lang_start::{{closure}} [/home/lenny/workspace/programming/gungraun/target/release/benchmark-tests-exi>
+# 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:gungraun_tests_exit::main [/home/lenny/workspace/programming/gungraun/target/release/gungraun-tests-exit]
+# 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:main [/home/lenny/workspace/programming/gungraun/target/release/gungraun-tests-exit]
+# 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:std::rt::lang_start::{{closure}} [/home/lenny/workspace/programming/gungraun/target/release/gungraun-tests-exi>
 # 3,473 (100.0%)   889 (100.0%)   559 (100.0%) 143 (100.0%) 30 (100.0%)  7 (100.0%) 116 (100.0%) 4 (100.0%) 4 (100.0%)  ???:std::sys_common::backtrace::__rust_begin_short_backtrace [/home/lenny/workspace/programming/gungraun/target/rel>
 # 2,173 (62.57%)   609 (68.50%)   399 (71.38%) 117 (81.82%) 25 (83.33%)  4 (57.14%)  90 (77.59%) 4 (100.0%) 1 (25.00%)  /rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/process.rs:std::process::exit [/home/lenny/workspace/pr>
 # 1,938 (55.80%)   549 (61.75%)   349 (62.43%)  91 (63.64%) 22 (73.33%)  4 (57.14%)  74 (63.79%) 3 (75.00%) 1 (25.00%)  /rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c//library/std/src/sys/unix/os.rs:std::sys::unix::os::exit [/home/lenny/wo>

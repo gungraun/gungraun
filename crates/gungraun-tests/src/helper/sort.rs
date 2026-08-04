@@ -7,7 +7,7 @@
 //! * `[start]` - Starting number for the array (default: 4000).
 //! * `[sum]` - Number of sorted elements to sum up (default: 2000).
 
-use benchmark_tests::bubble_sort_allocate;
+use gungraun_tests::bubble_sort_allocate;
 
 fn main() {
     let mut iter = std::env::args().skip(1);

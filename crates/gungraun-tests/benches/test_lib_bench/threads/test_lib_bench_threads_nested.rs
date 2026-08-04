@@ -1,9 +1,9 @@
 use std::hint::black_box;
 use std::process::Command;
 
-use benchmark_tests::thread_in_thread_with_instrumentation;
 use gungraun::prelude::*;
 use gungraun::{Bbv, Callgrind, Dhat, Drd, EntryPoint, Massif, Memcheck, OutputFormat};
+use gungraun_tests::thread_in_thread_with_instrumentation;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()

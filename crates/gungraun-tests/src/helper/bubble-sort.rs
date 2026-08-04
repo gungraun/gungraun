@@ -7,7 +7,7 @@
 //!
 //! * `<start>` - The starting number for the array. Creates an array of size `abs(start)`.
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
+use gungraun_tests::{bubble_sort, setup_worst_case_array};
 
 fn main() {
     let mut iter = std::env::args().skip(1);

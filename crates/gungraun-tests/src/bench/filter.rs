@@ -253,7 +253,7 @@ impl CapturedOutput {
             let line = line.as_str();
 
             // The `  Details: ...` can contain platform, toolchain specific information about a
-            // tool run and make the benchmark tests flaky. So, we filter the details. The
+            // tool run and make the system tests flaky. So, we filter the details. The
             // (multiline) details usually look like this in the original output:
             //
             // ```

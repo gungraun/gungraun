@@ -1,5 +1,5 @@
 gungraun_runner: Error: Error in task: Failed calibration run
-error: bench failed, to rerun pass `-p benchmark-tests --bench test_lib_bench_perf_single`
+error: bench failed, to rerun pass `-p gungraun-tests --bench test_lib_bench_perf_single`
 
 Caused by:
   process didn't exit successfully: `<__PATH__>` (exit status: 1)

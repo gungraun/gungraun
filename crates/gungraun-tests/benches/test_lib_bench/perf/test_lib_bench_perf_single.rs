@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use gungraun::prelude::*;
+use gungraun_tests::{bubble_sort, setup_worst_case_array};
 
 #[library_benchmark]
 #[bench::thousand(args = [1000], setup = setup_worst_case_array)]

@@ -8,7 +8,7 @@
 //! * `[num_threads]` - Number of threads to spawn (default: 0, uses main thread only).
 //! * `--thread-in-thread` - Run a nested thread scenario with Callgrind instrumentation control.
 
-use benchmark_tests::{find_primes_multi_thread, thread_in_thread_with_instrumentation};
+use gungraun_tests::{find_primes_multi_thread, thread_in_thread_with_instrumentation};
 
 fn main() {
     let mut args_iter = std::env::args().skip(1);

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
-use anyhow::Context;
+use anyhow::{Context, Result};
 use glob::{Pattern, glob};
 use indexmap::IndexMap;
 use minijinja::Environment;
@@ -102,7 +102,7 @@ impl ExpectedFilesManifest {
         old_manifest_content: &str,
         manifest: &str,
         manifest_path: &Path,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let discovered_files = glob(&format!("{}/**/*", output_dir.display()))
             .unwrap()
             .map(Result::unwrap)
@@ -272,7 +272,7 @@ impl ExpectedFilesManifestEntry {
         }
     }
 
-    pub fn assert(&self, output_dir: &Path, schema: &ScopedSchema) -> anyhow::Result<PathBuf> {
+    pub fn assert(&self, output_dir: &Path, schema: &ScopedSchema) -> Result<PathBuf> {
         let expected_dir = self.expected_dir(output_dir);
 
         print_info(format!(

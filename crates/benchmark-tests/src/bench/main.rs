@@ -5,11 +5,11 @@ mod filter;
 mod io;
 mod runner;
 
-use anyhow::{Context, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use config::Partition;
 use runner::SystemTestRunner;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     // The cli args:
     // positional arguments
     let mut benches = Vec::default();

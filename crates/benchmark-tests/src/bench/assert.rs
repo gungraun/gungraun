@@ -6,7 +6,7 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::Context;
+use anyhow::{Context, Result};
 use benchmark_tests::common::Summary;
 use glob::glob;
 use tempfile::tempdir;
@@ -23,7 +23,7 @@ impl super::config::CapturedOutput {
         is_coverage_run: bool,
         expected: &RunExpectations,
         target_triple: &str,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let output = &self.output;
 
         print_info("STDERR:");
@@ -224,7 +224,7 @@ impl super::config::Run {
         home_dir: &Path,
         bench_name: &str,
         group_expectations: Option<&GroupExpectations>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let target_triple = env!("GR_BUILD_TRIPLE");
         let expected = self
             .expected
@@ -232,13 +232,7 @@ impl super::config::Run {
             .and_then(|e| e.resolve(target_triple));
 
         if let Some(expected) = expected {
-            if expected.stdout.is_some()
-                || expected.no_stdout
-                || !expected.stdout_contains.resolve(target_triple).is_empty()
-                || expected.stderr.is_some()
-                || expected.no_stderr
-                || !expected.stderr_contains.resolve(target_triple).is_empty()
-            {
+            if expected.expects_output_capture(target_triple) {
                 output.assert(config_dir, is_coverage_run, expected, target_triple)?;
             }
             output.assert_exit(

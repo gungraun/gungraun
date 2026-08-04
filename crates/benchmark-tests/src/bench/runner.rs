@@ -5,11 +5,11 @@ use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use anyhow::{Context, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use fs_extra::dir::CopyOptions;
 use glob::glob;
 use minijinja::Environment;
-use rustc_version::{Channel, VersionMeta};
+use rustc_version::VersionMeta;
 use simplematch::DoWild;
 use tempfile::{TempDir, tempdir};
 use valico::json_schema;
@@ -107,7 +107,7 @@ struct SystemTests {
 }
 
 impl SystemTest {
-    fn new(config_path: &Path, _package_dir: &Path, target_dir: &Path) -> anyhow::Result<Self> {
+    fn new(config_path: &Path, _package_dir: &Path, target_dir: &Path) -> Result<Self> {
         let config: SystemTestConfig = deserialize_yaml(config_path)?;
 
         let config_name = config_path.file_name().unwrap().to_string_lossy();
@@ -131,7 +131,7 @@ impl SystemTest {
         })
     }
 
-    fn clean_benchmark(&self) -> anyhow::Result<()> {
+    fn clean_benchmark(&self) -> Result<()> {
         if self.output_dir.is_dir() {
             std::fs::remove_dir_all(&self.output_dir).with_context(|| {
                 format!(
@@ -157,7 +157,7 @@ impl SystemTest {
         Ok(())
     }
 
-    fn backup(&self) -> anyhow::Result<Option<TempDir>> {
+    fn backup(&self) -> Result<Option<TempDir>> {
         if !self.output_dir.is_dir() {
             return Ok(None);
         }
@@ -173,7 +173,7 @@ impl SystemTest {
         Ok(Some(temp_dir))
     }
 
-    fn restore(&self, temp_dir: Option<&TempDir>) -> anyhow::Result<()> {
+    fn restore(&self, temp_dir: Option<&TempDir>) -> Result<()> {
         self.clean_benchmark()?;
 
         if let Some(temp_dir) = temp_dir {
@@ -206,7 +206,7 @@ impl SystemTest {
         tolerance: Option<f64>,
         setup: Option<&str>,
         teardown: Option<&str>,
-    ) -> anyhow::Result<CapturedOutput> {
+    ) -> Result<CapturedOutput> {
         let stdio = if is_capture {
             // SAFETY: Benchmarks are run serially
             unsafe {
@@ -327,7 +327,7 @@ impl SystemTest {
         tolerance: Option<f64>,
         setup: Option<&str>,
         teardown: Option<&str>,
-    ) -> anyhow::Result<CapturedOutput> {
+    ) -> Result<CapturedOutput> {
         let mut template_string = String::new();
         let source_path = self.config_dir.join(template_path);
         File::open(&source_path)
@@ -371,20 +371,10 @@ impl SystemTest {
         group: &Group,
         tests: &SystemTests,
         schema: &ScopedSchema<'_>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let target_triple = env!("GR_BUILD_TRIPLE");
 
-        if !group.runs_on.as_ref().is_none_or(|(is_target, target)| {
-            if *is_target {
-                target == target_triple
-            } else {
-                target != target_triple
-            }
-        }) || !group
-            .rust_version
-            .as_ref()
-            .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
-        {
+        if !group.is_enabled(target_triple, &tests.rust_version) {
             return Ok(());
         }
 
@@ -394,18 +384,7 @@ impl SystemTest {
         for (index, run) in group
             .runs
             .iter()
-            .filter(|r| {
-                r.runs_on.as_ref().is_none_or(|(is_target, target)| {
-                    if *is_target {
-                        target == target_triple
-                    } else {
-                        target != target_triple
-                    }
-                }) && r
-                    .rust_version
-                    .as_ref()
-                    .is_none_or(|(cmp, version)| tests.compare_rust_version(*cmp, version))
-            })
+            .filter(|r| r.is_enabled(target_triple, &tests.rust_version))
             .enumerate()
         {
             let max_tries = run.flaky.unwrap_or(0);
@@ -442,14 +421,9 @@ impl SystemTest {
                 }
 
                 let is_capture = run.expected.as_ref().is_some_and(|target_config| {
-                    target_config.resolve(target_triple).is_some_and(|e| {
-                        e.stdout.is_some()
-                            || e.no_stdout
-                            || !e.stdout_contains.resolve(target_triple).is_empty()
-                            || e.stderr.is_some()
-                            || e.no_stderr
-                            || !e.stderr_contains.resolve(target_triple).is_empty()
-                    })
+                    target_config
+                        .resolve(target_triple)
+                        .is_some_and(|r| r.expects_output_capture(target_triple))
                 });
 
                 let output = if let Some(template) = &self.config.template {
@@ -520,7 +494,7 @@ impl SystemTest {
         Ok(())
     }
 
-    fn reset_template(tests: &SystemTests) -> anyhow::Result<()> {
+    fn reset_template(tests: &SystemTests) -> Result<()> {
         let path = tests.get_template();
         let mut file = File::create(&path)
             .with_context(|| format!("Failed to reset template '{}'", path.display()))?;
@@ -535,7 +509,7 @@ impl SystemTestRunner {
         filter: Option<&str>,
         partition: Option<Partition>,
         resume: bool,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         let tests = SystemTests::new(benches, filter, partition, resume)?;
 
         let mut map = HashMap::new();
@@ -557,7 +531,7 @@ impl SystemTestRunner {
         Ok(Self { tests })
     }
 
-    pub fn run(&self) -> anyhow::Result<()> {
+    pub fn run(&self) -> Result<()> {
         // We need the `summary.json` files to verify that not all costs are zero. Extracting this
         // info from the summary is much easier than doing it from the output.
         // SAFETY: Benchmarks are run serially
@@ -619,7 +593,7 @@ impl SystemTests {
         filter: Option<&str>,
         partition: Option<Partition>,
         resume: bool,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         let meta = cargo_metadata::MetadataCommand::new()
             .no_deps()
             .exec()
@@ -635,6 +609,7 @@ impl SystemTests {
             .with_context(|| format!("Failed to compile benchmark glob '{config_pattern}'"))?
             .collect::<std::result::Result<Vec<_>, _>>()
             .with_context(|| format!("Failed to discover benchmarks with '{config_pattern}'"))?;
+
         let mut cases = config_paths
             .into_iter()
             .filter(|path| {
@@ -649,7 +624,7 @@ impl SystemTests {
                 }
             })
             .map(|config_path| SystemTest::new(&config_path, &package_dir, &target_directory))
-            .collect::<anyhow::Result<Vec<SystemTest>>>()?;
+            .collect::<Result<Vec<SystemTest>>>()?;
 
         cases.sort_by_key(|b| b.config_name.clone());
         if let Some(partition) = partition {
@@ -702,30 +677,9 @@ impl SystemTests {
     fn get_template(&self) -> PathBuf {
         self.benches_dir.join(format!("{TEMPLATE_BENCH_NAME}.rs"))
     }
-
-    fn compare_rust_version(&self, cmp: version_compare::Cmp, version: &str) -> bool {
-        if version.starts_with(|p: char| p.is_ascii_digit()) {
-            version_compare::compare_to(self.rust_version.semver.to_string(), version, cmp).unwrap()
-        } else {
-            let channel = match version {
-                "nightly" => Channel::Nightly,
-                "stable" => Channel::Stable,
-                "dev" => Channel::Dev,
-                "beta" => Channel::Beta,
-                _ => panic!("Invalid version string: {version}"),
-            };
-            match cmp {
-                version_compare::Cmp::Eq => self.rust_version.channel == channel,
-                version_compare::Cmp::Ne => self.rust_version.channel != channel,
-                _ => panic!(
-                    "Invalid comparator for channel: {version}. Only '=' and '!=' are allowed."
-                ),
-            }
-        }
-    }
 }
 
-fn build_gungraun_runner() -> anyhow::Result<()> {
+fn build_gungraun_runner() -> Result<()> {
     print_info("Building gungraun-runner");
     let status = Command::new(env!("CARGO"))
         .args(["build", "--package", "gungraun-runner", "--release"])

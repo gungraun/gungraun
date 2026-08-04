@@ -32,7 +32,9 @@ use std::path::{Path, PathBuf};
 use std::process::Output;
 
 use benchmark_tests::serde::runs_on::RunsOn;
+use rustc_version::{Channel, VersionMeta};
 use serde::{Deserialize, Serialize};
+use version_compare::Cmp;
 
 pub const PACKAGE: &str = "benchmark-tests";
 
@@ -312,8 +314,79 @@ pub struct SystemTestConfig {
     pub template: Option<PathBuf>,
 }
 
+impl Group {
+    pub fn is_enabled(&self, target_triple: &str, rust_version: &VersionMeta) -> bool {
+        is_enabled(
+            self.runs_on.as_ref(),
+            self.rust_version.as_ref(),
+            target_triple,
+            rust_version,
+        )
+    }
+}
+
+// FIX: Resolve this clippy warning
+#[expect(clippy::multiple_inherent_impl)]
+impl Run {
+    pub fn is_enabled(&self, target_triple: &str, rust_version: &VersionMeta) -> bool {
+        is_enabled(
+            self.runs_on.as_ref(),
+            self.rust_version.as_ref(),
+            target_triple,
+            rust_version,
+        )
+    }
+}
+
+impl RunExpectations {
+    pub fn expects_output_capture(&self, target_triple: &str) -> bool {
+        self.stdout.is_some()
+            || self.no_stdout
+            || !self.stdout_contains.resolve(target_triple).is_empty()
+            || self.stderr.is_some()
+            || self.no_stderr
+            || !self.stderr_contains.resolve(target_triple).is_empty()
+    }
+}
+
 impl Default for TargetedStrings {
     fn default() -> Self {
         Self::Scalar(vec![])
     }
+}
+
+fn is_enabled(
+    runs_on: Option<&(bool, String)>,
+    rust_version_cmp: Option<&(Cmp, String)>,
+    target_triple: &str,
+    rust_version: &VersionMeta,
+) -> bool {
+    let compare_rust_version = |(cmp, version): &(Cmp, String)| {
+        if version.starts_with(|p: char| p.is_ascii_digit()) {
+            version_compare::compare_to(rust_version.semver.to_string(), version, *cmp).unwrap()
+        } else {
+            let channel = match version.as_str() {
+                "nightly" => Channel::Nightly,
+                "stable" => Channel::Stable,
+                "dev" => Channel::Dev,
+                "beta" => Channel::Beta,
+                _ => panic!("Invalid version string: {version}"),
+            };
+            match cmp {
+                version_compare::Cmp::Eq => rust_version.channel == channel,
+                version_compare::Cmp::Ne => rust_version.channel != channel,
+                _ => panic!(
+                    "Invalid comparator for channel: {version}. Only '=' and '!=' are allowed."
+                ),
+            }
+        }
+    };
+
+    runs_on.as_ref().is_none_or(|(is_target, target)| {
+        if *is_target {
+            target == target_triple
+        } else {
+            target != target_triple
+        }
+    }) && rust_version_cmp.is_none_or(compare_rust_version)
 }

@@ -358,44 +358,38 @@ reqs-test target *args:
 
 # Run a single benchmark test (Uses: 'coreutils', 'cargo')
 [group('test')]
-bench-test bench *args: build-runner
+bench bench *args: build-runner
     GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests \
         --bench {{ bench }} {{ args }}
 
 # Run a single cross benchmark test (Uses: 'coreutils', 'cargo')
 [group('test')]
-cross-bench-test bench target *args:
+cross-bench bench target *args:
     CROSS_BUILD_OPTS='-v {{ justfile_dir() }}:/project:z -v {{ justfile_dir() }}/target:/target:z' \
         cross bench -p benchmark-tests --target {{ target }} --bench {{ bench }} {{ args }}
-
-# Run all benchmark tests (Uses: 'coreutils', 'cargo')
-[group('test')]
-bench-test-all *args: build-runner
-    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench \
-        -p benchmark-tests {{ args }}
 
 # Note: A single benchmark may run multiple times depending on the test
 #       configuration. See the `crates/benchmark-tests/benches` folder.
 
 # Run a single benchmark test with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
 [group('test')]
-full-bench-test bench *args:
+system-test bench *args:
     cargo run --package benchmark-tests --profile=bench --bin bench -- {{ args }} {{ bench }}
 
 # Run a single benchmark test with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
 [group('test')]
-full-bench-test-overwrite bench *args:
+system-test-overwrite bench *args:
     BENCH_OVERWRITE=yes cargo run --package benchmark-tests --profile=bench --bin bench \
         -- {{ args }} {{ bench }}
 
 # Run all benchmark tests with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
 [group('test')]
-full-bench-test-all *args:
+system-test-all *args:
     cargo run --package benchmark-tests --profile=bench --bin bench -- {{ args }}
 
 # Run all benchmark tests with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
 [group('test')]
-full-bench-test-all-overwrite *args:
+system-test-all-overwrite *args:
     BENCH_OVERWRITE=yes cargo run --package benchmark-tests --profile=bench --bin bench \
         -- {{ args }}
 

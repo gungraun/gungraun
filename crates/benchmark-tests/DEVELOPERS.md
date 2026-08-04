@@ -4,11 +4,11 @@
 
 This is the package for system tests of the interaction of `gungraun`,
 `gungraun-runner` and `gungraun-macros`. Most of the benchmarks in this package
-can be run as usual with `cargo bench` or `just bench-test $BENCH_NAME`. But, to
-be able to intercept and validate the output (and other validations) of the
+can be run as usual with `cargo bench` or `just bench $BENCH_NAME`. But, to be
+able to intercept and validate the output (and other validations) of the
 `cargo bench` run of a benchmark test there is a wrapper around `cargo bench` in
 `benchmark-test/src/bench.rs` with which the benchmarks tests should be run. For
-example, you can use `just full-bench-test $BENCH_NAME`.
+example, you can use `just system-test $BENCH_NAME`.
 
 ## Notes
 
@@ -22,10 +22,10 @@ improvements in the testing practice.
 
 or
 
-`$ just full-bench-test`, `$ just full-bench-test-all`.
+`$ just system-test`, `$ just system-test-all`.
 
-See the output of `just --show full-bench-test`, ... for the command description
-and arguments.
+See the output of `just --show system-test`, ... for the command description and
+arguments.
 
 The positional `BENCH` can be a single benchmark. If no positional argument is
 given all benchmarks are run.
@@ -61,13 +61,13 @@ path = "benches/test_bin_bench/foo/test_bin_bench_foo.rs"
 ```
 
 You can now start to set up your test case in the benchmark file. Run the
-benchmark for example with `just bench-test test_lib_bench_foo`.
+benchmark for example with `just bench test_lib_bench_foo`.
 
 ### Configuration
 
 In the current state this new benchmark won't run in the CI or with
-`just full-bench-test`. Adding a yaml file with the same name as the benchmark
-file but with the extension `.conf.yml` is required, too.
+`just system-test`. Adding a yaml file with the same name as the benchmark file
+but with the extension `.conf.yml` is required, too.
 
 For example, if the benchmark file name is
 `benches/test_bin_bench/foo/test_bin_bench_foo.rs`, the configuration file name

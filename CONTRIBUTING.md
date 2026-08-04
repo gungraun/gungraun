@@ -168,9 +168,9 @@ runs through without errors.
 The benches in the `benchmark-tests` package are system tests and run the whole
 pipeline. We use a wrapper around `cargo bench`
 (`crates/benchmark-tests/src/bench`) to run the `benchmark-tests`. In order to
-run a single benchmark-tests use `just full-bench-test $BENCHMARK_NAME` or all
-with `just full-bench-test-all` (This might take a while). See the
-[`README`](./crates/benchmark-tests/DEVELOPERS.md) of the benchmark-tests
+run a single benchmark-tests use `just system-test $BENCHMARK_NAME` or all with
+`just system-test-all` (This might take a while). See
+[`DEVELOPERS`](./crates/benchmark-tests/DEVELOPERS.md) of the benchmark-tests
 package for more details.
 
 The user interface is tested in `crates/gungraun/tests/ui`. The ui tests error
@@ -191,26 +191,20 @@ If you made changes in the `gungraun-runner` package, you can point the
 
 ```shell
 cargo build -p gungraun-runner --release
-GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests
+GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests --bench test_lib_bench_tools
 ```
 
 or with `just` in a single command:
 
 ```shell
-just bench-test-all
+just bench test_lib_bench_tools
 ```
 
-or a specific bench of the benchmark-test package
+The concrete results of the benchmarks are not checked when running the system
+tests that way. You can use
 
 ```shell
-just bench-test test_lib_bench_tools
-```
-
-The concrete results of the benchmarks are not checked when running the
-benchmark tests that way. You can use
-
-```shell
-just full-bench-test test_lib_bench_tools
+just system-test test_lib_bench_tools
 ```
 
 which actually verifies the stdout/stderr and/or output files of the benchmark

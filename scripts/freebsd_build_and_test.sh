@@ -36,4 +36,4 @@ cargo +stable test -p valgrind-requests-tests --test tests --release -- --nocapt
 cargo clean
 
 echo Run benchmark tests
-just full-bench-test-all
+just system-test-all

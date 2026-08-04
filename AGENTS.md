@@ -99,8 +99,8 @@ just test <package_name>          # One workspace package
 just test-all                     # Main workspace suite
 just test-ui                      # Compile-fail tests at MSRV
 just test-doc                     # Documentation tests
-just full-bench-test <bench_name> # One benchmark system test
-just full-bench-test-all          # All benchmark system tests
+just system-test <bench_name>     # One benchmark system test
+just system-test-all              # All benchmark system tests
 just build-hack-valgrind-requests # Feature-power-set request builds
 ```
 

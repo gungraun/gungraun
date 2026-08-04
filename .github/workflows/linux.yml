@@ -147,7 +147,7 @@ jobs:
 
           scripts/perf_ci_info.sh
       - name: Run the system tests
-        run: just full-bench-test-all --filter='${{ matrix.filter }}' --partition='${{ matrix.partition }}'
+        run: just system-test-all --filter='${{ matrix.filter }}' --partition='${{ matrix.partition }}'
         env:
           RUST_BACKTRACE: "0"
       - name: Generate sanitized artifact name

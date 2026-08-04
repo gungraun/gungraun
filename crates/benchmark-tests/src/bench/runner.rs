@@ -438,7 +438,7 @@ impl SystemTest {
                     group_expectations: group.expected.as_ref(),
                     home_dir: &self.home_dir,
                     is_coverage_run: tests.is_coverage_run,
-                    output: &output,
+                    captured_output: &output,
                     schema,
                 };
 

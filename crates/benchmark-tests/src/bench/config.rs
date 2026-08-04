@@ -31,10 +31,13 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Output;
 
+use anyhow::Result;
 use benchmark_tests::serde::runs_on::RunsOn;
 use rustc_version::{Channel, VersionMeta};
 use serde::{Deserialize, Serialize};
 use version_compare::Cmp;
+
+use crate::assert::{Assert, AssertContext};
 
 pub const PACKAGE: &str = "benchmark-tests";
 
@@ -325,9 +328,20 @@ impl Group {
     }
 }
 
-// FIX: Resolve this clippy warning
-#[expect(clippy::multiple_inherent_impl)]
 impl Run {
+    pub fn assert(&self, ctx: &AssertContext) -> Result<()> {
+        let target_triple = env!("GR_BUILD_TRIPLE");
+        if let Some(expected) = self
+            .expected
+            .as_ref()
+            .and_then(|e| e.resolve(target_triple))
+        {
+            return Assert(expected).assert(ctx, target_triple);
+        }
+
+        Ok(())
+    }
+
     pub fn is_enabled(&self, target_triple: &str, rust_version: &VersionMeta) -> bool {
         is_enabled(
             self.runs_on.as_ref(),
@@ -346,6 +360,48 @@ impl RunExpectations {
             || self.stderr.is_some()
             || self.no_stderr
             || !self.stderr_contains.resolve(target_triple).is_empty()
+    }
+
+    pub fn resolve_script<'a>(
+        &'a self,
+        group_expectations: Option<&'a GroupExpectations>,
+        target_triple: &str,
+    ) -> Option<&'a str> {
+        self.script.as_ref().map_or_else(
+            || {
+                group_expectations
+                    .and_then(|g| g.script.as_ref().and_then(|s| s.resolve(target_triple)))
+            },
+            |s| s.resolve(target_triple),
+        )
+    }
+
+    pub fn resolve_exit_code(&self, target_triple: &str) -> Option<i32> {
+        self.exit_code
+            .as_ref()
+            .and_then(|e| e.resolve(target_triple))
+    }
+
+    pub fn resolve_files(&self, target_triple: &str) -> Option<&Path> {
+        self.files.as_ref().and_then(|f| f.resolve(target_triple))
+    }
+
+    pub fn resolve_stderr(&self, target_triple: &str) -> Option<&Path> {
+        self.stderr.as_ref().and_then(|p| p.resolve(target_triple))
+    }
+
+    pub fn resolve_stderr_contains(&self, target_triple: &str) -> Option<&[String]> {
+        let resolved = self.stderr_contains.resolve(target_triple);
+        (!resolved.is_empty()).then_some(resolved)
+    }
+
+    pub fn resolve_stdout(&self, target_triple: &str) -> Option<&Path> {
+        self.stdout.as_ref().and_then(|p| p.resolve(target_triple))
+    }
+
+    pub fn resolve_stdout_contains(&self, target_triple: &str) -> Option<&[String]> {
+        let resolved = self.stdout_contains.resolve(target_triple);
+        (!resolved.is_empty()).then_some(resolved)
     }
 }
 

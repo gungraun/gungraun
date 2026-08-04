@@ -160,7 +160,6 @@ static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
 static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("[']([/][^/']+)+[']").expect("Regex should compile"));
 
-#[expect(clippy::multiple_inherent_impl)]
 impl CapturedOutput {
     pub fn normalize_coverage_stdout(stdout: &str) -> String {
         let mut result = String::new();

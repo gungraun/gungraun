@@ -604,57 +604,13 @@ impl SystemTests {
         let workspace_root = meta.workspace_root.clone().into_std_path_buf();
         let target_directory = meta.target_directory.into_std_path_buf();
 
-        let config_pattern = format!("{}/**/*.conf.yml", benches_dir.display());
-        let config_paths = glob(&config_pattern)
-            .with_context(|| format!("Failed to compile benchmark glob '{config_pattern}'"))?
-            .collect::<std::result::Result<Vec<_>, _>>()
-            .with_context(|| format!("Failed to discover benchmarks with '{config_pattern}'"))?;
-
-        let mut cases = config_paths
-            .into_iter()
-            .filter(|path| {
-                let file_name = path.file_name().unwrap().to_string_lossy();
-                let name = &file_name.strip_suffix(".conf.yml").unwrap().to_owned();
-                if let Some(filter) = filter.as_ref() {
-                    filter.dowild(name) && (tests.is_empty() || tests.contains(name))
-                } else if tests.is_empty() {
-                    true
-                } else {
-                    tests.contains(name)
-                }
+        let cases = Self::discover_config_paths(&benches_dir)
+            .and_then(|paths| {
+                Self::paths_to_cases(paths, filter, tests, &package_dir, &target_directory)
             })
-            .map(|config_path| SystemTest::new(&config_path, &package_dir, &target_directory))
-            .collect::<Result<Vec<SystemTest>>>()?;
-
-        cases.sort_by_key(|b| b.config_name.clone());
-        if let Some(partition) = partition {
-            if cases.is_empty() {
-                bail!("The partition did not match any benchmarks");
-            }
-            let chunk_size = cases.len().div_ceil(partition.total);
-            let chunk = cases
-                .chunks(chunk_size)
-                .nth(partition.part - 1)
-                .map(<[SystemTest]>::to_vec);
-            cases = chunk.ok_or_else(|| anyhow!("The partition did not match any benchmarks"))?;
-        }
-
-        // We do not check the exact command, so it is possible to resume at any point. The only
-        // condition is that the benchmark name must be part of the new command.
-        if resume {
-            let test =
-                std::fs::read_to_string(target_directory.join("gungraun").join(CONTINUE_FILE_NAME))
-                    .context("Failed to read the continue file")?;
-            let test = test.trim();
-            print_info(format!("Continue with {test}"));
-
-            let index = cases
-                .iter()
-                .position(|b| b.config_name == test)
-                .ok_or_else(|| anyhow!("Benchmark '{test}' from continue file was not found"))?;
-
-            cases.drain(..index);
-        }
+            .map(Self::sort)
+            .and_then(|cases| Self::apply_partition(cases, partition.as_ref()))
+            .and_then(|cases| Self::apply_resume(cases, resume, &target_directory))?;
 
         print_info("Benchmarks to run:");
         for b in &cases {
@@ -672,6 +628,87 @@ impl SystemTests {
             rust_version,
             is_coverage_run: std::env::var(CARGO_LLVM_COV).is_ok_and(|v| v == "1"),
         })
+    }
+
+    fn apply_partition(
+        cases: Vec<SystemTest>,
+        partition: Option<&Partition>,
+    ) -> Result<Vec<SystemTest>> {
+        if let Some(partition) = partition {
+            if cases.is_empty() {
+                bail!("The partition did not match any benchmarks");
+            }
+            let chunk_size = cases.len().div_ceil(partition.total);
+            let chunk = cases
+                .chunks(chunk_size)
+                .nth(partition.part - 1)
+                .map(<[SystemTest]>::to_vec);
+            chunk.ok_or_else(|| anyhow!("The partition did not match any benchmarks"))
+        } else {
+            Ok(cases)
+        }
+    }
+
+    fn apply_resume(
+        mut cases: Vec<SystemTest>,
+        resume: bool,
+        target_directory: &Path,
+    ) -> Result<Vec<SystemTest>> {
+        // We do not check the exact command, so it is possible to resume at any point. The only
+        // condition is that the benchmark name must be part of the new command.
+        if resume {
+            let test =
+                std::fs::read_to_string(target_directory.join("gungraun").join(CONTINUE_FILE_NAME))
+                    .context("Failed to read the continue file")?;
+            let test = test.trim();
+            print_info(format!("Continue with {test}"));
+
+            let index = cases
+                .iter()
+                .position(|b| b.config_name == test)
+                .ok_or_else(|| anyhow!("Benchmark '{test}' from continue file was not found"))?;
+
+            cases.drain(..index);
+        }
+
+        Ok(cases)
+    }
+
+    fn discover_config_paths(benches_dir: &Path) -> Result<Vec<PathBuf>> {
+        let config_pattern = format!("{}/**/*.conf.yml", benches_dir.display());
+        glob(&config_pattern)
+            .with_context(|| format!("Failed to compile benchmark glob '{config_pattern}'"))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .with_context(|| format!("Failed to discover benchmarks with '{config_pattern}'"))
+    }
+
+    fn sort(mut cases: Vec<SystemTest>) -> Vec<SystemTest> {
+        cases.sort_by_key(|b| b.config_name.clone());
+        cases
+    }
+
+    fn paths_to_cases(
+        config_paths: Vec<PathBuf>,
+        filter: Option<&str>,
+        tests: &[String],
+        package_dir: &Path,
+        target_directory: &Path,
+    ) -> Result<Vec<SystemTest>> {
+        config_paths
+            .into_iter()
+            .filter(|path| {
+                let file_name = path.file_name().unwrap().to_string_lossy();
+                let name = &file_name.strip_suffix(".conf.yml").unwrap().to_owned();
+                if let Some(filter) = filter.as_ref() {
+                    filter.dowild(name) && (tests.is_empty() || tests.contains(name))
+                } else if tests.is_empty() {
+                    true
+                } else {
+                    tests.contains(name)
+                }
+            })
+            .map(|config_path| SystemTest::new(&config_path, package_dir, target_directory))
+            .collect::<Result<Vec<SystemTest>>>()
     }
 
     fn get_template(&self) -> PathBuf {

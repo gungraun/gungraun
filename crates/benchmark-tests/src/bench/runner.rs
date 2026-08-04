@@ -18,6 +18,7 @@ use valico::json_schema::schema::ScopedSchema;
 use super::config::{CapturedOutput, Group, PACKAGE, SystemTestConfig};
 use super::expected_files::SCHEMA_VERSION;
 use super::io::{deserialize_json, deserialize_yaml, get_rust_version, print_info};
+use crate::assert::AssertContext;
 use crate::config::Partition;
 use crate::expected_files::{SCHEMA_PATH, TEMPLATE_DATA};
 
@@ -28,6 +29,16 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
 "#;
 const CONTINUE_FILE_NAME: &str = "benchmark-tests.continue";
 const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
+
+struct ExecContext<'a> {
+    cargo_args: &'a [String],
+    envs: &'a HashMap<String, String>,
+    gungraun_args: &'a [String],
+    is_capture: bool,
+    setup: Option<&'a str>,
+    teardown: Option<&'a str>,
+    tolerance: Option<f64>,
+}
 
 /// Benchmark test case derived from a `.conf.yml` file.
 ///
@@ -196,18 +207,8 @@ impl SystemTest {
         Ok(())
     }
 
-    #[expect(clippy::too_many_arguments)]
-    fn run_bench(
-        &self,
-        cargo_args: &[String],
-        gungraun_args: &[String],
-        envs: &HashMap<String, String>,
-        is_capture: bool,
-        tolerance: Option<f64>,
-        setup: Option<&str>,
-        teardown: Option<&str>,
-    ) -> Result<CapturedOutput> {
-        let stdio = if is_capture {
+    fn run_bench(&self, ctx: &ExecContext) -> Result<CapturedOutput> {
+        let stdio = if ctx.is_capture {
             // SAFETY: Benchmarks are run serially
             unsafe {
                 std::env::set_var("GUNGRAUN_COLOR", "never");
@@ -224,7 +225,7 @@ impl SystemTest {
         let temp_dir =
             tempdir().context("Failed to create a temporary directory for setup and teardown")?;
 
-        if let Some(setup) = setup {
+        if let Some(setup) = ctx.setup {
             let setup_path = temp_dir.path().join("setup");
 
             std::fs::write(&setup_path, setup).with_context(|| {
@@ -258,28 +259,29 @@ impl SystemTest {
 
         let mut command = Command::new(env!("CARGO"));
         command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
-        command.args(cargo_args);
+        command.args(ctx.cargo_args);
 
-        if !envs.is_empty() {
-            let envs_string = envs
+        if !ctx.envs.is_empty() {
+            let envs_string = ctx
+                .envs
                 .iter()
                 .map(|(key, value)| format!("  {key}={value}"))
                 .collect::<Vec<String>>()
                 .join("\n");
-            command.envs(envs);
+            command.envs(ctx.envs);
             print_info(format!("Environment variables:\n{envs_string}"));
         }
 
-        if is_capture {
+        if ctx.is_capture {
             command.args(["--color", "never"]);
         }
 
-        if !gungraun_args.is_empty() {
+        if !ctx.gungraun_args.is_empty() {
             command.arg("--");
-            command.args(gungraun_args);
+            command.args(ctx.gungraun_args);
         }
 
-        if let Some(tolerance) = tolerance {
+        if let Some(tolerance) = ctx.tolerance {
             command.arg(format!("--tolerance={tolerance}"));
         }
 
@@ -289,7 +291,7 @@ impl SystemTest {
             .output()
             .with_context(|| format!("Failed to launch benchmark '{}'", self.config_name))?;
 
-        if let Some(teardown) = teardown {
+        if let Some(teardown) = ctx.teardown {
             let teardown_path = temp_dir.path().join("teardown");
             std::fs::write(&teardown_path, teardown).with_context(|| {
                 format!(
@@ -310,23 +312,16 @@ impl SystemTest {
 
         Ok(CapturedOutput {
             output,
-            has_tolerance: tolerance.is_some(),
+            has_tolerance: ctx.tolerance.is_some(),
         })
     }
 
-    #[expect(clippy::too_many_arguments)]
     fn run_template(
         &self,
         template_path: &Path,
-        cargo_args: &[String],
-        gungraun_args: &[String],
-        envs: &HashMap<String, String>,
         template_data: &HashMap<String, minijinja::Value>,
         tests: &SystemTests,
-        is_capture: bool,
-        tolerance: Option<f64>,
-        setup: Option<&str>,
-        teardown: Option<&str>,
+        ctx: &ExecContext,
     ) -> Result<CapturedOutput> {
         let mut template_string = String::new();
         let source_path = self.config_dir.join(template_path);
@@ -353,15 +348,7 @@ impl SystemTest {
             .render_captured_to(template_data, dest)
             .with_context(|| format!("Failed to render template '{}'", source_path.display()))?;
 
-        self.run_bench(
-            cargo_args,
-            gungraun_args,
-            envs,
-            is_capture,
-            tolerance,
-            setup,
-            teardown,
-        )
+        self.run_bench(ctx)
     }
 
     fn run(
@@ -426,45 +413,37 @@ impl SystemTest {
                         .is_some_and(|r| r.expects_output_capture(target_triple))
                 });
 
+                let exec_ctx = ExecContext {
+                    cargo_args: &run.cargo_args,
+                    envs: &run.envs,
+                    gungraun_args: &run.gungraun_args,
+                    is_capture,
+                    setup: run.setup.as_deref(),
+                    teardown: run.teardown.as_deref(),
+                    tolerance: run.tolerance,
+                };
+
                 let output = if let Some(template) = &self.config.template {
-                    let output = self.run_template(
-                        template,
-                        &run.cargo_args,
-                        &run.gungraun_args,
-                        &run.envs,
-                        &run.template_data,
-                        tests,
-                        is_capture,
-                        run.tolerance,
-                        run.setup.as_deref(),
-                        run.teardown.as_deref(),
-                    )?;
+                    let output =
+                        self.run_template(template, &run.template_data, tests, &exec_ctx)?;
                     Self::reset_template(tests)?;
                     output
                 } else {
-                    self.run_bench(
-                        &run.cargo_args,
-                        &run.gungraun_args,
-                        &run.envs,
-                        is_capture,
-                        run.tolerance,
-                        run.setup.as_deref(),
-                        run.teardown.as_deref(),
-                    )?
+                    self.run_bench(&exec_ctx)?
+                };
+
+                let assert_ctx = AssertContext {
+                    bench_name: &self.bench_name,
+                    config_dir: &self.config_dir,
+                    group_expectations: group.expected.as_ref(),
+                    home_dir: &self.home_dir,
+                    is_coverage_run: tests.is_coverage_run,
+                    output: &output,
+                    schema,
                 };
 
                 if tries < max_tries {
-                    let result = panic::catch_unwind(AssertUnwindSafe(|| {
-                        run.assert(
-                            &self.config_dir,
-                            tests.is_coverage_run,
-                            &output,
-                            schema,
-                            &self.home_dir,
-                            &self.bench_name,
-                            group.expected.as_ref(),
-                        )
-                    }));
+                    let result = panic::catch_unwind(AssertUnwindSafe(|| run.assert(&assert_ctx)));
                     if let Ok(result) = result {
                         result?;
                         break;
@@ -476,15 +455,7 @@ impl SystemTest {
                     ));
                     self.restore(backup_dir.as_ref())?;
                 } else {
-                    run.assert(
-                        &self.config_dir,
-                        tests.is_coverage_run,
-                        &output,
-                        schema,
-                        &self.home_dir,
-                        &self.bench_name,
-                        group.expected.as_ref(),
-                    )?;
+                    run.assert(&assert_ctx)?;
                 }
             }
 

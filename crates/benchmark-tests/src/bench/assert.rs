@@ -16,6 +16,16 @@ use super::config::{CapturedOutput, GroupExpectations, PACKAGE, RunExpectations}
 use super::expected_files::ExpectedFilesManifest;
 use super::io::{deserialize_yaml_str, print_info};
 
+pub struct AssertContext<'a> {
+    pub bench_name: &'a str,
+    pub config_dir: &'a Path,
+    pub group_expectations: Option<&'a GroupExpectations>,
+    pub home_dir: &'a Path,
+    pub is_coverage_run: bool,
+    pub output: &'a CapturedOutput,
+    pub schema: &'a ScopedSchema<'a>,
+}
+
 impl super::config::CapturedOutput {
     pub fn assert(
         &self,
@@ -214,17 +224,7 @@ impl super::config::CapturedOutput {
 }
 
 impl super::config::Run {
-    #[expect(clippy::too_many_arguments)]
-    pub fn assert(
-        &self,
-        config_dir: &Path,
-        is_coverage_run: bool,
-        output: &CapturedOutput,
-        schema: &ScopedSchema<'_>,
-        home_dir: &Path,
-        bench_name: &str,
-        group_expectations: Option<&GroupExpectations>,
-    ) -> Result<()> {
+    pub fn assert(&self, ctx: &AssertContext) -> Result<()> {
         let target_triple = env!("GR_BUILD_TRIPLE");
         let expected = self
             .expected
@@ -233,9 +233,10 @@ impl super::config::Run {
 
         if let Some(expected) = expected {
             if expected.expects_output_capture(target_triple) {
-                output.assert(config_dir, is_coverage_run, expected, target_triple)?;
+                ctx.output
+                    .assert(ctx.config_dir, ctx.is_coverage_run, expected, target_triple)?;
             }
-            output.assert_exit(
+            ctx.output.assert_exit(
                 expected
                     .exit_code
                     .as_ref()
@@ -245,7 +246,7 @@ impl super::config::Run {
             // a run-local script takes precedence over a group script if present
             if let Some(script) = expected.script.as_ref().map_or_else(
                 || {
-                    group_expectations
+                    ctx.group_expectations
                         .and_then(|g| g.script.as_ref().and_then(|s| s.resolve(target_triple)))
                 },
                 |s| s.resolve(target_triple),
@@ -253,7 +254,7 @@ impl super::config::Run {
                 let temp_dir = tempdir()
                     .context("Failed to create a temporary directory for the assertion script")?;
 
-                let output_dir = home_dir.join(PACKAGE).join(bench_name);
+                let output_dir = ctx.home_dir.join(PACKAGE).join(ctx.bench_name);
                 let assert_path = temp_dir.path().join("assert");
 
                 std::fs::write(&assert_path, script).with_context(|| {
@@ -281,17 +282,16 @@ impl super::config::Run {
                 .as_ref()
                 .and_then(|f| f.resolve(target_triple))
             {
-                let manifest_path = config_dir.join(manifest);
-
+                let manifest_path = ctx.config_dir.join(manifest);
                 let manifest_content = fs::read_to_string(&manifest_path)
                     .with_context(|| format!("Failed to read '{}'", manifest.display()))?;
                 let expected_files_manifest: ExpectedFilesManifest =
                     deserialize_yaml_str(&manifest_content, &manifest_path)?;
 
                 let output_dir = if let Some(home_dir) = &expected_files_manifest.home_dir {
-                    home_dir.join(PACKAGE).join(bench_name)
+                    home_dir.join(PACKAGE).join(ctx.bench_name)
                 } else {
-                    home_dir.join(PACKAGE).join(bench_name)
+                    ctx.home_dir.join(PACKAGE).join(ctx.bench_name)
                 };
 
                 if option_env!("BENCH_OVERWRITE").map_or(false, |s| s.eq_ignore_ascii_case("yes")) {
@@ -321,7 +321,7 @@ impl super::config::Run {
                             .collect::<HashSet<PathBuf>>()
                         });
 
-                    let expected_dir = manifest_entry.assert(&output_dir, schema)?;
+                    let expected_dir = manifest_entry.assert(&output_dir, ctx.schema)?;
                     visited_dirs
                         .entry(manifest_entry.group)
                         .and_modify(|s: &mut HashSet<PathBuf>| {
@@ -347,8 +347,8 @@ impl super::config::Run {
                     not_visited
                 );
             } else if expected.no_files {
-                let package_dir = home_dir.join(PACKAGE);
-                let output_dir = package_dir.join(bench_name);
+                let package_dir = ctx.home_dir.join(PACKAGE);
+                let output_dir = package_dir.join(ctx.bench_name);
 
                 if output_dir.exists() {
                     let files = glob(&format!("{}/**/*", output_dir.display()))
@@ -379,7 +379,7 @@ impl super::config::Run {
             .as_ref()
             .is_some_and(|expected| !expected.zero_metrics)
         {
-            let output_dir = home_dir.join(PACKAGE).join(bench_name);
+            let output_dir = ctx.home_dir.join(PACKAGE).join(ctx.bench_name);
             // These checks heavily depends on the creation of the `summary.json` files, but we
             // create them by default.
             for path in glob(&format!("{}/**/summary.json", output_dir.display()))

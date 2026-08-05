@@ -287,15 +287,15 @@ pub fn cleanup_test_process_handler(process_handler: ProcessHandler) {
             .wait()
             .expect("Waiting for the setup process should succeed");
     }
-    if let Some(tool_command_child) = process_handler.bench {
-        if let Some(mut child) = tool_command_child.child {
-            child
-                .kill()
-                .expect("Killing the benchmark process should succeed");
-            child
-                .wait()
-                .expect("Waiting for the benchmark process should succeed");
-        }
+    if let Some(tool_command_child) = process_handler.bench
+        && let Some(mut child) = tool_command_child.child
+    {
+        child
+            .kill()
+            .expect("Killing the benchmark process should succeed");
+        child
+            .wait()
+            .expect("Waiting for the benchmark process should succeed");
     }
     if let Some((_, mut child)) = process_handler.teardown {
         child

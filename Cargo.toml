@@ -19,7 +19,7 @@ homepage = "https://github.com/gungraun/gungraun"
 keywords = ["performance", "benchmark", "profiling", "valgrind", "callgrind"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/gungraun/gungraun"
-rust-version = "1.85.1"
+rust-version = "1.88.0"
 version = "0.19.4"
 
 [workspace.dependencies]

@@ -12,10 +12,10 @@ fn check_args() -> Vec<String> {
         "BENCH_ENV=4".to_owned(),
         "COMMAND_ENV=5".to_owned(),
     ];
-    if let Ok(value) = std::env::var("CLI_ENV_TEST") {
-        if value == "true" {
-            default_args.push("CLI_ENV=0".to_owned());
-        }
+    if let Ok(value) = std::env::var("CLI_ENV_TEST")
+        && value == "true"
+    {
+        default_args.push("CLI_ENV=0".to_owned());
     }
 
     default_args

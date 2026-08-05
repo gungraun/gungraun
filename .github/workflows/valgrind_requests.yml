@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - toolchain: "1.85.1" # MSRV
+          - toolchain: "1.88.0" # MSRV
             os: ubuntu-latest
           - toolchain: stable
             os: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
           brew install --HEAD LouisBrunner/valgrind/valgrind
           echo "VALGRIND_REQUESTS_VALGRIND_INCLUDE=$(brew --prefix)/include" >> "$GITHUB_ENV"
       - name: Update dependencies
-        if: matrix.toolchain != '1.85.1'
+        if: matrix.toolchain != '1.88.0'
         run: cargo update
       - name: Build
         run: just build-hack-valgrind-requests

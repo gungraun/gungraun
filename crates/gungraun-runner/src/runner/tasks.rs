@@ -397,10 +397,10 @@ impl ProcessHandler {
     where
         F: Fn(&ToolConfig, Option<BenchRunMode>) -> Cow<'args, [OsString]>,
     {
-        if !self.setup_is_parallel {
-            if let Some(Err(error)) = self.wait_for_setup() {
-                return Err(error);
-            }
+        if !self.setup_is_parallel
+            && let Some(Err(error)) = self.wait_for_setup()
+        {
+            return Err(error);
         }
 
         if self.force_shutdown.load(atomic::Ordering::Acquire) {

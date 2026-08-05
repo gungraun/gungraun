@@ -20,7 +20,7 @@ If you are looking for a place to start contributing to Gungraun, take a look at
 the [help wanted][gungraun-help-wanted] or [good first
 issue][gungraun-issues-first] issues.
 
-The minimum supported version (MSRV) of Gungraun is Rust `1.85.1` and all
+The minimum supported version (MSRV) of Gungraun is Rust `1.88.0` and all
 patches are expected to work with the minimum supported version.
 
 All notable changes need to be added to the [CHANGELOG][changelog].

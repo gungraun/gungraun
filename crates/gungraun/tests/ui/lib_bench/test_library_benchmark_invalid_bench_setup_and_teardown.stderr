@@ -13,7 +13,7 @@ help: the return type of this call is `&'static str` due to the type of the argu
 21 | #[bench::id(args = ("wrong type"), setup = setup_u64_to_string)]
    |                    ^------------^
    |                     |
-   |                     this argument influences the return type of `std`
+   |                     this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -43,7 +43,7 @@ help: the return type of this call is `&'static str` due to the type of the argu
 35 | #[bench::id(args = ("wrong type"), setup = setup_u64_to_string)]
    |                    ^------------^
    |                     |
-   |                     this argument influences the return type of `std`
+   |                     this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -93,7 +93,7 @@ help: the return type of this call is `&'static str` due to the type of the argu
   --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_setup_and_teardown.rs:56:23
    |
 56 | #[benches::id(args = ["wrong type"], setup = setup_u64_to_string)]
-   |                       ^^^^^^^^^^^^ this argument influences the return type of `std`
+   |                       ^^^^^^^^^^^^ this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -121,7 +121,7 @@ help: the return type of this call is `&'static str` due to the type of the argu
   --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_setup_and_teardown.rs:70:23
    |
 70 | #[benches::id(args = ["wrong type"], setup = setup_u64_to_string)]
-   |                       ^^^^^^^^^^^^ this argument influences the return type of `std`
+   |                       ^^^^^^^^^^^^ this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |

@@ -95,7 +95,8 @@ note: function defined here
    |        ^^^^^ -----------
 help: provide the argument
    |
-60 |     setup(/* usize */)
+60 -     #[binary_benchmark(setup = setup)]
+60 +     setup(/* usize */)
    |
 
 error[E0425]: cannot find function `does_not_exist` in this scope
@@ -117,5 +118,6 @@ note: function defined here
    |        ^^^^^^^^ -----------
 help: provide the argument
    |
-80 |     teardown(/* usize */)
+80 -     #[binary_benchmark(teardown = teardown)]
+80 +     teardown(/* usize */)
    |

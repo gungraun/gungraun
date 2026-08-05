@@ -10,7 +10,7 @@ pub mod my_lib {
         #[expect(clippy::cast_sign_loss)]
         #[expect(clippy::cast_precision_loss)]
         for i in 2..=(num as f64).sqrt() as u64 {
-            if num % i == 0 {
+            if num.is_multiple_of(i) {
                 return false;
             }
         }

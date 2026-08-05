@@ -19,7 +19,7 @@
         <img src="https://docs.rs/gungraun/badge.svg" alt="docs.rs"/>
     </a>
     <a href="https://github.com/rust-lang/rust">
-        <img src="https://img.shields.io/badge/MSRV-1.85.1-brightgreen" alt="MSRV"/>
+        <img src="https://img.shields.io/badge/MSRV-1.88.0-brightgreen" alt="MSRV"/>
     </a>
 </div>
 

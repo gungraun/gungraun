@@ -758,11 +758,11 @@ impl File {
         let string = expr.value();
         let mut path = PathBuf::from(&string);
 
-        if path.is_relative() {
-            if let Some(cargo_meta) = cargo_meta {
-                let root = PathBuf::from(&cargo_meta.workspace_root);
-                path = root.join(path);
-            }
+        if path.is_relative()
+            && let Some(cargo_meta) = cargo_meta
+        {
+            let root = PathBuf::from(&cargo_meta.workspace_root);
+            path = root.join(path);
         }
 
         let file = StdFile::open(&path)

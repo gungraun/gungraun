@@ -341,10 +341,10 @@ impl ExpectedFilesManifestEntry {
 
         let mut summary = None;
         for file in self.expected.files.iter().map(|f| expected_dir.join(f)) {
-            if let Some(file_name) = file.file_name() {
-                if file_name == "summary.json" {
-                    summary = Some(file.clone());
-                }
+            if let Some(file_name) = file.file_name()
+                && file_name == "summary.json"
+            {
+                summary = Some(file.clone());
             }
             // Gungraun does not produce empty files and if so we treat it as an error
             assert!(
@@ -376,10 +376,10 @@ impl ExpectedFilesManifestEntry {
             );
 
             for file in files {
-                if let Some(file_name) = file.file_name() {
-                    if file_name == "summary.json" {
-                        summary = Some(file.clone());
-                    }
+                if let Some(file_name) = file.file_name()
+                    && file_name == "summary.json"
+                {
+                    summary = Some(file.clone());
                 }
                 discovered_files.remove(&file);
             }

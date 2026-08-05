@@ -33,7 +33,7 @@ pub fn is_prime(num: u64) -> bool {
     #[expect(clippy::cast_precision_loss)]
     #[expect(clippy::cast_sign_loss)]
     for i in 2..=(num as f64).sqrt() as u64 {
-        if num % i == 0 {
+        if num.is_multiple_of(i) {
             return false;
         }
     }

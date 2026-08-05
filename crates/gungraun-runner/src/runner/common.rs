@@ -751,28 +751,28 @@ impl BenchmarkDataProcessor for BaselineAndSaveDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == Tool::Callgrind {
-            if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
-                let save_baseline = output_path.loaded_baseline_name().expect(
-                    "The saved baseline of a baseline-and-save output path should have a name",
-                );
-                let baseline = output_path.baseline_name().cloned().expect(
-                    "The comparison baseline of a baseline-and-save output path should have a name",
-                );
+        if output_path.tool == Tool::Callgrind
+            && let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config
+        {
+            let save_baseline = output_path
+                .loaded_baseline_name()
+                .expect("The saved baseline of a baseline-and-save output path should have a name");
+            let baseline = output_path.baseline_name().cloned().expect(
+                "The comparison baseline of a baseline-and-save output path should have a name",
+            );
 
-                return BaselineAndSaveFlamegraphGenerator {
-                    baseline,
-                    save_baseline,
-                }
-                .create(
-                    &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
-                    output_path,
-                    (*entry_point == EntryPoint::Default)
-                        .then(Sentinel::default)
-                        .as_ref(),
-                    &config.meta.project_root,
-                );
+            return BaselineAndSaveFlamegraphGenerator {
+                baseline,
+                save_baseline,
             }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
+                output_path,
+                (*entry_point == EntryPoint::Default)
+                    .then(Sentinel::default)
+                    .as_ref(),
+                &config.meta.project_root,
+            );
         }
 
         Ok(vec![])
@@ -814,20 +814,20 @@ impl BenchmarkDataProcessor for BaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == Tool::Callgrind {
-            if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
-                return BaselineFlamegraphGenerator {
-                    baseline_kind: output_path.baseline_kind.clone(),
-                }
-                .create(
-                    &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
-                    output_path,
-                    (*entry_point == EntryPoint::Default)
-                        .then(Sentinel::default)
-                        .as_ref(),
-                    &config.meta.project_root,
-                );
+        if output_path.tool == Tool::Callgrind
+            && let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config
+        {
+            return BaselineFlamegraphGenerator {
+                baseline_kind: output_path.baseline_kind.clone(),
             }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
+                output_path,
+                (*entry_point == EntryPoint::Default)
+                    .then(Sentinel::default)
+                    .as_ref(),
+                &config.meta.project_root,
+            );
         }
 
         Ok(vec![])
@@ -1068,14 +1068,14 @@ impl Group {
             self.run_parallel(config, num_workers)
         } else {
             let result = self.run_serial(config);
-            if let Err(error) = &result {
-                if let Some(Error::JobError(_, _, _, path)) = error.downcast_ref::<Error>() {
-                    // Avoid an error within the error situation.
-                    let _ = path
-                        .init()
-                        .and_then(|()| path.clear_temp_files(true))
-                        .and_then(|()| path.copy_temp());
-                }
+            if let Err(error) = &result
+                && let Some(Error::JobError(_, _, _, path)) = error.downcast_ref::<Error>()
+            {
+                // Avoid an error within the error situation.
+                let _ = path
+                    .init()
+                    .and_then(|()| path.clear_temp_files(true))
+                    .and_then(|()| path.copy_temp());
             }
 
             result
@@ -1333,28 +1333,29 @@ impl BenchmarkDataProcessor for LoadBaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == Tool::Callgrind {
-            if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
-                let loaded_baseline = output_path.loaded_baseline_name().expect(
-                    "The loaded baseline of an output path of a loaded baseline should have a name",
-                );
-                let baseline = output_path.baseline_name().cloned().expect(
-                    "The baseline of an output path of a loaded baseline should have a name",
-                );
+        if output_path.tool == Tool::Callgrind
+            && let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config
+        {
+            let loaded_baseline = output_path.loaded_baseline_name().expect(
+                "The loaded baseline of an output path of a loaded baseline should have a name",
+            );
+            let baseline = output_path
+                .baseline_name()
+                .cloned()
+                .expect("The baseline of an output path of a loaded baseline should have a name");
 
-                return LoadBaselineFlamegraphGenerator {
-                    baseline,
-                    loaded_baseline,
-                }
-                .create(
-                    &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
-                    output_path,
-                    (*entry_point == EntryPoint::Default)
-                        .then(Sentinel::default)
-                        .as_ref(),
-                    &config.meta.project_root,
-                );
+            return LoadBaselineFlamegraphGenerator {
+                baseline,
+                loaded_baseline,
             }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
+                output_path,
+                (*entry_point == EntryPoint::Default)
+                    .then(Sentinel::default)
+                    .as_ref(),
+                &config.meta.project_root,
+            );
         }
 
         Ok(vec![])
@@ -1408,21 +1409,22 @@ impl JobResult {
             .and_then(|()| benchmark_summary.check_regression(post_processing_config.fail_fast))?;
 
         benchmark_summaries.add_summary(benchmark_summary.clone());
-        if compare_by_id && output_format.is_default() {
-            if let Some(id) = &benchmark_summary.id {
-                if let Some(sums) = comparison_summaries.get_mut(id) {
-                    for sum in sums.iter() {
-                        sum.compare_and_print(
-                            id,
-                            &benchmark_summary,
-                            &output_format,
-                            post_processing_config.perf_config.as_ref(),
-                        );
-                    }
-                    sums.push(benchmark_summary);
-                } else {
-                    comparison_summaries.insert(id.clone(), vec![benchmark_summary]);
+        if compare_by_id
+            && output_format.is_default()
+            && let Some(id) = &benchmark_summary.id
+        {
+            if let Some(sums) = comparison_summaries.get_mut(id) {
+                for sum in sums.iter() {
+                    sum.compare_and_print(
+                        id,
+                        &benchmark_summary,
+                        &output_format,
+                        post_processing_config.perf_config.as_ref(),
+                    );
                 }
+                sums.push(benchmark_summary);
+            } else {
+                comparison_summaries.insert(id.clone(), vec![benchmark_summary]);
             }
         }
 
@@ -2112,20 +2114,21 @@ impl BenchmarkDataProcessor for SaveBaselineDataProcessor {
         flamegraph_config: &ToolFlamegraphConfig,
         entry_point: &EntryPoint,
     ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == Tool::Callgrind {
-            if let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config {
-                let baseline = output_path.baseline_name().cloned().expect(
-                    "The baseline of an output path of a saved baseline should have a name",
-                );
-                return SaveBaselineFlamegraphGenerator { baseline }.create(
-                    &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
-                    output_path,
-                    (*entry_point == EntryPoint::Default)
-                        .then(Sentinel::default)
-                        .as_ref(),
-                    &config.meta.project_root,
-                );
-            }
+        if output_path.tool == Tool::Callgrind
+            && let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config
+        {
+            let baseline = output_path
+                .baseline_name()
+                .cloned()
+                .expect("The baseline of an output path of a saved baseline should have a name");
+            return SaveBaselineFlamegraphGenerator { baseline }.create(
+                &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
+                output_path,
+                (*entry_point == EntryPoint::Default)
+                    .then(Sentinel::default)
+                    .as_ref(),
+                &config.meta.project_root,
+            );
         }
 
         Ok(vec![])

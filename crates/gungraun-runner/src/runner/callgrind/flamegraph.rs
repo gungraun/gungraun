@@ -710,10 +710,9 @@ impl OutputPath {
             let file_name = path.file_name().to_string_lossy().to_string();
             if let Some(suffix) =
                 file_name.strip_prefix(format!("callgrind.{}.", self.name).as_str())
+                && suffix.ends_with(to_match)
             {
-                if suffix.ends_with(to_match) {
-                    paths.push(path.path());
-                }
+                paths.push(path.path());
             }
         }
 

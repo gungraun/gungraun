@@ -192,8 +192,9 @@ error[E0308]: mismatched types
     |
 help: change the type of the numeric literal from `i32` to `usize`
     |
-103 |     library_benchmark_group!(name = some_2, max_parallel = 0usize, benchmarks = some_func);
-    |                                                             ~~~~~
+103 -     library_benchmark_group!(name = some_2, max_parallel = 0i32, benchmarks = some_func);
+103 +     library_benchmark_group!(name = some_2, max_parallel = 0usize, benchmarks = some_func);
+    |
 
 error[E0308]: mismatched types
    --> tests/ui/lib_bench/test_library_benchmark_group_when_invalid.rs:107:24
@@ -232,8 +233,9 @@ error[E0308]: mismatched types
     |
 help: change the type of the numeric literal from `i32` to `usize`
     |
-113 |     library_benchmark_group!(name = some_5; max_parallel = 0usize; benchmarks = some_func);
-    |                                                             ~~~~~
+113 -     library_benchmark_group!(name = some_5; max_parallel = 0i32; benchmarks = some_func);
+113 +     library_benchmark_group!(name = some_5; max_parallel = 0usize; benchmarks = some_func);
+    |
 
 error[E0308]: mismatched types
    --> tests/ui/lib_bench/test_library_benchmark_group_when_invalid.rs:116:24

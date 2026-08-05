@@ -313,14 +313,14 @@ impl ToolOutputPath {
 
         if let Some(paths) = parts.get(&part) {
             for (path, real_modifiers) in paths {
-                if let Some(real_modifiers) = real_modifiers {
-                    if modifiers.contains(&real_modifiers.as_str()) {
-                        debug!(
-                            "Clearing part {part:?} with modifier {real_modifiers}: {}",
-                            path.display()
-                        );
-                        std::fs::remove_file(path)?;
-                    }
+                if let Some(real_modifiers) = real_modifiers
+                    && modifiers.contains(&real_modifiers.as_str())
+                {
+                    debug!(
+                        "Clearing part {part:?} with modifier {real_modifiers}: {}",
+                        path.display()
+                    );
+                    std::fs::remove_file(path)?;
                 }
             }
         }
@@ -1583,10 +1583,8 @@ impl SanitizedFileNameBuilder {
     where
         T: Into<Option<u32>>,
     {
-        if has_multiple {
-            if let Some(pid) = pid.into() {
-                write!(&mut self.0, ".{pid}").unwrap();
-            }
+        if has_multiple && let Some(pid) = pid.into() {
+            write!(&mut self.0, ".{pid}").unwrap();
         }
 
         self
@@ -1596,11 +1594,9 @@ impl SanitizedFileNameBuilder {
     where
         T: Into<Option<usize>>,
     {
-        if has_multiple {
-            if let Some(thread) = thread.into() {
-                let width = Self::width(num_threads);
-                write!(&mut self.0, ".t{thread:0width$}").unwrap();
-            }
+        if has_multiple && let Some(thread) = thread.into() {
+            let width = Self::width(num_threads);
+            write!(&mut self.0, ".t{thread:0width$}").unwrap();
         }
 
         self

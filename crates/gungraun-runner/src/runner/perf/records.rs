@@ -150,23 +150,23 @@ impl MetricsParser {
 
         let mut has_duplicates = false;
         for (key, value) in &mut self.metrics {
-            if let Some(online_stats) = self.online_stats.get(key) {
-                if online_stats.n > 1 {
-                    has_duplicates = true;
+            if let Some(online_stats) = self.online_stats.get(key)
+                && online_stats.n > 1
+            {
+                has_duplicates = true;
 
-                    *value = value.clone().into_mean(online_stats.mean);
+                *value = value.clone().into_mean(online_stats.mean);
 
-                    if let Some(event_runtime) = value.qualities.event_runtime.as_mut() {
-                        *event_runtime /= online_stats.n;
-                    }
-
-                    let stats = Stats::new(*online_stats);
-                    value.qualities.rse = Some(stats.rse);
-                    value.qualities.n = Some(stats.online_stats.n);
-                    value.qualities.mean = Some(value.rebase(stats.online_stats.mean));
-
-                    trace!("Metric (mean): {key}: {value:?}");
+                if let Some(event_runtime) = value.qualities.event_runtime.as_mut() {
+                    *event_runtime /= online_stats.n;
                 }
+
+                let stats = Stats::new(*online_stats);
+                value.qualities.rse = Some(stats.rse);
+                value.qualities.n = Some(stats.online_stats.n);
+                value.qualities.mean = Some(value.rebase(stats.online_stats.mean));
+
+                trace!("Metric (mean): {key}: {value:?}");
             }
         }
 
@@ -314,26 +314,26 @@ impl MetricsParser {
 
         let key = PerfMetric(event.to_owned());
 
-        if let Some(adjustment) = adjustment {
-            if let Some(metric) = adjustment.metric_by_kind(&key) {
-                #[expect(clippy::cast_precision_loss)]
-                #[expect(clippy::cast_possible_truncation)]
-                #[expect(clippy::cast_sign_loss)]
-                let (new_int, new_float) = match metric.metric {
-                    Metric::Int(int_metric) => (
-                        int.saturating_sub(int_metric),
-                        (float - int_metric as f64).max(0.0),
-                    ),
-                    // For completeness, but the adjustment metric should be an int like this metric
-                    Metric::Float(float_metric) => (
-                        int.saturating_sub(float_metric as u64),
-                        (float - float_metric).max(0.0),
-                    ),
-                };
+        if let Some(adjustment) = adjustment
+            && let Some(metric) = adjustment.metric_by_kind(&key)
+        {
+            #[expect(clippy::cast_precision_loss)]
+            #[expect(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_sign_loss)]
+            let (new_int, new_float) = match metric.metric {
+                Metric::Int(int_metric) => (
+                    int.saturating_sub(int_metric),
+                    (float - int_metric as f64).max(0.0),
+                ),
+                // For completeness, but the adjustment metric should be an int like this metric
+                Metric::Float(float_metric) => (
+                    int.saturating_sub(float_metric as u64),
+                    (float - float_metric).max(0.0),
+                ),
+            };
 
-                int = new_int;
-                float = new_float;
-            }
+            int = new_int;
+            float = new_float;
         }
 
         if self
@@ -393,10 +393,10 @@ impl MetricsParser {
 
         let key = PerfMetric(event.to_owned());
 
-        if let Some(adjustment) = adjustment {
-            if let Some(metric) = adjustment.metric_by_kind(&key) {
-                new_metric = new_metric.saturating_sub(&metric);
-            }
+        if let Some(adjustment) = adjustment
+            && let Some(metric) = adjustment.metric_by_kind(&key)
+        {
+            new_metric = new_metric.saturating_sub(&metric);
         }
 
         if self

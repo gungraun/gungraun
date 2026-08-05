@@ -390,24 +390,23 @@ impl Unit {
         }
 
         // Same ladder, self is larger (later index) -> target is smaller: integer factor
-        if let Some(ladder) = self.scale_ladder() {
-            if let (Some(self_idx), Some(target_idx)) = (
+        if let Some(ladder) = self.scale_ladder()
+            && let (Some(self_idx), Some(target_idx)) = (
                 ladder.iter().position(|u| u == self),
                 ladder.iter().position(|u| u == target),
-            ) {
-                if self_idx > target_idx {
-                    #[expect(
-                        clippy::cast_possible_truncation,
-                        reason = "The ladder is too small for indices larger than u32"
-                    )]
-                    let steps = (self_idx - target_idx) as u32;
-                    let base = Self::ladder_base(ladder);
-                    return Some(Metric::Int(base.saturating_pow(steps)));
-                }
-                // self_idx < target_idx: smaller -> larger, fractional
-                // Fall through to float computation
-            }
+            )
+            && self_idx > target_idx
+        {
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "The ladder is too small for indices larger than u32"
+            )]
+            let steps = (self_idx - target_idx) as u32;
+            let base = Self::ladder_base(ladder);
+            return Some(Metric::Int(base.saturating_pow(steps)));
         }
+        // self_idx < target_idx: smaller -> larger, fractional
+        // Fall through to float computation
 
         // Rate: recurse into numerator and denominator
         if let (Self::Rate(s_num, s_den), Self::Rate(t_num, t_den)) = (self, target) {

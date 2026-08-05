@@ -616,15 +616,15 @@ impl SystemTestRunner {
             .target_directory
             .join("gungraun")
             .join(CONTINUE_FILE_NAME);
-        if let Err(error) = std::fs::remove_file(&continue_path) {
-            if error.kind() != std::io::ErrorKind::NotFound {
-                return Err(error).with_context(|| {
-                    format!(
-                        "Failed to remove continue file '{}'",
-                        continue_path.display()
-                    )
-                });
-            }
+        if let Err(error) = std::fs::remove_file(&continue_path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            return Err(error).with_context(|| {
+                format!(
+                    "Failed to remove continue file '{}'",
+                    continue_path.display()
+                )
+            });
         }
 
         Ok(())

@@ -246,13 +246,13 @@ impl BenchmarkSummary {
         let mut summaries = vec![];
 
         for profile in self.profiles.iter() {
-            if let Some(other_profile) = other.profiles.iter().find(|s| s.tool == profile.tool) {
-                if let Some(summary) = ToolMetricSummary::from_self_and_other(
+            if let Some(other_profile) = other.profiles.iter().find(|s| s.tool == profile.tool)
+                && let Some(summary) = ToolMetricSummary::from_self_and_other(
                     &profile.summaries.total.summary,
                     &other_profile.summaries.total.summary,
-                ) {
-                    summaries.push((profile.tool, summary));
-                }
+                )
+            {
+                summaries.push((profile.tool, summary));
             }
         }
 

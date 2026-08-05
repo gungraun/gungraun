@@ -496,35 +496,35 @@ impl OutputFormat {
 
     /// Updates the output format from the [`ToolSpec`] if present.
     pub fn update(&mut self, tool_spec: Option<&ToolSpec>) {
-        if let Some(tool_spec) = tool_spec {
-            if let Some(format) = &tool_spec.output_format {
-                match format {
-                    ToolOutputFormat::Callgrind(metrics) => {
-                        self.callgrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
-                            acc.extend(IndexSet::from(*m));
-                            acc
-                        });
-                    }
-                    ToolOutputFormat::Cachegrind(metrics) => {
-                        self.cachegrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
-                            acc.extend(IndexSet::from(*m));
-                            acc
-                        });
-                    }
-                    ToolOutputFormat::DHAT(metrics) => {
-                        self.dhat = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::Memcheck(metrics) => {
-                        self.memcheck = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::Helgrind(metrics) => {
-                        self.helgrind = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::DRD(metrics) => {
-                        self.drd = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::None => {}
+        if let Some(tool_spec) = tool_spec
+            && let Some(format) = &tool_spec.output_format
+        {
+            match format {
+                ToolOutputFormat::Callgrind(metrics) => {
+                    self.callgrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
+                        acc.extend(IndexSet::from(*m));
+                        acc
+                    });
                 }
+                ToolOutputFormat::Cachegrind(metrics) => {
+                    self.cachegrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
+                        acc.extend(IndexSet::from(*m));
+                        acc
+                    });
+                }
+                ToolOutputFormat::DHAT(metrics) => {
+                    self.dhat = metrics.iter().copied().collect();
+                }
+                ToolOutputFormat::Memcheck(metrics) => {
+                    self.memcheck = metrics.iter().copied().collect();
+                }
+                ToolOutputFormat::Helgrind(metrics) => {
+                    self.helgrind = metrics.iter().copied().collect();
+                }
+                ToolOutputFormat::DRD(metrics) => {
+                    self.drd = metrics.iter().copied().collect();
+                }
+                ToolOutputFormat::None => {}
             }
         }
     }
@@ -1389,12 +1389,11 @@ impl Formatter for VerticalFormatter {
 
         match metrics_summary {
             ToolMetricSummary::None => {
-                if let Some(info) = info {
-                    if let Some(new) = info.as_ref().left() {
-                        if let Some(details) = &new.details {
-                            self.format_details(details);
-                        }
-                    }
+                if let Some(info) = info
+                    && let Some(new) = info.as_ref().left()
+                    && let Some(details) = &new.details
+                {
+                    self.format_details(details);
                 }
             }
             ToolMetricSummary::ErrorTool(summary) => {
@@ -1415,19 +1414,17 @@ impl Formatter for VerticalFormatter {
                 );
 
                 // We only check for `new` errors
-                if let Some(info) = info {
-                    if summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
+                if let Some(info) = info
+                    && summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
                         e.metrics
                             .as_ref()
                             .left()
                             .is_some_and(|l| *l > Metric::Int(0))
-                    }) {
-                        if let Some(new) = info.as_ref().left() {
-                            if let Some(details) = new.details.as_ref() {
-                                self.format_details(details);
-                            }
-                        }
-                    }
+                    })
+                    && let Some(new) = info.as_ref().left()
+                    && let Some(details) = new.details.as_ref()
+                {
+                    self.format_details(details);
                 }
             }
             ToolMetricSummary::Dhat(summary) => self.format_metrics(
@@ -1550,10 +1547,10 @@ impl Formatter for VerticalFormatter {
             for part in &data.parts {
                 self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
-                if let Some(new) = part.details.as_ref().left() {
-                    if let Some(details) = &new.details {
-                        self.format_details(details);
-                    }
+                if let Some(new) = part.details.as_ref().left()
+                    && let Some(details) = &new.details
+                {
+                    self.format_details(details);
                 }
             }
         } else {

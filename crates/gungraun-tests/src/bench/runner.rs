@@ -473,11 +473,8 @@ impl SystemTest {
                     print_info(format!("Cargo arguments: {}", run.cargo_args.join(" ")));
                 }
 
-                if !run.gungraun_args.is_empty() {
-                    print_info(format!(
-                        "Benchmark arguments: {}",
-                        run.gungraun_args.join(" ")
-                    ));
+                if !run.args.is_empty() {
+                    print_info(format!("Benchmark arguments: {}", run.args.join(" ")));
                 }
 
                 let is_capture = run.expected.as_ref().is_some_and(|target_config| {
@@ -489,7 +486,7 @@ impl SystemTest {
                 let exec_ctx = ExecContext {
                     cargo_args: &run.cargo_args,
                     envs: &run.envs,
-                    gungraun_args: &run.gungraun_args,
+                    gungraun_args: &run.args,
                     is_capture,
                     setup: run.setup.as_deref(),
                     teardown: run.teardown.as_deref(),

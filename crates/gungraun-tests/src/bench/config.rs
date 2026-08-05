@@ -18,9 +18,11 @@
 //!
 //! ```yaml
 //! template: "some_rust_template.rs.j2" # optional path to a rust template
-//! groups: # `Group`
+//! groups:
+//!   # `Group`
 //!   - expected: # `GroupExpectations`
-//!     runs: # `Run`
+//!     runs:
+//!       # `Run`
 //!       - expected: # `RunExpectations`
 //!         ...: # other `Run` fields
 //!     ... # other `Group` fields
@@ -135,51 +137,125 @@ targeted_enum! {
 
 /// Captured result of one cargo bench invocation.
 ///
-/// Example:
-/// * stdout/stderr from `cargo bench --package gungraun-tests --bench test_lib_bench_tools`.
+/// The stdout/stderr from `cargo bench --package gungraun-tests --bench test_lib_bench_tools`
 #[derive(Debug)]
 pub struct CapturedOutput {
     /// Whether the run used an explicit tolerance argument.
     ///
-    /// Example: `true` when `--tolerance=0.01` was forwarded to the benchmark.
+    /// For example returns `true` when `--tolerance=0.01` was forwarded to the benchmark.
     pub has_tolerance: bool,
-    /// Process output returned by `std::process::Command::output`.
-    ///
-    /// Example: includes the benchmark process exit status and captured stderr.
+    /// Process output returned by [`std::process::Command::output`] of the cargo --bench run
     pub output: Output,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 /// YAML group containing multiple benchmark runs under shared conditions.
 ///
-/// A group can gate all runs to Linux only.
+/// A group can gate all runs to a target triple or Rust version and share assertions across its
+/// runs.
+///
+/// # Examples
+///
+/// A group with two runs sharing a group-level expectation:
+///
+/// ```yaml
+/// groups:
+///   - expected:
+///       script: |
+///         echo "group fallback"
+///     runs:
+///       - args: ["--nocapture"]
+///       - args: ["--nocapture", "--tools=perf"]
+/// ```
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Group {
     /// Assertions shared by every run in this group.
     ///
-    /// A run-level assertion script takes precedence over the group-level script.
-    pub expected: Option<GroupExpectations>,
-    /// Runs executed for this group after group-level filters match.
+    /// A similar run-level assertion takes precedence over the group-level assertion.
     ///
-    /// Example: two runs comparing default output and `--show-grid=true` output.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - expected:
+    ///       script: |
+    ///         echo "shared assertion"
+    ///     runs:
+    ///       - args: ["--nocapture"]
+    /// ```
+    pub expected: Option<GroupExpectations>,
+    /// Runs executed for this group after group-level filters like `runs_on` match.
+    ///
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - args: ["--nocapture"]
+    ///         expected:
+    ///           stdout: expected_stdout.1
+    ///       - args: ["--nocapture", "--tools=perf"]
+    /// ```
     pub runs: Vec<Run>,
     /// Optional target triple include or exclude condition for the whole group.
     ///
-    /// Example: `x86_64-unknown-linux-gnu`.
+    /// Prefix the triple with `!` to exclude it.
+    ///
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs_on: "x86_64-unknown-linux-gnu"
+    ///     runs:
+    ///       - args: ["--nocapture"]
+    /// ```
     #[serde(default, with = "gungraun_tests::serde::runs_on")]
     pub runs_on: Option<RunsOn>,
     /// Optional Rust compiler version or channel condition for the whole group.
     ///
-    /// Example: `>=1.86.0` or `=nightly`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - rust_version: ">=1.86.0"
+    ///     runs:
+    ///       - args: ["--nocapture"]
+    /// ```
     #[serde(default, with = "gungraun_tests::serde::rust_version")]
     pub rust_version: Option<gungraun_tests::serde::rust_version::VersionComparator>,
 }
 
+/// Assertions shared by all runs ([`Run`]) in a [`Group`].
+///
+/// # Examples
+///
+/// A group-level fallback script run when a run has no `script` of its own:
+///
+/// ```yaml
+/// groups:
+///   - expected:
+///       script: |
+///         echo "group fallback"
+///     runs:
+///       - args: ["--nocapture"]
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
-/// Expected output checks shared by all runs ([`Run`]) in a [`Group`].
 pub struct GroupExpectations {
     /// Shell script run as a fallback when a run has no assertion script of its own.
     ///
     /// The script is executed with `bash -ex` in the benchmark output base directory.
+    ///
+    /// # Examples
+    ///
+    /// A default fallback script shared by all runs in a group:
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - expected:
+    ///       script: |
+    ///         echo "group fallback"
+    ///     runs:
+    ///       - args: ["--nocapture"]
+    /// ```
     pub script: Option<TargetedString>,
 }
 
@@ -198,135 +274,371 @@ pub struct Partition {
     pub total: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 /// YAML configuration for one benchmark invocation.
 ///
-/// Example: one run can pass extra cargo args, benchmark args, envs, and expectations.
+/// A run describes a single `cargo bench` invocation under Valgrind/Perf, including forwarded
+/// arguments, environment, setup/teardown, and expectations.
+///
+/// # Examples
+///
+/// ```yaml
+/// groups:
+///   - runs:
+///       - args: ["--nocapture"]
+///         envs:
+///           RUSTFLAGS: "-C target-feature=-avx2"
+///         expected:
+///           stdout: expected_stdout.1
+/// ```
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Run {
+    /// Gungraun arguments passed after `cargo bench ... --`.
+    ///
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - args: ["--show-grid=true"]
+    /// ```
+    #[serde(default)]
+    pub args: Vec<String>,
     /// Extra cargo arguments passed before `--`.
     ///
-    /// Example: `["--features", "client-requests"]`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - cargo_args: ["--features", "client-requests"]
+    /// ```
     #[serde(default)]
     pub cargo_args: Vec<String>,
     /// Environment variables set for the cargo bench command.
     ///
-    /// Example: `{ "RUSTFLAGS": "-C target-feature=-avx2" }`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - envs:
+    ///           RUSTFLAGS: "-C target-feature=-avx2"
+    /// ```
     #[serde(default)]
     pub envs: HashMap<String, String>,
-    /// Expected process output, exit status, and generated files.
+    /// Expected [`RunExpectations`] like process output, exit status, generated files, ...
     ///
-    /// Example: compare stdout with `expected.stdout` and validate `summary.json`.
+    /// # Examples
+    ///
+    /// Define assertions which are run after the benchmark run
+    ///
+    /// ```yaml
+    /// - groups:
+    ///     - runs:
+    ///         - expected: # `RunExpectations`
+    ///             exit_code: 1
+    /// ```
+    ///
+    /// On different systems (like FreeBSD) assertions and benchmark output can differ. The
+    /// `default` assertions are run everywhere if not a more specific target triple is defined:
+    ///
+    /// ```yaml
+    /// - groups:
+    ///     - runs:
+    ///         - expected:
+    ///             default: # `RunExpectations`
+    ///               exit_code: 1
+    ///             x86_64-unknown-freebsd: # `RunExpectations`
+    ///               exit_code: 0
+    /// ```
     #[serde(default)]
     pub expected: Option<TargetedRunExpectations>,
     /// Number of retries allowed for flaky assertion failures.
     ///
-    /// Example: `2` allows up to two retries after the first failed attempt.
+    /// # Examples
+    ///
+    /// Allow up to two retries after the first failed attempt:
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - flaky: 2
+    /// ```
     #[serde(default)]
     pub flaky: Option<usize>,
-    /// FIX: Rename back to args
-    /// Benchmark binary arguments passed after `--`.
+    /// Directories removed before this run starts, usually to clean up stale
+    /// test data.
     ///
-    /// Example: `["--show-grid=true"]`.
-    #[serde(default, rename = "args")]
-    pub gungraun_args: Vec<String>,
-    /// Directories removed before this run starts.
+    /// # Examples
     ///
-    /// Example: `target/gungraun/gungraun-tests/test_lib_bench_tools`.
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - rmdirs:
+    ///           - /tmp/gungraun-fixture
+    /// ```
     #[serde(default)]
     pub rmdirs: Vec<PathBuf>,
     /// Optional target triple include or exclude condition for this run.
     ///
-    /// Example: skip a run on `aarch64-apple-darwin`.
+    /// This system test run is only executed if this condition is `true`. Prefix the triple with
+    /// `!` to exclude it.
+    ///
+    /// # Examples
+    ///
+    /// Skip a run on FreeBSD:
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - runs_on: "!x86_64-unknown-freebsd"
+    ///         args: ["--nocapture"]
+    /// ```
     #[serde(default, with = "gungraun_tests::serde::runs_on")]
     pub runs_on: Option<RunsOn>,
     /// Optional Rust compiler version or channel condition for this run.
     ///
-    /// Example: `>=1.86.0` or `!=nightly`.
+    /// This system test run is only executed if this condition is `true`.
+    ///
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - rust_version: ">=1.86.0"
+    ///         args: ["--nocapture"]
+    /// ```
     #[serde(default, with = "gungraun_tests::serde::rust_version")]
     pub rust_version: Option<gungraun_tests::serde::rust_version::VersionComparator>,
-    /// Shell snippet executed before the benchmark command.
+    /// Bash snippet executed before the benchmark command with `bash -ex`
     ///
-    /// Example: `mkdir -p /tmp/gungraun-fixture`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// - runs:
+    ///     - setup: |
+    ///         mkdir -p /tmp/gungraun-fixture
+    /// ```
     #[serde(default)]
     pub setup: Option<String>,
-    /// Shell snippet executed after the benchmark command.
+    /// Bash snippet executed after the benchmark command with `bash -ex`
     ///
-    /// Example: `rm -rf /tmp/gungraun-fixture`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// - runs:
+    ///     - teardown: |
+    ///         rm -rf /tmp/gungraun-fixture
+    /// ```
     #[serde(default)]
     pub teardown: Option<String>,
-    /// Data passed to the benchmark source template renderer.
+    /// Data passed to the template renderer. Only useful if a template is defined
     ///
-    /// Example: `{ "tool": "callgrind" }`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// template: "some_template.rs.j2"
+    /// groups:
+    ///   - runs:
+    ///       - template_data:
+    ///           some_value: 1.0
+    /// ```
     #[serde(default)]
     pub template_data: HashMap<String, serde_json::Value>,
-    /// Optional benchmark tolerance forwarded as `--tolerance=<value>`.
+    /// Optional tolerance value forwarded as `--tolerance=<value>`.
     ///
-    /// Example: `0.01`.
+    /// Use this option instead of passing the gungraun `args`: `--tolerance=<value>`
+    ///
+    /// # Examples
+    ///
+    /// Don't do this
+    ///
+    /// ```yaml
+    /// - groups:
+    ///     - runs:
+    ///         - args: ["--tolerance=0.01"]
+    /// ```
+    ///
+    /// Use this option instead:
+    ///
+    /// ```yaml
+    /// - groups:
+    ///     - runs:
+    ///         - tolerance: 0.01
+    /// ```
     #[serde(default)]
     pub tolerance: Option<f64>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 /// Expected side effects and process result for a run.
 ///
-/// Example: compare stdout against `expected.stdout` and require exit code `0`.
+/// `RunExpectations` is typically nested under a run's `expected` field, either directly for the
+/// default target or keyed by target triple.
+///
+/// # Examples
+///
+/// Require a zero exit code on FreeBSD and by default an exit code of `1`:
+///
+/// ```yaml
+/// groups:
+///   - runs:
+///       - args: ["--nocapture"]
+///         expected:
+///           default:
+///             exit_code: 1
+///           x86_64-unknown-freebsd:
+///             exit_code: 0
+/// ```
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[expect(clippy::struct_excessive_bools)]
 #[serde(deny_unknown_fields)]
 pub struct RunExpectations {
     /// Expected process exit code.
     ///
-    /// Example: `101` for a benchmark expected to panic.
+    /// # Examples
+    ///
+    /// A benchmark expected to panic:
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           exit_code: 101
+    /// ```
     #[serde(default)]
     pub exit_code: Option<TargetedI32>,
-    /// Path to an expected-files manifest relative to the benchmark config directory.
+    /// Path to an [`ExpectedFilesManifest`] relative to the system test config directory.
     ///
-    /// Example: `expected/files.yml`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           files: expected/files.yml
+    /// ```
+    ///
+    /// [`ExpectedFilesManifest`]: super::expected_files::ExpectedFilesManifest
     #[serde(default)]
     pub files: Option<TargetedPath>,
     /// Whether no benchmark output directory is expected.
     ///
-    /// Example: `true` for an early argument validation failure.
+    /// # Examples
+    ///
+    /// For an early argument validation failure:
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           no_files: true
+    /// ```
     #[serde(default)]
     pub no_files: bool,
     /// Whether filtered stderr must be empty.
     ///
-    /// Example: `true` when cargo should not emit benchmark diagnostics.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           no_stderr: true
+    /// ```
     #[serde(default)]
     pub no_stderr: bool,
     /// Whether filtered stdout must be empty.
     ///
-    /// Example: `true` for a quiet successful run.
+    /// # Examples
+    ///
+    /// For a quiet successful run:
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           no_stdout: true
+    /// ```
     #[serde(default)]
     pub no_stdout: bool,
-    /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory
+    /// Run a bash script in the `HOME/PACKAGE_DIR/BENCH_NAME` directory.
     ///
-    /// For example this is the directory of the `test_something` benchmark in which the script is
-    /// executed: `project_root/target/gungraun-tests/test_something`
+    /// For example this is the directory of the `test_something` system test in which the script
+    /// is executed:
+    ///
+    /// `project_root/target/gungraun-tests/test_something`.
+    ///
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           script: |
+    ///             echo "run-specific assertion"
+    /// ```
     #[serde(default)]
     pub script: Option<TargetedString>,
     /// Path to expected stderr relative to the benchmark config directory.
     ///
-    /// Example: `stderr: expected.stderr`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           stderr: expected.stderr
+    /// ```
     #[serde(default)]
     pub stderr: Option<TargetedPath>,
-    /// A string which should be contained in the stderr output
+    /// A string which should be contained in the stderr output.
     ///
-    /// Example: `stderr: expected.stderr`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           stderr_contains: "panicked"
+    /// ```
     #[serde(default)]
     pub stderr_contains: TargetedStrings,
     /// Path to expected stdout relative to the benchmark config directory.
     ///
-    /// Example: `expected.stdout`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           stdout: expected.stdout
+    /// ```
     #[serde(default)]
     pub stdout: Option<TargetedPath>,
-    /// A string which should be contained in the stdout output
+    /// A string which should be contained in the stdout output.
     ///
-    /// Example: `stdout: expected.stdout`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           stdout_contains: "result:"
+    /// ```
     #[serde(default)]
     pub stdout_contains: TargetedStrings,
     /// Whether all-zero metrics are allowed in generated summaries.
     ///
-    /// Example: `true` for a run that intentionally does not collect costs.
+    /// # Examples
+    ///
+    /// For a run that intentionally does not collect costs:
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs:
+    ///       - expected:
+    ///           zero_metrics: true
+    /// ```
     #[serde(default)]
     pub zero_metrics: bool,
 }
@@ -334,15 +646,53 @@ pub struct RunExpectations {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 /// YAML configuration loaded from one benchmark `.conf.yml` file.
 ///
-/// Example: `test_lib_bench_tools.conf.yml` with an optional template and groups.
+/// `SystemTestConfig` is the root type parsed from each `*.conf.yml` file under `benches/` and
+/// describes the grouped runs and optional template for one benchmark case.
+///
+/// # Examples
+///
+/// A minimal configuration with a single group and run:
+///
+/// ```yaml
+/// groups:
+///   - runs:
+///       - args: ["--nocapture"]
+///         expected:
+///           stdout: expected_stdout.1
+/// ```
+///
+/// With a template rendered before the run:
+///
+/// ```yaml
+/// template: templates/tool_bench.rs.j2
+/// groups:
+///   - runs:
+///       - template_data:
+///           some_value: 1.0
+/// ```
 pub struct SystemTestConfig {
     /// Grouped runs defined by this benchmark configuration.
     ///
-    /// Example: groups for default and filtered benchmark invocations.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// groups:
+    ///   - runs_on: "!x86_64-unknown-freebsd"
+    ///     runs:
+    ///       - args: ["--nocapture"]
+    /// ```
     pub groups: Vec<Group>,
     /// Optional Rust source template rendered before a run.
     ///
-    /// Example: `templates/tool_bench.rs.j2`.
+    /// # Examples
+    ///
+    /// ```yaml
+    /// template: templates/tool_bench.rs.j2
+    /// groups:
+    ///   - runs:
+    ///       - template_data:
+    ///           some_value: 1.0
+    /// ```
     pub template: Option<PathBuf>,
 }
 

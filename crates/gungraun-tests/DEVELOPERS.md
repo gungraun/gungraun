@@ -12,46 +12,39 @@ For example, you can use `just system-test $BENCH_NAME`.
 
 ## Notes
 
-This wrapper was extended by need from pr to pr and hasn't experienced much
-refactoring, so it is not in the best shape. There is still room for
-improvements in the testing practice.
+This wrapper is and always will be an ongoing work and extended by need. There
+is still room for improvements in the testing practice. This document gives a
+brief introduction. All documentation can be found in the source code in
+`src/bench`.
 
 ## Usage
 
+Basically
+
 `$ cargo run -p gungraun-tests --profile=bench bench [-- [FLAGS] [BENCH]]`
 
-or
+but far better is to use
 
 `$ just system-test`, `$ just system-test-all`.
 
 See the output of `just --show system-test`, ... for the command description and
 arguments.
 
-The positional `BENCH` can be a single benchmark. If no positional argument is
-given all benchmarks are run.
+The positional `BENCH` can be one or more system tests. If no positional
+argument is given all benchmarks are run.
 
-Other `FLAGS`:
-
-- `--filter=FILTER`: `FILTER` can be a glob expression matching the full
-  benchmark name. For example `--filter=test_lib_bench_*` will run all library
-  benchmarks.
-
-- `--partition=PARTITION`: `PARTITION` is expected to be in the format
-  `part/total` where `total` is the total number of parts in which the matched
-  benchmarks should be split. `part` is the selected part to be run. For example
-  `--partition=1/2` splits the benchmarks in half and then runs the first half
-  of it.
+`FLAGS` are described in `src/bench/main.rs`.
 
 ## Adding a new system test
 
 ### Basic structure
 
-Library system tests go into `benches/lib_bench` and binary system tests into
-`benches/bin_bench`. The naming scheme of a new file is for example for a binary
-benchmark `benches/bin_bench/foo/test_bin_bench_foo.rs` and for a library
-benchmark `benches/lib_bench/foo/test_lib_bench_foo.rs`. After you have created
-the new directory and file, have a look at the `Cargo.toml` of this package and
-then add
+Library system tests go into `benches/test_lib_bench` and binary system tests
+into `benches/test_bin_bench`. The naming scheme of a new file is for example
+for a binary benchmark `benches/test_bin_bench/foo/test_bin_bench_foo.rs` and
+for a library benchmark `benches/test_lib_bench/foo/test_lib_bench_foo.rs`.
+After you have created the new directory and file, have a look at the
+`Cargo.toml` of this package and then add
 
 ```toml
 [[bench]]
@@ -67,41 +60,14 @@ benchmark for example with `just bench test_lib_bench_foo`.
 
 In the current state this new benchmark won't run in the CI or with
 `just system-test`. Adding a yaml file with the same name as the benchmark file
-but with the extension `.conf.yml` is required, too.
+but with the extension `.conf.yml` is required to register this benchmark as
+system test.
 
 For example, if the benchmark file name is
 `benches/test_bin_bench/foo/test_bin_bench_foo.rs`, the configuration file name
 is `benches/test_bin_bench/foo/test_bin_bench_foo.conf.yml`.
 
-The basic structure of this configuration file:
-
-```yaml
-# Top-level (Mandatory)
-groups:
-    # An array of benchmark suites.
-    #
-    # Each suite creates a new pristine state and the benchmark output files are
-    # deleted.
-    - runs:
-          # An array of benchmark runs. The output files are not deleted after a
-          # benchmark run here.
-          #
-          # `args` (Mandatory): The arguments for `cargo bench -- ARGS`. ARGS are
-          # passed to gungraun
-          - args: []
-            # `expected` (Optional): Define the expectation values for this benchmark
-            # run.
-            #
-            # TODO: Add missing `expected` values
-            expected:
-                # `files` (Optional): Takes a path to a file in the same folder as the
-                # conf file containing the expected output files of this benchmark
-                # run.
-                files: expected_files.1.yml
-                # `stdout` (Optional): A path to a file in the same folder as the
-                # conf file containing the expected stdout of this benchmark run.
-                stdout: expected_stdout.1
-```
+The basic structure of this file is fully documented in `src/bench/config.rs`.
 
 An example of a configuration file which runs two benchmark suites for the
 benchmark file within the same folder. We're not testing much here besides that
@@ -113,7 +79,7 @@ runs, check that all expected files are present etc.
 groups:
     - runs:
           - args: ["--nocapture"]
-    # The output files of the previous benchmark suite are deleted
+    # The output files of the previous group run(s) are deleted
     - runs:
           - args: ["--callgrind-args='--toggle-collect=main'"]
 ```
@@ -130,6 +96,8 @@ groups:
 ```
 
 #### Expected values
+
+All possible values are documented in `src/bench/config.rs`.
 
 ##### Expected Stdout/Stderr
 
@@ -182,9 +150,8 @@ We do this, because the numbers can differ a little bit depending on the target,
 toolchain in use etc. Having all system tests to update every time something
 changes by `1` or `2` up or down is unmanageable. So, this is a simple method to
 check if there are numbers, but we do not check the numbers themselves. Most
-often, this is sufficient but stills needs improvement. For example being able
-to check if all numbers are 0 which is usually an indicator for something going
-wrong.
+often, this is sufficient. But, we also check if all numbers of a single tool
+are 0 which is usually an indicator for something going wrong.
 
 The expected stdout is currently also sanitized from factors (the `[1.000000x]`
 part after the percentages `(10.000000%)` and the `L2`, `RAM`,
@@ -203,17 +170,16 @@ test_bin_bench_foo::group::function id:() -> target/release/echo
 
 ##### Expected files
 
+The manifest for expected files is fully described in
+`src/bench/expected_files.rs`. A small usage example:
+
 ```yaml
 groups:
     - runs:
           - args: []
             expected:
-                files: expected_files
+                files: expected_files.yml
 ```
-
-TODO
-
-See for other examples in the `benches` folder.
 
 ##### Expected exit code
 
@@ -224,8 +190,6 @@ groups:
             expected:
                 exit_code: 0
 ```
-
-TODO
 
 See for example `benches/test_bin_bench/exit_with`
 
@@ -240,87 +204,8 @@ groups:
                 foo: "1234"
 ```
 
-TODO:
-
-See for example `benches/test_bin_bench/exit_with`
+See for example `benches/test_lib_bench/regression`
 
 #### Other configuration values
 
-##### bench args
-
-Arguments passed to the `cargo bench` invocation
-
-```yaml
-groups:
-    - runs:
-          - args: []
-            cargo_args: ["--features", "cachegrind"]
-```
-
-##### rust version
-
-```yaml
-groups:
-    - runs:
-          - args: []
-            rust_version: ">=1.73"
-          - args: ["--nocapture"]
-            rust_version: "<1.73"
-```
-
-The first benchmark will only run if the rust version is `>= 1.73`. The second
-benchmark will only run if the rust version is `< 1.73`. You can then set the
-expected values depending on the rust version.
-
-##### runs_on
-
-```yaml
-groups:
-    - runs:
-          - args: []
-            runs_on: "x86_64-unknown-linux-gnu"
-```
-
-The above benchmark run will only run on the `x86_64-unknown-linux-gnu` target.
-Or, for all benchmarks in a run group:
-
-```yaml
-groups:
-    - runs_on: "x86_64-unknown-linux-gnu"
-      runs:
-          - args: []
-```
-
-The target can be prefixed with a `!` to indicate to not run on this target.
-
-```yaml
-groups:
-    - runs_on: "x86_64-unknown-linux-gnu"
-      runs:
-          - args: ["--nocapture"]
-    - runs_on: "!x86_64-unknown-linux-gnu"
-      runs:
-          - args: []
-```
-
-##### rmdirs
-
-```yaml
-groups:
-    - runs:
-          - args: []
-            rmdirs: ["/tmp/gungraun_test_dir"]
-```
-
-This instruction is used to remove directories before a benchmark run.
-
-##### flaky
-
-If tests are flaky, they can be tried multiple times:
-
-```yaml
-groups:
-    - runs:
-          - args: []
-            flaky: 3
-```
+All configuration values are fully documented in `src/bench/config.rs`

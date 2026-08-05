@@ -448,7 +448,8 @@ fn is_enabled(
 ) -> bool {
     let compare_rust_version = |(cmp, version): &(Cmp, String)| {
         if version.starts_with(|p: char| p.is_ascii_digit()) {
-            version_compare::compare_to(rust_version.semver.to_string(), version, *cmp).unwrap()
+            version_compare::compare_to(rust_version.semver.to_string(), version, *cmp)
+                .expect("Rust version should be valid")
         } else {
             let channel = match version.as_str() {
                 "nightly" => Channel::Nightly,

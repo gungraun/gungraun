@@ -145,7 +145,7 @@ impl ExpectedFilesManifest {
         manifest_path: &Path,
     ) -> Result<()> {
         let discovered_files = glob(&format!("{}/**/*", output_dir.display()))
-            .unwrap()
+            .expect("The glob pattern should be valid")
             .map(Result::unwrap)
             .filter(|p| !p.is_dir())
             .map(|p| {
@@ -298,23 +298,30 @@ impl ExpectedFilesManifestEntry {
         self.group == other.group && self.function == other.function && self.id == other.id
     }
 
-    fn expected_dir(&self, output_dir: &Path) -> PathBuf {
+    fn expected_dir(&self, output_dir: &Path) -> Result<PathBuf> {
         let mut tera = Tera::default();
-        tera.add_raw_template("function", &self.function).unwrap();
-        let context = tera::Context::from_serialize(TEMPLATE_DATA.get().unwrap()).unwrap();
-        let function = tera.render("function", &context).unwrap();
+        tera.add_raw_template("function", &self.function)
+            .expect("Adding the raw tera template should succeed");
+        let context = tera::Context::from_serialize(
+            TEMPLATE_DATA
+                .get()
+                .expect("The template data should be initialized"),
+        )?;
+        let function = tera
+            .render("function", &context)
+            .expect("Rendering the tera template should succeed");
 
         if let Some(id) = &self.id {
-            output_dir
+            Ok(output_dir
                 .join(&self.group)
-                .join(format!("{function}.{id}"))
+                .join(format!("{function}.{id}")))
         } else {
-            output_dir.join(&self.group).join(&function)
+            Ok(output_dir.join(&self.group).join(&function))
         }
     }
 
     pub fn assert(&self, output_dir: &Path, schema: &ScopedSchema) -> Result<PathBuf> {
-        let expected_dir = self.expected_dir(output_dir);
+        let expected_dir = self.expected_dir(output_dir)?;
 
         print_info(format!(
             "Running assertions in directory '{}'",
@@ -346,7 +353,7 @@ impl ExpectedFilesManifestEntry {
                 file.display()
             );
             assert_ne!(
-                std::fs::metadata(&file).unwrap().len(),
+                std::fs::metadata(&file)?.len(),
                 0,
                 "Expected file '{}' was empty",
                 file.display()
@@ -388,7 +395,11 @@ impl ExpectedFilesManifestEntry {
                     print_error(format!("{}: Validation error: {error}", summary.display()));
                 }
             }
-            let (_, value) = value.as_object().unwrap().get_key_value("version").unwrap();
+            let (_, value) = value
+                .as_object()
+                .expect("The summary should be a json object")
+                .get_key_value("version")
+                .expect("The summary should have a version");
             assert_eq!(
                 value, SCHEMA_VERSION,
                 "summary json schema version mismatch"

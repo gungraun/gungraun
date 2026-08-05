@@ -287,7 +287,7 @@ impl Assert<'_> {
                         output_dir.display(),
                         manifest_entry.group
                     ))
-                    .unwrap()
+                    .expect("The glob pattern should be valid")
                     .map(Result::unwrap)
                     .collect::<HashSet<PathBuf>>()
                 });
@@ -327,10 +327,13 @@ impl Assert<'_> {
 
         if output_dir.exists() {
             let files = glob(&format!("{}/**/*", output_dir.display()))
-                .unwrap()
+                .expect("The glob pattern should be valid")
                 .map(Result::unwrap)
                 .fold(String::new(), |mut acc, p| {
-                    let display = p.strip_prefix(&package_dir).unwrap().display();
+                    let display = p
+                        .strip_prefix(&package_dir)
+                        .expect("The package directory should be a prefix of the discovered file")
+                        .display();
                     let _ = writeln!(acc, "  {display}");
                     acc
                 });
@@ -361,7 +364,11 @@ impl Assert<'_> {
                 }
                 None => panic!(
                     "Expected benchmark to exit with code '{expected}' but exited with signal '{}'",
-                    captured_output.output.status.signal().unwrap()
+                    captured_output
+                        .output
+                        .status
+                        .signal()
+                        .expect("The exit status should be a signal")
                 ),
             },
             None => assert!(
@@ -377,7 +384,7 @@ impl Assert<'_> {
         // These checks heavily depends on the creation of the `summary.json` files, but we
         // create them by default.
         for path in glob(&format!("{}/**/summary.json", output_dir.display()))
-            .unwrap()
+            .expect("The glob pattern should be valid")
             .map(Result::unwrap)
         {
             let summary = Summary::new(&path)

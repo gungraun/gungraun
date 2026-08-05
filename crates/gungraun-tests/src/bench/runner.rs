@@ -161,8 +161,25 @@ impl SystemTest {
     fn new(config_path: &Path, _package_dir: &Path, target_dir: &Path) -> Result<Self> {
         let config: SystemTestConfig = deserialize_yaml(config_path)?;
 
-        let config_name = config_path.file_name().unwrap().to_string_lossy();
-        let config_name = config_name.strip_suffix(".conf.yml").unwrap().to_owned();
+        let config_name = config_path
+            .file_name()
+            .with_context(|| {
+                format!(
+                    "The configuration file '{}' should have a file name",
+                    config_path.display()
+                )
+            })?
+            .to_string_lossy();
+
+        let config_name = config_name
+            .strip_suffix(".conf.yml")
+            .with_context(|| {
+                format!(
+                    "The configuration file '{}' should end with .conf.yml",
+                    config_path.display()
+                )
+            })?
+            .to_owned();
 
         let bench_name = if config.template.is_some() {
             String::from(TEMPLATE_BENCH_NAME)
@@ -177,7 +194,15 @@ impl SystemTest {
             bench_name,
             config_name,
             config,
-            config_dir: config_path.parent().unwrap().to_path_buf(),
+            config_dir: config_path
+                .parent()
+                .with_context(|| {
+                    format!(
+                        "The configuration file '{}' should have a parent directory",
+                        config_path.display()
+                    )
+                })?
+                .to_path_buf(),
             home_dir,
         })
     }
@@ -228,7 +253,14 @@ impl SystemTest {
         self.clean_benchmark()?;
 
         if let Some(temp_dir) = temp_dir {
-            let from = temp_dir.path().join(self.output_dir.file_name().unwrap());
+            let from = temp_dir
+                .path()
+                .join(self.output_dir.file_name().with_context(|| {
+                    format!(
+                        "The output directory '{}' should have a name",
+                        self.output_dir.display()
+                    )
+                })?);
             fs_extra::copy_items(
                 &[from],
                 self.output_dir
@@ -709,8 +741,17 @@ impl SystemTests {
         config_paths
             .into_iter()
             .filter(|path| {
-                let file_name = path.file_name().unwrap().to_string_lossy();
-                let name = &file_name.strip_suffix(".conf.yml").unwrap().to_owned();
+                let file_name = path
+                    .file_name()
+                    .expect("The configuration file glob pattern should match a file name")
+                    .to_string_lossy();
+                let name = &file_name
+                    .strip_suffix(".conf.yml")
+                    .expect(
+                        "The configuration file glob pattern should match files which end with \
+                         .conf.yml",
+                    )
+                    .to_owned();
                 if let Some(filter) = filter.as_ref() {
                     filter.dowild(name) && (tests.is_empty() || tests.contains(name))
                 } else if tests.is_empty() {

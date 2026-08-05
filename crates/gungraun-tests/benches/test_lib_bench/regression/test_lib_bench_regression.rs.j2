@@ -9,50 +9,50 @@ use gungraun::{
 
 #[cfg(target_os = "freebsd")]
 fn get_cachegrind_hard_limits() -> Vec<(CachegrindMetric, Limit)> {
-    vec![(CachegrindMetric::Ir, {{ cachegrind_hard_limit | default("Limit::Int(2_000_000)") }} )]
+    vec![(CachegrindMetric::Ir, {{ cachegrind_hard_limit | default(value="Limit::Int(2_000_000)") }} )]
 }
 
 #[cfg(not(target_os = "freebsd"))]
 fn get_cachegrind_hard_limits() -> Vec<(CachegrindMetric, Limit)> {
-    vec![(CachegrindMetric::Ir, {{ cachegrind_hard_limit | default("Limit::Int(500_000)") }} )]
+    vec![(CachegrindMetric::Ir, {{ cachegrind_hard_limit | default(value="Limit::Int(500_000)") }} )]
 }
 
 #[library_benchmark]
 #[bench::regress_callgrind(
-    args = [{{ callgrind_array_length | default(4) }}],
+    args = [{{ callgrind_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .soft_limits([(EventKind::Ir, {{ callgrind_soft_limit | default (5.0) }})]).fail_fast({{ callgrind_fail_fast | default(false) }})
+            .soft_limits([(EventKind::Ir, {{ callgrind_soft_limit | default(value=5.0) }})]).fail_fast({{ callgrind_fail_fast | default(value=false) }})
         )
 )]
 #[bench::regress_cachegrind(
-    args = [{{ cachegrind_array_length | default(4) }}],
+    args = [{{ cachegrind_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::default()
-            .soft_limits([(CachegrindMetric::Ir, {{ cachegrind_soft_limit | default(5.0) }})]).fail_fast({{ cachegrind_fail_fast | default(false) }})
+            .soft_limits([(CachegrindMetric::Ir, {{ cachegrind_soft_limit | default(value=5.0) }})]).fail_fast({{ cachegrind_fail_fast | default(value=false) }})
         )
 )]
 #[bench::regress_dhat(
-    args = [{{ dhat_array_length | default(4) }}],
+    args = [{{ dhat_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::DHAT)
         .tool(Dhat::default()
-            .soft_limits([(DhatMetric::TotalBytes, 0.0)]).fail_fast({{ dhat_fail_fast | default(false) }})
+            .soft_limits([(DhatMetric::TotalBytes, 0.0)]).fail_fast({{ dhat_fail_fast | default(value=false) }})
             .frames(["*::setup_worst_case_array"])
         )
 )]
 #[bench::regress_perf(
-    args = [{{ perf_array_length | default(4) }}],
+    args = [{{ perf_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::Perf)
         .tool(Perf::default()
             .event_set("task-clock,cpu-clock,faults,context-switches")
-            .soft_limits([("*task-clock*", {{ perf_soft_limit | default(10.0) }})]).fail_fast({{ perf_fail_fast | default(false) }})
+            .soft_limits([("*task-clock*", {{ perf_soft_limit | default(value=10.0) }})]).fail_fast({{ perf_fail_fast | default(value=false) }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]
@@ -62,34 +62,34 @@ fn bench_bubble_sort_soft_limits(array: Vec<i32>) -> Vec<i32> {
 
 #[library_benchmark]
 #[bench::regress_callgrind(
-    args = [{{ callgrind_array_length | default(4) }}],
+    args = [{{ callgrind_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .hard_limits([(EventKind::Ir, {{ callgrind_hard_limit | default(500) }} )]).fail_fast({{ callgrind_fail_fast | default(false) }})
+            .hard_limits([(EventKind::Ir, {{ callgrind_hard_limit | default(value=500) }} )]).fail_fast({{ callgrind_fail_fast | default(value=false) }})
         )
 )]
 #[bench::regress_cachegrind(
-    args = [{{ cachegrind_array_length | default(4) }}],
+    args = [{{ cachegrind_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::Cachegrind)
         .tool(Cachegrind::default()
-            .hard_limits(get_cachegrind_hard_limits()).fail_fast({{ cachegrind_fail_fast | default(false) }})
+            .hard_limits(get_cachegrind_hard_limits()).fail_fast({{ cachegrind_fail_fast | default(value=false) }})
         )
 )]
 #[bench::regress_dhat(
-    args = [{{ dhat_array_length | default(4) }}],
+    args = [{{ dhat_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::DHAT)
         .tool(Dhat::default()
-            .hard_limits([(DhatMetric::TotalBytes, {{ dhat_hard_limit | default(16) }})]).fail_fast({{ dhat_fail_fast | default(false) }})
+            .hard_limits([(DhatMetric::TotalBytes, {{ dhat_hard_limit | default(value=16) }})]).fail_fast({{ dhat_fail_fast | default(value=false) }})
             .frames(["*::setup_worst_case_array"])
         )
 )]
 #[bench::regress_perf(
-    args = [{{ perf_array_length | default(4) }}],
+    args = [{{ perf_array_length | default(value=4) }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .default_tool(Tool::Perf)
@@ -97,13 +97,13 @@ fn bench_bubble_sort_soft_limits(array: Vec<i32>) -> Vec<i32> {
             .event_set("task-clock,cpu-clock,faults,context-switches")
             .sample_duration(Duration::from_secs(5))
             .hard_limits([
-                ("*faults*", None, {{ perf_hard_limit | default("Limit::Int(10)") }}),
-            ]).fail_fast({{ perf_fail_fast | default(false) }})
+                ("*faults*", None, {{ perf_hard_limit | default(value="Limit::Int(10)") }}),
+            ]).fail_fast({{ perf_fail_fast | default(value=false) }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]
 fn bench_bubble_sort_hard_limits(array: Vec<i32>) -> Vec<i32> {
-    cause_minor_page_faults({{ page_faults | default(10) }}).unwrap();
+    cause_minor_page_faults({{ page_faults | default(value=10) }}).unwrap();
     black_box(bubble_sort(array))
 }
 

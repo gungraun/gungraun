@@ -313,6 +313,7 @@ taskset
 taskset_path
 tempdir
 tempfile
+tera
 thiserror
 threadid
 tlsv1
@@ -422,3 +423,4 @@ rmdirs
 partitionable
 subcrate
 rederiving
+tera

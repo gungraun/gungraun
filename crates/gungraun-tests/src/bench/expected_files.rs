@@ -35,9 +35,9 @@ use std::process::Stdio;
 use anyhow::{Context, Result};
 use glob::{Pattern, glob};
 use indexmap::IndexMap;
-use minijinja::Environment;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use tera::Tera;
 use valico::json_schema::schema::ScopedSchema;
 
 use super::io::{deserialize_json, print_error, print_info, serialize_yaml};
@@ -45,7 +45,7 @@ use super::io::{deserialize_json, print_error, print_info, serialize_yaml};
 pub const SCHEMA_PATH: &str = "crates/gungraun-summary/schemas";
 pub const SCHEMA_VERSION: &str = "7";
 
-pub static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
+pub static TEMPLATE_DATA: OnceCell<HashMap<String, serde_json::Value>> = OnceCell::new();
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 /// Expected files and globs for one benchmark output directory.
@@ -299,10 +299,10 @@ impl ExpectedFilesManifestEntry {
     }
 
     fn expected_dir(&self, output_dir: &Path) -> PathBuf {
-        let mut env = Environment::default();
-        env.add_template("function", &self.function).unwrap();
-        let template = env.get_template("function").unwrap();
-        let function = template.render(TEMPLATE_DATA.get().unwrap()).unwrap();
+        let mut tera = Tera::default();
+        tera.add_raw_template("function", &self.function).unwrap();
+        let context = tera::Context::from_serialize(TEMPLATE_DATA.get().unwrap()).unwrap();
+        let function = tera.render("function", &context).unwrap();
 
         if let Some(id) = &self.id {
             output_dir

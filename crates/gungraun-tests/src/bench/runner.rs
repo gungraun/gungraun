@@ -48,10 +48,10 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result, anyhow, bail};
 use fs_extra::dir::CopyOptions;
 use glob::glob;
-use minijinja::Environment;
 use rustc_version::VersionMeta;
 use simplematch::DoWild;
 use tempfile::{TempDir, tempdir};
+use tera::Tera;
 use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
@@ -359,7 +359,7 @@ impl SystemTest {
     fn run_template(
         &self,
         template_path: &Path,
-        template_data: &HashMap<String, minijinja::Value>,
+        template_data: &HashMap<String, serde_json::Value>,
         tests: &SystemTests,
         ctx: &ExecContext,
     ) -> Result<CapturedOutput> {
@@ -370,22 +370,23 @@ impl SystemTest {
             .read_to_string(&mut template_string)
             .with_context(|| format!("Failed to read template '{}'", source_path.display()))?;
 
-        let mut env = Environment::new();
-        env.add_template(&self.bench_name, &template_string)
+        let mut tera = Tera::default();
+        tera.add_raw_template(&self.bench_name, &template_string)
             .with_context(|| format!("Failed to compile template '{}'", source_path.display()))?;
-        let template = env
-            .get_template(&self.bench_name)
-            .with_context(|| format!("Failed to load template '{}'", self.bench_name))?;
-
         let destination = tests.get_template();
-        let dest = File::create(&destination).with_context(|| {
+        let mut dest = File::create(&destination).with_context(|| {
             format!(
                 "Failed to create rendered template '{}'",
                 destination.display()
             )
         })?;
-        template
-            .render_captured_to(template_data, dest)
+        let context = tera::Context::from_serialize(template_data).with_context(|| {
+            format!(
+                "Failed to serialize template data '{}'",
+                source_path.display()
+            )
+        })?;
+        tera.render_to(&self.bench_name, &context, &mut dest)
             .with_context(|| format!("Failed to render template '{}'", source_path.display()))?;
 
         self.run_bench(ctx)
@@ -526,7 +527,7 @@ impl SystemTestRunner {
         let mut map = HashMap::new();
         map.insert(
             "target_dir_sanitized".to_owned(),
-            minijinja::Value::from_serialize(
+            serde_json::Value::String(
                 tests
                     .target_directory
                     .display()

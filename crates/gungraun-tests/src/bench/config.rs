@@ -258,7 +258,7 @@ pub struct Run {
     ///
     /// Example: `{ "tool": "callgrind" }`.
     #[serde(default)]
-    pub template_data: HashMap<String, minijinja::Value>,
+    pub template_data: HashMap<String, serde_json::Value>,
     /// Optional benchmark tolerance forwarded as `--tolerance=<value>`.
     ///
     /// Example: `0.01`.

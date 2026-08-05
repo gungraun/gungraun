@@ -51,7 +51,6 @@ inferno = { version = "0.12", default-features = false, features = [
 ] }
 itertools = { version = "0.15" }
 log = { version = "0.4.8" }
-minijinja = { version = "2.0.1" }
 nix = { version = "0.31" }
 num_cpus = { version = "1" }
 once_cell = { version = "1" }
@@ -80,6 +79,7 @@ statrs = { version = "0.18" }
 strum = { version = "0.28" }
 syn = { version = "3", features = ["full", "extra-traits"] }
 tempfile = { version = "3.10.0" }
+tera = { version = "2.1.0" }
 thiserror = { version = "2.0.3" }
 trybuild = "1.0.18"
 valico = { version = "4" }

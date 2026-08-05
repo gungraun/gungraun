@@ -1,3 +1,32 @@
+//! Expected-file manifests, summary-schema validation, and shared constants.
+//!
+//! [`ExpectedFilesManifest`] (and its entry types) deserializes the YAML manifest a run points at
+//! via [`RunExpectations::files`][super::config::RunExpectations::files], then asserts that the
+//! files each `group`/`function`/`id` declares actually exist under the run's output directory -
+//! and that every `summary.json` validates against the versioned summary JSON schema compiled once
+//! per harness invocation.
+//!
+//! Like the stream comparison in [`assert`][super::assert], file assertion is dual-mode:
+//! `BENCH_OVERWRITE=yes` regenerates the manifest from what the run produced instead of checking
+//! it. Note that this does not cover 100% of cases. Existing glob patterns are preserved but new
+//! glob patterns are not automatically created and are expected to be added manually.
+//!
+//! The schema in an [`ExpectedFilesManifest`] is structured as follows:
+//!
+//! ```yaml
+//! home_dir: "path/to/home" # optional path to the gungraun home (env: GUNGRAUN_HOME) directory
+//! data: # A list of expectations for each benchmark executed in this system test
+//!   - group: # the benchmark group
+//!     function: # the benchmark function
+//!     id: # optional: the id
+//!     expected:
+//!       files:  # A list of files which are expected to be created by the benchmark
+//!         - callgrind.file_1.out
+//!       globs: # A list of files matched by the `pattern`, `count` times
+//!         - pattern: "some_glob*"
+//!           count: 2
+//! ```
+
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -419,3 +419,6 @@ NOHUGEPAGE
 minflt
 Prefaulting
 rmdirs
+partitionable
+subcrate
+rederiving

@@ -1,3 +1,19 @@
+//! Output normalization for captured stdout/stderr.
+//!
+//! Raw gungraun output is not directly comparable across runs or hosts: PIDs, absolute paths,
+//! cargo's per-build command hashes, percentages, timing fields, ... all vary.
+//!
+//! The associated functions on [`CapturedOutput`]
+//! ([`filter_stdout`][CapturedOutput::filter_stdout],
+//! [`filter_stderr`][CapturedOutput::filter_stderr]) scrub those so the checked-in expected
+//! fixtures stay stable.
+//!
+//! Coverage runs get an additional pass
+//! ([`normalize_coverage_stdout`][CapturedOutput::normalize_coverage_stdout]) because
+//! `cargo-llvm-cov`-instrumented binaries inject their own lines that a normal run never produces.
+//! The patterns live here — and only here — so when the runner's output format shifts, the
+//! comparison rules change in one place rather than across every case.
+
 use std::borrow::Cow;
 use std::fmt::Write;
 use std::io::BufRead;

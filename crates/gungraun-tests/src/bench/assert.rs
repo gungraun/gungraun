@@ -1,3 +1,14 @@
+//! Post-run assertion engine.
+//!
+//! After [`runner`][super::runner] executes a `cargo bench` run, [`Assert`] (a thin wrapper over
+//! [`RunExpectations`]) drives the ordered checks as [configured][super::config] for that run.
+//!
+//! Stream comparison is deliberately dual-mode: under `BENCH_OVERWRITE=yes` it rewrites the
+//! expected fixtures instead of comparing, so regenerating output after an intentional behavior
+//! change runs the same code path as asserting it. Coverage runs route stdout through extra
+//! normalization (see [`filter`][super::filter]) because instrumented binaries emit different
+//! noise.
+
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Write};
 use std::fs::{self, File};

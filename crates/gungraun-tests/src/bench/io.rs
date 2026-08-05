@@ -1,3 +1,11 @@
+//! Shared IO and serialization helpers for the bench subcrate.
+//!
+//! Centralizes the small, everywhere-used operations - reading and parsing YAML and JSON
+//! config/manifests, writing YAML back out, and the [`print_info`] / [`print_error`] informational
+//! logging the other modules use to narrate progress - so every module reads and writes case data
+//! through the same context-bearing wrappers instead of reopening files and rederiving error
+//! messages.
+
 use std::fs::File;
 use std::path::Path;
 

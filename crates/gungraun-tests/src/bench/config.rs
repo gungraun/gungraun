@@ -1,3 +1,31 @@
+//! Declarative model of a system-test case and its expected outcomes.
+//!
+//! This is the serde shape of the `.conf.yml` files that drive the harness. [`SystemTestConfig`] is
+//! one file: `groups` of `runs`, where each [`Run`] carries its `cargo_args`, `gungraun_args`,
+//! `envs`, `setup`/`teardown`, a `flaky` retry budget, and a [`RunExpectations`] block.
+//!
+//! The `targeted_enum!` macro at the top of the module generates the `Targeted*` enums
+//! ([`TargetedPath`], [`TargetedI32`], ...) that carry per-target-triple overrides, so a single
+//! case can express different expected output per platform without forking the config.
+//!
+//! [`CapturedOutput`] and [`Partition`] are the small CLI/transport types shared with
+//! [`runner`][super::runner] and [`assert`][super::assert].
+//!
+//! Concentrating the whole on-disk format in one module gives the schema exactly one definition to
+//! change when a case gains a new knob.
+//!
+//! The `.conf.yml` schema in a [`SystemTestConfig`] is basically structured as follows:
+//!
+//! ```yaml
+//! template: "some_rust_template.rs.j2" # optional path to a rust template
+//! groups: # `Group`
+//!   - expected: # `GroupExpectations`
+//!     runs: # `Run`
+//!       - expected: # `RunExpectations`
+//!         ...: # other `Run` fields
+//!     ... # other `Group` fields
+//! ```
+
 macro_rules! targeted_enum {
     (
         $name:ident {
@@ -195,6 +223,7 @@ pub struct Run {
     /// Example: `2` allows up to two retries after the first failed attempt.
     #[serde(default)]
     pub flaky: Option<usize>,
+    /// FIX: Rename back to args
     /// Benchmark binary arguments passed after `--`.
     ///
     /// Example: `["--show-grid=true"]`.

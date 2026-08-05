@@ -1,3 +1,43 @@
+//! Orchestration core of the system-test harness.
+//!
+//! Turns the declarative `.conf.yml` cases discovered and parsed by [`config`][super::config] into
+//! real `cargo bench` executions, then hands each captured result to [`assert`][super::assert] for
+//! validation. This module owns the whole lifecycle: discovery, partitioning, resume,
+//! summary-schema compilation, the per-run setup/teardown and flaky-retry loop, templating, and
+//! final cleanup.
+//!
+//! # Architecture
+//!
+//! The types form a deliberate three-tier visibility funnel:
+//!
+//! - [`SystemTestRunner`] is the sole `pub` type - the thin entry point `main` constructs and
+//!   `run`s. Everything behind it is an implementation detail.
+//! - [`SystemTests`] owns cross-case state (workspace root, target directory, rust version, the
+//!   coverage flag, and the resolved case list) and applies the `--filter`, `--partition`, and
+//!   `--continue` selections.
+//! - [`SystemTest`] is one case: a `.conf.yml`, its bench-target name, and its output directory.
+//!   [`ExecContext`] bundles the per-invocation command pieces (cargo args, env, gungraun args,
+//!   setup/teardown, tolerance, and the capture flag) passed into a single `cargo bench` call.
+//!
+//! # Rationale
+//!
+//! - **`cargo bench` as substrate**: each run is a real `cargo bench --package <pkg> --bench
+//!   <name>` subprocess, so the pipeline under test is exactly what users run. The runner only adds
+//!   the `GUNGRAUN_RUNNER` and `GUNGRAUN_SAVE_SUMMARY` env knobs and a setup/teardown shell
+//!   bracket.
+//! - **Backup/restore around `panic::catch_unwind`**: the flaky-retry loop must not leave a
+//!   half-written output directory behind, so each run's artifacts are backed up and restored on
+//!   failure before a retry.
+//! - **Coverage is a separate code path, not a flag**: under `CARGO_LLVM_COV` the instrumented
+//!   machine code shifts DHAT's instruction and memory metrics, so `is_coverage_run` adds an extra
+//!   normalization pass to stdout before comparison instead of treating the run like a normal one.
+//! - **Templating renders into a fixed target name**: a case's Jinja `template` is rendered into
+//!   the throwaway `test_bench_template` bench target and reset after each run, so many
+//!   parameterized cases share one cargo target without polluting the workspace.
+//! - **Resume via a marker file**: `--continue` consults `gungraun-tests.continue` to skip cases
+//!   already completed in this output tree, so a re-sharded or re-tried run does not repeat green
+//!   cases.
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};

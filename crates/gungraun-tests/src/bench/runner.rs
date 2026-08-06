@@ -55,12 +55,13 @@ use tera::Tera;
 use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
-use super::config::{CapturedOutput, Group, PACKAGE, SystemTestConfig};
+use super::config::{Group, PACKAGE, SystemTestConfig};
 use super::expected_files::SCHEMA_VERSION;
 use super::io::{deserialize_json, deserialize_yaml, get_rust_version, print_info};
 use crate::assert::AssertContext;
 use crate::config::Partition;
 use crate::expected_files::{SCHEMA_PATH, TEMPLATE_DATA};
+use crate::filter::CapturedOutput;
 
 const TEMPLATE_BENCH_NAME: &str = "test_bench_template";
 const TEMPLATE_CONTENT: &str = r#"fn main() {
@@ -70,19 +71,29 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
 const CONTINUE_FILE_NAME: &str = "gungraun-tests.continue";
 const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
 
+/// Inputs that vary between individual `cargo bench` invocations of one [`SystemTest`].
+///
+/// A case has many runs (group/run); each run produces one `ExecContext` describing the cargo
+/// arguments, environment, runner arguments, stdio capture mode, optional setup/teardown shell
+/// scripts, and an optional tolerance override.
 struct ExecContext<'a> {
+    /// Extra arguments forwarded to `cargo bench` after `--package`/`--bench`.
     cargo_args: &'a [String],
+    /// Environment variables exported to the benchmark subprocess.
     envs: &'a HashMap<String, String>,
+    /// Arguments forwarded to the runner after the cargo `--` separator.
     gungraun_args: &'a [String],
+    /// Whether stdout/stderr are captured (`Stdio::piped`) instead of inherited.
     is_capture: bool,
+    /// Optional bash script body run with `bash -ex` before the benchmark.
     setup: Option<&'a str>,
+    /// Optional bash script body run with `bash -ex` after the benchmark.
     teardown: Option<&'a str>,
+    /// Optional tolerance forwarded to the runner as `--tolerance=<value>`.
     tolerance: Option<f64>,
 }
 
 /// System test case derived from a `.conf.yml` file.
-///
-/// Example: `test_lib_bench_tools.conf.yml` becomes one `SystemTest` value.
 #[derive(Debug, Clone)]
 struct SystemTest {
     /// Cargo bench target name.
@@ -104,7 +115,7 @@ struct SystemTest {
     config_name: String,
     /// Root directory for system test output below cargo's target directory.
     ///
-    /// Example: `target/gungraun`.
+    /// Example: `target/gungraun` (the default)
     home_dir: PathBuf,
     /// Directory where this benchmark writes regular output files.
     ///
@@ -124,10 +135,10 @@ pub struct SystemTestRunner {
     tests: SystemTests,
 }
 
-#[derive(Debug, Clone)]
 /// Selected system tests and shared execution metadata.
 ///
 /// Example: produced once from cargo metadata before running system tests.
+#[derive(Debug, Clone)]
 struct SystemTests {
     /// Path to the `crates/gungraun-tests/benches` directory.
     ///
@@ -137,9 +148,9 @@ struct SystemTests {
     ///
     /// Example: only benchmarks matching `--filter='test_lib_*'`.
     cases: Vec<SystemTest>,
-    /// Whether the run is a llvm coverage run
+    /// Whether this is an LLVM coverage run.
     ///
-    /// This is usually true when `CARGO_LLVM_COV=1` is set. Coverage instrumentation changes the
+    /// This is true when `CARGO_LLVM_COV=1` is set. Coverage instrumentation changes the
     /// benchmarked machine code, so DHAT read/write metrics can differ from normal benchmark
     /// fixtures.
     is_coverage_run: bool,
@@ -149,15 +160,26 @@ struct SystemTests {
     rust_version: VersionMeta,
     /// Cargo target directory from cargo metadata.
     ///
-    /// Example: `target` or a custom `CARGO_TARGET_DIR`.
+    /// Example: `target/` or a custom `CARGO_TARGET_DIR`.
     target_directory: PathBuf,
     /// Cargo workspace root.
     ///
-    /// Example: repository root containing `Cargo.toml`.
+    /// Example: repository root containing the workspace top-level `Cargo.toml`.
     workspace_root: PathBuf,
 }
 
 impl SystemTest {
+    /// Constructs a [`SystemTest`] from a discovered `.conf.yml` path.
+    ///
+    /// Parses the configuration, derives the bench-target name (template cases collapse to
+    /// [`TEMPLATE_BENCH_NAME`]).
+    ///
+    /// `_package_dir` is currently unused and retained for future use.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the config file cannot be parsed, lacks a file name or `.conf.yml`
+    /// suffix, or has no parent directory.
     fn new(config_path: &Path, _package_dir: &Path, target_dir: &Path) -> Result<Self> {
         let config: SystemTestConfig = deserialize_yaml(config_path)?;
 
@@ -207,6 +229,15 @@ impl SystemTest {
         })
     }
 
+    /// Removes this case's output directory and its host-triple mirror.
+    ///
+    /// Idempotent: missing directories are not an error. Both the canonical `output_dir` and the
+    /// alternative `GUNGRAUN_HOME/<triple>/gungraun-tests/<bench>` path are cleared, since
+    /// either may exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a present directory cannot be removed.
     fn clean_benchmark(&self) -> Result<()> {
         if self.output_dir.is_dir() {
             std::fs::remove_dir_all(&self.output_dir).with_context(|| {
@@ -233,6 +264,15 @@ impl SystemTest {
         Ok(())
     }
 
+    /// Snapshots the current output directory into a fresh [`TempDir`].
+    ///
+    /// Returns `Ok(None)` when there is nothing to back up. The returned temp dir owns the
+    /// snapshot; dropping it cleans up. Used for example by the flaky-retry loop so a failed
+    /// assertion can [`restore`][Self::restore] the pre-run state before retrying.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the temp directory cannot be created or the copy fails.
     fn backup(&self) -> Result<Option<TempDir>> {
         if !self.output_dir.is_dir() {
             return Ok(None);
@@ -249,6 +289,16 @@ impl SystemTest {
         Ok(Some(temp_dir))
     }
 
+    /// Restores the output directory from a prior [`backup`][Self::backup].
+    ///
+    /// Cleans the current state first (see [`clean_benchmark`][Self::clean_benchmark]), then copies
+    /// the snapshot back when one is provided. A `None` argument simply cleans without restoring,
+    /// matching the no-backup case in the flaky-retry loop.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if cleaning or copying back fails, or if the output directory has no file
+    /// name.
     fn restore(&self, temp_dir: Option<&TempDir>) -> Result<()> {
         self.clean_benchmark()?;
 
@@ -279,6 +329,24 @@ impl SystemTest {
         Ok(())
     }
 
+    /// Executes one `cargo bench --package <pkg> --bench <name>` call for this case.
+    ///
+    /// Threads the [`ExecContext`] pieces through: selects piped vs inherited stdio based on
+    /// `is_capture` and disables color if output is captured to ensure the stdout/stderr fixtures
+    /// can be asserted against the uncolored output.
+    ///
+    /// The optional `setup` and `teardown` scripts are run with `bash -ex`.
+    ///
+    /// Returns the cargo bench process output wrapped in a [`CapturedOutput`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `setup` or `teardown` script exits non-zero.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if script writing, directory/marker creation, or the cargo invocation
+    /// itself fails.
     fn run_bench(&self, ctx: &ExecContext) -> Result<CapturedOutput> {
         let stdio = if ctx.is_capture {
             // SAFETY: Benchmarks are run serially
@@ -374,7 +442,7 @@ impl SystemTest {
 
             print_info("Running teardown:");
             let status = Command::new("bash")
-                .args(["-eux"])
+                .args(["-ex"])
                 .arg(teardown_path)
                 .status()
                 .context("Failed to spawn the teardown process")?;
@@ -388,6 +456,19 @@ impl SystemTest {
         })
     }
 
+    /// Renders the case's Jinja template into the shared bench target, then runs it.
+    ///
+    /// Reads the template body from the [`Self::config_dir`] joined with `template_path`, compiles
+    /// it with [`Tera`], renders with `template_data` into the path returned by
+    /// [`SystemTests::get_template`], and finally delegates to [`run_bench`][Self::run_bench].
+    ///
+    /// The caller is responsible for resetting the shared target via
+    /// [`reset_template`][Self::reset_template] afterwards.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the template cannot be opened, read, compiled, serialized, or rendered,
+    /// or if the subsequent bench run fails.
     fn run_template(
         &self,
         template_path: &Path,
@@ -405,6 +486,7 @@ impl SystemTest {
         let mut tera = Tera::default();
         tera.add_raw_template(&self.bench_name, &template_string)
             .with_context(|| format!("Failed to compile template '{}'", source_path.display()))?;
+
         let destination = tests.get_template();
         let mut dest = File::create(&destination).with_context(|| {
             format!(
@@ -424,6 +506,21 @@ impl SystemTest {
         self.run_bench(ctx)
     }
 
+    /// Executes every enabled run in [`Group`] for this case.
+    ///
+    /// Skips the whole group when it is gated off for the current target triple or Rust version.
+    /// For each enabled run, drives the flaky-retry loop:
+    ///
+    /// 1. Backs up existing output when `flaky` retries are configured.
+    /// 2. Renders the template (if any) and runs the bench via [`run_bench`][Self::run_bench].
+    /// 3. Asserts the captured output against the checked-in expectations.
+    /// 4. On assertion failure with retries remaining, restores the backup and retries.
+    ///
+    /// `num_groups` and `group_index` are used only for progress logging.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if cleanup, backup/restore, bench execution, or the final assertion fails.
     fn run(
         &self,
         num_groups: usize,
@@ -535,6 +632,14 @@ impl SystemTest {
         Ok(())
     }
 
+    /// Rewrites the shared template bench target back to its panic-on-run stub.
+    ///
+    /// Writes [`TEMPLATE_CONTENT`] over the path returned by [`SystemTests::get_template`] so a
+    /// stale rendered template is never accidentally compiled by a later non-template case.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be (re)created or written.
     fn reset_template(tests: &SystemTests) -> Result<()> {
         let path = tests.get_template();
         let mut file = File::create(&path)
@@ -545,6 +650,15 @@ impl SystemTest {
 }
 
 impl SystemTestRunner {
+    /// Constructs the runner and initializes the shared [`Tera`] template data.
+    ///
+    /// Resolves the selected `benches` applying `filter` (`--filter`), `partition` (`--partition`)
+    /// and `resume` (`--continue`) via [`SystemTests::new`]
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if case resolution fails or `TEMPLATE_DATA` was already set in this
+    /// process.
     pub fn new(
         benches: &[String],
         filter: Option<&str>,
@@ -572,6 +686,18 @@ impl SystemTestRunner {
         Ok(Self { tests })
     }
 
+    /// Executes all selected cases sequentially and validates their output.
+    ///
+    /// Sets the `GUNGRAUN_SAVE_SUMMARY` and `GUNGRAUN_RUNNER` env knobs (benchmarks run serially),
+    /// compiles the summary JSON schema for per-run validation, builds `gungraun-runner` via
+    /// [`build_gungraun_runner`], iterates groups within each case, and finally removes the resume
+    /// marker [`CONTINUE_FILE_NAME`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the schema cannot be loaded/compiled, the runner build fails, any
+    /// case/group/run fails, or the continue marker cannot be removed (except for `NotFound`, which
+    /// is treated as success).
     pub fn run(&self) -> Result<()> {
         // We need the `summary.json` files to verify that not all costs are zero. Extracting this
         // info from the summary is much easier than doing it from the output.
@@ -629,6 +755,15 @@ impl SystemTestRunner {
 }
 
 impl SystemTests {
+    /// Constructs a new `SystemTests` and resolves the selected `tests`.
+    ///
+    /// Reads cargo metadata for workspace/target paths, discovers every `.conf.yml` under
+    /// `benches/`, then applies the optional `filter`, `partition`, and `resume`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if cargo metadata, discovery, filtering, partitioning, resume, or rustc
+    /// version detection fails.
     fn new(
         tests: &[String],
         filter: Option<&str>,
@@ -659,7 +794,7 @@ impl SystemTests {
         }
 
         let rust_version =
-            get_rust_version().ok_or_else(|| anyhow!("Failed to determine Rust version"))?;
+            get_rust_version().with_context(|| "Failed to determine Rust version".to_owned())?;
 
         Ok(Self {
             workspace_root,
@@ -671,6 +806,14 @@ impl SystemTests {
         })
     }
 
+    /// Keeps only the cases belonging to `partition.part` of `partition.total`.
+    ///
+    /// Splits the (already sorted) case list into `total` contiguous chunks and retains the
+    /// 1-indexed chunk `part`. No-op when `partition` is `None`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `partition` is set but `cases` is empty or `part` selects no chunk.
     fn apply_partition(
         cases: Vec<SystemTest>,
         partition: Option<&Partition>,
@@ -690,6 +833,17 @@ impl SystemTests {
         }
     }
 
+    /// Drops every case that precedes the benchmark named in the continue marker.
+    ///
+    /// Reads `<target>/gungraun/<CONTINUE_FILE_NAME>` and trims the case list to start at that
+    /// benchmark, so a re-sharded or re-tried run skips already-completed cases. The marker is
+    /// consulted verbatim; no command-line equality check is performed. No-op when `resume` is
+    /// false.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `resume` is true but the continue file cannot be read or names a
+    /// benchmark not present in `cases`.
     fn apply_resume(
         mut cases: Vec<SystemTest>,
         resume: bool,
@@ -715,19 +869,45 @@ impl SystemTests {
         Ok(cases)
     }
 
+    /// Globs `benches/**/*.conf.yml` and returns every match.
+    ///
+    /// # Panics
+    ///
+    /// If the glob pattern is invalid.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the glob pattern cannot be compiled or any matched path cannot be read.
     fn discover_config_paths(benches_dir: &Path) -> Result<Vec<PathBuf>> {
         let config_pattern = format!("{}/**/*.conf.yml", benches_dir.display());
         glob(&config_pattern)
-            .with_context(|| format!("Failed to compile benchmark glob '{config_pattern}'"))?
+            .expect("The glob pattern should be valid")
             .collect::<std::result::Result<Vec<_>, _>>()
             .with_context(|| format!("Failed to discover benchmarks with '{config_pattern}'"))
     }
 
+    /// Sorts cases lexicographically by [`SystemTest::config_name`].
+    ///
+    /// Deterministic ordering is required for stable partitioning and resume.
     fn sort(mut cases: Vec<SystemTest>) -> Vec<SystemTest> {
         cases.sort_by_key(|b| b.config_name.clone());
         cases
     }
 
+    /// Filters discovered paths and promotes the survivors to [`SystemTest`]s.
+    ///
+    /// A path survives when its stem matches the optional glob `filter` AND is either listed in
+    /// `tests` (when non-empty) or no explicit list was given. Each surviving path is constructed
+    /// via [`SystemTest::new`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if a discovered path lacks a file name or a `.conf.yml` suffix, which the discovery
+    /// pattern guarantees.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any [`SystemTest::new`] construction fails.
     fn paths_to_cases(
         config_paths: Vec<PathBuf>,
         filter: Option<&str>,
@@ -761,11 +941,24 @@ impl SystemTests {
             .collect::<Result<Vec<SystemTest>>>()
     }
 
+    /// Path to the shared throwaway template bench target.
+    ///
+    /// Points at `<benches_dir>/<TEMPLATE_BENCH_NAME>.rs`, which is rewritten per templated run and
+    /// reset to [`TEMPLATE_CONTENT`] afterwards.
     fn get_template(&self) -> PathBuf {
         self.benches_dir.join(format!("{TEMPLATE_BENCH_NAME}.rs"))
     }
 }
 
+/// Builds `gungraun-runner` in release mode.
+///
+/// Shells out to `cargo build --package gungraun-runner --release` once up front so each benchmark
+/// subprocess can invoke the freshly built runner via `GUNGRAUN_RUNNER` without paying the build
+/// cost per case.
+///
+/// # Errors
+///
+/// Returns an error if the build cannot be spawned or exits with a non-zero status.
 fn build_gungraun_runner() -> Result<()> {
     print_info("Building gungraun-runner");
     let status = Command::new(env!("CARGO"))

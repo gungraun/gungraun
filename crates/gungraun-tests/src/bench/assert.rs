@@ -23,28 +23,83 @@ use gungraun_tests::common::Summary;
 use tempfile::tempdir;
 use valico::json_schema::schema::ScopedSchema;
 
-use super::config::{CapturedOutput, GroupExpectations, PACKAGE, RunExpectations};
+use super::config::{GroupExpectations, PACKAGE, RunExpectations};
 use super::expected_files::ExpectedFilesManifest;
 use super::io::{deserialize_yaml_str, print_info};
+use crate::filter::CapturedOutput;
 
+/// Identifies which process stream (`stdout` or `stderr`) is being inspected.
+///
+/// Carried through assertion helpers so a single code path can format log messages and select the
+/// right normalization for either stream.
+#[derive(Debug)]
 enum StreamKind {
+    /// Standard output of the benchmark process.
     Stdout,
+    /// Standard error of the benchmark process.
     Stderr,
 }
 
-pub struct Assert<'a>(pub &'a RunExpectations);
+/// Entry point for the post-run assertion engine.
+///
+/// A thin newtype over a [`RunExpectations`] reference. Calling [`Assert::assert`] drives the
+/// ordered checks (output capture, exit code, optional script, expected files, non-zero metrics,
+/// ...) configured for that run.
+///
+/// The comparison path is dual-mode: under `BENCH_OVERWRITE=yes` it rewrites the expected fixtures
+/// instead of comparing them, so regenerating output after an intentional behavior change runs the
+/// same code path as asserting it (see the [`mod@super`] module docs).
+#[derive(Debug)]
+pub struct Assert<'a>(
+    /// The [`RunExpectations`] for this run.
+    pub &'a RunExpectations,
+);
 
+/// Read-only inputs needed to evaluate a run's [`RunExpectations`].
+///
+/// Built by the system-test runner per `cargo bench` invocation and passed by reference to
+/// [`Assert::assert`]. All paths are borrows; the context does not own the run artifacts.
+#[derive(Debug)]
 pub struct AssertContext<'a> {
+    /// Name of the system-test benchmark case (the `--bench <name>` argument).
+    ///
+    /// Used for example to locate the per-benchmark output directory under `home_dir`
+    /// (`PACKAGE/bench_name`).
     pub bench_name: &'a str,
+    /// Captured stdout/stderr plus the filtering helpers used to normalize them before comparison
+    /// (see [`crate::filter::CapturedOutput`]).
     pub captured_output: &'a CapturedOutput,
+    /// Directory of the benchmark's `.conf.yml`.
+    ///
+    /// Used to resolve relative paths in the expectations (expected stdout/stderr fixtures,
+    /// [`ExpectedFilesManifest`], ...).
     pub config_dir: &'a Path,
+    /// Group-level [`GroupExpectations`], similar to [`RunExpectations`].
+    ///
+    /// [`RunExpectations`] take precedence.
     pub group_expectations: Option<&'a GroupExpectations>,
+    /// Base directory under which benchmark output is written.
+    ///
+    /// The per-bench output root is `home_dir/PACKAGE/bench_name` (where `PACKAGE` is
+    /// `gungraun-tests`).
     pub home_dir: &'a Path,
+    /// Whether the run executed under `CARGO_LLVM_COV=1`.
+    ///
+    /// Coverage instrumentation perturbs DHAT metrics and stdout, so coverage runs take a separate
+    /// normalization path in [`Assert::assert_or_overwrite_output_stream`].
     pub is_coverage_run: bool,
+    /// Parsed summary JSON schema used to validate each `summary.json` produced under `home_dir`.
     pub schema: &'a ScopedSchema<'a>,
 }
 
 impl Assert<'_> {
+    /// Drive all configured checks for a single benchmark run.
+    ///
+    /// `target_triple` selects the per-target variants of each expectation (see
+    /// [`RunExpectations`]).
+    ///
+    /// Skips the non-zero-metrics check if `zero_metrics` is set, or when the expected-files path
+    /// already returned `true` because an overwrite just regenerated them.
     pub fn assert(&self, ctx: &AssertContext, target_triple: &str) -> Result<()> {
         let expected = self.0;
 
@@ -80,6 +135,19 @@ impl Assert<'_> {
         Ok(())
     }
 
+    /// Echo the captured streams to the real stdout/stderr, then enforce the configured stream
+    /// expectations.
+    ///
+    /// For each stream (stderr first, then stdout), exactly one of the following applies:
+    ///
+    /// 1. `no_stderr`/`no_stdout`: the filtered stream must be empty.
+    /// 2. `stderr_contains`/`stdout_contains`: the raw stream must contain each listed substring.
+    /// 3. `stderr`/`stdout`: the filtered stream is byte-compared against the expected file (or
+    ///    rewrites it under `BENCH_OVERWRITE=yes`).
+    /// 4. Otherwise the stream is only echoed, not asserted.
+    ///
+    /// The captured bytes are written to the real stdout/stderr unfiltered so diagnostic output
+    /// (e.g. panic messages) reaches the user verbatim.
     fn assert_or_overwrite_output(
         expected: &RunExpectations,
         ctx: &AssertContext,
@@ -148,6 +216,23 @@ impl Assert<'_> {
         Ok(())
     }
 
+    /// Compare a single captured `stream` against its expected fixture at `path` in the
+    /// `config_dir`, or rewrite the fixture.
+    ///
+    /// The captured `stream` bytes are passed through `filter` (for example
+    /// [`CapturedOutput::filter_stdout`]) before any comparison so that host-specific noise
+    /// (PIDs, absolute paths, percentages, metric values, ...) is scrubbed.
+    ///
+    /// Behavior is selected at compile time by the `BENCH_OVERWRITE` env var:
+    ///
+    /// - `BENCH_OVERWRITE=yes`: if filtered and expected differ, the filtered bytes overwrite the
+    ///   fixture at `config_dir.join(path)`. Returns `Ok(())` either way.
+    /// - Otherwise: if `is_coverage_run` is `true`, both sides are passed through
+    ///   [`CapturedOutput::normalize_coverage_stdout`] to mask instrumentation-specific noise. The
+    ///   filtered stream must then equal the expected fixture byte-for-byte, or this panics with a
+    ///   [`pretty_assertions::StrComparison`] diff.
+    ///
+    /// `stream_kind` is used only for formatting log messages and the coverage-run branch.
     fn assert_or_overwrite_output_stream<F>(
         stream: &[u8],
         stream_kind: &StreamKind,
@@ -219,6 +304,11 @@ impl Assert<'_> {
         Ok(())
     }
 
+    /// Verify the raw `stream` contains every substring listed in `contains`.
+    ///
+    /// Unlike the byte-comparison path, the input here is the unfiltered stream (the substrings are
+    /// matched verbatim). Each hit is logged; the first missing substring panics with a message
+    /// identifying the stream.
     fn assert_output_stream_contains(stream: &str, stream_kind: &StreamKind, contains: &[String]) {
         for expected in contains {
             if stream.contains(expected) {
@@ -234,6 +324,10 @@ impl Assert<'_> {
         }
     }
 
+    /// Verify that a filtered `stream` of this [`StreamKind`] is empty.
+    ///
+    /// Used for example by the `no_stdout`/`no_stderr` expectations. The caller is responsible for
+    /// filtering the stream before calling.
     fn assert_output_no_stream(stream: &str, stream_kind: &StreamKind) {
         if stream.is_empty() {
             print_info(format!(
@@ -244,6 +338,13 @@ impl Assert<'_> {
         }
     }
 
+    /// Load the expected-files manifest at `manifest` path and either assert or regenerate it.
+    ///
+    /// The manifest path is resolved against `ctx.config_dir`. Its optional `home_dir` overrides
+    /// `ctx.home_dir` when locating benchmark output; otherwise the per-bench output root is
+    /// `ctx.home_dir/PACKAGE/bench_name`.
+    ///
+    /// Returns `Ok(true)` if the manifest was rewritten under `BENCH_OVERWRITE=yes`.
     fn assert_or_overwrite_expected_files(manifest: &Path, ctx: &AssertContext) -> Result<bool> {
         let manifest_path = ctx.config_dir.join(manifest);
         let manifest_content = fs::read_to_string(&manifest_path)
@@ -270,6 +371,14 @@ impl Assert<'_> {
         Self::assert_expected_files(expected_files_manifest, &output_dir, ctx).map(|()| false)
     }
 
+    /// Assert that every entry in the [`ExpectedFilesManifest`] matches the benchmark output, and
+    /// that no extra per-group directory exists.
+    ///
+    /// For each manifest entry, the entry's own `assert` resolves and validates its output
+    /// directory against `schema`. Two accumulators are kept per group: the set of directories that
+    /// exist on disk (via `glob`), and the set of directories the manifest visited. If the on-disk
+    /// set has any directory the `manifest` did not cover, this panics listing the stragglers - a
+    /// regression guard for benchmarks that silently stopped emitting output.
     fn assert_expected_files(
         manifest: ExpectedFilesManifest,
         output_dir: &Path,
@@ -321,6 +430,10 @@ impl Assert<'_> {
         Ok(())
     }
 
+    /// Assert that the benchmark produced no output directory at all.
+    ///
+    /// Used when `no_files` is set in the config. If the directory exists, this panics listing
+    /// every file beneath it (paths relativized against the package directory for readability).
     fn assert_no_files(ctx: &AssertContext) {
         let package_dir = ctx.home_dir.join(PACKAGE);
         let output_dir = package_dir.join(ctx.bench_name);
@@ -349,6 +462,11 @@ impl Assert<'_> {
         }
     }
 
+    /// Assert the captured process status in [`CapturedOutput`] matches the configured expectation.
+    ///
+    /// - `Some(expected)`: the process must have exited with that exact code. If it died by signal
+    ///   instead, the signal number is reported.
+    /// - `None`: the process must simply have exited successfully (any zero status).
     fn assert_exit_code(exit_code: Option<i32>, captured_output: &CapturedOutput) {
         match exit_code {
             Some(expected) => match captured_output.output.status.code() {
@@ -378,6 +496,11 @@ impl Assert<'_> {
         }
     }
 
+    /// Assert that every `summary.json` under the per-bench output directory reports at least one
+    /// non-zero cost.
+    ///
+    /// This is a smoke check that the benchmark actually ran the tool and produced data, not an
+    /// empty or all-zero summary.
     fn assert_not_all_metrics_zero(ctx: &AssertContext) -> Result<()> {
         let output_dir = ctx.home_dir.join(PACKAGE).join(ctx.bench_name);
 
@@ -396,6 +519,13 @@ impl Assert<'_> {
         Ok(())
     }
 
+    /// Run a bash assertion script in the benchmark's output directory.
+    ///
+    /// The `script` body is written to a temporary file and executed with `bash -ex` using the
+    /// per-bench output directory (`home_dir/PACKAGE/bench_name`) as the working directory. The
+    /// script must exit zero; otherwise this panics reporting the full `ExitStatus`.
+    ///
+    /// The temp file lives only for the duration of the call.
     fn run_assert_script(script: &str, ctx: &AssertContext) -> Result<()> {
         let temp_dir =
             tempdir().context("Failed to create a temporary directory for the assertion script")?;

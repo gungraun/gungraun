@@ -17,11 +17,10 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 use std::io::BufRead;
+use std::process::Output;
 use std::sync::LazyLock;
 
 use regex::{Captures, Regex};
-
-use super::config::CapturedOutput;
 
 // The regex patterns working on the `stdout` must not include the indentation. The indentation can
 // be different depending on the `show_grid` option and starts either with 2 spaces (`  `) or if
@@ -176,7 +175,32 @@ static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
 static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("[']([/][^/']+)+[']").expect("Regex should compile"));
 
+/// Captured result of one cargo bench invocation.
+///
+/// The stdout/stderr from `cargo bench --package gungraun-tests --bench test_lib_bench_tools`
+#[derive(Debug)]
+pub struct CapturedOutput {
+    /// Whether the run used an explicit tolerance argument.
+    ///
+    /// For example returns `true` when `--tolerance=0.01` was forwarded to the benchmark.
+    pub has_tolerance: bool,
+    /// Process output returned by [`std::process::Command::output`] of the cargo --bench run
+    pub output: Output,
+}
+
 impl CapturedOutput {
+    /// Extra normalization pass applied to coverage runs only.
+    ///
+    /// Binaries instrumented by `cargo-llvm-cov` emit extra DHAT `Reads bytes` and `Writes bytes`
+    /// metrics. This pass replaces their numeric diff portion (matched by [`NUMBERS_DIFF_RE`])
+    /// with a fixed `(         )` placeholder so the checked-in expected fixtures stay stable
+    /// across coverage and non-coverage runs.
+    ///
+    /// The 2-character leading indent (`  ` or `|`, selected by the runner's `show_grid` option) is
+    /// preserved; only the body of the line is rewritten.
+    ///
+    /// Companion to [`CapturedOutput::filter_stdout`] and [`CapturedOutput::filter_stderr`]. See
+    /// the [module docs][self] for the overall pipeline.
     pub fn normalize_coverage_stdout(stdout: &str) -> String {
         let mut result = String::new();
         for line in stdout.lines() {
@@ -197,6 +221,9 @@ impl CapturedOutput {
         result
     }
 
+    /// Normalize captured stderr so it is comparable across runs and hosts.
+    ///
+    /// See the module docs and [`CapturedOutput::filter_stdout`] for the overall pipeline.
     pub fn filter_stderr(stderr: &[u8]) -> String {
         let mut result = String::new();
         let mut start = false;
@@ -242,6 +269,42 @@ impl CapturedOutput {
         result
     }
 
+    /// Normalize captured stdout so it is comparable across runs and hosts.
+    ///
+    /// The metric numbers are replaced with the same amount of spaces. Although we don't compare
+    /// exact metric values we verify that there was a number. Other variable output is replaced
+    /// with static markers which follows the pattern `<__MARKER__>` where MARKER can be more
+    /// descriptive like `<__DIFF__>`, ...
+    ///
+    /// This is the main filter which consults `self.has_tolerance`: when the benchmark was invoked
+    /// with an explicit `--tolerance` argument, a `(No change)` diff is relabeled as `(Tolerance)`.
+    /// Although tolerance is set it can produce sometimes `No Change` and sometimes `Tolerance`
+    /// which would make the output unreliable.
+    ///
+    /// # Examples
+    ///
+    /// There's a lot more that is filtered but for example the `Details:` collapse turns variable
+    /// per-tool output into a stable marker (the benchmark `Command:` is scrubbed in the same
+    /// pass):
+    ///
+    /// ```text
+    ///   Command:            target/release/deps/test_lib_bench_tools-85f9071c66a70881
+    ///   Details:            # Thread 1
+    ///                       #   Total intervals: 0 (Interval Size 100000000)
+    ///   Command:            target/release/sort
+    ///   Details:            # Thread 1
+    /// ```
+    ///
+    /// becomes:
+    ///
+    /// ```text
+    ///   Command: <__COMMAND__>
+    ///   Details: <__DETAILS__>
+    ///   Command:            target/release/sort
+    ///   Details: <__DETAILS__>
+    /// ```
+    ///
+    /// See the module docs for where this fits in the overall pipeline.
     pub fn filter_stdout(&self, stdout: &[u8]) -> String {
         let mut result = String::new();
         let mut details = false;
@@ -463,6 +526,18 @@ impl CapturedOutput {
     }
 }
 
+/// Move a trailing unit out of a metric label so it no longer shifts the numeric column.
+///
+/// We need to filter units, because perf sometimes has units for a metric but on another system
+/// (especially the Github CI) it doesn't. (for example `task-clock`)
+///
+/// A perf label like `task-clock/u [us]:` carries its unit inside the label. Left in place, the
+/// unit's width pushes the `:`, and therefore the numbers that follow, to a different column than
+/// unit-less labels. This helper reorders `prefix [unit]: ` into `prefix: ` followed by
+/// unit-length spaces.
+///
+/// Non-unit brackets such as `rse% (sig.thr) [sig.fact]` are left untouched, since there is no
+/// trailing `:` to match.
 fn filter_unit(desc: &str) -> Cow<'_, str> {
     UNIT_RE.replace(desc, |caps: &Captures| {
         format!(

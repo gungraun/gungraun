@@ -15,6 +15,13 @@ use rustc_version::VersionMeta;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+/// Reads and deserializes the JSON file at `path` into `T`.
+///
+/// Errors are annotated with the file path for both open and parse failures.
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be opened or its contents cannot be deserialized into `T`.
 pub fn deserialize_json<T>(path: &Path) -> Result<T>
 where
     T: DeserializeOwned,
@@ -24,6 +31,13 @@ where
         .with_context(|| format!("Failed to deserialize '{}'", path.display()))
 }
 
+/// Reads and deserializes the YAML file at `path` into `T`.
+///
+/// Errors are annotated with the file path for both open and parse failures.
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be opened or its contents cannot be deserialized into `T`.
 pub fn deserialize_yaml<T>(path: &Path) -> Result<T>
 where
     T: DeserializeOwned,
@@ -33,6 +47,14 @@ where
         .with_context(|| format!("Failed to deserialize '{}'", path.display()))
 }
 
+/// Deserializes `T` from a YAML `string`.
+///
+/// `path` is not read from disk - it is used only to annotate any parse error with a meaningful
+/// source location. Use [`deserialize_yaml`] when the YAML source already lives in a file.
+///
+/// # Errors
+///
+/// Returns an error if `string` cannot be deserialized into `T`.
 pub fn deserialize_yaml_str<T>(string: &str, path: &Path) -> Result<T>
 where
     T: DeserializeOwned,
@@ -41,10 +63,13 @@ where
         .with_context(|| format!("Failed to deserialize '{}'", path.display()))
 }
 
-pub fn get_rust_version() -> Option<VersionMeta> {
-    rustc_version::version_meta().ok()
+/// Returns the metadata for the active Rust toolchain, or `None` if `rustc` cannot be invoked or
+/// its output parsed.
+pub fn get_rust_version() -> Result<VersionMeta> {
+    rustc_version::version_meta().map_err(anyhow::Error::msg)
 }
 
+/// Prints an error `message` to stderr, prefixed with a colored `bench` tag and an `Error` label.
 pub fn print_error<T>(message: T)
 where
     T: AsRef<str>,
@@ -57,6 +82,7 @@ where
     );
 }
 
+/// Prints an informational `message` to stderr, prefixed with a colored `bench` tag.
 pub fn print_info<T>(message: T)
 where
     T: AsRef<str>,
@@ -64,6 +90,11 @@ where
     eprintln!("{}: {}", "bench".purple().bold(), message.as_ref());
 }
 
+/// Serializes `data` as YAML and writes it to `path`, creating or truncating the file as needed.
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be created or `data` cannot be serialized.
 pub fn serialize_yaml<T>(path: &Path, data: &T) -> Result<()>
 where
     T: Serialize,

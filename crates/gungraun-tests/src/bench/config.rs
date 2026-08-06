@@ -8,8 +8,8 @@
 //! ([`TargetedPath`], [`TargetedI32`], ...) that carry per-target-triple overrides, so a single
 //! case can express different expected output per platform without forking the config.
 //!
-//! [`CapturedOutput`] and [`Partition`] are the small CLI/transport types shared with
-//! [`runner`][super::runner] and [`assert`][super::assert].
+//! [`CapturedOutput`][super::filter::CapturedOutput] and [`Partition`] are the small CLI/transport
+//! types shared with [`runner`][super::runner] and [`assert`][super::assert].
 //!
 //! Concentrating the whole on-disk format in one module gives the schema exactly one definition to
 //! change when a case gains a new knob.
@@ -59,7 +59,6 @@ macro_rules! targeted_enum {
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::Output;
 
 use anyhow::Result;
 use gungraun_tests::serde::runs_on::RunsOn;
@@ -133,19 +132,6 @@ targeted_enum! {
             .map_or_else(|| &[], Vec::as_slice),
     }
     resolve(target_triple) -> &[String]
-}
-
-/// Captured result of one cargo bench invocation.
-///
-/// The stdout/stderr from `cargo bench --package gungraun-tests --bench test_lib_bench_tools`
-#[derive(Debug)]
-pub struct CapturedOutput {
-    /// Whether the run used an explicit tolerance argument.
-    ///
-    /// For example returns `true` when `--tolerance=0.01` was forwarded to the benchmark.
-    pub has_tolerance: bool,
-    /// Process output returned by [`std::process::Command::output`] of the cargo --bench run
-    pub output: Output,
 }
 
 /// YAML group containing multiple benchmark runs under shared conditions.
@@ -259,10 +245,10 @@ pub struct GroupExpectations {
     pub script: Option<TargetedString>,
 }
 
-#[derive(Debug, Clone, Copy)]
 /// Selected partition of the benchmark list.
 ///
 /// Example: `part = 2`, `total = 4` runs the second quarter of benchmarks.
+#[derive(Debug, Clone, Copy)]
 pub struct Partition {
     /// One-based partition number to run.
     ///
@@ -643,7 +629,6 @@ pub struct RunExpectations {
     pub zero_metrics: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 /// YAML configuration loaded from one benchmark `.conf.yml` file.
 ///
 /// `SystemTestConfig` is the root type parsed from each `*.conf.yml` file under `benches/` and
@@ -670,6 +655,7 @@ pub struct RunExpectations {
 ///       - template_data:
 ///           some_value: 1.0
 /// ```
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemTestConfig {
     /// Grouped runs defined by this benchmark configuration.
     ///
@@ -697,6 +683,16 @@ pub struct SystemTestConfig {
 }
 
 impl Group {
+    /// Returns whether this group should run on the given target.
+    ///
+    /// The group is enabled when both of its constraints are satisfied, with an absent constraint
+    /// treated as always-matching: the `runs_on` target-triple selector and the `rust_version`
+    /// comparator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a configured `rust_version` value cannot be evaluated, for example an unrecognized
+    /// version string or a release channel paired with a comparator other than `=` or `!=`.
     pub fn is_enabled(&self, target_triple: &str, rust_version: &VersionMeta) -> bool {
         is_enabled(
             self.runs_on.as_ref(),
@@ -708,6 +704,15 @@ impl Group {
 }
 
 impl Run {
+    /// Asserts this run's expected output against `ctx`, when any is configured.
+    ///
+    /// The expected value is resolved for the build target using the build-time `GR_BUILD_TRIPLE`
+    /// triple. A run without expectations asserts nothing and returns `Ok(())`; otherwise the
+    /// resolved expectation is forwarded to [`Assert::assert`].
+    ///
+    /// # Errors
+    ///
+    /// Delegates the error of [`Assert::assert`].
     pub fn assert(&self, ctx: &AssertContext) -> Result<()> {
         let target_triple = env!("GR_BUILD_TRIPLE");
         if let Some(expected) = self
@@ -721,6 +726,16 @@ impl Run {
         Ok(())
     }
 
+    /// Returns whether this run should execute on the given target.
+    ///
+    /// The run-level counterpart of [`Group::is_enabled`]: it is enabled when both its `runs_on`
+    /// and `rust_version` constraints are satisfied, with an absent constraint treated as
+    /// always-matching.
+    ///
+    /// # Panics
+    ///
+    /// Panics under the same conditions as [`Group::is_enabled`] when a `rust_version` constraint
+    /// cannot be evaluated.
     pub fn is_enabled(&self, target_triple: &str, rust_version: &VersionMeta) -> bool {
         is_enabled(
             self.runs_on.as_ref(),
@@ -732,6 +747,13 @@ impl Run {
 }
 
 impl RunExpectations {
+    /// Returns whether any stdout/stderr expectation is set for `target_triple`.
+    ///
+    /// True when the run configures a literal `stdout` or `stderr` file, a `no_stdout` or
+    /// `no_stderr` flag, or any `stdout_contains` or `stderr_contains` substring for the target.
+    ///
+    /// For example, the runner uses this to decide whether the process output streams must be
+    /// captured.
     pub fn expects_output_capture(&self, target_triple: &str) -> bool {
         self.stdout.is_some()
             || self.no_stdout
@@ -741,6 +763,11 @@ impl RunExpectations {
             || !self.stderr_contains.resolve(target_triple).is_empty()
     }
 
+    /// Resolves the script to run for `target_triple`, if any is configured.
+    ///
+    /// A script set directly on this run takes precedence; otherwise the
+    /// [`GroupExpectations::script`] fallback is consulted. Returns `None` when neither the run
+    /// nor the group configures a script for the target.
     pub fn resolve_script<'a>(
         &'a self,
         group_expectations: Option<&'a GroupExpectations>,
@@ -755,29 +782,39 @@ impl RunExpectations {
         )
     }
 
+    /// Resolves the expected exit code for `target_triple`, if configured.
     pub fn resolve_exit_code(&self, target_triple: &str) -> Option<i32> {
         self.exit_code
             .as_ref()
             .and_then(|e| e.resolve(target_triple))
     }
 
+    /// Resolves the expected-files manifest path for `target_triple`, if set.
     pub fn resolve_files(&self, target_triple: &str) -> Option<&Path> {
         self.files.as_ref().and_then(|f| f.resolve(target_triple))
     }
 
+    /// Resolves the expected `stderr` file path for `target_triple`, if set.
     pub fn resolve_stderr(&self, target_triple: &str) -> Option<&Path> {
         self.stderr.as_ref().and_then(|p| p.resolve(target_triple))
     }
 
+    /// Resolves the expected `stderr_contains` substrings for `target_triple`.
+    ///
+    /// Returns `None` when no substrings are configured for the target.
     pub fn resolve_stderr_contains(&self, target_triple: &str) -> Option<&[String]> {
         let resolved = self.stderr_contains.resolve(target_triple);
         (!resolved.is_empty()).then_some(resolved)
     }
 
+    /// Resolves the expected `stdout` file path for `target_triple`, if set.
     pub fn resolve_stdout(&self, target_triple: &str) -> Option<&Path> {
         self.stdout.as_ref().and_then(|p| p.resolve(target_triple))
     }
 
+    /// Resolves the expected `stdout_contains` substrings for `target_triple`.
+    ///
+    /// Returns `None` when no substrings are configured for the target.
     pub fn resolve_stdout_contains(&self, target_triple: &str) -> Option<&[String]> {
         let resolved = self.stdout_contains.resolve(target_triple);
         (!resolved.is_empty()).then_some(resolved)
@@ -785,11 +822,30 @@ impl RunExpectations {
 }
 
 impl Default for TargetedStrings {
+    /// Defaults to an empty scalar list that matches no target.
+    ///
+    /// `TargetedStrings::Scalar(vec![])` resolves to an empty collection for every target, so an
+    /// unset field behaves as having no entries rather than matching every target.
     fn default() -> Self {
         Self::Scalar(vec![])
     }
 }
 
+/// Shared gating logic behind [`Group::is_enabled`] and [`Run::is_enabled`].
+///
+/// The item is enabled when both constraints are satisfied:
+///
+/// - `runs_on`: when absent the target always matches; otherwise the tuple's boolean selects
+///   must-equal (`true`) or must-not-equal (`false`) against `target_triple`.
+/// - `rust_version_cmp`: when absent the version always matches; otherwise the comparator is
+///   applied to the toolchain semver for numeric version strings, or to its release channel
+///   otherwise.
+///
+/// # Panics
+///
+/// Panics if a numeric `rust_version` string cannot be compared (a programmer error, hence the
+/// `expect`), if a channel name is not one of `nightly`, `stable`, `dev` or `beta`, or if a channel
+/// is paired with a comparator other than `=` or `!=`.
 fn is_enabled(
     runs_on: Option<&(bool, String)>,
     rust_version_cmp: Option<&(Cmp, String)>,

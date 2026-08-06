@@ -64,6 +64,10 @@ and this project adheres to
 - Only enabled tool configurations are validated
 - Fixed serial execution if --parallel=1 or just using the args.parallel of 1 as
   default (MaxParallel::NoMaximum).
+- Bump MSRV to 1.88.0
+- gungraun-macros: Fix clippy lints are triggered unnecessarily
+- gungraun-runner: Removed schemas link to gungraun-summary schemas directory
+- deps: Exchange minijinja with tera
 
 ## [0.19.4] - 2026-07-10
 

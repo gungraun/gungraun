@@ -117,7 +117,7 @@ help: the return type of this call is `String` due to the type of the argument p
   --> tests/ui/both/test_file_parameter_when_invalid.rs:77:29
    |
 77 |     #[benches::my_id(file = "crates/gungraun/tests/fixtures/numbers.fix")]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |

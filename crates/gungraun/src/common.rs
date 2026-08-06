@@ -1363,7 +1363,7 @@ impl Dhat {
     /// a benchmark of a multi-threaded program. Most of the program points, including the default
     /// entry point, are not shown here to safe some space. The spawned thread
     /// (`std::sys::pal::unix::thread::Thread::new::thread_start`) with the function call
-    /// `benchmark_tests::find_primes` is the interesting one.
+    /// `gungraun_tests::find_primes` is the interesting one.
     ///
     /// ```text
     /// ▼ PP 1/1 (3 children) {
@@ -1403,19 +1403,19 @@ impl Dhat {
     ///   │   │       #7: 0x40197C7: with_capacity_in<u64, alloc::alloc::Global> (mod.rs:190)
     ///   │   │       #8: 0x40197C7: with_capacity_in<u64, alloc::alloc::Global> (mod.rs:815)
     ///   │   │       #9: 0x40197C7: with_capacity<u64> (mod.rs:495)
-    ///   │   │       #10: 0x40197C7: from_iter<u64, core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, benchmark_tests::find_primes::{closure_env#0}>> (spec_from_iter_nested.rs:31)
+    ///   │   │       #10: 0x40197C7: from_iter<u64, core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, gungraun_tests::find_primes::{closure_env#0}>> (spec_from_iter_nested.rs:31)
     ///   │   │       #11: 0x40197C7: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter (spec_from_iter.rs:34)
-    ///   │   │       #12: 0x4016B97: from_iter<u64, core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, benchmark_tests::find_primes::{closure_env#0}>> (mod.rs:3438)
-    ///   │   │       #13: 0x4016B97: collect<core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, benchmark_tests::find_primes::{closure_env#0}>, alloc::vec::Vec<u64, alloc::alloc::Global>> (iterator.rs:2001)
-    ///   │   │       #14: 0x4016B97: benchmark_tests::find_primes (lib.rs:25)
+    ///   │   │       #12: 0x4016B97: from_iter<u64, core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, gungraun_tests::find_primes::{closure_env#0}>> (mod.rs:3438)
+    ///   │   │       #13: 0x4016B97: collect<core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, gungraun_tests::find_primes::{closure_env#0}>, alloc::vec::Vec<u64, alloc::alloc::Global>> (iterator.rs:2001)
+    ///   │   │       #14: 0x4016B97: gungraun_tests::find_primes (lib.rs:25)
     ///   │   │       #15: 0x4019DA0: {closure#0} (lib.rs:32)
     ///   │   │       #16: 0x4019DA0: std::sys::backtrace::__rust_begin_short_backtrace (backtrace.rs:152)
-    ///   │   │       #17: 0x4018BB4: {closure#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>> (mod.rs:559)
-    ///   │   │       #18: 0x4018BB4: call_once<alloc::vec::Vec<u64, alloc::alloc::Global>, std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>> (unwind_safe.rs:272)
-    ///   │   │       #19: 0x4018BB4: do_call<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>, alloc::vec::Vec<u64, alloc::alloc::Global>> (panicking.rs:589)
-    ///   │   │       #20: 0x4018BB4: try<alloc::vec::Vec<u64, alloc::alloc::Global>, core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>> (panicking.rs:552)
-    ///   │   │       #21: 0x4018BB4: catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>, alloc::vec::Vec<u64, alloc::alloc::Global>> (panic.rs:359)
-    ///   │   │       #22: 0x4018BB4: {closure#1}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>> (mod.rs:557)
+    ///   │   │       #17: 0x4018BB4: {closure#0}<gungraun_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>> (mod.rs:559)
+    ///   │   │       #18: 0x4018BB4: call_once<alloc::vec::Vec<u64, alloc::alloc::Global>, std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<gungraun_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>> (unwind_safe.rs:272)
+    ///   │   │       #19: 0x4018BB4: do_call<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<gungraun_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>, alloc::vec::Vec<u64, alloc::alloc::Global>> (panicking.rs:589)
+    ///   │   │       #20: 0x4018BB4: try<alloc::vec::Vec<u64, alloc::alloc::Global>, core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<gungraun_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>> (panicking.rs:552)
+    ///   │   │       #21: 0x4018BB4: catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<gungraun_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>, alloc::vec::Vec<u64, alloc::alloc::Global>> (panic.rs:359)
+    ///   │   │       #22: 0x4018BB4: {closure#1}<gungraun_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>> (mod.rs:557)
     ///   │   │       #23: 0x4018BB4: core::ops::function::FnOnce::call_once{{vtable.shim}} (function.rs:250)
     ///   │   │       #24: 0x404A2BA: call_once<(), dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global> (boxed.rs:1966)
     ///   │   │       #25: 0x404A2BA: call_once<(), alloc::boxed::Box<dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global>, alloc::alloc::Global> (boxed.rs:1966)
@@ -1436,7 +1436,7 @@ impl Dhat {
     /// ```rust
     /// use gungraun::Dhat;
     ///
-    /// Dhat::default().frames(["benchmark_tests::find_primes"]);
+    /// Dhat::default().frames(["gungraun_tests::find_primes"]);
     /// ```
     pub fn frames<I, T>(&mut self, frames: T) -> &mut Self
     where

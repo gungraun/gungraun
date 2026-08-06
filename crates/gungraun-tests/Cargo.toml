@@ -1,0 +1,459 @@
+# spell-checker:ignore autobenches
+
+[package]
+authors = ["Joining7943 <joining@posteo.de>"]
+autobenches = false
+categories.workspace = true
+description = "Tests for gungraun"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "gungraun-tests"
+publish = false
+readme = "../README.md"
+repository.workspace = true
+rust-version.workspace = true
+version = "0.1.0"
+
+[features]
+cachegrind = ["gungraun/cachegrind"]
+
+[dependencies]
+anyhow = { workspace = true }
+cargo_metadata = { workspace = true }
+colored = { workspace = true }
+either-or-both = { workspace = true }
+fs_extra = { workspace = true }
+glob = { workspace = true }
+gungraun = { path = "../gungraun", features = ["act"] }
+gungraun-runner = { path = "../gungraun-runner", features = ["__fixtures"] }
+indexmap = { workspace = true }
+nix = { workspace = true }
+once_cell = { workspace = true }
+pretty_assertions = { workspace = true }
+regex = { workspace = true }
+rustc_version = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+signal-hook = { workspace = true }
+simplematch = { workspace = true }
+tempfile = { workspace = true }
+tera = { workspace = true }
+valico = { workspace = true }
+version-compare = { workspace = true }
+
+[dev-dependencies]
+bon = { workspace = true }
+glob = { workspace = true }
+rstest = { workspace = true }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "bench"
+path = "src/bench/main.rs"
+
+[[bin]]
+name = "bench-bin-fake"
+path = "src/helper/bench-bin-fake.rs"
+
+[[bin]]
+name = "bubble-sort"
+path = "src/helper/bubble-sort.rs"
+
+[[bin]]
+name = "cat"
+path = "src/helper/cat.rs"
+
+[[bin]]
+name = "client-requests"
+path = "src/helper/client-requests.rs"
+
+[[bin]]
+name = "delay"
+path = "src/helper/delay.rs"
+
+[[bin]]
+name = "echo"
+path = "src/helper/echo.rs"
+
+[[bin]]
+name = "env"
+path = "src/helper/env.rs"
+
+[[bin]]
+name = "exit-with"
+path = "src/helper/exit-with.rs"
+
+[[bin]]
+name = "file-exists"
+path = "src/helper/file-exists.rs"
+
+[[bin]]
+name = "leak-memory"
+path = "src/helper/leak-memory.rs"
+
+[[bin]]
+name = "perf-bench"
+path = "src/helper/perf-bench.rs"
+
+[[bin]]
+name = "pipe"
+path = "src/helper/pipe.rs"
+
+[[bin]]
+name = "read-file"
+path = "src/helper/read-file.rs"
+
+[[bin]]
+name = "sort"
+path = "src/helper/sort.rs"
+
+[[bin]]
+name = "subprocess"
+path = "src/helper/subprocess.rs"
+
+[[bin]]
+name = "thread"
+path = "src/helper/thread.rs"
+
+[[bin]]
+name = "timeout"
+path = "src/helper/timeout.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_dhat"
+path = "benches/guide/lib_bench_dhat.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_find_primes"
+path = "benches/guide/lib_bench_find_primes.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_iter"
+path = "benches/guide/lib_bench_iter.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_regression"
+path = "benches/guide/lib_bench_regression.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_subprocess"
+path = "benches/guide/lib_bench_subprocess.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_threads"
+path = "benches/guide/lib_bench_threads.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_tolerance"
+path = "benches/guide/lib_bench_tolerance.rs"
+
+[[bench]]
+harness = false
+name = "test_bench_template"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_client_requests"
+path = "benches/test_bin_bench/client_requests/test_bin_bench_client_requests.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_command_delay"
+path = "benches/test_bin_bench/command_delay/test_bin_bench_command_delay.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_compare_by_id"
+path = "benches/test_bin_bench/compare_by_id/test_bin_bench_compare_by_id.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_config"
+path = "benches/test_bin_bench/config/test_bin_bench_config.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_filter"
+path = "benches/test_bin_bench/filter/test_bin_bench_filter.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_generics"
+path = "benches/test_bin_bench/generics/test_bin_bench_generics.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_intro"
+path = "benches/test_bin_bench/intro/test_bin_bench_intro.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_iter"
+path = "benches/test_bin_bench/iter/test_bin_bench_iter.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_list_arg"
+path = "benches/test_bin_bench/list_arg/test_bin_bench_list_arg.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_low_level"
+path = "benches/test_bin_bench/low_level/test_bin_bench_low_level.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_main_and_group_setup_and_teardown"
+path = "benches/test_bin_bench/main_and_group_setup_and_teardown/test_bin_bench_main_and_group_setup_and_teardown.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_nocapture"
+path = "benches/test_bin_bench/nocapture/test_bin_bench_nocapture.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_parallel"
+path = "benches/test_bin_bench/parallel/test_bin_bench_parallel.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_parallel_consistency"
+path = "benches/test_bin_bench/parallel/test_bin_bench_parallel_consistency.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_parallel_cleanup_on_error"
+path = "benches/test_bin_bench/parallel/test_bin_bench_parallel_cleanup_on_error.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_parallel_cleanup_on_panic"
+path = "benches/test_bin_bench/parallel/test_bin_bench_parallel_cleanup_on_panic.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_parallel_threads"
+path = "benches/test_bin_bench/parallel/test_bin_bench_parallel_threads.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_paths"
+path = "benches/test_bin_bench/paths/test_bin_bench_paths.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_perf"
+path = "benches/test_bin_bench/perf/test_bin_bench_perf.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_sandbox"
+path = "benches/test_bin_bench/sandbox/test_bin_bench_sandbox.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_setup_child_exit_with_error"
+path = "benches/test_bin_bench/setup_child_exit_with_error/test_bin_bench_setup_child_exit_with_error.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_setup_and_teardown"
+path = "benches/test_bin_bench/setup_and_teardown/test_bin_bench_setup_and_teardown.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_setup_child"
+path = "benches/test_bin_bench/setup_child/test_bin_bench_setup_child.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_tools"
+path = "benches/test_bin_bench/tools/test_bin_bench_tools.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_all_args"
+path = "benches/test_lib_bench/all_args/test_lib_bench_all_args.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_cache_sim"
+path = "benches/test_lib_bench/cache_sim/test_lib_bench_cache_sim.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_cachegrind"
+path = "benches/test_lib_bench/cachegrind/test_lib_bench_cachegrind.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_compare"
+path = "benches/test_lib_bench/compare/test_lib_bench_compare.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_compiler_optimization"
+path = "benches/test_lib_bench/compiler_optimization/test_lib_bench_compiler_optimization.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_default_tool"
+path = "benches/test_lib_bench/default_tool/test_lib_bench_default_tool.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_dhat"
+path = "benches/test_lib_bench/dhat/test_lib_bench_dhat.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_entry_point"
+path = "benches/test_lib_bench/entry_point/test_lib_bench_entry_point.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_cli_env_clear"
+path = "benches/test_lib_bench/envs/test_lib_bench_cli_env_clear.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_file_parameter"
+path = "benches/test_lib_bench/file_parameter/test_lib_bench_file_parameter.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_filter"
+path = "benches/test_lib_bench/filter/test_lib_bench_filter.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_flamegraph"
+path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_generics"
+path = "benches/test_lib_bench/generics/test_lib_bench_generics.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_groups_envs"
+path = "benches/test_lib_bench/groups_envs/test_lib_bench_groups_envs.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_intro"
+path = "benches/test_lib_bench/intro/test_lib_bench_intro.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_iter"
+path = "benches/test_lib_bench/iter/test_lib_bench_iter.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_list_arg"
+path = "benches/test_lib_bench/list_arg/test_lib_bench_list_arg.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_main_and_group_setup_and_teardown"
+path = "benches/test_lib_bench/main_and_group_setup_and_teardown/test_lib_bench_main_and_group_setup_and_teardown.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_nocapture"
+path = "benches/test_lib_bench/nocapture/test_lib_bench_nocapture.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_output_format"
+path = "benches/test_lib_bench/output_format/test_lib_bench_output_format.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_output_format_threads"
+path = "benches/test_lib_bench/output_format/test_lib_bench_output_format_threads.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_parallel"
+path = "benches/test_lib_bench/parallel/test_lib_bench_parallel.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_parallel_cleanup_on_panic"
+path = "benches/test_lib_bench/parallel/test_lib_bench_parallel_cleanup_on_panic.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_parallel_consistency"
+path = "benches/test_lib_bench/parallel/test_lib_bench_parallel_consistency.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_parts"
+path = "benches/test_lib_bench/parts/test_lib_bench_parts.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_perf"
+path = "benches/test_lib_bench/perf/test_lib_bench_perf.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_perf_single"
+path = "benches/test_lib_bench/perf/test_lib_bench_perf_single.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_readme_example_fibonacci"
+path = "benches/test_lib_bench/readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_sandbox"
+path = "benches/test_lib_bench/sandbox/test_lib_bench_sandbox.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_setup_and_teardown"
+path = "benches/test_lib_bench/setup_and_teardown/test_lib_bench_setup_and_teardown.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_threads"
+path = "benches/test_lib_bench/threads/test_lib_bench_threads.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_threads_nested"
+path = "benches/test_lib_bench/threads/test_lib_bench_threads_nested.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_tools"
+path = "benches/test_lib_bench/tools/test_lib_bench_tools.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_valgrind_runner"
+path = "benches/test_lib_bench/tool_runner/test_lib_bench_valgrind_runner.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_xtree"
+path = "benches/test_lib_bench/xtree/test_lib_bench_xtree.rs"

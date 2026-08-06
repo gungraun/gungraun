@@ -1,0 +1,20 @@
+use std::hint::black_box;
+
+use gungraun_tests::{bubble_sort, setup_worst_case_array};
+use gungraun::{library_benchmark, library_benchmark_group, main};
+
+#[library_benchmark]
+#[bench::worst_case(setup_worst_case_array({{ worst_case_start }}))]
+fn bench_bubble_sort(array: Vec<i32>) -> Vec<i32> {
+    let result = black_box(bubble_sort(array));
+    println!("{0:?}", result);
+    println!("{0:?}", result);
+    result
+}
+
+library_benchmark_group!(
+    name = bench_group,
+    benchmarks = bench_bubble_sort
+);
+
+main!(library_benchmark_groups = bench_group);

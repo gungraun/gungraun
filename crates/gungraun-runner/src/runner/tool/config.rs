@@ -549,10 +549,10 @@ impl ToolConfigBuilder {
     }
 
     fn flamegraph_config(&mut self) {
-        if let Some(tool_spec) = &self.tool_spec {
-            if let Some(flamegraph_config) = &tool_spec.flamegraph_config {
-                self.flamegraph_config = flamegraph_config.clone().into();
-            }
+        if let Some(tool_spec) = &self.tool_spec
+            && let Some(flamegraph_config) = &tool_spec.flamegraph_config
+        {
+            self.flamegraph_config = flamegraph_config.clone().into();
         }
     }
 
@@ -1038,12 +1038,11 @@ impl ToolConfigs {
                 )
             })?;
 
-            if let Some(delay) = run_options.delay.as_ref() {
-                if let Err(delay_error) = delay.apply(sandbox.as_ref().and_then(Sandbox::path)) {
-                    if let Some(Err(_)) = process_handler.wait_for_setup() {
-                        return Err(delay_error);
-                    }
-                }
+            if let Some(delay) = run_options.delay.as_ref()
+                && let Err(delay_error) = delay.apply(sandbox.as_ref().and_then(Sandbox::path))
+                && let Some(Err(_)) = process_handler.wait_for_setup()
+            {
+                return Err(delay_error);
             }
 
             process_handler
@@ -1060,22 +1059,22 @@ impl ToolConfigs {
                 )
                 .and_then(|()| process_handler.wait_or_shutdown(tool_config.timeout))?;
 
-            if let ToolConfigOptions::Perf(options) = &tool_config.options {
-                if matches!(
+            if let ToolConfigOptions::Perf(options) = &tool_config.options
+                && matches!(
                     options.run_mode,
                     PerfRunMode::DynamicBatch | PerfRunMode::FixedBatch(_)
-                ) {
-                    measure_perf_overhead(
-                        &config.meta,
-                        &tool_config,
-                        executable,
-                        &executable_args,
-                        run_options,
-                        &output_path,
-                        sandbox.as_ref().and_then(|s| s.path()),
-                        config.meta.args.tool_runner_dest.as_deref(),
-                    )?;
-                }
+                )
+            {
+                measure_perf_overhead(
+                    &config.meta,
+                    &tool_config,
+                    executable,
+                    &executable_args,
+                    run_options,
+                    &output_path,
+                    sandbox.as_ref().and_then(|s| s.path()),
+                    config.meta.args.tool_runner_dest.as_deref(),
+                )?;
             }
 
             if let Some(teardown) = run_options.teardown.as_ref() {
@@ -1330,10 +1329,10 @@ fn resolve_perf_run_mode(
     run_mode_override: Option<PerfRunMode>,
 ) -> Result<PerfRunMode> {
     let run_mode = run_mode_override.unwrap_or_else(|| run_mode.unwrap_or_default());
-    if let PerfRunMode::Calibrate(duration) = run_mode {
-        if duration.is_zero() {
-            return Err(anyhow!("perf run mode calibration duration was zero"));
-        }
+    if let PerfRunMode::Calibrate(duration) = run_mode
+        && duration.is_zero()
+    {
+        return Err(anyhow!("perf run mode calibration duration was zero"));
     }
 
     Ok(run_mode)
@@ -1345,10 +1344,10 @@ fn resolve_perf_run_mode(
 ///
 /// Returns an error if the `sample_duration` is zero
 fn validate_perf_sample_duration(sample_duration: Option<Duration>) -> Result<Option<Duration>> {
-    if let Some(sample_duration) = sample_duration {
-        if sample_duration.is_zero() {
-            return Err(anyhow!("perf sample duration was zero"));
-        }
+    if let Some(sample_duration) = sample_duration
+        && sample_duration.is_zero()
+    {
+        return Err(anyhow!("perf sample duration was zero"));
     }
 
     Ok(sample_duration)

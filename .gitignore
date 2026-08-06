@@ -12,8 +12,10 @@ cachegrind.out*
 !cachegrind.out/
 cachegrind.log*
 graphify-out/
+.graphify*
 entities.json
 mempalace.yaml
+.omo/
 docs/book/**/
 docs/book/latest
 
@@ -156,11 +158,3 @@ fabric.properties
 
 *.box
 Vagrantfile
-
-# Graphify knowledge graph output
-**/graphify-out/
-.graphify*
-
-# MemPalace per-project files (issue #185)
-mempalace.yaml
-entities.json

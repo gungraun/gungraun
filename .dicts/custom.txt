@@ -313,6 +313,7 @@ taskset
 taskset_path
 tempdir
 tempfile
+tera
 thiserror
 threadid
 tlsv1
@@ -418,3 +419,8 @@ MADV
 NOHUGEPAGE
 minflt
 Prefaulting
+rmdirs
+partitionable
+subcrate
+rederiving
+tera

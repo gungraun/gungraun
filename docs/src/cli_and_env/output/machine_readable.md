@@ -26,6 +26,8 @@ save a summary file for each benchmark with `--save-summary=json|pretty-json`
 (env: `GUNGRAUN_SAVE_SUMMARY`). The `summary.json` files are stored next to the
 usual benchmark output files in the `target/gungraun` directory.
 
+<!-- TODO: Add gungraun-summary description -->
+
 [summary.v1.schema.json]:
     https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/schemas/summary.v1.schema.json
 [summary.v2.schema.json]:

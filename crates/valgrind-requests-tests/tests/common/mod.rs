@@ -1,7 +1,6 @@
 use core::panic;
 use std::fmt::Write;
-use std::fs::File;
-use std::io::Read;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use assert_cmd::Command;
@@ -22,12 +21,12 @@ pub enum Matcher {
 impl Matcher {
     pub fn try_assert_output(self, assert: Assert) -> Result<Assert, Box<AssertError>> {
         match self {
-            Matcher::Exact(fixture) => assert.try_stdout("").map_err(Box::new).and_then(|assert| {
+            Self::Exact(fixture) => assert.try_stdout("").map_err(Box::new).and_then(|assert| {
                 assert
                     .try_stderr(predicates::str::diff(fixture))
                     .map_err(Box::new)
             }),
-            Matcher::Contains(items) => {
+            Self::Contains(items) => {
                 let assert = assert.try_stdout("").map_err(Box::new)?;
                 let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
                 let mut failures = String::new();
@@ -63,7 +62,7 @@ fn find_runner() -> Option<String> {
 }
 
 pub fn get_rust_version() -> String {
-    RUST_VERSION.to_string()
+    RUST_VERSION.to_owned()
 }
 
 pub fn compare_rust_version(cmp: Cmp, expected: &str) -> bool {
@@ -112,14 +111,8 @@ pub fn get_fixture_path(name: &str) -> PathBuf {
 }
 
 pub fn get_fixture_as_string(name: &str) -> String {
-    let mut file = File::open(get_fixture_path(name))
-        .unwrap_or_else(|_| panic!("Opening fixture '{name}' should succeed"));
-
-    let mut buf = String::new();
-    file.read_to_string(&mut buf)
-        .unwrap_or_else(|_| panic!("Reading content of fixture '{name}' should succeed"));
-
-    buf
+    fs::read_to_string(get_fixture_path(name))
+        .unwrap_or_else(|_| panic!("Reading fixture '{name}' should succeed"))
 }
 
 pub fn get_fixture(name: &str, target: Option<&str>, since: Option<&str>, suffix: &str) -> String {

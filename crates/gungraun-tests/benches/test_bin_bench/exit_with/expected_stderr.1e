@@ -1,0 +1,6 @@
+gungraun_runner::runner::tool::run: Error: callgrind: Expected '<__ABS_PATH__>/exit-with' to fail but it succeeded
+gungraun_runner: Error: Error in task: Error running 'callgrind': Exit code was: '0'
+error: bench failed, to rerun pass `-p gungraun-tests --bench test_bench_template`
+
+Caused by:
+  process didn't exit successfully: `<__PATH__>` (exit status: 1)

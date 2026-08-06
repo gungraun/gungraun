@@ -142,37 +142,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
-name = "benchmark-tests"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bon",
- "cargo_metadata",
- "colored",
- "either-or-both",
- "fs_extra",
- "glob",
- "gungraun",
- "gungraun-runner",
- "indexmap",
- "minijinja",
- "nix",
- "once_cell",
- "pretty_assertions",
- "regex",
- "rstest",
- "rustc_version",
- "serde",
- "serde_json",
- "serde_yaml",
- "signal-hook",
- "simplematch",
- "tempfile",
- "valico",
- "version-compare",
-]
-
-[[package]]
 name = "bincode-next"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -960,6 +929,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "gungraun-tests"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bon",
+ "cargo_metadata",
+ "colored",
+ "either-or-both",
+ "fs_extra",
+ "glob",
+ "gungraun",
+ "gungraun-runner",
+ "indexmap",
+ "nix",
+ "once_cell",
+ "pretty_assertions",
+ "regex",
+ "rstest",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "signal-hook",
+ "simplematch",
+ "tempfile",
+ "tera",
+ "valico",
+ "version-compare",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1322,22 +1322,6 @@ name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
-
-[[package]]
-name = "memo-map"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38d1115007560874e373613744c6fba374c17688327a71c1476d1a5954cc857b"
-
-[[package]]
-name = "minijinja"
-version = "2.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb3d648e68cea56d9858d535ee28f9538404e2dd8cb08ed0bd05dca379477f39"
-dependencies = [
- "memo-map",
- "serde",
-]
 
 [[package]]
 name = "minimal-lexical"
@@ -2299,6 +2283,15 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys",
+]
+
+[[package]]
+name = "tera"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "511f07fd91a70e92efbe4793d111aaa9035f8474dd157aaa1e31e7c27f5051da"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

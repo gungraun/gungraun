@@ -333,13 +333,14 @@ impl Bench {
                         let #iter_ident = #iter_expr;
 
                         if let Some(#index_ident) = #index_ident {
-                            #[allow(clippy::let_unit_value)]
                             match mode {
                                 gungraun::__internal::InternalBenchRunMode::Default => {
                                     #iter_elem
+                                    #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                     let _ = #call_shim_func;
                                 }
                                 gungraun::__internal::InternalBenchRunMode::PerfDynamic => {
+                                    #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                     let _ = #run_perf_dynamic;
                                 }
                                 gungraun::__internal::InternalBenchRunMode::PerfCalibrate => {
@@ -348,21 +349,23 @@ impl Bench {
                                 gungraun::__internal::InternalBenchRunMode::PerfOverhead(
                                     #count_ident
                                 ) => {
+                                    #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                     let _ = #run_perf_overhead;
                                 }
                                 gungraun::__internal::InternalBenchRunMode::PerfRepeat(
                                     #count_ident
                                 ) => {
+                                    #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                     let _ = #run_perf_repeat;
                                 }
                                 gungraun::__internal::InternalBenchRunMode::PerfOnce => {
+                                    #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                     let _ = #run_perf_once;
                                 }
                             };
                             0
                         } else {
-                            #[allow(clippy::useless_conversion)]
-                            #[allow(clippy::iter_count)]
+                            #[allow(clippy::useless_conversion, clippy::iter_count)]
                             #iter_count
                         }
                     }
@@ -379,7 +382,7 @@ impl Bench {
                     if let Some(input_type) = single_input_type.as_ref() {
                         self.teardown.render_as_code(quote_spanned! {
                             bench_id.span() => {
-                                #[allow(clippy::let_unit_value)]
+                                #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                                 let __setup: #input_type = #inner_without_black_box;
                                 let __setup = std::hint::black_box(__setup);
                                 std::hint::black_box(#shim_call)
@@ -403,7 +406,7 @@ impl Bench {
 
                     self.teardown
                         .render_as_code(quote_spanned! { bench_id.span() => {
-                            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                            #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                             let (#(#arg_idents),*,): #tuple_ty = (#inner,);
 
                             std::hint::black_box(#shim_call)
@@ -453,12 +456,13 @@ impl Bench {
 
                     #[inline(never)]
                     pub fn #run_func_ident(mode: gungraun::__internal::InternalBenchRunMode) {
-                        #[allow(clippy::let_unit_value)]
                         match mode {
                             gungraun::__internal::InternalBenchRunMode::Default => {
+                                #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                 let _ = #call_shim_func;
                             }
                             gungraun::__internal::InternalBenchRunMode::PerfDynamic => {
+                                #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                 let _ = #run_perf_dynamic;
                             }
                             gungraun::__internal::InternalBenchRunMode::PerfCalibrate => {
@@ -467,14 +471,17 @@ impl Bench {
                             gungraun::__internal::InternalBenchRunMode::PerfOverhead(
                                 #count_ident
                             ) => {
+                                #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                 let _ = #run_perf_overhead;
                             }
                             gungraun::__internal::InternalBenchRunMode::PerfRepeat(
                                 #count_ident
                             ) => {
+                                #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                 let _ = #run_perf_repeat;
                             }
                             gungraun::__internal::InternalBenchRunMode::PerfOnce => {
+                                #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                                 let _ = #run_perf_once;
                             }
                         };
@@ -688,10 +695,12 @@ impl Iter {
         // Add the expected benchmark input type if possible for better error messages
         let iter_elem = if let Some(expected_input_type) = expected_input_type {
             quote! {
+                #[allow(clippy::redundant_type_annotations, clippy::useless_conversion)]
                 let #elem_ident: #expected_input_type = #iter_expr;
             }
         } else {
             quote! {
+                #[allow(clippy::useless_conversion)]
                 let #elem_ident = #iter_expr;
             }
         };
@@ -876,7 +885,7 @@ impl LibraryBenchmark {
                     perf_renderer.render_shim_call(&quote!(std::hint::black_box(__setup)));
                 self.teardown.render_as_code(quote_spanned! {
                     self.setup.expr().span() => {
-                        #[allow(clippy::let_unit_value)]
+                        #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                         let __setup: #input_type = #inner_without_black_box;
                         std::hint::black_box(
                             #shim_call
@@ -937,6 +946,7 @@ impl LibraryBenchmark {
                     use super::*;
 
                     #[inline(never)]
+                    #[allow(clippy::needless_pass_by_value)]
                     #new_item_fn
                 }
 
@@ -962,24 +972,28 @@ impl LibraryBenchmark {
 
                 #[inline(never)]
                 pub fn #run_func_ident(mode: gungraun::__internal::InternalBenchRunMode) {
-                    #[allow(clippy::let_unit_value)]
                     match mode {
                         gungraun::__internal::InternalBenchRunMode::Default => {
+                            #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                             let _ = #call_shim_func;
                         }
                         gungraun::__internal::InternalBenchRunMode::PerfDynamic => {
+                            #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                             let _ = #run_perf_dynamic;
                         }
                         gungraun::__internal::InternalBenchRunMode::PerfCalibrate => {
                             gungraun::__internal::perf::calibrate();
                         }
                         gungraun::__internal::InternalBenchRunMode::PerfOverhead(#count_ident) => {
+                            #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                             let _ = #run_perf_overhead;
                         }
                         gungraun::__internal::InternalBenchRunMode::PerfRepeat(#count_ident) => {
+                            #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                             let _ = #run_perf_repeat;
                         }
                         gungraun::__internal::InternalBenchRunMode::PerfOnce => {
+                            #[allow(clippy::ignored_unit_patterns, clippy::let_unit_value)]
                             let _ = #run_perf_once;
                         }
                     };
@@ -1054,6 +1068,7 @@ impl LibraryBenchmark {
                     use super::*;
 
                     #[inline(never)]
+                    #[allow(clippy::needless_pass_by_value)]
                     #new_item_fn
                 }
 
@@ -1178,6 +1193,7 @@ impl PerfRenderer<'_> {
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() => {
+                    #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type = #inner_without_black_box;
                     (std::hint::black_box(__setup),)
                 }}
@@ -1269,13 +1285,13 @@ impl PerfRenderer<'_> {
         let (setup_stmt, work_call) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() =>
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type  = #inner_without_black_box;
                     let __setup = std::hint::black_box(__setup);
                 }
             } else {
                 quote_spanned! { self.setup.expr().span() =>
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    #[allow(clippy::let_unit_value)]
                     let __setup = #inner;
                 }
             };
@@ -1292,12 +1308,12 @@ impl PerfRenderer<'_> {
                 1 => {
                     let setup_stmt = if let Some(input_type) = self.single_input_type {
                         quote_spanned! { args.span() =>
-                            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                            #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                             let __arg: #input_type = #inner;
                         }
                     } else {
                         quote_spanned! { args.span() =>
-                            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                            #[allow(clippy::let_unit_value)]
                             let __arg = #inner;
                         }
                     };
@@ -1318,7 +1334,7 @@ impl PerfRenderer<'_> {
                     } else {
                         let tuple_ty = tuple_type(self.input_types);
                         quote_spanned! { args.span() =>
-                            #[allow(clippy::let_unit_value)]
+                            #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                             let (#(#input_idents),*): #tuple_ty = (#inner);
                         }
                     };
@@ -1377,6 +1393,7 @@ impl PerfRenderer<'_> {
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() => {
+                    #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type = #inner_without_black_box;
                     (std::hint::black_box(__setup),)
                 }}
@@ -1446,6 +1463,7 @@ impl PerfRenderer<'_> {
 
         let setup = if let Some(input_type) = self.single_input_type {
             quote_spanned! { setup_span => {
+                #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                 let __setup: #input_type = #setup_expr;
                 (std::hint::black_box(__setup),)
             }}
@@ -1481,6 +1499,7 @@ impl PerfRenderer<'_> {
 
         let setup = if let Some(input_type) = self.single_input_type {
             quote_spanned! { setup_span => {
+                #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                 let __setup: #input_type = #setup_expr;
                 std::hint::black_box(__setup)
             }}
@@ -1491,7 +1510,7 @@ impl PerfRenderer<'_> {
         };
 
         let setup = quote_spanned! { setup_span =>
-            #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+            #[allow(clippy::let_unit_value)]
             let __setup = #setup;
         };
         let shim_call = self.render_shim_call(&quote!(__setup));
@@ -1524,6 +1543,7 @@ impl PerfRenderer<'_> {
 
         let setup = if let Some(input_type) = self.single_input_type {
             quote_spanned! { setup_span => {
+                #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                 let __setup: #input_type = #setup_expr;
                 (std::hint::black_box(__setup),)
             }}
@@ -1573,6 +1593,7 @@ impl PerfRenderer<'_> {
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() => {
+                    #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type = #inner_without_black_box;
                     let __setup = (std::hint::black_box(__setup),);
                     __setup
@@ -1615,13 +1636,13 @@ impl PerfRenderer<'_> {
         let (setup_stmt, work_call) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() =>
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type = #inner_without_black_box;
                     let __setup = std::hint::black_box(__setup);
                 }
             } else {
                 quote_spanned! { self.setup.expr().span() =>
-                    #[allow(clippy::let_unit_value, clippy::useless_conversion)]
+                    #[allow(clippy::let_unit_value)]
                     let __setup = #inner;
                 }
             };
@@ -1660,6 +1681,7 @@ impl PerfRenderer<'_> {
         let (setup, work) = if self.setup.is_some() {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() => {
+                    #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type = #inner_without_black_box;
                     let __setup = (std::hint::black_box(__setup),);
                     __setup
@@ -1794,6 +1816,11 @@ impl PerfRenderer<'_> {
             {
                 #setup
                 let __work = #work;
+                #[allow(
+                    clippy::ignored_unit_patterns,
+                    clippy::redundant_type_annotations,
+                    clippy::let_unit_value
+                )]
                 let __teardown = #teardown;
 
                 #repetitions
@@ -1945,7 +1972,6 @@ impl Teardown {
     fn render_as_code(&self, tokens: TokenStream) -> TokenStream {
         if let Some(teardown) = &self.deref().0 {
             quote_spanned! { teardown.span() => {
-                    #[allow(clippy::let_unit_value)]
                     let __result = #tokens;
                     std::hint::black_box(#teardown(__result))
                 }

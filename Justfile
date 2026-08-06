@@ -17,7 +17,7 @@ cspell_bin := ```
 schema_path := 'summary.schema.json'
 this_dir := `realpath .`
 book_build_dir := this_dir + "/docs/book"
-msrv := '1.85.1'
+msrv := '1.88.0'
 mdbook_version := '0.5.2'
 required_tools := 'valgrind|the essential tool
 clang|to be able to build Gungraun with the client-requests feature'
@@ -279,7 +279,7 @@ test-cov package *args:
 [group('test')]
 test-cov-runner *args:
     cargo +nightly llvm-cov clean --workspace
-    cargo +nightly llvm-cov nextest --package gungraun-runner --package benchmark-tests --branch \
+    cargo +nightly llvm-cov nextest --package gungraun-runner --package gungraun-tests --branch \
         --all-features --no-fail-fast --lcov --output-path lcov.info {{ args }}
 
 [group('test')]
@@ -302,7 +302,7 @@ test-cov-all:
     cargo nextest run -p gungraun --no-fail-fast
     RUSTUP_TOOLCHAIN="${toolchain}" cargo test --package gungraun \
         --test ui_tests --features __ui_tests
-    cargo run --package benchmark-tests --bin bench --release
+    cargo run --package gungraun-tests --bin bench --release
 
     cargo llvm-cov report --profile bench --lcov --output-path lcov.bench.info
     cargo llvm-cov report --profile release --lcov --output-path lcov.release.info
@@ -334,7 +334,7 @@ test-ui-overwrite:
     RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" TRYBUILD=overwrite cargo test \
         --package gungraun --test ui_tests --features __ui_tests
 
-# Test all packages. This excludes valgrind requests and benchmark tests which need to be run separately (Uses: 'cargo')
+# Test all packages. This excludes valgrind requests and system tests which need to be run separately (Uses: 'cargo')
 [group('test')]
 test-all: test-ui
     cargo test --workspace --exclude valgrind-requests-tests
@@ -356,47 +356,41 @@ reqs-test target *args:
     CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096' CROSS_CONFIG=Cross.toml cross test \
         --test tests --target {{ target }} --release {{ args }} -- --nocapture
 
-# Run a single benchmark test (Uses: 'coreutils', 'cargo')
+# Run a single system test (Uses: 'coreutils', 'cargo')
 [group('test')]
-bench-test bench *args: build-runner
-    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests \
+bench bench *args: build-runner
+    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p gungraun-tests \
         --bench {{ bench }} {{ args }}
 
-# Run a single cross benchmark test (Uses: 'coreutils', 'cargo')
+# Run a single cross system test (Uses: 'coreutils', 'cargo')
 [group('test')]
-cross-bench-test bench target *args:
+cross-bench bench target *args:
     CROSS_BUILD_OPTS='-v {{ justfile_dir() }}:/project:z -v {{ justfile_dir() }}/target:/target:z' \
-        cross bench -p benchmark-tests --target {{ target }} --bench {{ bench }} {{ args }}
-
-# Run all benchmark tests (Uses: 'coreutils', 'cargo')
-[group('test')]
-bench-test-all *args: build-runner
-    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench \
-        -p benchmark-tests {{ args }}
+        cross bench -p gungraun-tests --target {{ target }} --bench {{ bench }} {{ args }}
 
 # Note: A single benchmark may run multiple times depending on the test
-#       configuration. See the `crates/benchmark-tests/benches` folder.
+#       configuration. See the `crates/gungraun-tests/benches` folder.
 
-# Run a single benchmark test with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
+# Run a single system test with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
 [group('test')]
-full-bench-test bench *args:
-    cargo run --package benchmark-tests --profile=bench --bin bench -- {{ args }} {{ bench }}
+system-test bench *args:
+    cargo run --package gungraun-tests --profile=bench --bin bench -- {{ args }} {{ bench }}
 
-# Run a single benchmark test with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
+# Run a single system test with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
 [group('test')]
-full-bench-test-overwrite bench *args:
-    BENCH_OVERWRITE=yes cargo run --package benchmark-tests --profile=bench --bin bench \
+system-test-overwrite bench *args:
+    BENCH_OVERWRITE=yes cargo run --package gungraun-tests --profile=bench --bin bench \
         -- {{ args }} {{ bench }}
 
-# Run all benchmark tests with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
+# Run all system tests with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
 [group('test')]
-full-bench-test-all *args:
-    cargo run --package benchmark-tests --profile=bench --bin bench -- {{ args }}
+system-test-all *args:
+    cargo run --package gungraun-tests --profile=bench --bin bench -- {{ args }}
 
-# Run all benchmark tests with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
+# Run all system tests with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
 [group('test')]
-full-bench-test-all-overwrite *args:
-    BENCH_OVERWRITE=yes cargo run --package benchmark-tests --profile=bench --bin bench \
+system-test-all-overwrite *args:
+    BENCH_OVERWRITE=yes cargo run --package gungraun-tests --profile=bench --bin bench \
         -- {{ args }}
 
 # Check minimal version requirements of dependencies. (Uses: 'cargo-minimal-versions')
@@ -548,7 +542,7 @@ generate-expected-files benchmark path:
     #!/usr/bin/env -S bash -eu
 
     yaml="data:\n"
-    groups="$(find target/gungraun/benchmark-tests/{{ benchmark }} -mindepth 1 -maxdepth 1 -type d | sort)"
+    groups="$(find target/gungraun/gungraun-tests/{{ benchmark }} -mindepth 1 -maxdepth 1 -type d | sort)"
     IFS=$'\n'
     for group in $groups; do
       pushd "$(pwd)/$group" >/dev/null

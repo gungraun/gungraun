@@ -1,0 +1,5 @@
+gungraun_runner: Error: Error in task: Error running 'callgrind': Exit code was: '101'
+error: bench failed, to rerun pass `-p gungraun-tests --bench test_lib_bench_parallel_cleanup_on_panic`
+
+Caused by:
+  process didn't exit successfully: `<__PATH__>` (exit status: 1)

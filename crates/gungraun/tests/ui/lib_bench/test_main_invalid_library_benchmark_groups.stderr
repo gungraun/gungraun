@@ -87,8 +87,9 @@ note: ...and refers to the function `__run_setup` which is defined here
     = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this function instead
     |
-533 |                         crate::test_when_library_benchmark_as_group::__run_setup,
-    |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+533 -                         $group::__run_setup,
+533 +                         crate::test_when_library_benchmark_as_group::__run_setup,
+    |
 
 error[E0603]: function import `__run_teardown` is private
    --> src/macros.rs
@@ -109,8 +110,9 @@ note: ...and refers to the function `__run_teardown` which is defined here
     = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this function instead
     |
-534 |                         crate::test_when_library_benchmark_as_group::__run_teardown,
-    |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+534 -                         $group::__run_teardown,
+534 +                         crate::test_when_library_benchmark_as_group::__run_teardown,
+    |
 
 error[E0603]: function import `__run` is private
    --> src/macros.rs
@@ -131,7 +133,8 @@ note: ...and refers to the function `__run` which is defined here
     = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this function instead
     |
-535 |                         crate::test_when_library_benchmark_as_group::__run
+535 -                         $group::__run
+535 +                         crate::test_when_library_benchmark_as_group::__run
     |
 
 error[E0308]: mismatched types
@@ -150,7 +153,7 @@ error[E0308]: mismatched types
 6 |     main!(library_benchmark_groups = some_func);
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |     |
-  |     expected `&[&(&str, fn() -> ..., ...)]`, found `&[InternalMacroLibBench]`
+  |     expected `&[&(&str, fn() -> Option<...>, ...)]`, found `&[InternalMacroLibBench]`
   |     arguments to this method are incorrect
   |
   = note: expected reference `&[&(&'static str, fn() -> Option<InternalLibraryBenchmarkConfig>, &[InternalMacroLibBench])]`

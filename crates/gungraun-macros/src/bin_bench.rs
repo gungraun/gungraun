@@ -541,6 +541,7 @@ impl BinaryBenchmark {
             pub mod #ident {
                 use super::*;
 
+                #[allow(clippy::needless_pass_by_value)]
                 #new_item_fn
 
                 pub const __BENCHES: &[gungraun::__internal::InternalMacroBinBench]= &[
@@ -585,6 +586,7 @@ impl BinaryBenchmark {
             pub mod #mod_name {
                 use super::*;
 
+                #[allow(clippy::needless_pass_by_value)]
                 #new_item_fn
 
                 pub const __BENCHES: &[gungraun::__internal::InternalMacroBinBench] = &[

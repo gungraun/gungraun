@@ -532,6 +532,102 @@ help: you might be missing a type parameter
     |                                                                           +++
 
 error[E0308]: mismatched types
+ --> tests/ui/both/test_when_invalid_const_generics.rs:7:27
+  |
+7 |     #[bench::id(consts = (123i32))]
+  |                           ^^^^^^ expected `usize`, found `i32`
+  |
+help: change the type of the numeric literal from `i32` to `usize`
+  |
+7 -     #[bench::id(consts = (123i32))]
+7 +     #[bench::id(consts = (123usize))]
+  |
+
+error[E0308]: mismatched types
+  --> tests/ui/both/test_when_invalid_const_generics.rs:13:27
+   |
+13 |     #[bench::id(consts = (123i32))]
+   |                           ^^^^^^ expected `usize`, found `i32`
+   |
+help: change the type of the numeric literal from `i32` to `usize`
+   |
+13 -     #[bench::id(consts = (123i32))]
+13 +     #[bench::id(consts = (123usize))]
+   |
+
+error[E0308]: mismatched types
+  --> tests/ui/both/test_when_invalid_const_generics.rs:19:30
+   |
+19 |     #[benches::id(consts = [(123i32)])]
+   |                              ^^^^^^ expected `usize`, found `i32`
+   |
+help: change the type of the numeric literal from `i32` to `usize`
+   |
+19 -     #[benches::id(consts = [(123i32)])]
+19 +     #[benches::id(consts = [(123usize)])]
+   |
+
+error[E0308]: mismatched types
+  --> tests/ui/both/test_when_invalid_const_generics.rs:25:29
+   |
+25 |     #[benches::id(consts = [123i32])]
+   |                             ^^^^^^ expected `usize`, found `i32`
+   |
+help: change the type of the numeric literal from `i32` to `usize`
+   |
+25 -     #[benches::id(consts = [123i32])]
+25 +     #[benches::id(consts = [123usize])]
+   |
+
+error[E0308]: mismatched types
+  --> tests/ui/both/test_when_invalid_const_generics.rs:31:37
+   |
+31 |     #[bench::id(consts = (123usize, 123i32))]
+   |                                     ^^^^^^ expected `usize`, found `i32`
+   |
+help: change the type of the numeric literal from `i32` to `usize`
+   |
+31 -     #[bench::id(consts = (123usize, 123i32))]
+31 +     #[bench::id(consts = (123usize, 123usize))]
+   |
+
+error[E0308]: mismatched types
+  --> tests/ui/both/test_when_invalid_const_generics.rs:37:37
+   |
+37 |     #[bench::id(consts = (123usize, 123i32))]
+   |                                     ^^^^^^ expected `usize`, found `i32`
+   |
+help: change the type of the numeric literal from `i32` to `usize`
+   |
+37 -     #[bench::id(consts = (123usize, 123i32))]
+37 +     #[bench::id(consts = (123usize, 123usize))]
+   |
+
+error[E0308]: mismatched types
+  --> tests/ui/both/test_when_invalid_const_generics.rs:45:40
+   |
+45 |     #[benches::id(consts = [(123usize, 123i32)])]
+   |                                        ^^^^^^ expected `usize`, found `i32`
+   |
+help: change the type of the numeric literal from `i32` to `usize`
+   |
+45 -     #[benches::id(consts = [(123usize, 123i32)])]
+45 +     #[benches::id(consts = [(123usize, 123usize)])]
+   |
+
+error[E0308]: mismatched types
+  --> tests/ui/both/test_when_invalid_const_generics.rs:51:40
+   |
+51 |     #[benches::id(consts = [(123usize, 123i32)])]
+   |                                        ^^^^^^ expected `usize`, found `i32`
+   |
+help: change the type of the numeric literal from `i32` to `usize`
+   |
+51 -     #[benches::id(consts = [(123usize, 123i32)])]
+51 +     #[benches::id(consts = [(123usize, 123usize)])]
+   |
+
+error[E0308]: mismatched types
    --> tests/ui/both/test_when_invalid_const_generics.rs:244:29
     |
 244 |     #[benches::id(consts = ["invalid"])]
@@ -542,91 +638,3 @@ error[E0308]: mismatched types
     |
 250 |     #[benches::id(consts = ["invalid"])]
     |                             ^^^^^^^^^ expected `usize`, found `&str`
-
-error[E0308]: mismatched types
- --> tests/ui/both/test_when_invalid_const_generics.rs:7:27
-  |
-7 |     #[bench::id(consts = (123i32))]
-  |                           ^^^^^^ expected `usize`, found `i32`
-  |
-help: change the type of the numeric literal from `i32` to `usize`
-  |
-7 |     #[bench::id(consts = (123usize))]
-  |                              ~~~~~
-
-error[E0308]: mismatched types
-  --> tests/ui/both/test_when_invalid_const_generics.rs:13:27
-   |
-13 |     #[bench::id(consts = (123i32))]
-   |                           ^^^^^^ expected `usize`, found `i32`
-   |
-help: change the type of the numeric literal from `i32` to `usize`
-   |
-13 |     #[bench::id(consts = (123usize))]
-   |                              ~~~~~
-
-error[E0308]: mismatched types
-  --> tests/ui/both/test_when_invalid_const_generics.rs:19:30
-   |
-19 |     #[benches::id(consts = [(123i32)])]
-   |                              ^^^^^^ expected `usize`, found `i32`
-   |
-help: change the type of the numeric literal from `i32` to `usize`
-   |
-19 |     #[benches::id(consts = [(123usize)])]
-   |                                 ~~~~~
-
-error[E0308]: mismatched types
-  --> tests/ui/both/test_when_invalid_const_generics.rs:25:29
-   |
-25 |     #[benches::id(consts = [123i32])]
-   |                             ^^^^^^ expected `usize`, found `i32`
-   |
-help: change the type of the numeric literal from `i32` to `usize`
-   |
-25 |     #[benches::id(consts = [123usize])]
-   |                                ~~~~~
-
-error[E0308]: mismatched types
-  --> tests/ui/both/test_when_invalid_const_generics.rs:31:37
-   |
-31 |     #[bench::id(consts = (123usize, 123i32))]
-   |                                     ^^^^^^ expected `usize`, found `i32`
-   |
-help: change the type of the numeric literal from `i32` to `usize`
-   |
-31 |     #[bench::id(consts = (123usize, 123usize))]
-   |                                        ~~~~~
-
-error[E0308]: mismatched types
-  --> tests/ui/both/test_when_invalid_const_generics.rs:37:37
-   |
-37 |     #[bench::id(consts = (123usize, 123i32))]
-   |                                     ^^^^^^ expected `usize`, found `i32`
-   |
-help: change the type of the numeric literal from `i32` to `usize`
-   |
-37 |     #[bench::id(consts = (123usize, 123usize))]
-   |                                        ~~~~~
-
-error[E0308]: mismatched types
-  --> tests/ui/both/test_when_invalid_const_generics.rs:45:40
-   |
-45 |     #[benches::id(consts = [(123usize, 123i32)])]
-   |                                        ^^^^^^ expected `usize`, found `i32`
-   |
-help: change the type of the numeric literal from `i32` to `usize`
-   |
-45 |     #[benches::id(consts = [(123usize, 123usize)])]
-   |                                           ~~~~~
-
-error[E0308]: mismatched types
-  --> tests/ui/both/test_when_invalid_const_generics.rs:51:40
-   |
-51 |     #[benches::id(consts = [(123usize, 123i32)])]
-   |                                        ^^^^^^ expected `usize`, found `i32`
-   |
-help: change the type of the numeric literal from `i32` to `usize`
-   |
-51 |     #[benches::id(consts = [(123usize, 123usize)])]
-   |                                           ~~~~~

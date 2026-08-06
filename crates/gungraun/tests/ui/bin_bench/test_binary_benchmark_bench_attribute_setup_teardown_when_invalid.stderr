@@ -13,7 +13,8 @@ note: function defined here
   |        ^^^^^ ----------
 help: provide the argument
   |
-6 |     setup(/* &str */)
+6 -     #[binary_benchmark]
+6 +     setup(/* &str */)
   |
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
@@ -28,7 +29,7 @@ note: function defined here
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:16:8
    |
 16 |     fn setup(_arg: &str) {}
-   |        ^^^^^ ----------
+   |        ^^^^^
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:33:30
@@ -45,7 +46,8 @@ note: function defined here
    |        ^^^^^^^^ ----------
 help: provide the argument
    |
-32 |     teardown(/* &str */)
+32 -     #[binary_benchmark]
+32 +     teardown(/* &str */)
    |
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
@@ -60,7 +62,7 @@ note: function defined here
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:42:8
    |
 42 |     fn teardown(_arg: &str) {}
-   |        ^^^^^^^^ ----------
+   |        ^^^^^^^^
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:59:27
@@ -76,7 +78,7 @@ note: function defined here
 help: provide the argument
    |
 59 |     #[bench::some(setup = setup(/* &str */))]
-   |                                ~~~~~~~~~~~~
+   |                                 ++++++++++
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:71:27
@@ -88,7 +90,7 @@ note: function defined here
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:68:8
    |
 68 |     fn setup(_arg: &str) {}
-   |        ^^^^^ ----------
+   |        ^^^^^
 help: remove the extra argument
    |
 71 -     #[bench::some(setup = setup("1", "2"))]
@@ -109,7 +111,7 @@ note: function defined here
 help: provide the argument
    |
 83 |     #[bench::some(teardown = teardown(/* &str */))]
-   |                                      ~~~~~~~~~~~~
+   |                                       ++++++++++
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:95:30
@@ -121,7 +123,7 @@ note: function defined here
   --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:92:8
    |
 92 |     fn teardown(_arg: &str) {}
-   |        ^^^^^^^^ ----------
+   |        ^^^^^^^^
 help: remove the extra argument
    |
 95 -     #[bench::some(teardown = teardown("1", "2"))]
@@ -138,7 +140,7 @@ note: function defined here
    --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:105:8
     |
 105 |     fn setup(_arg: &str) {}
-    |        ^^^^^ ----------
+    |        ^^^^^
 help: remove the extra argument
     |
 108 -     #[bench::some(setup = setup("1", "2"), teardown = teardown("1", "2"))]
@@ -155,7 +157,7 @@ note: function defined here
    --> tests/ui/bin_bench/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:104:8
     |
 104 |     fn teardown(_arg: &str) {}
-    |        ^^^^^^^^ ----------
+    |        ^^^^^^^^
 help: remove the extra argument
     |
 108 -     #[bench::some(setup = setup("1", "2"), teardown = teardown("1", "2"))]
@@ -177,7 +179,8 @@ note: function defined here
     |        ^^^^^ ----------
 help: provide the argument
     |
-120 |     setup(/* &str */)
+120 -     #[binary_benchmark]
+120 +     setup(/* &str */)
     |
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
@@ -195,5 +198,6 @@ note: function defined here
     |        ^^^^^^^^ ----------
 help: provide the argument
     |
-120 |     teardown(/* &str */)
+120 -     #[binary_benchmark]
+120 +     teardown(/* &str */)
     |

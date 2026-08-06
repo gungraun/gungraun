@@ -71,7 +71,7 @@ help: the return type of this call is `&'static str` due to the type of the argu
   --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:29:13
    |
 29 | #[bench::id("hello")]
-   |             ^^^^^^^ this argument influences the return type of `std`
+   |             ^^^^^^^ this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -91,7 +91,7 @@ help: the return type of this call is `&'static str` due to the type of the argu
   --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:33:18
    |
 33 | #[benches::multi("hello")]
-   |                  ^^^^^^^ this argument influences the return type of `std`
+   |                  ^^^^^^^ this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -110,7 +110,7 @@ help: the return type of this call is `&'static str` due to the type of the argu
   --> tests/ui/lib_bench/test_library_benchmark_invalid_bench_arguments.rs:37:13
    |
 37 | #[bench::id(42, "hello")]
-   |             ^^  ------- this argument influences the return type of `std`
+   |             ^^  ------- this argument influences the return type of `black_box`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |

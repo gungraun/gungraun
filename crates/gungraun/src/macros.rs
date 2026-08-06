@@ -1281,6 +1281,7 @@ macro_rules! binary_benchmark_group {
 
             #[inline(never)]
             pub fn $name($group: &mut $crate::BinaryBenchmarkGroup) {
+                #[allow(clippy::semicolon_inside_block)]
                 $body;
             }
         }

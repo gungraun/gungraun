@@ -100,10 +100,10 @@ impl FlamegraphMap {
                 anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
             })?;
 
-            if let Some(reference_cost) = sentinel_value {
-                if cost > reference_cost {
-                    continue;
-                }
+            if let Some(reference_cost) = sentinel_value
+                && cost > reference_cost
+            {
+                continue;
             }
 
             let mut source = String::new();

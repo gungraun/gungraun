@@ -1,0 +1,5 @@
+gungraun_runner: Error: Error in task: Error running 'test_bin_bench_setup_child_exit_with_error::group::benchmark::setup': Exit code was: '101'
+error: bench failed, to rerun pass `-p gungraun-tests --bench test_bin_bench_setup_child_exit_with_error`
+
+Caused by:
+  process didn't exit successfully: `<__PATH__>` (exit status: 1)

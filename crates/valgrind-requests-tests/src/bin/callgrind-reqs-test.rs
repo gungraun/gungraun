@@ -24,6 +24,7 @@ fn client_requests_1() -> i32 {
     callgrind::dump_stats();
 
     sum += do_work(sum);
+    // SAFETY: The string literal contains no interior NUL bytes and has static storage duration.
     callgrind::dump_stats_at(unsafe { cstring!("Please dump here") });
 
     do_work(sum)
@@ -41,6 +42,9 @@ fn client_requests_2() -> i32 {
 }
 
 fn main() {
+    let _ = MARKER;
+    // SAFETY: This test intentionally exercises the unchecked macro with a static format string.
+    #[cfg_attr(not(feature = "_act"), expect(unused_unsafe))]
     unsafe {
         valgrind_println_unchecked!("{MARKER}");
     }
@@ -61,5 +65,5 @@ fn main() {
 
     callgrind::start_instrumentation();
 
-    std::process::exit(valgrind::running_on_valgrind() as i32);
+    std::process::exit(i32::from(valgrind::running_on_valgrind() != 0));
 }

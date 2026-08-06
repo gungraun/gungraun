@@ -91,7 +91,7 @@ jobs:
 
             . ~/.cargo/env
             cargo update
-            just full-bench-test-all --filter='${{ matrix.filter }}' --partition='${{ matrix.partition }}'
+            just system-test-all --filter='${{ matrix.filter }}' --partition='${{ matrix.partition }}'
 
             echo Disk usage
             df -h

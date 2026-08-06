@@ -20,7 +20,7 @@ If you are looking for a place to start contributing to Gungraun, take a look at
 the [help wanted][gungraun-help-wanted] or [good first
 issue][gungraun-issues-first] issues.
 
-The minimum supported version (MSRV) of Gungraun is Rust `1.85.1` and all
+The minimum supported version (MSRV) of Gungraun is Rust `1.88.0` and all
 patches are expected to work with the minimum supported version.
 
 All notable changes need to be added to the [CHANGELOG][changelog].
@@ -165,12 +165,12 @@ main!(library_benchmark_groups = some_group);
 Patches have to include tests to verify (at a minimum) that the whole pipeline
 runs through without errors.
 
-The benches in the `benchmark-tests` package are system tests and run the whole
+The benches in the `gungraun-tests` package are system tests and run the whole
 pipeline. We use a wrapper around `cargo bench`
-(`crates/benchmark-tests/src/bench`) to run the `benchmark-tests`. In order to
-run a single benchmark-tests use `just full-bench-test $BENCHMARK_NAME` or all
-with `just full-bench-test-all` (This might take a while). See the
-[`README`](./crates/benchmark-tests/DEVELOPERS.md) of the benchmark-tests
+(`crates/gungraun-tests/src/bench`) to run the `gungraun-tests`. In order to run
+a single gungraun-tests use `just system-test $BENCHMARK_NAME` or all with
+`just system-test-all` (This might take a while). See
+[`DEVELOPERS`](./crates/gungraun-tests/DEVELOPERS.md) of the gungraun-tests
 package for more details.
 
 The user interface is tested in `crates/gungraun/tests/ui`. The ui tests error
@@ -187,30 +187,24 @@ or overwrite the error message fixtures:
 
 If you made changes in the `gungraun-runner` package, you can point the
 `GUNGRAUN_RUNNER` environment variable to your modified version of the
-`gungraun-runner` binary and run the benchmark-tests with:
+`gungraun-runner` binary and run the gungraun-tests with:
 
 ```shell
 cargo build -p gungraun-runner --release
-GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests
+GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p gungraun-tests --bench test_lib_bench_tools
 ```
 
 or with `just` in a single command:
 
 ```shell
-just bench-test-all
+just bench test_lib_bench_tools
 ```
 
-or a specific bench of the benchmark-test package
+The concrete results of the benchmarks are not checked when running the system
+tests that way. You can use
 
 ```shell
-just bench-test test_lib_bench_tools
-```
-
-The concrete results of the benchmarks are not checked when running the
-benchmark tests that way. You can use
-
-```shell
-just full-bench-test test_lib_bench_tools
+just system-test test_lib_bench_tools
 ```
 
 which actually verifies the stdout/stderr and/or output files of the benchmark

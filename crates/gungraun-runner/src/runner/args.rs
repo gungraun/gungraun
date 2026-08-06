@@ -1718,17 +1718,17 @@ impl CommandLineArgs {
     }
 
     fn validate(&self) -> clap::error::Result<()> {
-        if let (Some(save_baseline), Some(baseline)) = (&self.save_baseline, &self.baseline) {
-            if save_baseline == baseline {
-                let mut cmd = Self::command();
-                return Err(cmd.error(
-                    clap::error::ErrorKind::ValueValidation,
-                    format!(
-                        "--save-baseline and --baseline cannot use the same baseline name; use \
-                         only --save-baseline={save_baseline} instead"
-                    ),
-                ));
-            }
+        if let (Some(save_baseline), Some(baseline)) = (&self.save_baseline, &self.baseline)
+            && save_baseline == baseline
+        {
+            let mut cmd = Self::command();
+            return Err(cmd.error(
+                clap::error::ErrorKind::ValueValidation,
+                format!(
+                    "--save-baseline and --baseline cannot use the same baseline name; use only \
+                     --save-baseline={save_baseline} instead"
+                ),
+            ));
         }
 
         Ok(())

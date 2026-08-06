@@ -3,7 +3,7 @@
 set -e
 
 # shellcheck disable=SC1090
-. ~/.cargo/env
+[ -e ~/.cargo/env ] && . ~/.cargo/env
 
 uname -a
 echo "$SHELL"

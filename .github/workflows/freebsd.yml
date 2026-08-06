@@ -18,6 +18,9 @@ jobs:
   build_hack:
     name: Build with feature powerset
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: cpa.sh {0}
     steps:
       - uses: actions/checkout@v7
       - uses: cross-platform-actions/action@v1.3.0
@@ -32,21 +35,25 @@ jobs:
           # Our custom freebsd image with increased disk space (15G instead of
           # 12G) and all dependencies besides rust pre-installed
           image_url: https://github.com/gungraun/freebsd-builder/releases/download/v0.1.2-custom/freebsd-15.0-x86-64.qcow2
-          run: |
-            curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
-            curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-freebsd.tar.gz" | tar xzf - -C "$HOME/.cargo/bin"
+      - name: Build
+        run: |
+          curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
+          curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-freebsd.tar.gz" | tar xzf - -C "$HOME/.cargo/bin"
 
-            ./scripts/freebsd_print_info.sh
+          ./scripts/freebsd_print_info.sh
 
-            . ~/.cargo/env
-            cargo update
-            just build-hack
+          . ~/.cargo/env
+          cargo update
+          just build-hack
 
-            echo Disk usage
-            df -h
+          echo Disk usage
+          df -h
 
   test_system:
     name: Run system tests
+    defaults:
+      run:
+        shell: cpa.sh {0}
     strategy:
       fail-fast: false
       matrix:
@@ -56,17 +63,19 @@ jobs:
           - filter: "test_bin_bench_*"
             partition: "2/2"
           - filter: "test_lib_bench_*"
-            partition: "1/6"
+            partition: "1/7"
           - filter: "test_lib_bench_*"
-            partition: "2/6"
+            partition: "2/7"
           - filter: "test_lib_bench_*"
-            partition: "3/6"
+            partition: "3/7"
           - filter: "test_lib_bench_*"
-            partition: "4/6"
+            partition: "4/7"
           - filter: "test_lib_bench_*"
-            partition: "5/6"
+            partition: "5/7"
           - filter: "test_lib_bench_*"
-            partition: "6/6"
+            partition: "6/7"
+          - filter: "test_lib_bench_*"
+            partition: "7/7"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -84,20 +93,21 @@ jobs:
           # Our custom freebsd image with increased disk space (15G instead of
           # 12G) and dependencies pre-installed
           image_url: https://github.com/gungraun/freebsd-builder/releases/download/v0.1.2-custom/freebsd-15.0-x86-64.qcow2
-          run: |
-            curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
+      - name: Run system tests ${{ matrix.filter }} partition ${{ matrix.partition }}
+        run: |
+          curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
 
-            ./scripts/freebsd_print_info.sh
+          ./scripts/freebsd_print_info.sh
 
-            . ~/.cargo/env
-            cargo update
-            just system-test-all --filter='${{ matrix.filter }}' --partition='${{ matrix.partition }}'
+          . ~/.cargo/env
+          cargo update
+          just system-test-all --filter='${{ matrix.filter }}' --partition='${{ matrix.partition }}'
 
-            echo Disk usage
-            df -h
+          echo Disk usage
+          df -h
 
-            cd target
-            find . -maxdepth 1 -mindepth 1 ! -name gungraun -exec rm -rf '{}' \;
+          cd target
+          find . -maxdepth 1 -mindepth 1 ! -name gungraun -exec rm -rf '{}' \;
       - name: Generate sanitized artifact name
         if: ${{ always() }}
         run: |

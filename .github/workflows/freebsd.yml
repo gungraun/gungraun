@@ -23,7 +23,7 @@ jobs:
         shell: cpa.sh {0}
     steps:
       - uses: actions/checkout@v7
-      - uses: cross-platform-actions/action@v1.3.0
+      - uses: cross-platform-actions/action@v1.4.0
         with:
           environment_variables: VALGRIND_REQUESTS_VALGRIND_INCLUDE VALGRIND_REQUESTS_VALGRIND_PATH CARGO_TERM_COLOR
           operating_system: freebsd
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: cross-platform-actions/action@v1.3.0
+      - uses: cross-platform-actions/action@v1.4.0
         env:
           RUST_BACKTRACE: "0"
         with:

@@ -55,7 +55,7 @@ macro_rules! impl_from_str_metric {
                 let lower = string.to_lowercase();
                 let value = match lower.as_str() {
                     $($alias => Self::$variant,)*
-                    _ => return Err(anyhow!($error_msg, string)),
+                    _ => bail!($error_msg, string),
                 };
                 Ok(value)
             }
@@ -106,7 +106,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 #[cfg(feature = "runner")]
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 #[cfg(feature = "runner")]
 use gungraun_common::SupportedTools;
 #[cfg(feature = "runner")]

@@ -34,7 +34,7 @@ groups:
         expected:
           stdout:
             default: expected_stdout.1
-            x86_64-unknown-freebsd: expected_stdout.freebsd.1
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1
           no_stderr: true
           exit_code: 0
         template_data:
@@ -48,7 +48,7 @@ groups:
           stdout: expected_stdout.fail-fast
           stderr:
             default: expected_stderr.fail-fast
-            x86_64-unknown-freebsd: expected_stderr.freebsd.fail-fast
+            x86_64-unknown-freebsd: freebsd/expected_stderr.fail-fast
           exit_code: 3
         template_data:
           array_length: 5
@@ -59,7 +59,7 @@ groups:
         expected:
           stdout:
             default: expected_stdout.1
-            x86_64-unknown-freebsd: expected_stdout.freebsd.1
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1
           no_stderr: true
           exit_code: 0
         template_data:
@@ -70,10 +70,10 @@ groups:
         expected:
           stdout:
             default: expected_stdout.no-fail-fast
-            x86_64-unknown-freebsd: expected_stdout.freebsd.no-fail-fast
+            x86_64-unknown-freebsd: freebsd/expected_stdout.no-fail-fast
           stderr:
             default: expected_stderr.no-fail-fast
-            x86_64-unknown-freebsd: expected_stderr.freebsd.no-fail-fast
+            x86_64-unknown-freebsd: freebsd/expected_stderr.no-fail-fast
           exit_code: 3
         template_data:
           array_length: 5

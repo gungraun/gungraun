@@ -34,42 +34,42 @@ groups:
         expected:
           stdout:
             default: expected_stdout.1
-            x86_64-unknown-freebsd: expected_stdout.freebsd.1
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1
           no_stderr: true
   - runs:
       - args: ["--nocapture=false"]
         expected:
           stdout:
             default: expected_stdout.1
-            x86_64-unknown-freebsd: expected_stdout.freebsd.1
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1
           no_stderr: true
   - runs:
       - args: ["--nocapture"]
         expected:
           stdout:
             default: expected_stdout.2
-            x86_64-unknown-freebsd: expected_stdout.freebsd.2
+            x86_64-unknown-freebsd: freebsd/expected_stdout.2
           no_stderr: true
   - runs:
       - args: ["--nocapture=true"]
         expected:
           stdout:
             default: expected_stdout.2
-            x86_64-unknown-freebsd: expected_stdout.freebsd.2
+            x86_64-unknown-freebsd: freebsd/expected_stdout.2
           no_stderr: true
   - runs:
       - args: ["--nocapture=stdout"]
         expected:
           stdout:
             default: expected_stdout.3
-            x86_64-unknown-freebsd: expected_stdout.freebsd.3
+            x86_64-unknown-freebsd: freebsd/expected_stdout.3
           no_stderr: true
   - runs:
       - args: ["--nocapture=stderr"]
         expected:
           stdout:
             default: expected_stdout.4
-            x86_64-unknown-freebsd: expected_stdout.freebsd.4
+            x86_64-unknown-freebsd: freebsd/expected_stdout.4
           stderr:
             default: expected_stderr.1
-            x86_64-unknown-freebsd: expected_stderr.freebsd.1
+            x86_64-unknown-freebsd: freebsd/expected_stderr.1

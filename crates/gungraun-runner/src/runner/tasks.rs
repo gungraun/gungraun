@@ -12,7 +12,7 @@ use std::thread::{JoinHandle, sleep};
 use std::time::{Duration, Instant};
 use std::{iter, thread};
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use crossbeam::deque::{Injector, Steal, Stealer, Worker};
 use derive_more::Deref;
 use log::debug;
@@ -116,7 +116,7 @@ struct Task {
 /// Basic usage with successful and failing jobs:
 ///
 /// ```
-/// use anyhow::anyhow;
+/// use anyhow::bail;
 /// use gungraun_runner::runner::tasks::ThreadPool;
 ///
 /// let mut pool: ThreadPool<Result<usize, anyhow::Error>> = ThreadPool::new(4)?;
@@ -125,7 +125,7 @@ struct Task {
 ///     pool.execute(move |force_shutdown| {
 ///         // Simulate work that checks for shutdown
 ///         if force_shutdown.load(std::sync::atomic::Ordering::Acquire) {
-///             return Err(anyhow!("Interrupted"));
+///             bail!("Interrupted");
 ///         }
 ///         Ok(i * 2)
 ///     });
@@ -557,9 +557,7 @@ impl<T: Send + 'static> ThreadPool<T> {
     /// Returns an error when `size` is less than 1.
     pub fn new(size: usize) -> Result<Self> {
         if size < 1 {
-            return Err(anyhow!(
-                "Minimum size for a thread pool is 1 but was: '{size}'"
-            ));
+            bail!("Minimum size for a thread pool is 1 but was: '{size}'");
         }
 
         let (result_sender, result_receiver): Channel<T> = mpsc::channel();

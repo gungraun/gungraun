@@ -51,5 +51,5 @@ groups:
       - args: ["--nocapture"]
         expected:
           zero_metrics: true
-          stdout: expected_stdout.freebsd.1a
+          stdout: freebsd/expected_stdout.1a
           stderr: expected_stderr

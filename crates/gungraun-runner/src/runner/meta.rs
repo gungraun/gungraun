@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, OnceLock};
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use gungraun_common::SupportedTools;
 use log::debug;
 
@@ -217,10 +217,10 @@ impl Metadata {
         supported_tools: SupportedTools,
     ) -> Result<Self> {
         if !supported_tools.has_at_least_one() {
-            return Err(anyhow!(
+            bail!(
                 "No tool ({}) is supported for this target '{target}'",
                 SupportedTools::tools_list()
-            ));
+            );
         }
 
         let args = CommandLineArgs::parse_validated_from(raw_command_line_args);
@@ -790,17 +790,17 @@ fn interpolate_argument(
 
                         result.append(&mut value.into_encoded_bytes());
                     } else {
-                        return Err(anyhow!(
+                        bail!(
                             "Failed to interpolate the variable at column '{dollar_pos}': Invalid \
                              syntax"
-                        ));
+                        );
                     }
                 }
                 (b'$', b'{') => {
-                    return Err(anyhow!(
+                    bail!(
                         "Failed to interpolate the variable at column '{index}': Premature end of \
                          variable declaration"
-                    ));
+                    );
                 }
                 (char, b'$') if next_index + 1 < chars.len() => {
                     result.push(char);

@@ -13,7 +13,7 @@ use std::sync::mpsc::{self, RecvTimeoutError};
 use std::time::Duration;
 use std::{panic, thread};
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use log::{debug, warn};
 
 use super::format::{BinaryBenchmarkHeader, ListFormat, OutputFormat};
@@ -554,7 +554,7 @@ impl BinBench {
 impl Command {
     fn new(module_path: &ModulePath, path: PathBuf, args: Vec<OsString>) -> Result<Self> {
         if path.as_os_str().is_empty() {
-            return Err(anyhow!("{module_path}: Empty path in command"));
+            bail!("{module_path}: Empty path in command");
         }
 
         Ok(Self { args, path })

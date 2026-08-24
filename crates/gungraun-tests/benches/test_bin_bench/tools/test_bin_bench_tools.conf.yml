@@ -39,17 +39,17 @@ groups:
         expected:
           files:
             default: expected_files.1a.yml
-            x86_64-unknown-freebsd: expected_files.freebsd.1a.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.1a.yml
           stdout:
             default: expected_stdout.1a
-            x86_64-unknown-freebsd: expected_stdout.freebsd.1a
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1a
           no_stderr: true
       - args: ["--nocapture"]
         expected:
           files:
             default: expected_files.1b.yml
-            x86_64-unknown-freebsd: expected_files.freebsd.1b.yml
+            x86_64-unknown-freebsd: freebsd/expected_files.1b.yml
           stdout:
             default: expected_stdout.1b
-            x86_64-unknown-freebsd: expected_stdout.freebsd.1b
+            x86_64-unknown-freebsd: freebsd/expected_stdout.1b
           no_stderr: true

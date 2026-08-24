@@ -63,7 +63,7 @@ groups:
       - args: ["--nocapture"]
         expected:
           files: expected_files_nested.1a.yml
-          stdout: expected_stdout_nested.freebsd.1a
+          stdout: freebsd/expected_stdout_nested.1a
       - args: ["--nocapture"]
         expected:
           files: expected_files_nested.1b.yml

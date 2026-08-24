@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Component, Path, PathBuf};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use log::trace;
 use serde::{Deserialize, Serialize};
 
@@ -263,7 +263,7 @@ impl CallgrindParser for HashMapParser {
                 None if line.starts_with("totals:") || line.starts_with("summary:") => {
                     // we ignore these
                 }
-                Some(_) | None => return Err(anyhow!("Malformed line: '{line}'")),
+                Some(_) | None => bail!("Malformed line: '{line}'"),
             }
         }
 

@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 use simplematch::DoWild;
@@ -194,7 +194,7 @@ where
         match iter.next().transpose()? {
             Some(line) if line.trim().is_empty() => {}
             Some(line) => break line,
-            None => return Err(anyhow!("Empty file")),
+            None => bail!("Empty file"),
         }
     };
 
@@ -220,9 +220,9 @@ where
 
         match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
             Some(("version", version)) if version != "1" => {
-                return Err(anyhow!(
+                bail!(
                     "Version mismatch: Requires callgrind format version '1' but was '{version}'"
-                ));
+                );
             }
             Some(("pid", value)) => {
                 trace!("Using pid '{value}' from line: '{line}'");

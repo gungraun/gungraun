@@ -86,7 +86,7 @@ groups:
         flaky: 5
         expected:
           files: expected_files.1a.yml
-          stdout: expected_stdout.freebsd.1a
+          stdout: freebsd/expected_stdout.1a
       - args: ["--nocapture"]
         flaky: 5
         expected:

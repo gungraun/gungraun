@@ -52,7 +52,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 
 use super::args::{ToolArgsLike, ValgrindArgs};
 use super::parser::parser_factory;
@@ -1332,7 +1332,7 @@ fn resolve_perf_run_mode(
     if let PerfRunMode::Calibrate(duration) = run_mode
         && duration.is_zero()
     {
-        return Err(anyhow!("perf run mode calibration duration was zero"));
+        bail!("perf run mode calibration duration was zero");
     }
 
     Ok(run_mode)
@@ -1347,7 +1347,7 @@ fn validate_perf_sample_duration(sample_duration: Option<Duration>) -> Result<Op
     if let Some(sample_duration) = sample_duration
         && sample_duration.is_zero()
     {
-        return Err(anyhow!("perf sample duration was zero"));
+        bail!("perf sample duration was zero");
     }
 
     Ok(sample_duration)

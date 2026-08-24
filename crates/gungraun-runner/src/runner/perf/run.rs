@@ -82,7 +82,6 @@ pub const PERF_OVERHEAD_FILE_MODIFIER: &str = "overhead";
 pub struct PerfCalibration<'a> {
     base_command: &'a ToolCommand,
     config: &'a ToolConfig,
-    executable: &'a Path,
     executable_args: &'a [OsString],
     output_path: &'a ToolOutputPath,
     time: Duration,
@@ -121,7 +120,6 @@ impl<'a> PerfCalibration<'a> {
     pub fn new(
         base_command: &'a ToolCommand,
         config: &'a ToolConfig,
-        executable: &'a Path,
         executable_args: &'a [OsString],
         output_path: &'a ToolOutputPath,
         time: Duration,
@@ -130,7 +128,6 @@ impl<'a> PerfCalibration<'a> {
         Self {
             base_command,
             config,
-            executable,
             executable_args,
             output_path,
             time,
@@ -159,11 +156,11 @@ impl<'a> PerfCalibration<'a> {
         perf_data.log_file.write_header_command(
             &tool_command.command,
             &args,
-            self.executable,
+            &tool_command.executable,
             self.executable_args,
         )?;
 
-        tool_command.append_tool_invocation(args, self.executable, self.executable_args);
+        tool_command.append_tool_invocation(args, self.executable_args);
 
         tool_command.command.stdout(Stdio::null());
         tool_command.command.stderr(perf_data.log_file.try_clone()?);
@@ -190,7 +187,7 @@ impl<'a> PerfCalibration<'a> {
 
         check_exit(
             self.config.tool(),
-            self.executable,
+            &tool_command.executable,
             output,
             &cal_output_path.to_log_output(),
             Some(&ExitWith::Signals(vec![9, 15])),
@@ -280,7 +277,14 @@ where
     let output_path = output_path.with_added_modifiers([PERF_OVERHEAD_FILE_MODIFIER]);
     let RunOptions { current_dir, .. } = run_options;
 
-    let mut tool_command = ToolCommand::new(config, meta, &output_path, run_options)?;
+    let mut tool_command = ToolCommand::new(
+        config,
+        meta,
+        &output_path,
+        run_options,
+        executable,
+        sandbox_dir,
+    )?;
     match (sandbox_dir, current_dir.as_ref()) {
         (None, None) => {}
         (None, Some(current_dir)) => {
@@ -296,8 +300,6 @@ where
         }
     }
 
-    let executable = tool_command.resolve_executable(executable, sandbox_dir);
-
     let executable_args =
         executable_args_fn(config, Some(BenchRunMode::PerfOverhead(data.repetitions)));
 
@@ -312,11 +314,11 @@ where
     perf_data.log_file.write_header_command(
         &tool_command.command,
         &args,
-        &executable,
+        &tool_command.executable,
         executable_args.as_ref(),
     )?;
 
-    tool_command.append_tool_invocation(args, &executable, executable_args.as_ref());
+    tool_command.append_tool_invocation(args, executable_args.as_ref());
 
     tool_command
         .command
@@ -340,7 +342,14 @@ where
         .wait_with_output()
         .map_err(Into::into)
         .and_then(|output| {
-            check_exit(config.tool(), &executable, output, &output_path, None).map(|_| ())
+            check_exit(
+                config.tool(),
+                &tool_command.executable,
+                output,
+                &output_path,
+                None,
+            )
+            .map(|_| ())
         })
 }
 

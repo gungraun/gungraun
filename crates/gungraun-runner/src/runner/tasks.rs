@@ -386,7 +386,6 @@ impl ProcessHandler {
         &mut self,
         command: ToolCommand,
         tool_config: &ToolConfig,
-        executable: &Path,
         executable_args: &F,
         run_options: &RunOptions,
         output_path: &ToolOutputPath,
@@ -411,7 +410,6 @@ impl ProcessHandler {
 
         let child = command.run(
             tool_config,
-            executable,
             executable_args,
             run_options,
             output_path,

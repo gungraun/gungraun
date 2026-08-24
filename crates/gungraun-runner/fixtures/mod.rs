@@ -315,6 +315,7 @@ pub fn run_options_f(env_clear: Option<bool>) -> RunOptions {
 
 #[builder(finish_fn = "fx")]
 pub fn tool_command_f(
+    executable: Option<&Path>,
     output_path: &ToolOutputPath,
     metadata: Option<Metadata>,
     run_options: Option<&RunOptions>,
@@ -330,7 +331,15 @@ pub fn tool_command_f(
         tool_config_f().fx()
     };
 
-    ToolCommand::new(&tool_config, &meta, output_path, &run_options).unwrap()
+    ToolCommand::new(
+        &tool_config,
+        &meta,
+        output_path,
+        &run_options,
+        executable.unwrap_or_else(|| Path::new("benchmark")),
+        None,
+    )
+    .unwrap()
 }
 
 #[builder(finish_fn = "fx")]

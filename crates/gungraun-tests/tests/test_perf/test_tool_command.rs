@@ -6,9 +6,10 @@ use std::path::Path;
 
 use gungraun::Tool;
 use gungraun_runner::fixtures::{
-    metadata_f, module_path_f, run_options_f, tool_command_f, tool_config_f, tool_output_path_f,
+    metadata_f, module_path_f, run_options_f, tool_config_f, tool_output_path_f,
 };
 use gungraun_runner::runner::perf::args::DEFAULT_PERF_EVENTS;
+use gungraun_runner::runner::tool::run::ToolCommand;
 use serde_json::Value;
 use tempfile::tempdir;
 
@@ -25,19 +26,24 @@ fn test_tool_command_perf_basic() {
         .tool(Tool::Perf)
         .target_dir(temp_dir.path())
         .fx();
-    let tool_command = tool_command_f()
-        .tool_config(&config)
-        .metadata(metadata_f().fx())
-        .output_path(output_path)
-        .fx();
-
     let perf_bench = env!("CARGO_BIN_EXE_perf-bench");
+    let executable = Path::new(perf_bench);
+    let tool_command = ToolCommand::new(
+        &config,
+        &metadata_f().fx(),
+        output_path,
+        &run_options_f().fx(),
+        executable,
+        None,
+    )
+    .unwrap();
     let executable_args: Vec<OsString> = vec![];
+
+    assert_eq!(tool_command.executable, executable);
 
     let child = tool_command
         .run(
             &config,
-            Path::new(perf_bench),
             &|_, _| Cow::Borrowed(executable_args.as_slice()),
             &run_options_f().fx(),
             output_path,

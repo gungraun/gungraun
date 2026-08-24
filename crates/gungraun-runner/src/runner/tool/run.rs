@@ -61,6 +61,8 @@ pub struct RunOptions {
 pub struct ToolCommand {
     /// The `std::process` command to be spawned
     pub command: Command,
+    /// The resolved path to the benchmark executable.
+    pub executable: PathBuf,
     /// Configuration for whether to capture or pass through the subprocess output
     pub nocapture: NoCapture,
     /// Optional path rebasing configuration for containerized runners
@@ -100,6 +102,8 @@ impl ToolCommand {
         meta: &Metadata,
         output_path: &ToolOutputPath,
         run_options: &RunOptions,
+        executable: &Path,
+        sandbox_dir: Option<&Path>,
     ) -> Result<Self> {
         let nocapture = if tool_config.is_default {
             meta.args.nocapture
@@ -108,8 +112,9 @@ impl ToolCommand {
         };
 
         let command = meta.to_tool_command(tool_config, output_path, run_options)?;
-        Ok(Self {
+        let mut tool_command = Self {
             command,
+            executable: executable.to_path_buf(),
             nocapture,
             tool: tool_config.tool(),
             roots: meta
@@ -117,7 +122,10 @@ impl ToolCommand {
                 .tool_runner_root
                 .clone()
                 .map(|r| (meta.project_root.clone(), r)),
-        })
+        };
+        tool_command.executable = tool_command.resolve_executable(executable, sandbox_dir);
+
+        Ok(tool_command)
     }
 
     /// Resolve an executable path, applying path rebasing if configured
@@ -196,33 +204,32 @@ impl ToolCommand {
     pub fn clone_command(&self) -> Self {
         Self {
             command: clone_command(&self.command),
+            executable: self.executable.clone(),
             nocapture: self.nocapture,
             roots: self.roots.clone(),
             tool: self.tool,
         }
     }
 
-    /// Append tool args, the already resolved executable, and executable args to the command.
+    /// Append tool args, the stored executable, and executable args to the command.
     pub fn append_tool_invocation<I, T>(
         &mut self,
         tool_args: I,
-        executable: &Path,
         executable_args: &[OsString],
     ) -> &mut Self
     where
         I: IntoIterator<Item = T>,
         T: AsRef<OsStr>,
     {
-        self.args_rebase(tool_args)
-            .arg(executable) // already resolved, no need to rebase
-            .args_rebase(executable_args)
+        self.args_rebase(tool_args);
+        self.command.arg(&self.executable);
+        self.args_rebase(executable_args)
     }
 
     /// Run the `ToolCommand`
     pub fn run<'args, F>(
         mut self,
         config: &ToolConfig,
-        executable: &Path,
         executable_args_fn: &F,
         run_options: &RunOptions,
         output_path: &ToolOutputPath,
@@ -267,7 +274,6 @@ impl ToolCommand {
             }
         }
 
-        let executable = self.resolve_executable(executable, sandbox_dir);
         let executable_args = executable_args_fn(config, None);
 
         let (mut perf_data, args, log_path) =
@@ -282,7 +288,6 @@ impl ToolCommand {
                     PerfCalibration::new(
                         &self,
                         config,
-                        &executable,
                         &calibration_args,
                         output_path,
                         time,
@@ -317,7 +322,11 @@ impl ToolCommand {
                 .join(" ")
         );
 
-        debug!("{}: Executable: {}", self.tool.id(), executable.display());
+        debug!(
+            "{}: Executable: {}",
+            self.tool.id(),
+            self.executable.display()
+        );
         debug!(
             "{}: Executable arguments: {}",
             self.tool.id(),
@@ -331,12 +340,12 @@ impl ToolCommand {
             p.log_file.write_header_command(
                 &self.command,
                 &args,
-                &executable,
+                &self.executable,
                 executable_args.as_ref(),
             )?;
         }
 
-        self.append_tool_invocation(args, &executable, executable_args.as_ref());
+        self.append_tool_invocation(args, executable_args.as_ref());
 
         self.nocapture.apply(&mut self.command, captured_output)?;
 
@@ -366,7 +375,12 @@ impl ToolCommand {
                 }
 
                 Ok(ToolCommandChild::new(
-                    self.tool, c, executable, exit_with, log_path, perf_data,
+                    self.tool,
+                    c,
+                    self.executable,
+                    exit_with,
+                    log_path,
+                    perf_data,
                 ))
             })
             .map_err(|error| {
@@ -634,6 +648,7 @@ mod tests {
     fn append_tool_invocation_rebases_tool_and_benchmark_args() {
         let mut tool_command = ToolCommand {
             command: Command::new("runner"),
+            executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
             nocapture: NoCapture::False,
             roots: Some((
                 PathBuf::from("/host/workspace"),
@@ -645,12 +660,11 @@ mod tests {
             OsString::from("--output=/host/workspace/target/perf.json"),
             OsString::from("--plain"),
         ];
-        let executable = Path::new("/container/workspace/target/release/deps/bench");
         let executable_args = [OsString::from(
             "--fixture=/host/workspace/fixtures/input.txt",
         )];
 
-        tool_command.append_tool_invocation(&tool_args, executable, &executable_args);
+        tool_command.append_tool_invocation(&tool_args, &executable_args);
 
         let args = tool_command
             .command
@@ -673,6 +687,7 @@ mod tests {
     fn cloned_tool_command_preserves_rebasing_roots() {
         let tool_command = ToolCommand {
             command: Command::new("runner"),
+            executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
             nocapture: NoCapture::False,
             roots: Some((
                 PathBuf::from("/host/workspace"),
@@ -688,5 +703,6 @@ mod tests {
             cloned.command.get_args().collect::<Vec<_>>(),
             vec![OsStr::new("--input=/container/workspace/data.txt")]
         );
+        assert_eq!(cloned.executable, tool_command.executable);
     }
 }

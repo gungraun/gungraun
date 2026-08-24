@@ -158,9 +158,11 @@ fn test_start_bench_when_force_shutdown_is_false_then_bench_is_started(
 
     handler
         .start_bench(
-            tool_command_f().output_path(&tool_output_path).fx(),
+            tool_command_f()
+                .executable(&ECHO_EXE)
+                .output_path(&tool_output_path)
+                .fx(),
             &tool_config_f().fx(),
-            &ECHO_EXE,
             &|_, _| Cow::Borrowed(executable_args.as_slice()),
             &run_options_f().env_clear(!cfg!(target_os = "macos")).fx(),
             &tool_output_path,
@@ -219,11 +221,11 @@ fn test_start_bench_when_setup_is_parallel_then_bench_is_started(#[case] exit_co
 
     let result = handler.start_bench(
         tool_command_f()
+            .executable(&ECHO_EXE)
             .output_path(&tool_output_path)
             .run_options(&run_options)
             .fx(),
         &tool_config_f().fx(),
-        &ECHO_EXE,
         &|_, _| Cow::Borrowed(executable_args.as_slice()),
         &run_options,
         &tool_output_path,
@@ -283,9 +285,11 @@ fn test_start_bench_when_force_shutdown_is_true_then_interrupt(#[case] has_setup
     let executable_args: Vec<OsString> = vec![];
 
     let result = handler.start_bench(
-        tool_command_f().output_path(&tool_output_path).fx(),
+        tool_command_f()
+            .executable(&ECHO_EXE)
+            .output_path(&tool_output_path)
+            .fx(),
         &tool_config_f().fx(),
-        &ECHO_EXE,
         &|_, _| Cow::Borrowed(executable_args.as_slice()),
         &RunOptions::default(),
         &tool_output_path,
@@ -327,9 +331,11 @@ fn test_start_bench_when_setup_not_parallel_with_error_then_no_bench_and_setup_e
     let executable_args: Vec<OsString> = vec![];
 
     let result = handler.start_bench(
-        tool_command_f().output_path(&tool_output_path).fx(),
+        tool_command_f()
+            .executable(&ECHO_EXE)
+            .output_path(&tool_output_path)
+            .fx(),
         &tool_config_f().fx(),
-        &ECHO_EXE,
         &|_, _| Cow::Borrowed(executable_args.as_slice()),
         &RunOptions::default(),
         &tool_output_path,

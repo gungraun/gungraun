@@ -1019,7 +1019,14 @@ impl ToolConfigs {
                 sandbox.as_ref().and_then(Sandbox::path),
             );
 
-            let command = ToolCommand::new(&tool_config, &config.meta, &output_path, run_options)?;
+            let command = ToolCommand::new(
+                &tool_config,
+                &config.meta,
+                &output_path,
+                run_options,
+                executable,
+                sandbox.as_ref().and_then(Sandbox::path),
+            )?;
             let nocapture = command.nocapture;
             let captured_output = if tool_config.is_default {
                 captured_output
@@ -1049,7 +1056,6 @@ impl ToolConfigs {
                 .start_bench(
                     command,
                     &tool_config,
-                    executable,
                     &executable_args,
                     run_options,
                     &output_path,

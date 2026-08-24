@@ -25,9 +25,9 @@ fn is_cleared_args(is_cleared: bool) -> Vec<String> {
     if let Ok(value) = std::env::var("CLI_ENV_CLEAR_TEST_VALUE") {
         vec![format!("--is-cleared={value}")]
     } else if is_cleared {
-        vec![format!("--is-cleared=true")]
+        vec!["--is-cleared=true".to_owned()]
     } else {
-        vec![format!("--is-cleared=false")]
+        vec!["--is-cleared=false".to_owned()]
     }
 }
 

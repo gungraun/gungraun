@@ -22,6 +22,8 @@
 #   - Default, sampling, recording, and calibration execution modes
 #     (`DefaultCalibrate`, `Calibrate(1s)`), partly combined with
 #     `record_args`
+#   - Sampling mode with a benchmark runtime that is larger than the sampling
+#     time
 #   - Perf combined with Callgrind as default or additional tool, including
 #     explicitly disabled Perf
 #   - Benchmarks with a disabled entry point; one is measured selectively via
@@ -40,6 +42,8 @@
 #     (once without sampling or recording, appended while sampling)
 #   - The `dummy`-metric, selectively unmeasured, and empty-range benchmarks
 #     produce empty data sets without errors or panics
+#   - If the sampling time is lower than the actual benchmark runtime then there
+#     is still at least one sample produced.
 #   - FreeBSD doesn't run Perf, skips benchmarks which have only perf configured
 #     and uses the non-Perf fallback expectations
 

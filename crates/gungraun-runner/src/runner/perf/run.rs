@@ -183,6 +183,7 @@ impl<'a> PerfCalibration<'a> {
             &Arc::new(AtomicBool::new(false)),
             Duration::from_millis(10),
             Some(Duration::ZERO),
+            None::<&fn() -> bool>,
         )?;
 
         check_exit(

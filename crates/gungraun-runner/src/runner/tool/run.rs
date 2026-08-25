@@ -87,8 +87,8 @@ pub struct ToolCommandChild {
     pub executable: PathBuf,
     /// The expected exit behavior (exit code or signal), or `None` if any exit is acceptable
     pub exit_with: Option<ExitWith>,
-    /// The path where Valgrind will write its output log files
-    pub log_path: ToolOutputPath,
+    /// The path where the tool will write its normal output files.
+    pub output_path: ToolOutputPath,
     /// Keeps the parent-side perf descriptors alive for the lifetime of the running tool process.
     pub perf_data: Option<PerfData>,
     /// The tool running this process (e.g., Memcheck, Callgrind, Massif)
@@ -276,43 +276,42 @@ impl ToolCommand {
 
         let executable_args = executable_args_fn(config, None);
 
-        let (mut perf_data, args, log_path) =
-            if let ToolConfigOptions::Perf(options) = &config.options {
-                if let Some(time) = match options.run_mode {
-                    PerfRunMode::DefaultCalibrate => Some(DEFAULT_PERF_CALIBRATION_TIME),
-                    PerfRunMode::Calibrate(time) => Some(time),
-                    _ => None,
-                } {
-                    let calibration_args =
-                        executable_args_fn(config, Some(BenchRunMode::PerfCalibrate));
-                    PerfCalibration::new(
-                        &self,
-                        config,
-                        &calibration_args,
-                        output_path,
-                        time,
-                        tool_runner_dest,
-                    )
-                    .run()?;
-                }
-
-                prepare_perf_command(
-                    &mut self.command,
+        let (mut perf_data, args) = if let ToolConfigOptions::Perf(options) = &config.options {
+            if let Some(time) = match options.run_mode {
+                PerfRunMode::DefaultCalibrate => Some(DEFAULT_PERF_CALIBRATION_TIME),
+                PerfRunMode::Calibrate(time) => Some(time),
+                _ => None,
+            } {
+                let calibration_args =
+                    executable_args_fn(config, Some(BenchRunMode::PerfCalibrate));
+                PerfCalibration::new(
+                    &self,
                     config,
+                    &calibration_args,
                     output_path,
-                    options.use_sampling,
+                    time,
                     tool_runner_dest,
                 )
-                .map(|(perf_data, tool_args, log_path)| (Some(perf_data), tool_args, log_path))?
-            } else {
-                let mut tool_args = config.args.clone();
-                tool_args.set_output_arg(output_path, tool_runner_dest);
-                tool_args.set_log_arg(output_path, tool_runner_dest);
-                tool_args.set_xtree_arg(output_path, tool_runner_dest);
-                tool_args.set_xleak_arg(output_path, tool_runner_dest);
+                .run()?;
+            }
 
-                (None, tool_args.to_vec(), output_path.to_log_output())
-            };
+            prepare_perf_command(
+                &mut self.command,
+                config,
+                output_path,
+                options.use_sampling,
+                tool_runner_dest,
+            )
+            .map(|(perf_data, tool_args, _)| (Some(perf_data), tool_args))?
+        } else {
+            let mut tool_args = config.args.clone();
+            tool_args.set_output_arg(output_path, tool_runner_dest);
+            tool_args.set_log_arg(output_path, tool_runner_dest);
+            tool_args.set_xtree_arg(output_path, tool_runner_dest);
+            tool_args.set_xleak_arg(output_path, tool_runner_dest);
+
+            (None, tool_args.to_vec())
+        };
 
         debug!(
             "{}: Tool arguments: {}",
@@ -379,7 +378,7 @@ impl ToolCommand {
                     c,
                     self.executable,
                     exit_with,
-                    log_path,
+                    output_path.clone(),
                     perf_data,
                 ))
             })
@@ -439,21 +438,21 @@ impl ToolCommandChild {
     /// This constructor wraps a spawned child process along with metadata needed to track and
     /// manage its execution. The `tool` parameter specifies which [`Tool`] is being run,
     /// `child` is the actual spawned process, `executable` is the path to the binary being
-    /// instrumented, `exit_with` defines the expected exit behavior, and `log_path` specifies
-    /// where the tool's output is written.
+    /// instrumented, `exit_with` defines the expected exit behavior, `output_path` specifies where
+    /// the tool writes its output.
     pub fn new(
         tool: Tool,
         child: Child,
         executable: PathBuf,
         exit_with: Option<ExitWith>,
-        log_path: ToolOutputPath,
+        output_path: ToolOutputPath,
         perf_data: Option<PerfData>,
     ) -> Self {
         Self {
             child: Some(child),
             executable,
             exit_with,
-            log_path,
+            output_path,
             tool,
             perf_data,
         }

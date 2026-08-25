@@ -506,6 +506,16 @@ data:
         - perf.iter.two_to_four_2.out.old
         - summary.json
   - group: with_sampling
+    function: long_time
+    id: two
+    expected:
+      files:
+        - perf.long_time.two.log
+        - perf.long_time.two.log.old
+        - perf.long_time.two.out
+        - perf.long_time.two.out.old
+        - summary.json
+  - group: with_sampling
     function: with_consts
     id: one_thousand
     expected:
@@ -785,6 +795,16 @@ data:
         - perf.iter.two_to_four_2.log.old
         - perf.iter.two_to_four_2.out
         - perf.iter.two_to_four_2.out.old
+        - summary.json
+  - group: without_sampling
+    function: long_time
+    id: two
+    expected:
+      files:
+        - perf.long_time.two.log
+        - perf.long_time.two.log.old
+        - perf.long_time.two.out
+        - perf.long_time.two.out.old
         - summary.json
   - group: without_sampling
     function: with_consts

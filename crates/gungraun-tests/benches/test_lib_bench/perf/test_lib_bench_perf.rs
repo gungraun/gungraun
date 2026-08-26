@@ -186,6 +186,12 @@ fn iter(arg: i32) -> Vec<i32> {
     black_box(bubble_sort(setup_worst_case_array(black_box(arg))))
 }
 
+#[library_benchmark]
+#[bench::two(Duration::from_secs(3))]
+fn long_time(time: Duration) {
+    std::thread::sleep(black_box(time));
+}
+
 library_benchmark_group!(
     name = without_sampling,
     benchmarks = [
@@ -195,7 +201,8 @@ library_benchmark_group!(
         disabled_entry_point_without_measurement,
         generic,
         with_consts,
-        iter
+        iter,
+        long_time
     ]
 );
 
@@ -210,7 +217,8 @@ library_benchmark_group!(
         disabled_entry_point_without_measurement,
         generic,
         with_consts,
-        iter
+        iter,
+        long_time
     ]
 );
 

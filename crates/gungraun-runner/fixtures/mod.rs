@@ -346,7 +346,7 @@ pub fn tool_command_f(
 pub fn tool_command_child_f(
     exe: &Path,
     args: Option<&[&str]>,
-    log_path: ToolOutputPath,
+    output_path: ToolOutputPath,
     tool: Option<Tool>,
     exit_with: Option<ExitWith>,
     stdout: Option<StdStdio>,
@@ -362,7 +362,7 @@ pub fn tool_command_child_f(
         child,
         path,
         exit_with,
-        log_path,
+        output_path,
         None,
     )
 }

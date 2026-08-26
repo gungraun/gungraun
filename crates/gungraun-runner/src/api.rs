@@ -1681,7 +1681,8 @@ pub struct PerfSpec {
     pub run_mode: Option<PerfRunMode>,
     /// The timeout used for sampled perf runs.
     ///
-    /// Setting this enables sampling mode for `perf stat`.
+    /// Setting this enables sampling mode for `perf stat`. The duration is only applied once at
+    /// least one sample has been recorded, guaranteeing at least one sample per run.
     pub sample_duration: Option<Duration>,
 }
 

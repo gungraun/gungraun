@@ -348,6 +348,14 @@ data:
         - perf.iter.two_to_four_2.out
         - summary.json
   - group: with_sampling
+    function: long_time
+    id: two
+    expected:
+      files:
+        - perf.long_time.two.log
+        - perf.long_time.two.out
+        - summary.json
+  - group: with_sampling
     function: with_consts
     id: one_thousand
     expected:
@@ -555,6 +563,14 @@ data:
       files:
         - perf.iter.two_to_four_2.log
         - perf.iter.two_to_four_2.out
+        - summary.json
+  - group: without_sampling
+    function: long_time
+    id: two
+    expected:
+      files:
+        - perf.long_time.two.log
+        - perf.long_time.two.out
         - summary.json
   - group: without_sampling
     function: with_consts

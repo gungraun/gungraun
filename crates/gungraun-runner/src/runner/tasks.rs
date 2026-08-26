@@ -206,9 +206,10 @@ impl ProcessChild {
     /// Waits for the child process to exit while polling [`std::process::Child::try_wait`].
     ///
     /// The method consumes the wrapped [`std::process::Child`] and repeatedly polls it until the
-    /// process exits. It sleeps for `poll_interval` between polls and, when `timeout` is set,
-    /// sends SIGTERM after the timeout elapses. If `force_shutdown` becomes set, it also sends
-    /// SIGTERM and returns [`Error::TaskInterrupt`] once the process stops.
+    /// process exits. It sleeps for `poll_interval` between polls and, when `timeout` is set, sends
+    /// SIGTERM after the timeout elapses and the optional `is_ready` predicate returns `true`. This
+    /// gates the timeout on readiness. If `force_shutdown` becomes set, it also sends SIGTERM and
+    /// returns [`Error::TaskInterrupt`] once the process stops.
     ///
     /// Shutdown follows a three-state machine: `Running` polls the child, `Term` waits up to
     /// 100 poll cycles after SIGTERM, and `Kill` sends SIGKILL via [`std::process::Child::kill`]
@@ -227,12 +228,16 @@ impl ProcessChild {
     /// - The process is interrupted by `force_shutdown` ([`Error::TaskInterrupt`])
     ///
     /// [`Error::TaskInterrupt`]: crate::error::Error::TaskInterrupt
-    pub fn wait(
+    pub fn wait<F>(
         self,
         force_shutdown: &Arc<AtomicBool>,
         poll_interval: Duration,
         timeout: Option<Duration>,
-    ) -> Result<Output> {
+        is_ready: Option<&F>,
+    ) -> Result<Output>
+    where
+        F: Fn() -> bool,
+    {
         let send_sigterm = |id: u32| -> Result<()> {
             let pid_t = i32::try_from(id)?;
             let pid = Pid::from_raw(pid_t);
@@ -265,7 +270,10 @@ impl ProcessChild {
                             run_state = ProcessState::Term;
                             interrupted = true;
                         }
-                        ProcessState::Running if timeout.is_some_and(|t| start.elapsed() >= t) => {
+                        ProcessState::Running
+                            if timeout.is_some_and(|t| start.elapsed() >= t)
+                                && is_ready.is_none_or(|is_ready| is_ready()) =>
+                        {
                             send_sigterm(child.id())?;
 
                             run_state = ProcessState::Term;
@@ -431,6 +439,9 @@ impl ProcessHandler {
     /// while periodically checking the shared `force_shutdown` flag. If shutdown is requested, the
     /// benchmark process is sent SIGTERM, followed by SIGKILL if it doesn't terminate gracefully.
     ///
+    /// If `timeout` is set, the benchmark process is stopped with SIGTERM once the timeout has
+    /// elapsed and the optional `is_ready` predicate returns `true`.
+    ///
     /// After the benchmark process exits, the exit status is validated against the configured
     /// expectations in [`ExitWith`] if present. Finally, if a setup assistant is still running,
     /// this method waits for it to complete and propagates any setup error.
@@ -454,30 +465,42 @@ impl ProcessHandler {
     ///
     /// [`ExitWith`]: crate::api::ExitWith
     /// [`Error::TaskInterrupt`]: crate::error::Error::TaskInterrupt
-    pub fn wait_or_shutdown(&mut self, timeout: Option<Duration>) -> Result<Output> {
+    pub fn wait_or_shutdown<F>(
+        &mut self,
+        timeout: Option<Duration>,
+        is_ready: &Option<F>,
+    ) -> Result<Output>
+    where
+        F: Fn() -> bool,
+    {
         let mut bench_child = self
             .bench
             .take()
             .expect("A benchmark should be started before waiting");
 
         debug!("Waiting for the {} child process", bench_child.tool);
-        let result = ProcessChild(
-            bench_child
-                .child
-                .take()
-                .expect("A child process should be present"),
-        )
-        .wait(&self.force_shutdown, self.poll_interval, timeout)
-        .with_context(|| "Trying to wait for the benchmark process to stop")
-        .and_then(|output| {
-            check_exit(
-                bench_child.tool,
-                &bench_child.executable,
-                output,
-                &bench_child.log_path,
-                bench_child.exit_with.as_ref(),
+        let child = bench_child
+            .child
+            .take()
+            .expect("A child process should be present");
+
+        let result = ProcessChild(child)
+            .wait(
+                &self.force_shutdown,
+                self.poll_interval,
+                timeout,
+                is_ready.as_ref(),
             )
-        });
+            .with_context(|| "Trying to wait for the benchmark process to stop")
+            .and_then(|output| {
+                check_exit(
+                    bench_child.tool,
+                    &bench_child.executable,
+                    output,
+                    &bench_child.output_path.to_log_output(),
+                    bench_child.exit_with.as_ref(),
+                )
+            });
 
         if let Some(Err(error)) = self.wait_for_setup() {
             return Err(error);
@@ -488,7 +511,12 @@ impl ProcessHandler {
 
     fn wait_for_assistant(&self, child: Child, id: &str) -> Result<()> {
         ProcessChild(child)
-            .wait(&self.force_shutdown, self.poll_interval, None)
+            .wait(
+                &self.force_shutdown,
+                self.poll_interval,
+                None,
+                None::<&fn() -> bool>,
+            )
             .with_context(|| format!("Trying to wait for the {id} process to stop"))
             .and_then(|output| {
                 let status = output.status;
@@ -762,6 +790,9 @@ impl<T: Send + 'static> Iterator for ThreadPool<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::Command;
+
     use rstest::rstest;
 
     use super::*;
@@ -770,6 +801,32 @@ mod tests {
     use crate::runner::common::ModulePath;
     use crate::runner::lib_bench::{self, LibBench};
     const DEFAULT_TARGET: &str = "x86_64-unknown-linux-gnu";
+
+    #[test]
+    fn test_process_child_wait_with_timeout_waits_for_readiness() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = temp_dir.path().join("perf.out");
+        let delayed_output_path = output_path.clone();
+        let output_thread = thread::spawn(move || {
+            sleep(Duration::from_millis(50));
+            std::fs::File::create(delayed_output_path).unwrap();
+        });
+        let child = Command::new("sleep").arg("1").spawn().unwrap();
+        let start = Instant::now();
+
+        let output = ProcessChild(child)
+            .wait(
+                &Arc::new(AtomicBool::new(false)),
+                Duration::from_millis(1),
+                Some(Duration::from_millis(10)),
+                Some(&|| output_path.exists()),
+            )
+            .unwrap();
+
+        output_thread.join().unwrap();
+        assert!(start.elapsed() >= Duration::from_millis(50));
+        assert_eq!(output.status.signal(), Some(signal::SIGTERM as i32));
+    }
 
     #[rstest]
     #[case::size_one_jobs_zero(1, 0)]

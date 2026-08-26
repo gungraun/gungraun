@@ -2648,6 +2648,10 @@ impl Perf {
     /// independent from the duration supplied to [`PerfRunMode::Calibrate`], which controls a
     /// separate calibration pass.
     ///
+    /// The duration is only applied once at least one sample has been recorded: a run is never
+    /// stopped before its first sample, so every run produces at least one sample, but it may
+    /// exceed the configured duration until the first sample is written.
+    ///
     /// If the sampling duration is long enough for multiple benchmark runs, the first run is
     /// discarded to mitigate cold-start effects. However, there is always at least one record
     /// kept. For example, if a benchmark run takes 1s and the sampling duration is 2s, two runs

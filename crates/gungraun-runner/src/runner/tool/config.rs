@@ -170,7 +170,9 @@ pub struct ToolConfig {
     ///
     /// For perf, this stores the `sample_duration` when sampling is enabled. It is cleared for
     /// paired record configs because the sample duration applies to the stat measurement, not the
-    /// record run.
+    /// record run. The duration is only applied once the perf output contains at least one
+    /// sample, so a sampled run always records at least one sample and may exceed the configured
+    /// duration until the first sample is written.
     ///
     /// Note this is a timeout that is expected to happen and not only a cap that might trigger.
     pub timeout: Option<Duration>,
@@ -1063,7 +1065,20 @@ impl ToolConfigs {
                     captured_output,
                     config.meta.args.tool_runner_dest.as_deref(),
                 )
-                .and_then(|()| process_handler.wait_or_shutdown(tool_config.timeout))?;
+                .and_then(|()| {
+                    // For sampled perf runs, gate the timeout on a non-empty output file: the
+                    // duration only applies after the first sample was written, ensuring there
+                    // is always at least one sample.
+                    let readiness_path = (tool_config.tool() == Tool::Perf
+                        && tool_config.timeout.is_some())
+                    .then(|| output_path.to_path());
+
+                    let is_ready = readiness_path.as_ref().map(|path| {
+                        move || std::fs::metadata(path).is_ok_and(|metadata| metadata.len() > 0)
+                    });
+
+                    process_handler.wait_or_shutdown(tool_config.timeout, &is_ready)
+                })?;
 
             if let ToolConfigOptions::Perf(options) = &tool_config.options
                 && matches!(

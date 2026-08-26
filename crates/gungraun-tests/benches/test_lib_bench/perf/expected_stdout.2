@@ -174,6 +174,13 @@ test_lib_bench_perf::without_sampling::iter two_to_four_2:(nth of 2 ..= 4)
   cpu-clock/u:                                            |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
+test_lib_bench_perf::without_sampling::long_time two:(Duration :: from_secs(3))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
 test_lib_bench_perf::with_sampling::event_sets default:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
@@ -474,6 +481,13 @@ test_lib_bench_perf::with_sampling::iter two_to_four_2:(nth of 2 ..= 4)
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
+test_lib_bench_perf::with_sampling::long_time two:(Duration :: from_secs(3))
+  ======= PERF ========================================================================================
+  >> alpha: 0.05000, min_pcnt_running: 100.000
+  task-clock/u:                                           |                     (        %) [        x]
+  cpu-clock/u:                                            |                     (        %) [        x]
+  faults/u:                                               |                     (        %) [        x]
+  context-switches/u:                                     |                     (        %) [        x]
 test_lib_bench_perf::record::event_sets default:(1000)
   ======= PERF ========================================================================================
   >> alpha: 0.05000, min_pcnt_running: 100.000
@@ -574,4 +588,4 @@ test_lib_bench_perf::record::disabled_entry_point_without_measurement
   ======= PERF ========================================================================================
   Empty data
 
-Gungraun result: Ok. 60 without regressions; 0 regressed; 0 filtered; 60 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 62 without regressions; 0 regressed; 0 filtered; 62 benchmarks finished in <__SECONDS__>s

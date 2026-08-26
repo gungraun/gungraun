@@ -371,7 +371,7 @@ fn test_start_bench_when_setup_not_parallel_with_error_then_no_bench_and_setup_e
 #[should_panic = "A benchmark should be started before waiting"]
 fn test_wait_or_shutdown_when_no_bench_then_panic() {
     let mut handler = process_handler_f().fx();
-    let _ = handler.wait_or_shutdown(None);
+    let _ = handler.wait_or_shutdown(None, &None::<fn() -> bool>);
 }
 
 #[rstest]
@@ -384,12 +384,11 @@ fn test_wait_or_shutdown_when_force_shutdown_is_false(#[case] has_setup: bool) {
         .exe(&ECHO_EXE)
         .args(&["foo"])
         .stdout(StdStdio::piped())
-        .log_path(
+        .output_path(
             tool_output_path_f()
                 .target_dir(test_dir.path())
                 .init(true)
-                .fx()
-                .to_log_output(),
+                .fx(),
         )
         .fx();
 
@@ -403,7 +402,7 @@ fn test_wait_or_shutdown_when_force_shutdown_is_false(#[case] has_setup: bool) {
     };
 
     let output = handler
-        .wait_or_shutdown(None)
+        .wait_or_shutdown(None, &None::<fn() -> bool>)
         .expect("Waiting for the benchmark process should succeed");
 
     assert!(handler.bench.is_none());
@@ -422,7 +421,7 @@ fn test_wait_or_shutdown_when_force_shutdown_is_true_then_interrupt(#[case] has_
     let tool_command_child = tool_command_child_f()
         .exe(&TIMEOUT_EXE)
         .args(&["5000"])
-        .log_path(
+        .output_path(
             tool_output_path_f()
                 .target_dir(test_dir.path())
                 .init(true)
@@ -448,7 +447,7 @@ fn test_wait_or_shutdown_when_force_shutdown_is_true_then_interrupt(#[case] has_
     let error = assert_not_elapsed!(
         Duration::from_millis(500),
         handler
-            .wait_or_shutdown(None)
+            .wait_or_shutdown(None, &None::<fn() -> bool>)
             .expect_err("An error should be present")
             .downcast::<Error>()
             .expect("The error should be a gungraun error")
@@ -470,7 +469,7 @@ fn test_wait_or_shutdown_when_error_in_setup_then_setup_error(#[case] exit_code:
     let tool_command_child = tool_command_child_f()
         .exe(&EXIT_WITH_EXE)
         .args(&[&exit_code.to_string()])
-        .log_path(
+        .output_path(
             tool_output_path_f()
                 .target_dir(test_dir.path())
                 .init(true)
@@ -490,7 +489,7 @@ fn test_wait_or_shutdown_when_error_in_setup_then_setup_error(#[case] exit_code:
         .fx();
 
     let result = handler
-        .wait_or_shutdown(None)
+        .wait_or_shutdown(None, &None::<fn() -> bool>)
         .expect_err("An error should be present")
         .downcast::<Error>()
         .expect("The error should be a gungraun error");
@@ -525,7 +524,7 @@ fn test_wait_or_shutdown_when_exit_with(#[case] exit_with_code: i32) {
         .exe(&EXIT_WITH_EXE)
         .args(&[&exit_with_code.to_string()])
         .exit_with(exit_with)
-        .log_path(
+        .output_path(
             tool_output_path_f()
                 .target_dir(test_dir.path())
                 .init(true)
@@ -537,7 +536,7 @@ fn test_wait_or_shutdown_when_exit_with(#[case] exit_with_code: i32) {
     let mut handler = process_handler_f().bench(tool_command_child).fx();
 
     let output = handler
-        .wait_or_shutdown(None)
+        .wait_or_shutdown(None, &None::<fn() -> bool>)
         .expect("Waiting for the benchmark to exit with the expected code should succeed");
 
     assert!(handler.bench.is_none());
@@ -561,7 +560,7 @@ fn test_wait_or_shutdown_when_exit_with_no_match_then_error() {
         .exe(&EXIT_WITH_EXE)
         .args(&[&actual_exit_code.to_string()])
         .exit_with(ExitWith::Code(222))
-        .log_path(
+        .output_path(
             tool_output_path_f()
                 .target_dir(test_dir.path())
                 .init(true)
@@ -573,7 +572,7 @@ fn test_wait_or_shutdown_when_exit_with_no_match_then_error() {
     let mut handler = process_handler_f().bench(tool_command_child).fx();
 
     let error = handler
-        .wait_or_shutdown(None)
+        .wait_or_shutdown(None, &None::<fn() -> bool>)
         .expect_err(
             "There should be an error if the actual exit code does not match the `ExitWith` code",
         )

@@ -1634,7 +1634,6 @@ pub struct OutputFormat {
 /// Identifies a perf metric by the event name emitted in the parsed summary.
 ///
 /// Perf metrics are far too numerous to use an enum as usual with each event being a variant.
-#[expect(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct PerfMetric(pub String);
@@ -2583,27 +2582,9 @@ impl PerfMetric {
     }
 
     /// Return a display-oriented copy of this perf metric name.
-    ///
-    /// Perf metric names may use `:` as an internal separator and can end with trailing separators.
-    /// This replaces `:` with `/` and trims trailing `/` characters for terminal output.
+    #[cfg(feature = "runner")]
     pub fn display(&self) -> Self {
-        let mut display = self.0.clone();
-
-        // SAFETY: `:` and `/` are both single ASCII bytes. Replacing `:` with `/` preserves the
-        // string's length and UTF-8 validity, since ASCII bytes are valid single-byte UTF-8 code
-        // units.
-        let bytes = unsafe { display.as_bytes_mut() };
-        for b in bytes.iter_mut() {
-            if *b == b':' {
-                *b = b'/';
-            }
-        }
-
-        if let Some(new_len) = display.bytes().rposition(|b| b != b'/').map(|i| i + 1) {
-            display.truncate(new_len);
-        }
-
-        Self(display)
+        Self(crate::runner::perf::pattern::normalize(&self.0))
     }
 }
 
@@ -3243,6 +3224,15 @@ mod tests {
     use crate::fixtures::api::dhat_spec_f;
     use crate::fixtures::perf::perf_spec_f;
     use crate::fixtures::tool_spec_f;
+
+    #[cfg(feature = "runner")]
+    #[test]
+    fn test_perf_metric_display_normalizes_separators() {
+        assert_eq!(
+            PerfMetric::from("task-clock:").display().name(),
+            "task-clock"
+        );
+    }
 
     #[rstest]
     #[case::default("d:d:000000", Some(BenchRunMode::Default))]

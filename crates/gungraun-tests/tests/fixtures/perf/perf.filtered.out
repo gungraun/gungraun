@@ -1,2 +1,2 @@
-{"event":"event_filtered_01","counter-value":"0.000000","unit":"count","pcnt-running":25.0}
+{"event":"event_filtered:01","counter-value":"0.000000","unit":"count","pcnt-running":25.0}
 {"event":"event_filtered_02","counter-value":"100.000000","unit":"count","pcnt-running":25.0}

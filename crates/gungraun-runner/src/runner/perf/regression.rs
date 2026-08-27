@@ -35,10 +35,10 @@
 use either_or_both::EitherOrBoth;
 use indexmap::IndexMap;
 use log::{info, warn};
-use simplematch::{DoWild, Options};
 
 use crate::api::{self, PerfMetric};
 use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
+use crate::runner::perf::pattern;
 use crate::runner::tool::config::resolve_perf_alpha;
 use crate::runner::tool::regression::{
     DEFAULT_REGRESSION_FAIL_FAST, RegressionConfig, RegressionMetrics,
@@ -46,11 +46,6 @@ use crate::runner::tool::regression::{
 use crate::stats::runner::DiffStats;
 use crate::summary::model::ToolRegression;
 use crate::units::Unit;
-
-const DOWILD_OPTIONS: Options<u8> = Options::new()
-    .case_insensitive(true)
-    .enable_escape(true)
-    .enable_classes(true);
 
 /// The perf regression check configuration
 #[derive(Debug, Clone, PartialEq)]
@@ -89,7 +84,7 @@ impl PerfRegressionConfig {
             metrics_summary
                 .all_diffs()
                 .filter_map(move |(metric, metrics_diff)| {
-                    if !pattern.name().dowild_with(metric.name(), DOWILD_OPTIONS) {
+                    if !pattern::matches(pattern.name(), metric.name()) {
                         return None;
                     }
 
@@ -147,7 +142,7 @@ impl PerfRegressionConfig {
                 metrics_summary
                     .all_diffs()
                     .filter_map(move |(metric, metrics_diff)| {
-                        if !pattern.name().dowild_with(metric.name(), DOWILD_OPTIONS) {
+                        if !pattern::matches(pattern.name(), metric.name()) {
                             return None;
                         }
 
@@ -516,5 +511,22 @@ mod tests {
         };
 
         assert_eq!(unit, Some(&Unit::Milliseconds));
+    }
+
+    #[test]
+    fn test_soft_limit_matches_slash_pattern_to_colon_metric() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![(PerfMetric("task-clock/u".to_owned()), 50.0)],
+            hard_limits: vec![],
+        };
+        let summary = perf_summary(
+            "task-clock:u",
+            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
+            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
+        );
+
+        assert_eq!(config.check(&summary).len(), 1);
     }
 }

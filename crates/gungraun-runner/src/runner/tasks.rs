@@ -806,25 +806,29 @@ mod tests {
     fn test_process_child_wait_with_timeout_waits_for_readiness() {
         let temp_dir = tempfile::tempdir().unwrap();
         let output_path = temp_dir.path().join("perf.out");
+
         let delayed_output_path = output_path.clone();
+
+        let start = Instant::now();
         let output_thread = thread::spawn(move || {
-            sleep(Duration::from_millis(50));
+            sleep(Duration::from_millis(500));
             std::fs::File::create(delayed_output_path).unwrap();
         });
+
         let child = Command::new("sleep").arg("1").spawn().unwrap();
-        let start = Instant::now();
 
         let output = ProcessChild(child)
             .wait(
                 &Arc::new(AtomicBool::new(false)),
-                Duration::from_millis(1),
-                Some(Duration::from_millis(10)),
+                Duration::from_millis(10),
+                Some(Duration::from_millis(50)),
                 Some(&|| output_path.exists()),
             )
             .unwrap();
 
         output_thread.join().unwrap();
-        assert!(start.elapsed() >= Duration::from_millis(50));
+
+        assert!(start.elapsed() >= Duration::from_millis(500));
         assert_eq!(output.status.signal(), Some(signal::SIGTERM as i32));
     }
 

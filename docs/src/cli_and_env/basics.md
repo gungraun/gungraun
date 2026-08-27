@@ -678,8 +678,7 @@ Options:
             * exp-bbv
             * perf
 
-          The selected tool must be supported on the benchmark target. A target-supported tool must
-          still be available in the execution environment when the benchmark runs.
+          The selected tool must be supported on the benchmark target.
 
           This argument matches the tool case-insensitive. Note that using Cachegrind with this
           option to benchmark library functions needs adjustments to the benchmarking functions with
@@ -712,7 +711,10 @@ Options:
           The tools specified here take precedence over the tools in the benchmarks. The supported
           tools which are allowed here are the same as the ones listed in the documentation of
           --default-tool.
-          Target-unsupported tools are omitted from a benchmark's resolved tool configurations.
+
+          Target-unsupported tools are omitted from a benchmark's resolved tool configurations. For
+          example if `perf` is not available on the target then `perf` benchmarks are ignored. All
+          Valgrind benchmarks are executed as usual.
 
           Examples
             * --tools dhat
@@ -1045,9 +1047,12 @@ Options:
           such as `ms`, `s`, `B`, or `Hz` is a hard limit. Combine soft and hard limits for one
           pattern with `|`.
 
+          In perf metric patterns, `:` and `/` are interchangeable.
+
           Examples:
             * --perf-limits='*instructions*=5%'
             * --perf-limits='*instructions*=5%|1000000,task-clock*=40%|2.5ms'
+            * --perf-limits='task-clock/u=5%' or --perf-limits='task-clock:u=5%'
 
           [env: GUNGRAUN_PERF_LIMITS=]
 

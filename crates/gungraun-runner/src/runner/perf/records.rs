@@ -8,15 +8,13 @@ use std::path::Path;
 use anyhow::Result;
 use approx::abs_diff_eq;
 use log::trace;
-use simplematch::{DoWild, Options};
 
 use crate::api::{PerfMetric, Unit};
 use crate::metrics::logic::MetricValue as _;
 use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
 use crate::runner::perf::model::PerfStatRecord;
+use crate::runner::perf::pattern;
 use crate::stats::runner::{OnlineStatsMap, Stats};
-
-const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
 
 struct MetricsParser {
     first: Option<(PerfMetric, bool)>,
@@ -279,7 +277,7 @@ impl MetricsParser {
         if float == 0.0
             && non_zero_metrics
                 .iter()
-                .any(|n| n.as_str().dowild_with(key.name(), DOWILD_OPTIONS))
+                .any(|n| pattern::matches(n, key.name()))
         {
             trace!(
                 "Found invalid perf measurement '{}': '{float}' == 0.0",

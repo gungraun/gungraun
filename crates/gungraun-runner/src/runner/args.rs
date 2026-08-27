@@ -504,6 +504,8 @@ pub struct CommandLineArgs {
     ///   * exp-bbv
     ///   * perf
     ///
+    /// The selected tool must be supported on the benchmark target.
+    ///
     /// This argument matches the tool case-insensitive. Note that using Cachegrind with this
     /// option to benchmark library functions needs adjustments to the benchmarking functions with
     /// client-requests to measure the counts correctly. If you want to switch permanently to
@@ -1131,9 +1133,12 @@ pub struct CommandLineArgs {
     /// such as `ms`, `s`, `B`, or `Hz` is a hard limit. Combine soft and hard limits for one
     /// pattern with `|`.
     ///
+    /// In perf metric patterns, `:` and `/` are interchangeable.
+    ///
     /// Examples:
     ///   * --perf-limits='*instructions*=5%'
     ///   * --perf-limits='*instructions*=5%|1000000,task-clock*=40%|2.5ms'
+    ///   * --perf-limits='task-clock/u=5%' or --perf-limits='task-clock:u=5%'
     #[arg(
         display_order = 600,
         env = "GUNGRAUN_PERF_LIMITS",
@@ -1574,6 +1579,10 @@ pub struct CommandLineArgs {
     /// The tools specified here take precedence over the tools in the benchmarks. The supported
     /// tools which are allowed here are the same as the ones listed in the documentation of
     /// --default-tool.
+    ///
+    /// Target-unsupported tools are omitted from a benchmark's resolved tool configurations. For
+    /// example if `perf` is not available on the target then `perf` benchmarks are ignored. All
+    /// Valgrind benchmarks are executed as usual.
     ///
     /// Examples
     ///   * --tools dhat

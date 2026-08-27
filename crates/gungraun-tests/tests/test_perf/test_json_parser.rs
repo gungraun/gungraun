@@ -459,7 +459,7 @@ fn test_perf_filtered_empty_non_zero() {
     let (temp_dir, output_path) = copy_perf_fixtures("filtered");
     let parser = json_parser_f()
         .min_pcnt_running(0.0)
-        .non_zero_metrics(["event_filtered_01"])
+        .non_zero_metrics(["event_filtered/01"])
         .output_path(output_path.clone())
         .fx();
 

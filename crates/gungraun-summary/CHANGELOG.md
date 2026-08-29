@@ -10,6 +10,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Support parsing version 7 summaries through the new `v7` module and the
+  version-aware parsing helpers.
+- Freeze the version 6 data model from the `gungraun-summary-v6.0.0` release, so
+  future runner model changes cannot alter version 6 decoding.
+
+### Changed
+
+- Generate schemas for either supported summary version through the schemagen
+  binary.
+
 ## [6.0.0] - 2026-06-27
 
 The major version of `gungraun-summary` tracks the latest Gungraun summary

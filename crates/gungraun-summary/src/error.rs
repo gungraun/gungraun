@@ -14,6 +14,9 @@ pub enum Error {
     /// Parsing failed because the summary declares a schema version this crate does not support.
     #[error("failed parsing summary: unsupported version '{0}'")]
     UnsupportedVersion(String),
+    /// Parsing of a command-line argument failed.
+    #[error("error parsing command line argument {0}: {1}")]
+    CliArgument(String, String),
 }
 
 /// Convenience alias for results returned by this crate.

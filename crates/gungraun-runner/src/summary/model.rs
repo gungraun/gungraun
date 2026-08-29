@@ -65,8 +65,9 @@ pub enum SummaryFormat {
 /// [`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained
 /// [`MetricsSummary`] is keyed by the metric enum used by that tool.
 ///
-/// The [`ToolMetricSummary::ErrorTool`] variant is used by Memcheck, Helgrind and DRD. Massif and
-/// BBV are special cases because they do not have a metrics summary and therefore use the
+/// The [`ToolMetricSummary::Memcheck`], [`ToolMetricSummary::Helgrind`], and
+/// [`ToolMetricSummary::DRD`] variants contain the corresponding error metrics. Massif and BBV are
+/// special cases because they do not have a metrics summary and therefore use the
 /// [`ToolMetricSummary::None`] variant.
 ///
 /// # Examples
@@ -110,8 +111,12 @@ pub enum ToolMetricSummary {
     /// If there are no metrics extracted (currently Massif, BBV)
     #[default]
     None,
-    /// The summary of tools which report errors (Memcheck, Helgrind, DRD) ([`ErrorMetric`])
-    ErrorTool(MetricsSummary<ErrorMetric>),
+    /// The [`ErrorMetric`] summary for Memcheck.
+    Memcheck(MetricsSummary<ErrorMetric>),
+    /// The [`ErrorMetric`] summary for Helgrind.
+    Helgrind(MetricsSummary<ErrorMetric>),
+    /// The [`ErrorMetric`] summary for DRD.
+    DRD(MetricsSummary<ErrorMetric>),
     /// The metric summary of [`DhatMetric`]s
     Dhat(MetricsSummary<DhatMetric>),
     /// The Callgrind summary of [`EventKind`]
@@ -140,8 +145,12 @@ pub enum ToolMetrics {
     None,
     /// The metrics of a dhat benchmark
     Dhat(Metrics<DhatMetric>),
-    /// The metrics of a tool run which reports errors (Memcheck, Helgrind, DRD)
-    ErrorTool(Metrics<ErrorMetric>),
+    /// The error metrics from a Memcheck run.
+    Memcheck(Metrics<ErrorMetric>),
+    /// The error metrics from a Helgrind run.
+    Helgrind(Metrics<ErrorMetric>),
+    /// The error metrics from a DRD run.
+    DRD(Metrics<ErrorMetric>),
     /// The metrics of a Callgrind benchmark
     Callgrind(Metrics<EventKind>),
     /// The metrics of a Cachegrind benchmark

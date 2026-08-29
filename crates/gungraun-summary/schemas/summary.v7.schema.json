@@ -1237,7 +1237,7 @@
       ]
     },
     "ToolMetricSummary": {
-      "description": "A [`Tool`] metric data summary.\n\nEach variant contains all metric data including the differences to the old or a\n[`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained\n[`MetricsSummary`] is keyed by the metric enum used by that tool.\n\nThe [`ToolMetricSummary::ErrorTool`] variant is used by Memcheck, Helgrind and DRD. Massif and\nBBV are special cases because they do not have a metrics summary and therefore use the\n[`ToolMetricSummary::None`] variant.\n\n# Examples\n\nThis is the summary of a Callgrind run which had only [`EventKind::Ir`] (instruction counts)\nmeasurement activated. Since there is a [`Diffs`] present, there was an old run and a new run\nwhich were compared with each other. Per convention the new run is on the left side of an\n[`EitherOrBoth::Both`] or [`EitherOrBoth::Left`] and the old run on the right side or a\n[`EitherOrBoth::Right`].\n\n```rust\nuse either_or_both::EitherOrBoth;\nuse gungraun_runner::api::EventKind;\nuse gungraun_runner::metrics::model::{Metric, MetricsDiff, MetricsSummary};\nuse gungraun_runner::summary::model::{Diffs, ToolMetricSummary};\nuse indexmap::IndexMap;\n\nlet callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(\n    EventKind::Ir,\n    MetricsDiff {\n        diffs: Some(Diffs {\n            diff_pct: -50.0,\n            factor: -2.0,\n        }),\n        metrics: EitherOrBoth::Both(Metric::Int(1), Metric::Int(2)),\n    },\n)])));\n\nmatch callgrind_summary {\n    ToolMetricSummary::Callgrind(metrics) => {\n        assert!(metrics.0.contains_key(&EventKind::Ir));\n    }\n    _ => {}\n}\n```\n\n[`Tool`]: crate::api::Tool",
+      "description": "A [`Tool`] metric data summary.\n\nEach variant contains all metric data including the differences to the old or a\n[`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained\n[`MetricsSummary`] is keyed by the metric enum used by that tool.\n\nThe [`ToolMetricSummary::Memcheck`], [`ToolMetricSummary::Helgrind`], and\n[`ToolMetricSummary::DRD`] variants contain the corresponding error metrics. Massif and BBV are\nspecial cases because they do not have a metrics summary and therefore use the\n[`ToolMetricSummary::None`] variant.\n\n# Examples\n\nThis is the summary of a Callgrind run which had only [`EventKind::Ir`] (instruction counts)\nmeasurement activated. Since there is a [`Diffs`] present, there was an old run and a new run\nwhich were compared with each other. Per convention the new run is on the left side of an\n[`EitherOrBoth::Both`] or [`EitherOrBoth::Left`] and the old run on the right side or a\n[`EitherOrBoth::Right`].\n\n```rust\nuse either_or_both::EitherOrBoth;\nuse gungraun_runner::api::EventKind;\nuse gungraun_runner::metrics::model::{Metric, MetricsDiff, MetricsSummary};\nuse gungraun_runner::summary::model::{Diffs, ToolMetricSummary};\nuse indexmap::IndexMap;\n\nlet callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(\n    EventKind::Ir,\n    MetricsDiff {\n        diffs: Some(Diffs {\n            diff_pct: -50.0,\n            factor: -2.0,\n        }),\n        metrics: EitherOrBoth::Both(Metric::Int(1), Metric::Int(2)),\n    },\n)])));\n\nmatch callgrind_summary {\n    ToolMetricSummary::Callgrind(metrics) => {\n        assert!(metrics.0.contains_key(&EventKind::Ir));\n    }\n    _ => {}\n}\n```\n\n[`Tool`]: crate::api::Tool",
       "oneOf": [
         {
           "description": "If there are no metrics extracted (currently Massif, BBV)",
@@ -1245,15 +1245,37 @@
           "const": "None"
         },
         {
-          "description": "The summary of tools which report errors (Memcheck, Helgrind, DRD) ([`ErrorMetric`])",
+          "description": "The [`ErrorMetric`] summary for Memcheck.",
           "type": "object",
           "properties": {
-            "ErrorTool": {
+            "Memcheck": {
               "$ref": "#/definitions/MetricsSummary"
             }
           },
           "additionalProperties": false,
-          "required": ["ErrorTool"]
+          "required": ["Memcheck"]
+        },
+        {
+          "description": "The [`ErrorMetric`] summary for Helgrind.",
+          "type": "object",
+          "properties": {
+            "Helgrind": {
+              "$ref": "#/definitions/MetricsSummary"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Helgrind"]
+        },
+        {
+          "description": "The [`ErrorMetric`] summary for DRD.",
+          "type": "object",
+          "properties": {
+            "DRD": {
+              "$ref": "#/definitions/MetricsSummary"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["DRD"]
         },
         {
           "description": "The metric summary of [`DhatMetric`]s",

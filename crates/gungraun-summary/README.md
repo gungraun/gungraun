@@ -10,7 +10,7 @@
     |
     <a href="https://docs.rs/crate/gungraun-summary/">API Docs</a>
     |
-    <a href="https://github.com/gungraun/gungraun/blob/main/gungraun-summary/CHANGELOG.md">Changelog</a>
+    <a href="https://github.com/gungraun/gungraun/blob/main/crates/gungraun-summary/CHANGELOG.md">Changelog</a>
 </div>
 <div align="center">
     <a href="https://github.com/gungraun/gungraun/actions/workflows/cicd.yml" style="text-decoration:none">
@@ -36,7 +36,7 @@ hand or generating Rust types from a schema as a separate step.
 
 - Versioned summary types for supported Gungraun summary schemas
 - Version-aware parsing helpers in [`util`][util]
-- Version-specific parsing helpers in modules such as [`v6`][v6]
+- Version-specific parsing helpers in [`v6`] and [`v7`]
 - Re-exports of helper crates used by the public data model
 
 ## Quickstart
@@ -53,21 +53,25 @@ match parse(Path::new("target/summary.json")).unwrap() {
     SummaryByVersion::V6(summary) => {
         println!("{}", summary.function_name);
     }
-    _ => unreachable!("no other summary versions are currently supported"),
+    SummaryByVersion::V7(summary) => {
+        println!("{}", summary.function_name);
+    }
+    other => eprintln!("unsupported summary: {other:?}"),
 }
 ```
 
-If you already know the summary schema version, use a versioned module such as
-[`gungraun_summary::v6`][v6] and call `v6::parse` directly.
+If you already know the summary schema version, use the corresponding versioned
+module, such as [`v6`] or [`v7`], and call its `parse` function directly.
 
 ## Versioning
 
 The major version of `gungraun-summary` tracks the latest Gungraun summary
 schema version supported by this crate.
 
-At the moment, this crate provides support for summary schema version `v6`.
-Future major versions may continue to include older version modules for
-backwards-compatibility while adding support for newer summary formats.
+This crate supports summary schema versions `v6` and `v7`. The `v6` module is a
+frozen snapshot of the version 6 data model, while `v7` follows the current
+runner data model. Future major versions may retain older version modules for
+backwards compatibility while adding support for newer summary formats.
 
 ## More information
 
@@ -82,3 +86,4 @@ backwards-compatibility while adding support for newer summary formats.
 [gungraun-issue]: https://github.com/gungraun/gungraun/issues
 [util]: https://docs.rs/gungraun-summary/latest/gungraun_summary/util/
 [v6]: https://docs.rs/gungraun-summary/latest/gungraun_summary/v6/
+[v7]: https://docs.rs/gungraun-summary/latest/gungraun_summary/v7/

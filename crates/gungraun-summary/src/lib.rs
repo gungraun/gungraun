@@ -7,9 +7,8 @@
 //!
 //! Its main purpose is to let consumers work with strongly typed Rust values directly, without
 //! having to traverse `serde_json::Value` by hand or go through an external schema-to-code
-//! generation step. Each version module like [`v6`] and any future version modules `v7`, ... will
-//! be completely self-contained, so all structures required to decode and work with version 6 can
-//! be found in [`v6`].
+//! generation step. Each version module, [`v6`] and [`v7`], is self-contained: all structures
+//! required to decode and work with a supported summary version are available from its module.
 //!
 //! In addition to the types themselves, this crate also provides convenience parsers for loading
 //! summaries from files or byte slices.
@@ -35,20 +34,19 @@
 //!
 //! # Structural details
 //!
-//! This crate contains the summary version 6 structures in the [`v6`] module. Earlier versions are
-//! currently not supported, hence no `v5` module. The summary version v6 is used since the
-//! Iai-callgrind/Gungraun version `v0.16.0` which should be old enough to reach most users. If you
-//! need support for an older version, feel free to open an [issue][gungraun-issue] in the
-//! [Gungraun][gungraun-github] repository. I usually would recommend updating to a recent Gungraun
-//! version which supports [`v6`].
+//! This crate contains a frozen version 6 data model in [`v6`] and the current version 7 data model
+//! in [`v7`]. Earlier versions are currently not supported, hence no `v5` module. Version 6 has
+//! been emitted since Iai-callgrind/Gungraun `v0.16.0`, so it should cover most existing summaries.
+//! If you need support for an older version, please open an [issue][gungraun-issue] in the
+//! [Gungraun][gungraun-github] repository. Otherwise, update to a recent Gungraun version that
+//! supports [`v7`].
 //!
 //! There are two convenience entrypoints, depending on whether the summary schema version is known
 //! ahead of time:
 //!
 //! - Use [`util`] for version-aware parsing. It probes the summary's `version` field and dispatches
 //!   to the matching parser.
-//! - Use a versioned module such as [`v6`] when the input is already known to match a specific
-//!   schema version.
+//! - Use [`v6`] or [`v7`] when the input is already known to match that schema version.
 //!
 //! # Examples
 //!
@@ -63,7 +61,10 @@
 //!     SummaryByVersion::V6(summary) => {
 //!         println!("{}", summary.function_name);
 //!     }
-//!     _ => unreachable!("no other summary versions are currently supported"),
+//!     SummaryByVersion::V7(summary) => {
+//!         println!("{}", summary.function_name);
+//!     }
+//!     other => eprintln!("unsupported summary: {other:?}"),
 //! }
 //! ```
 //!
@@ -72,7 +73,7 @@
 //! ```no_run
 //! use std::path::Path;
 //!
-//! let summary = gungraun_summary::v6::parse(Path::new("target/summary.json")).unwrap();
+//! let summary = gungraun_summary::v7::parse(Path::new("target/summary.json")).unwrap();
 //! println!("{}", summary.function_name);
 //! ```
 //!
@@ -87,6 +88,7 @@
 pub mod error;
 pub mod util;
 pub mod v6;
+pub mod v7;
 
 pub use either_or_both;
 pub use indexmap;

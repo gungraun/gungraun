@@ -1,23 +1,25 @@
 //! Version 6 Gungraun summary types and parsing helpers.
 //!
-//! This module re-exports the version 6 summary model and provides parsing helpers that assume the
-//! input already matches schema version 6.
+//! This module is a self-contained snapshot of the version 6 summary model: the version 6
+//! summary-model types live in the local [`model`] module (re-exported here), including the
+//! `ErrorTool` enum variants used by Memcheck, Helgrind and DRD. Unchanged shared types are
+//! re-exported from `gungraun-runner`. The parsing helpers assume the input already matches
+//! schema version 6.
+
+mod model;
 
 use std::fs;
 use std::path::Path;
 
-pub use gungraun_runner::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, Tool};
-pub use gungraun_runner::metrics::model::{Metric, MetricKind, MetricsDiff, MetricsSummary};
-pub use gungraun_runner::summary::model::{
-    BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData, ProfileInfo,
-    ProfilePart, ProfileTotal, Profiles, SummaryFormat, SummaryOutput, ToolMetricSummary,
-    ToolRegression,
+pub use gungraun_runner::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
+pub use gungraun_runner::metrics::model::Metric;
+pub use model::{
+    BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, MetricKind, MetricsDiff,
+    MetricsSummary, Profile, ProfileData, ProfileInfo, ProfilePart, ProfileTotal, Profiles,
+    SCHEMA_VERSION, SummaryFormat, SummaryOutput, ToolMetricSummary, ToolRegression, ValgrindTool,
 };
 
 use crate::error::{Error, Result};
-
-/// The version string stored in version summary JSON files.
-pub const SCHEMA_VERSION: &str = "6";
 
 /// Parse a version 6 summary JSON file.
 ///

@@ -17,7 +17,7 @@ use serde_json::Value;
 
 use crate::api::{ErrorMetric, EventKind, Tool};
 use crate::error::Error;
-use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
+use crate::metrics::model::{Metric, MetricKind, Metrics, MetricsSummary};
 use crate::runner::args::NoCapture;
 use crate::runner::common::{
     Baselines, CapturedOutput, Config, ModulePath, PerfOutputConfig, PostProcessingConfig,
@@ -313,10 +313,11 @@ impl ProfileData {
     {
         match tool.into() {
             Some(tool) => !self.parts.iter().all(|p| match (tool, &p.metrics_summary) {
-                (
-                    Tool::Helgrind | Tool::DRD | Tool::Memcheck,
-                    ToolMetricSummary::ErrorTool(metrics_summary),
-                ) => metrics_summary.is_empty(),
+                (Tool::Memcheck, ToolMetricSummary::Memcheck(metrics_summary))
+                | (Tool::Helgrind, ToolMetricSummary::Helgrind(metrics_summary))
+                | (Tool::DRD, ToolMetricSummary::DRD(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
                 (Tool::DHAT, ToolMetricSummary::Dhat(metrics_summary)) => {
                     metrics_summary.is_empty()
                 }
@@ -330,7 +331,10 @@ impl ProfileData {
                     metrics_summary.is_empty()
                 }
                 (Tool::Massif | Tool::BBV, ToolMetricSummary::None) => true,
-                (..) => unreachable!(),
+                (..) => {
+                    debug_assert!(false, "tool and metric summary variants must match");
+                    false
+                }
             }),
             None => !self.parts.iter().all(|p| p.metrics_summary.is_empty()),
         }
@@ -434,7 +438,9 @@ impl ProfileData {
             // Perf currently has no synthetic total summary; only per-part summaries are kept.
             ToolMetrics::None | ToolMetrics::Perf(_) => ToolMetricSummary::None,
             ToolMetrics::Dhat(_) => ToolMetricSummary::Dhat(MetricsSummary::default()),
-            ToolMetrics::ErrorTool(_) => ToolMetricSummary::ErrorTool(MetricsSummary::default()),
+            ToolMetrics::Memcheck(_) => ToolMetricSummary::Memcheck(MetricsSummary::default()),
+            ToolMetrics::Helgrind(_) => ToolMetricSummary::Helgrind(MetricsSummary::default()),
+            ToolMetrics::DRD(_) => ToolMetricSummary::DRD(MetricsSummary::default()),
             ToolMetrics::Callgrind(_) => ToolMetricSummary::Callgrind(MetricsSummary::default()),
             ToolMetrics::Cachegrind(_) => ToolMetricSummary::Cachegrind(MetricsSummary::default()),
         };
@@ -533,7 +539,9 @@ impl ProfilePart {
             | ToolMetricSummary::Cachegrind(_)
             | ToolMetricSummary::Callgrind(_)
             | ToolMetricSummary::Perf(_) => false,
-            ToolMetricSummary::ErrorTool(metrics) => metrics
+            ToolMetricSummary::Memcheck(metrics)
+            | ToolMetricSummary::Helgrind(metrics)
+            | ToolMetricSummary::DRD(metrics) => metrics
                 .diff_by_kind(&ErrorMetric::Errors)
                 .is_some_and(|e| e.metrics.has_left_and(|new| new > Metric::Int(0))),
         }
@@ -670,6 +678,18 @@ impl SummaryOutput {
     }
 }
 
+impl ToolMetrics {
+    /// Associates `metrics` with the error-reporting `tool` that produced them.
+    pub fn from_error_metric(tool: Tool, metrics: Metrics<ErrorMetric>) -> Self {
+        match tool {
+            Tool::Memcheck => Self::Memcheck(metrics),
+            Tool::Helgrind => Self::Helgrind(metrics),
+            Tool::DRD => Self::DRD(metrics),
+            _ => unreachable!("{tool} does not report error metrics"),
+        }
+    }
+}
+
 impl ToolMetricSummary {
     /// Returns `true` if this summary is a typed variant with no metric diffs present.
     ///
@@ -677,7 +697,9 @@ impl ToolMetricSummary {
     pub fn is_empty(&self) -> bool {
         match self {
             Self::None => false,
-            Self::ErrorTool(summary) => summary.is_empty(),
+            Self::Memcheck(summary) | Self::Helgrind(summary) | Self::DRD(summary) => {
+                summary.is_empty()
+            }
             Self::Dhat(summary) => summary.is_empty(),
             Self::Callgrind(summary) => summary.is_empty(),
             Self::Cachegrind(summary) => summary.is_empty(),
@@ -688,7 +710,9 @@ impl ToolMetricSummary {
     /// Sum up another summary metrics to these metrics
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
-            (Self::ErrorTool(this), Self::ErrorTool(other)) => {
+            (Self::Memcheck(this), Self::Memcheck(other))
+            | (Self::Helgrind(this), Self::Helgrind(other))
+            | (Self::DRD(this), Self::DRD(other)) => {
                 this.add(other);
             }
             (Self::Dhat(this), Self::Dhat(other)) => {
@@ -714,8 +738,14 @@ impl ToolMetricSummary {
             ToolMetrics::Dhat(metrics) => {
                 Self::Dhat(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => {
-                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            ToolMetrics::Memcheck(metrics) => {
+                Self::Memcheck(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
+            ToolMetrics::Helgrind(metrics) => {
+                Self::Helgrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
+            ToolMetrics::DRD(metrics) => {
+                Self::DRD(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
             ToolMetrics::Callgrind(metrics) => {
                 Self::Callgrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
@@ -736,8 +766,14 @@ impl ToolMetricSummary {
             ToolMetrics::Dhat(metrics) => {
                 Self::Dhat(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => {
-                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            ToolMetrics::Memcheck(metrics) => {
+                Self::Memcheck(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::Helgrind(metrics) => {
+                Self::Helgrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::DRD(metrics) => {
+                Self::DRD(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
             }
             ToolMetrics::Callgrind(metrics) => {
                 Self::Callgrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
@@ -764,12 +800,21 @@ impl ToolMetricSummary {
             (ToolMetrics::Dhat(new_metrics), ToolMetrics::Dhat(old_metrics)) => Ok(Self::Dhat(
                 MetricsSummary::new(EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone())),
             )),
-            (ToolMetrics::ErrorTool(new_metrics), ToolMetrics::ErrorTool(old_metrics)) => {
-                Ok(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+            (ToolMetrics::Memcheck(new_metrics), ToolMetrics::Memcheck(old_metrics)) => {
+                Ok(Self::Memcheck(MetricsSummary::new(EitherOrBoth::Both(
                     new_metrics.clone(),
                     old_metrics.clone(),
                 ))))
             }
+            (ToolMetrics::Helgrind(new_metrics), ToolMetrics::Helgrind(old_metrics)) => {
+                Ok(Self::Helgrind(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
+            }
+            (ToolMetrics::DRD(new_metrics), ToolMetrics::DRD(old_metrics)) => Ok(Self::DRD(
+                MetricsSummary::new(EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone())),
+            )),
             (ToolMetrics::Callgrind(new_metrics), ToolMetrics::Callgrind(old_metrics)) => {
                 Ok(Self::Callgrind(MetricsSummary::new(EitherOrBoth::Both(
                     new_metrics.clone(),
@@ -809,7 +854,7 @@ impl ToolMetricSummary {
                     None
                 }
             }
-            (Self::ErrorTool(metrics), Self::ErrorTool(other_metrics)) => {
+            (Self::Memcheck(metrics), Self::Memcheck(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -818,7 +863,39 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+                    Some(Self::Memcheck(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
+                } else {
+                    None
+                }
+            }
+            (Self::Helgrind(metrics), Self::Helgrind(other_metrics)) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(Self::Helgrind(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
+                } else {
+                    None
+                }
+            }
+            (Self::DRD(metrics), Self::DRD(other_metrics)) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(Self::DRD(MetricsSummary::new(EitherOrBoth::Both(
                         new, other_new,
                     ))))
                 } else {

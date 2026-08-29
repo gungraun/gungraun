@@ -22,7 +22,9 @@ use crate::api::{
     ErrorMetric, EventKind, Tool, ToolOutputFormat, ToolSpec,
 };
 use crate::metrics::logic::MetricValue;
-use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsDiff, PerfQualities};
+use crate::metrics::model::{
+    AnnotatedMetric, Metric, MetricKind, MetricsDiff, MetricsSummary, PerfQualities,
+};
 use crate::stats::runner::DiffStats;
 use crate::summary::model::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
 use crate::units::Unit;
@@ -200,7 +202,6 @@ pub trait Formatter {
     /// Format the output of a single [`ToolMetricSummary`] of a tool
     fn format_single(
         &mut self,
-        tool: Tool,
         baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
@@ -1359,6 +1360,34 @@ impl VerticalFormatter {
 
         writeln!(self, "{}", values.bright_black()).unwrap();
     }
+
+    fn format_single_error_metric(
+        &mut self,
+        summary: &MetricsSummary<ErrorMetric>,
+        output_format: &IndexSet<ErrorMetric>,
+        info: Option<&EitherOrBoth<ProfileInfo>>,
+    ) {
+        self.format_metrics(
+            output_format
+                .clone()
+                .iter()
+                .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+        );
+
+        // We only check for `new` errors
+        if let Some(info) = info
+            && summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
+                e.metrics
+                    .as_ref()
+                    .left()
+                    .is_some_and(|l| *l > Metric::Int(0))
+            })
+            && let Some(new) = info.as_ref().left()
+            && let Some(details) = new.details.as_ref()
+        {
+            self.format_details(details);
+        }
+    }
 }
 
 impl Display for VerticalFormatter {
@@ -1370,7 +1399,6 @@ impl Display for VerticalFormatter {
 impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
-        tool: Tool,
         baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
@@ -1396,36 +1424,17 @@ impl Formatter for VerticalFormatter {
                     self.format_details(details);
                 }
             }
-            ToolMetricSummary::ErrorTool(summary) => {
-                let format = match tool {
-                    Tool::Memcheck => &self.output_format.memcheck,
-                    Tool::Helgrind => &self.output_format.helgrind,
-                    Tool::DRD => &self.output_format.drd,
-                    _ => {
-                        unreachable!("{tool} should be an error metric tool");
-                    }
-                };
-
-                self.format_metrics(
-                    format
-                        .clone()
-                        .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-                );
-
-                // We only check for `new` errors
-                if let Some(info) = info
-                    && summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
-                        e.metrics
-                            .as_ref()
-                            .left()
-                            .is_some_and(|l| *l > Metric::Int(0))
-                    })
-                    && let Some(new) = info.as_ref().left()
-                    && let Some(details) = new.details.as_ref()
-                {
-                    self.format_details(details);
-                }
+            ToolMetricSummary::Memcheck(summary) => {
+                let format = self.output_format.memcheck.clone();
+                self.format_single_error_metric(summary, &format, info);
+            }
+            ToolMetricSummary::Helgrind(summary) => {
+                let format = self.output_format.helgrind.clone();
+                self.format_single_error_metric(summary, &format, info);
+            }
+            ToolMetricSummary::DRD(summary) => {
+                let format = self.output_format.drd.clone();
+                self.format_single_error_metric(summary, &format, info);
             }
             ToolMetricSummary::Dhat(summary) => self.format_metrics(
                 self.output_format
@@ -1491,7 +1500,6 @@ impl Formatter for VerticalFormatter {
 
                 if first {
                     self.format_single(
-                        tool,
                         baselines,
                         Some(&part.details),
                         &part.metrics_summary,
@@ -1501,7 +1509,6 @@ impl Formatter for VerticalFormatter {
                     first = false;
                 } else {
                     self.format_single(
-                        tool,
                         &(None, None),
                         Some(&part.details),
                         &part.metrics_summary,
@@ -1514,7 +1521,6 @@ impl Formatter for VerticalFormatter {
             if data.total.is_some() {
                 self.format_tool_total_header();
                 self.format_single(
-                    tool,
                     &(None, None),
                     None,
                     &data.total.summary,
@@ -1524,7 +1530,6 @@ impl Formatter for VerticalFormatter {
             }
         } else if data.total.is_some() {
             self.format_single(
-                tool,
                 baselines,
                 None,
                 &data.total.summary,
@@ -1533,7 +1538,6 @@ impl Formatter for VerticalFormatter {
             );
         } else if !data.is_empty() && tool == Tool::Perf {
             self.format_single(
-                tool,
                 baselines,
                 None,
                 &data.parts[0].metrics_summary,
@@ -1582,7 +1586,7 @@ impl Formatter for VerticalFormatter {
                         tool.to_string().to_uppercase()
                     ));
                 }
-                self.format_single(*tool, &(None, None), None, summary, false, perf_config);
+                self.format_single(&(None, None), None, summary, false, perf_config);
             }
             self.print_buffer();
         }

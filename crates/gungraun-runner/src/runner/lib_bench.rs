@@ -60,6 +60,8 @@ pub struct LibBench {
     pub display: Option<String>,
     /// The name of the annotated function
     pub function_name: String,
+    /// The name of the `benchmark_group`
+    pub group: String,
     /// The index of the `#[library_benchmark]` in the `library_benchmark_group!`
     pub group_index: usize,
     /// The id of the benchmark as in `#[bench::id]`
@@ -373,6 +375,7 @@ impl LibBench {
         bench_index: usize,
         iter_index: Option<usize>,
         default_tool: Tool,
+        group: String,
     ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|s| format!("{s}_{iter_index}"))
@@ -448,6 +451,7 @@ impl LibBench {
             iter_index,
             id,
             function_name,
+            group,
             display,
             consts_display,
             run_options: RunOptions {
@@ -527,6 +531,7 @@ impl LibBench {
             config.bench_bin.clone(),
             &self.module_path,
             function_name,
+            &self.group,
             self.id.clone(),
             description,
             output_path.dir.clone(),

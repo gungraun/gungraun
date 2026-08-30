@@ -62,6 +62,8 @@ pub struct BinBench {
     pub display: Option<String>,
     /// The name of the annotated function
     pub function_name: String,
+    /// The name of the `benchmark_group`
+    pub group: String,
     /// The id of the benchmark as in `#[bench::id]`
     pub id: Option<String>,
     /// The [`ModulePath`].
@@ -383,6 +385,7 @@ impl BinBench {
         iter_index: Option<usize>,
         command: api::Command,
         default_tool: Tool,
+        group: String,
     ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|id| format!("{id}_{iter_index}"))
@@ -487,6 +490,7 @@ impl BinBench {
             display,
             consts_display,
             function_name,
+            group,
             tools: tool_configs,
             run_options: RunOptions {
                 env_clear: meta
@@ -535,6 +539,7 @@ impl BinBench {
             self.command.path.clone(),
             &self.module_path,
             function_name,
+            &self.group,
             self.id.clone(),
             description,
             output_path.dir.clone(),

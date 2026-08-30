@@ -1467,7 +1467,8 @@ impl Groups {
         let mut groups = vec![];
         for (main_index, binary_benchmark_group) in benchmark_groups.groups.into_iter().enumerate()
         {
-            let group_module_path = module_path.join(&binary_benchmark_group.id);
+            let group_name = binary_benchmark_group.id.clone();
+            let group_module_path = module_path.join(&group_name);
             let group_config = global_config
                 .clone()
                 .update_from_all([binary_benchmark_group.config.as_ref()]);
@@ -1540,6 +1541,7 @@ impl Groups {
                                 None,
                                 *command.clone(),
                                 default_tool,
+                                group_name.clone(),
                             )?;
                             if let Some(bin_bench) = bin_bench {
                                 group.benches.push_bin_bench(bin_bench);
@@ -1582,6 +1584,7 @@ impl Groups {
                                             Some(iter_index),
                                             command.clone(),
                                             default_tool,
+                                            group_name.clone(),
                                         )?;
                                         if let Some(bin_bench) = bin_bench {
                                             group.benches.push_bin_bench(bin_bench);
@@ -1621,7 +1624,8 @@ impl Groups {
         let mut groups = vec![];
         for (main_index, library_benchmark_group) in benchmark_groups.groups.into_iter().enumerate()
         {
-            let group_module_path = module_path.join(&library_benchmark_group.id);
+            let group_name = library_benchmark_group.id.clone();
+            let group_module_path = module_path.join(&group_name);
             let group_config = global_config
                 .clone()
                 .update_from_all([library_benchmark_group.config.as_ref()]);
@@ -1697,6 +1701,7 @@ impl Groups {
                                         bench_index,
                                         Some(iter_index),
                                         default_tool,
+                                        group_name.clone(),
                                     )?;
                                     if let Some(lib_bench) = lib_bench {
                                         group.benches.push_lib_bench(lib_bench);
@@ -1719,6 +1724,7 @@ impl Groups {
                             bench_index,
                             None,
                             default_tool,
+                            group_name.clone(),
                         )?;
                         if let Some(lib_bench) = lib_bench {
                             group.benches.push_lib_bench(lib_bench);

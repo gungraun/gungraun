@@ -19,7 +19,7 @@
       "minItems": 2
     },
     "benchmark_exe": {
-      "description": "The path to the binary which is executed by Gungraun and in turn Valgrind.\n\nIn case of a library benchmark this is the compiled benchmark file. In case of a binary\nbenchmark this is the path to the executable.",
+      "description": "The path to the binary which is executed by Gungraun and in turn Valgrind or Perf.\n\nIn case of a library benchmark this is the compiled benchmark file. In case of a binary\nbenchmark this is the path to the executable.",
       "type": "string"
     },
     "benchmark_file": {
@@ -34,8 +34,12 @@
       "description": "The name of the function under test",
       "type": "string"
     },
+    "group": {
+      "description": "The name of the `benchmark_group`",
+      "type": "string"
+    },
     "id": {
-      "description": "The user provided id of this benchmark",
+      "description": "The optional id of this benchmark.\n\nTh id is provided by the `#[bench::id]` attribute macro. The `#[benches::id]` adds a\ncounter as suffix in the form `id_X` for example (`id_0`, `id_100`, ...)\n\nA gungraun benchmark can be uniquely identified by the `module_path`\n(`benchmark_file::group::function_name`) and this `id`. If the `id` is not present, then\nthe `module_path` is sufficient to identify a benchmark.",
       "type": ["string", "null"]
     },
     "kind": {
@@ -47,7 +51,7 @@
       ]
     },
     "module_path": {
-      "description": "The rust path in the form `bench_file::group::bench`",
+      "description": "The rust path in the form `benchmark_file::group::function_name`",
       "type": "string"
     },
     "output_dir": {
@@ -55,7 +59,7 @@
       "type": "string"
     },
     "package_dir": {
-      "description": "The directory of the package",
+      "description": "The relative path to the directory of the cargo package containing the benchmark",
       "type": "string"
     },
     "profiles": {
@@ -67,7 +71,7 @@
       ]
     },
     "project_root": {
-      "description": "The project's root directory",
+      "description": "The project's absolute root directory",
       "type": "string"
     },
     "version": {
@@ -80,10 +84,11 @@
     "benchmark_exe",
     "benchmark_file",
     "function_name",
+    "group",
     "kind",
     "module_path",
-    "package_dir",
     "output_dir",
+    "package_dir",
     "profiles",
     "project_root",
     "version"
@@ -1045,7 +1050,7 @@
           "format": "int32"
         },
         "part": {
-          "description": "The part number of this tool run if present (only Callgrind)",
+          "description": "The part number of this tool run if present (only Callgrind and Perf)",
           "type": ["integer", "null"],
           "format": "uint64",
           "minimum": 0

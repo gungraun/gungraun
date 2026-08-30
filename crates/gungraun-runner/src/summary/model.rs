@@ -241,7 +241,7 @@ pub struct BenchmarkSummary {
     /// An absent first baseline indicates that new output was produced. An absent second baseline
     /// indicates the usage of the usual "*.old" output.
     pub baselines: (Option<String>, Option<String>),
-    /// The path to the binary which is executed by Gungraun and in turn Valgrind.
+    /// The path to the binary which is executed by Gungraun and in turn Valgrind or Perf.
     ///
     /// In case of a library benchmark this is the compiled benchmark file. In case of a binary
     /// benchmark this is the path to the executable.
@@ -252,25 +252,37 @@ pub struct BenchmarkSummary {
     pub details: Option<String>,
     /// The name of the function under test
     pub function_name: String,
-    /// The user provided id of this benchmark
+    /// The name of the `benchmark_group`
+    pub group: String,
+    /// The optional id of this benchmark.
+    ///
+    /// Th id is provided by the `#[bench::id]` attribute macro. The `#[benches::id]` adds a
+    /// counter as suffix in the form `id_X` for example (`id_0`, `id_100`, ...)
+    ///
+    /// A gungraun benchmark can be uniquely identified by the `module_path`
+    /// (`benchmark_file::group::function_name`) and this `id`. If the `id` is not present, then
+    /// the `module_path` is sufficient to identify a benchmark.
     pub id: Option<String>,
     /// Whether this summary describes a library or binary benchmark
     pub kind: BenchmarkKind,
-    /// The rust path in the form `bench_file::group::bench`
+    /// The rust path in the form `benchmark_file::group::function_name`
+    ///
+    /// If the `id` is not present, this `module_path` is sufficient to uniquely identify a
+    /// gungraun benchmark.
     pub module_path: String,
     /// The directory containing all generated benchmark artifacts.
     ///
     /// This path, together with the other retained path fields, is relative to `project_root` when
     /// it is located below the project root. Otherwise, it is absolute.
     pub output_dir: PathBuf,
-    /// The directory of the package
+    /// The relative path to the directory of the cargo package containing the benchmark
     pub package_dir: PathBuf,
     /// This is the container with all the benchmark data (metrics, differences, comparisons, ...)
     ///
     /// If there were no errors during the benchmark run, there is at least one [`Profile`]
     /// present.
     pub profiles: Profiles,
-    /// The project's root directory
+    /// The project's absolute root directory
     pub project_root: PathBuf,
     /// The version string of this format.
     ///

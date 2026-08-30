@@ -1068,6 +1068,7 @@ mod tests {
             0,
             None,
             crate::api::Tool::Callgrind,
+            "group".to_owned(),
         )
         .unwrap()
         .unwrap();

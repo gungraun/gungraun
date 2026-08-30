@@ -28,11 +28,11 @@ use crate::api::{
 use crate::error::Error;
 use crate::runner::args;
 use crate::runner::common::{
-    Assistant, AssistantKind, BaselineAndSaveDataProcessor, BaselineDataProcessor, Baselines,
-    BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config, Groups,
-    LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
+    Assistant, AssistantKind, BaselineAndSaveDataProcessor, BaselineDataProcessor, BaselineKind,
+    BaselineName, Baselines, BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config,
+    Groups, LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
 };
-use crate::summary::model::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary};
+use crate::summary::model::{BenchmarkKind, BenchmarkSummary};
 
 const DEFAULT_STDIN: Stdin = Stdin::Pipe;
 const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;

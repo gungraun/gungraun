@@ -30,7 +30,7 @@ use crate::runner::bin_bench::Delay;
 use crate::runner::cachegrind::args::CachegrindArgs;
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
 use crate::runner::callgrind::args::CallgrindArgs;
-use crate::runner::common::{Assistant, AssistantKind, Config, ModulePath};
+use crate::runner::common::{Assistant, AssistantKind, BaselineKind, Config, ModulePath};
 use crate::runner::dhat::regression::DhatRegressionConfig;
 use crate::runner::format::OutputFormat;
 use crate::runner::meta::Metadata;
@@ -45,7 +45,7 @@ use crate::runner::tool::parser::{Header, ParserOutput};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
 use crate::runner::tool::run::{RunOptions, ToolCommand, ToolCommandChild};
-use crate::summary::model::{BaselineKind, ToolMetrics};
+use crate::summary::model::ToolMetrics;
 use crate::units::Unit;
 
 pub const DEFAULT_TOOL: Tool = Tool::Callgrind;

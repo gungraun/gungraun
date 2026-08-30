@@ -7,6 +7,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, Write, stderr, stdout};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio as StdStdio};
+use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, atomic};
 use std::time::{Duration, Instant};
@@ -58,7 +59,7 @@ pub type Analyzer = (
     EntryPoint,
 );
 
-/// The `Baselines` type
+/// Baseline names stored in a benchmark summary.
 pub type Baselines = (Option<String>, Option<String>);
 
 /// the [`Assistant`] kind
@@ -68,6 +69,15 @@ pub enum AssistantKind {
     Setup,
     /// The `teardown` function
     Teardown,
+}
+
+/// Identifies whether to compare against old output files or a named baseline.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum BaselineKind {
+    /// Compare new output against `*.old` output files.
+    Old,
+    /// Compare new output against a named baseline.
+    Name(BaselineName),
 }
 
 /// Container for either library or binary benchmark entries within a group.
@@ -90,6 +100,17 @@ pub enum MaxParallel {
     Count(usize),
 }
 
+/// An `Assistant` corresponds to the `setup` or `teardown` functions in the UI
+#[derive(Debug, Clone)]
+pub struct Assistant {
+    envs: Vec<(OsString, OsString)>,
+    group_index: Option<usize>,
+    indices: Option<(usize, usize, Option<usize>)>,
+    kind: AssistantKind,
+    pipe: Option<Pipe>,
+    run_parallel: bool,
+}
+
 /// Data processor used when saving current outputs as a baseline.
 #[derive(Debug)]
 pub struct BaselineAndSaveDataProcessor {
@@ -104,16 +125,10 @@ pub struct BaselineDataProcessor {
     pub analyzers: Vec<Analyzer>,
 }
 
-/// An `Assistant` corresponds to the `setup` or `teardown` functions in the UI
-#[derive(Debug, Clone)]
-pub struct Assistant {
-    envs: Vec<(OsString, OsString)>,
-    group_index: Option<usize>,
-    indices: Option<(usize, usize, Option<usize>)>,
-    kind: AssistantKind,
-    pipe: Option<Pipe>,
-    run_parallel: bool,
-}
+/// The user-visible name of a baseline.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct BaselineName(pub String);
+
 /// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
 ///
 /// Used to print a final summary after all benchmarks.
@@ -708,6 +723,28 @@ impl AssistantKind {
             Self::Teardown => "teardown",
         }
         .to_owned()
+    }
+}
+
+impl Display for BaselineName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl FromStr for BaselineName {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for char in s.chars() {
+            if !(char.is_ascii_alphanumeric() || char == '_') {
+                return Err(format!(
+                    "A baseline name can only consist of ascii characters which are alphanumeric \
+                     or '_' but found: '{char}'"
+                ));
+            }
+        }
+        Ok(Self(s.to_owned()))
     }
 }
 

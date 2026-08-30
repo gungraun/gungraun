@@ -3,10 +3,8 @@
 //! This module implements the internal behavior used to build, aggregate, compare, print, and save
 //! benchmark summaries.
 
-use std::fmt::Display;
 use std::io::stdout;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use anyhow::{Context, Result, anyhow};
 use either_or_both::EitherOrBoth;
@@ -27,34 +25,12 @@ use crate::runner::format::{
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
 use crate::summary::model::{
-    BaselineName, BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData,
-    ProfileInfo, ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricSummary,
-    ToolMetrics, ToolRegression,
+    BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData, ProfileInfo,
+    ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricSummary, ToolMetrics,
+    ToolRegression,
 };
 use crate::summary::output::{SummaryFormat, SummaryOutput};
 use crate::util::{factor_diff, make_absolute, make_relative, percentage_diff};
-
-impl Display for BaselineName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl FromStr for BaselineName {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for char in s.chars() {
-            if !(char.is_ascii_alphanumeric() || char == '_') {
-                return Err(format!(
-                    "A baseline name can only consist of ascii characters which are alphanumeric \
-                     or '_' but found: '{char}'"
-                ));
-            }
-        }
-        Ok(Self(s.to_owned()))
-    }
-}
 
 impl BenchmarkSummary {
     /// Creates a new `BenchmarkSummary`.

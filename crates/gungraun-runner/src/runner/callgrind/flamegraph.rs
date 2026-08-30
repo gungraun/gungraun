@@ -14,8 +14,9 @@ use tempfile::TempDir;
 use super::flamegraph_parser::{FlamegraphMap, FlamegraphParser};
 use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::{self, EventKind, FlamegraphKind};
+use crate::runner::common::{BaselineKind, BaselineName};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
-use crate::summary::model::{BaselineKind, BaselineName, FlamegraphSummaries, FlamegraphSummary};
+use crate::summary::model::{FlamegraphSummaries, FlamegraphSummary};
 
 type ParserOutput = Vec<(PathBuf, CallgrindProperties, FlamegraphMap)>;
 

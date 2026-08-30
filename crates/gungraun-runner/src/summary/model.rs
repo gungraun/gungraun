@@ -25,19 +25,6 @@ use crate::units::Unit;
 /// The version string stored in version summary JSON files.
 pub const SCHEMA_VERSION: &str = "7";
 
-/// Describes which baseline a summary compares against.
-///
-/// # Benchmark Summary
-///
-/// This struct is not part of the recent summary anymore.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub enum BaselineKind {
-    /// Compare new against `*.old` output files
-    Old,
-    /// Compare new against a named baseline
-    Name(BaselineName),
-}
-
 /// Identifies whether a summary describes a library or binary benchmark.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
@@ -203,27 +190,6 @@ pub enum ToolRegression {
         limit: Metric,
     },
 }
-
-/// A baseline file used when comparing a new benchmark result with older data.
-///
-/// # Benchmark Summary
-///
-/// This struct is not part of the recent summary anymore.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Baseline {
-    /// The kind of the `Baseline`
-    pub kind: BaselineKind,
-    /// The path to the file which is used to compare against the new output
-    pub path: PathBuf,
-}
-
-/// The user-visible name of a baseline.
-///
-/// # Benchmark Summary
-///
-/// This struct is not part of the recent summary anymore.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct BaselineName(pub String);
 
 /// A `BenchmarkSummary` which contains all collected data of a single benchmark run
 ///

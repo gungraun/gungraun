@@ -48,17 +48,6 @@ pub enum BenchmarkKind {
     BinaryBenchmark,
 }
 
-/// Identifies the format of a summary file written by Gungraun.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-#[cfg_attr(feature = "runner", derive(clap::ValueEnum))]
-pub enum SummaryFormat {
-    /// The format in a space optimal json representation without newlines
-    Json,
-    /// The format in pretty printed json
-    PrettyJson,
-}
-
 /// A [`Tool`] metric data summary.
 ///
 /// Each variant contains all metric data including the differences to the old or a
@@ -269,6 +258,11 @@ pub struct BenchmarkSummary {
     pub kind: BenchmarkKind,
     /// The rust path in the form `bench_file::group::bench`
     pub module_path: String,
+    /// The directory containing all generated benchmark artifacts.
+    ///
+    /// This path, together with the other retained path fields, is relative to `project_root` when
+    /// it is located below the project root. Otherwise, it is absolute.
+    pub output_dir: PathBuf,
     /// The directory of the package
     pub package_dir: PathBuf,
     /// This is the container with all the benchmark data (metrics, differences, comparisons, ...)
@@ -278,8 +272,6 @@ pub struct BenchmarkSummary {
     pub profiles: Profiles,
     /// The project's root directory
     pub project_root: PathBuf,
-    /// The destination and kind of the summary file
-    pub summary_output: Option<SummaryOutput>,
     /// The version string of this format.
     ///
     /// This is not semver and only major version numbers are used. There might be text occurrences
@@ -313,20 +305,12 @@ pub struct FlamegraphSummaries {
     pub totals: Vec<FlamegraphSummary>,
 }
 
-/// File paths for one flamegraph associated with a specific [`EventKind`].
-///
-/// At least one of `regular_path`, `base_path`, or `diff_path` is present.
+/// A flamegraph associated with a specific [`EventKind`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummary {
-    /// If present, the path to the file of the old regular (non-differential) flamegraph
-    pub base_path: Option<PathBuf>,
-    /// If present, the path to the file of the differential flamegraph
-    pub diff_path: Option<PathBuf>,
     /// The `EventKind` of the flamegraph
     pub event_kind: EventKind,
-    /// If present, the path to the file of the regular (non-differential) flamegraph
-    pub regular_path: Option<PathBuf>,
 }
 
 /// `Profile` data for one [`Tool`] recorded in a benchmark summary.
@@ -335,11 +319,6 @@ pub struct FlamegraphSummary {
 pub struct Profile {
     /// Details and information about the created flamegraphs if any
     pub flamegraphs: Vec<FlamegraphSummary>,
-    /// The paths to the `*.log` files. All tools produce at least one log file
-    pub log_paths: Vec<PathBuf>,
-    /// The paths to the `*.out` files. Not all tools produce an output in addition to the log
-    /// files
-    pub out_paths: Vec<PathBuf>,
     /// The data with the metrics and details about the tool run
     pub summaries: ProfileData,
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
@@ -369,10 +348,8 @@ pub struct ProfileInfo {
     pub details: Option<String>,
     /// The parent pid of this process if present
     pub parent_pid: Option<i32>,
-    /// The part number of this tool run if present (only Callgrind)
+    /// The part number of this tool run if present (only Callgrind and Perf)
     pub part: Option<u64>,
-    /// The path to the output file containing the data of the tool run
-    pub path: PathBuf,
     /// The pid of the benchmark process
     pub pid: i32,
     /// The thread number of this tool run if present (only Callgrind)
@@ -406,13 +383,3 @@ pub struct ProfileTotal {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profiles(pub Vec<Profile>);
-
-/// Describes where Gungraun wrote the summary file and in which format.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct SummaryOutput {
-    /// The [`SummaryFormat`]
-    pub format: SummaryFormat,
-    /// The path to the destination file of this summary
-    pub path: PathBuf,
-}

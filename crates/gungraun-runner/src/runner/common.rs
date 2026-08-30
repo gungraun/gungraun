@@ -40,9 +40,8 @@ use crate::runner::tool::config::{
 use crate::runner::tool::parser::{Parser, ParserOutput};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
-use crate::summary::model::{
-    BenchmarkSummary, FlamegraphSummary, Profile, ProfileData, SummaryOutput,
-};
+use crate::summary::model::{BenchmarkSummary, FlamegraphSummary, Profile, ProfileData};
+use crate::summary::output::SummaryOutput;
 use crate::util::{copy_directory, make_absolute};
 
 const DEFAULT_COMPARE_BY_ID: bool = false;
@@ -438,8 +437,6 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
 
             let mut profile = Profile {
                 tool,
-                log_paths: output_path.to_log_output().sanitized_paths()?,
-                out_paths: output_path.sanitized_paths()?,
                 summaries: data,
                 flamegraphs: vec![],
             };
@@ -1399,11 +1396,21 @@ impl JobResult {
                 &post_processing_config.header,
             )
             .and_then(|()| {
+                let summary_output = config.meta.args.save_summary.and_then(|format| {
+                    data_processor
+                        .analyzers()
+                        .first()
+                        .map(|(_, output_path, _, _, _)| {
+                            SummaryOutput::new(format, &output_path.dir)
+                        })
+                });
+
                 benchmark_summary.print_and_save(
                     config,
                     &output_format,
                     captured_output,
                     &post_processing_config,
+                    summary_output.as_ref(),
                 )
             })
             .and_then(|()| benchmark_summary.check_regression(post_processing_config.fail_fast))?;

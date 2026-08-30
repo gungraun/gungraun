@@ -32,9 +32,7 @@ use crate::runner::common::{
     BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config, Groups,
     LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
 };
-use crate::summary::model::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput,
-};
+use crate::summary::model::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary};
 
 const DEFAULT_STDIN: Stdin = Stdin::Pipe;
 const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
@@ -529,12 +527,6 @@ impl BinBench {
         description: Option<String>,
         baselines: Baselines,
     ) -> BenchmarkSummary {
-        let summary_output = config
-            .meta
-            .args
-            .save_summary
-            .map(|format| SummaryOutput::new(format, &output_path.dir));
-
         BenchmarkSummary::new(
             BenchmarkKind::BinaryBenchmark,
             config.meta.project_root.clone(),
@@ -545,7 +537,7 @@ impl BinBench {
             function_name,
             self.id.clone(),
             description,
-            summary_output,
+            output_path.dir.clone(),
             baselines,
         )
     }

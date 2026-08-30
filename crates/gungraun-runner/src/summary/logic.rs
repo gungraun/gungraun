@@ -4,14 +4,12 @@
 //! benchmark summaries.
 
 use std::fmt::Display;
-use std::fs::File;
 use std::io::stdout;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::{Context, Result, anyhow};
 use either_or_both::EitherOrBoth;
-use glob::glob;
 use itertools::Itertools;
 use serde_json::Value;
 
@@ -30,10 +28,11 @@ use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
 use crate::summary::model::{
     BaselineName, BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData,
-    ProfileInfo, ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, SummaryFormat, SummaryOutput,
-    ToolMetricSummary, ToolMetrics, ToolRegression,
+    ProfileInfo, ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricSummary,
+    ToolMetrics, ToolRegression,
 };
-use crate::util::{factor_diff, make_absolute, percentage_diff};
+use crate::summary::output::{SummaryFormat, SummaryOutput};
+use crate::util::{factor_diff, make_absolute, make_relative, percentage_diff};
 
 impl Display for BaselineName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,7 +59,7 @@ impl FromStr for BaselineName {
 impl BenchmarkSummary {
     /// Creates a new `BenchmarkSummary`.
     ///
-    /// Relative paths are made absolute with the `project_root` as base directory.
+    /// Paths below `project_root` are made relative, while paths outside it remain absolute.
     pub fn new(
         kind: BenchmarkKind,
         project_root: PathBuf,
@@ -71,22 +70,28 @@ impl BenchmarkSummary {
         function_name: &str,
         id: Option<String>,
         details: Option<String>,
-        output: Option<SummaryOutput>,
+        output_dir: PathBuf,
         baselines: Baselines,
     ) -> Self {
         Self {
             version: SCHEMA_VERSION.to_owned(),
             kind,
-            benchmark_file: make_absolute(&project_root, benchmark_file),
-            benchmark_exe: make_absolute(&project_root, benchmark_exe),
+            benchmark_file: make_relative(
+                &project_root,
+                make_absolute(&project_root, benchmark_file),
+            ),
+            benchmark_exe: make_relative(
+                &project_root,
+                make_absolute(&project_root, benchmark_exe),
+            ),
             module_path: module_path.to_string(),
             function_name: function_name.to_owned(),
             id,
             details,
             profiles: Profiles::default(),
-            summary_output: output,
+            output_dir: make_relative(&project_root, make_absolute(&project_root, output_dir)),
+            package_dir: make_relative(&project_root, make_absolute(&project_root, package_dir)),
             project_root,
-            package_dir,
             baselines,
         }
     }
@@ -178,12 +183,13 @@ impl BenchmarkSummary {
     }
 
     /// If the summary is json output, print it and eventually safe it, if configured to do so
-    pub fn print_and_save(
+    pub(crate) fn print_and_save(
         &self,
         config: &Config,
         output_format: &OutputFormat,
         captured_output: CapturedOutput,
         post_processing_config: &PostProcessingConfig,
+        summary_output: Option<&SummaryOutput>,
     ) -> Result<()> {
         match output_format.kind {
             OutputFormatKind::Default => self
@@ -194,7 +200,7 @@ impl BenchmarkSummary {
                     post_processing_config,
                 )
                 .and_then(|()| {
-                    if let Some(output) = &self.summary_output {
+                    if let Some(output) = summary_output {
                         serde_json::to_value(self)
                             .with_context(|| "Failed to serialize summary to json")
                             .and_then(|value| Self::save_summary(&value, output))
@@ -207,7 +213,7 @@ impl BenchmarkSummary {
                 .and_then(|value| {
                     let pretty = matches!(output_format.kind, OutputFormatKind::PrettyJson);
                     Self::print_json(&value, pretty).and_then(|()| {
-                        if let Some(output) = &self.summary_output {
+                        if let Some(output) = summary_output {
                             Self::save_summary(&value, output)
                         } else {
                             Ok(())
@@ -284,12 +290,7 @@ impl Diffs {
 impl FlamegraphSummary {
     /// Creates a new `FlamegraphSummary`.
     pub fn new(event_kind: EventKind) -> Self {
-        Self {
-            event_kind,
-            regular_path: Option::default(),
-            base_path: Option::default(),
-            diff_path: Option::default(),
-        }
+        Self { event_kind }
     }
 }
 
@@ -523,7 +524,6 @@ impl From<ParserOutput> for ProfileInfo {
             pid: value.header.pid,
             parent_pid: value.header.parent_pid,
             details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            path: value.path,
             part: value.header.part,
             thread: value.header.thread,
         }
@@ -637,44 +637,6 @@ impl IntoIterator for Profiles {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
-    }
-}
-
-impl SummaryOutput {
-    /// Creates a new `SummaryOutput` with `dir` as base dir and an extension fitting the.
-    /// [`SummaryFormat`]
-    pub fn new(format: SummaryFormat, dir: &Path) -> Self {
-        Self {
-            format,
-            path: Self::path(dir),
-        }
-    }
-
-    /// Initialize this `SummaryOutput` removing old summary files
-    pub fn init(&self) -> Result<()> {
-        for entry in glob(self.path.with_extension("*").to_string_lossy().as_ref())
-            .expect("Glob pattern should be valid")
-        {
-            let entry = entry?;
-            std::fs::remove_file(entry.as_path()).with_context(|| {
-                format!(
-                    "Failed removing summary file '{}'",
-                    entry.as_path().display()
-                )
-            })?;
-        }
-
-        Ok(())
-    }
-
-    /// Try to create an empty summary file returning the [`File`] object
-    pub fn create(&self) -> Result<File> {
-        File::create(&self.path).with_context(|| "Failed to create json summary file")
-    }
-
-    /// Returns the path to this summary file.
-    pub fn path(dir: &Path) -> PathBuf {
-        dir.join("summary.json")
     }
 }
 
@@ -998,7 +960,69 @@ mod tests {
 
     use super::*;
     use crate::api::PerfMetric;
+    use crate::runner::common::ModulePath;
     use crate::units::Unit;
+
+    #[test]
+    fn test_when_serializing_new_summary_then_paths_under_project_root_are_relative() {
+        let summary = BenchmarkSummary::new(
+            BenchmarkKind::LibraryBenchmark,
+            PathBuf::from("/project"),
+            PathBuf::from("/project/crates/example"),
+            PathBuf::from("crates/example/benches/benchmark.rs"),
+            PathBuf::from("target/release/benchmark"),
+            &ModulePath::new("example::benchmark"),
+            "benchmark",
+            None,
+            None,
+            PathBuf::from("/project/target/gungraun/example"),
+            (None, None),
+        );
+
+        let value = serde_json::to_value(summary).unwrap();
+
+        assert_eq!(value["project_root"], "/project");
+        assert_eq!(value["output_dir"], "target/gungraun/example");
+        assert_eq!(value["package_dir"], "crates/example");
+        assert_eq!(
+            value["benchmark_file"],
+            "crates/example/benches/benchmark.rs"
+        );
+        assert_eq!(value["benchmark_exe"], "target/release/benchmark");
+        assert!(value.get("summary_output").is_none());
+    }
+
+    #[test]
+    fn test_when_serializing_new_summary_then_paths_outside_project_root_remain_absolute() {
+        let summary = BenchmarkSummary::new(
+            BenchmarkKind::LibraryBenchmark,
+            PathBuf::from("/project"),
+            PathBuf::from("/tmp/package"),
+            PathBuf::from("/tmp/benchmark.rs"),
+            PathBuf::from("/tmp/benchmark"),
+            &ModulePath::new("example::benchmark"),
+            "benchmark",
+            None,
+            None,
+            PathBuf::from("/tmp/gungraun"),
+            (None, None),
+        );
+
+        let value = serde_json::to_value(summary).unwrap();
+
+        assert_eq!(value["output_dir"], "/tmp/gungraun");
+        assert_eq!(value["package_dir"], "/tmp/package");
+        assert_eq!(value["benchmark_file"], "/tmp/benchmark.rs");
+        assert_eq!(value["benchmark_exe"], "/tmp/benchmark");
+        for key in [
+            "output_dir",
+            "package_dir",
+            "benchmark_file",
+            "benchmark_exe",
+        ] {
+            assert!(!value[key].as_str().unwrap().starts_with(".."));
+        }
+    }
 
     #[test]
     fn test_tool_regression_with_preserves_unit() {

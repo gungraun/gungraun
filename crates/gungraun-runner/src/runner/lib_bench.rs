@@ -24,12 +24,12 @@ use crate::api::{
 use crate::error::Error;
 use crate::runner::args;
 use crate::runner::common::{
-    BaselineAndSaveDataProcessor, BaselineDataProcessor, Baselines, BenchmarkDataProcessor,
-    BenchmarkSummaries, CapturedOutput, Config, Groups, LoadBaselineDataProcessor, ModulePath,
-    Runner, SaveBaselineDataProcessor,
+    BaselineAndSaveDataProcessor, BaselineDataProcessor, BaselineKind, BaselineName, Baselines,
+    BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config, Groups,
+    LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
 };
 use crate::runner::tool::config::ToolConfig;
-use crate::summary::model::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary};
+use crate::summary::model::{BenchmarkKind, BenchmarkSummary};
 
 /// Implements [`Benchmark`] to compare a [`LibBench`] against one baseline and save the new run as
 /// another baseline.

@@ -19,9 +19,9 @@ use std::sync::LazyLock;
 
 use anyhow::{Context, Result};
 use gungraun::Tool;
+use gungraun_runner::runner::common::BaselineKind;
 use gungraun_runner::runner::tasks::ProcessHandler;
 use gungraun_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
-use gungraun_runner::summary::model::BaselineKind;
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 

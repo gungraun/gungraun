@@ -16,8 +16,7 @@ use tempfile::{Builder, TempDir};
 
 use crate::api::Tool;
 use crate::runner::callgrind;
-use crate::runner::common::ModulePath;
-use crate::summary::model::{BaselineKind, BaselineName};
+use crate::runner::common::{BaselineKind, BaselineName, ModulePath};
 use crate::util::truncate_str_utf8;
 
 /// Sanitized output paths grouped by optional perf part number.

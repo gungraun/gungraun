@@ -29,9 +29,7 @@ use crate::runner::common::{
     Runner, SaveBaselineDataProcessor,
 };
 use crate::runner::tool::config::ToolConfig;
-use crate::summary::model::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput,
-};
+use crate::summary::model::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary};
 
 /// Implements [`Benchmark`] to compare a [`LibBench`] against one baseline and save the new run as
 /// another baseline.
@@ -521,12 +519,6 @@ impl LibBench {
         description: Option<String>,
         baselines: Baselines,
     ) -> BenchmarkSummary {
-        let summary_output = config
-            .meta
-            .args
-            .save_summary
-            .map(|format| SummaryOutput::new(format, &output_path.dir));
-
         BenchmarkSummary::new(
             BenchmarkKind::LibraryBenchmark,
             config.meta.project_root.clone(),
@@ -537,7 +529,7 @@ impl LibBench {
             function_name,
             self.id.clone(),
             description,
-            summary_output,
+            output_path.dir.clone(),
             baselines,
         )
     }

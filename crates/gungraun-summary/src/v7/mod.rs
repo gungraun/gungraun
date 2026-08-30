@@ -14,8 +14,7 @@ pub use gungraun_runner::metrics::model::{
 };
 pub use gungraun_runner::summary::model::{
     BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData, ProfileInfo,
-    ProfilePart, ProfileTotal, Profiles, SummaryFormat, SummaryOutput, ToolMetricSummary,
-    ToolRegression,
+    ProfilePart, ProfileTotal, Profiles, ToolMetricSummary, ToolRegression,
 };
 
 use crate::error::{Error, Result};

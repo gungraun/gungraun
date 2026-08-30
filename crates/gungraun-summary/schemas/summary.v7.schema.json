@@ -50,6 +50,10 @@
       "description": "The rust path in the form `bench_file::group::bench`",
       "type": "string"
     },
+    "output_dir": {
+      "description": "The directory containing all generated benchmark artifacts.\n\nThis path, together with the other retained path fields, is relative to `project_root` when\nit is located below the project root. Otherwise, it is absolute.",
+      "type": "string"
+    },
     "package_dir": {
       "description": "The directory of the package",
       "type": "string"
@@ -66,17 +70,6 @@
       "description": "The project's root directory",
       "type": "string"
     },
-    "summary_output": {
-      "description": "The destination and kind of the summary file",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/SummaryOutput"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "version": {
       "description": "The version string of this format.\n\nThis is not semver and only major version numbers are used. There might be text occurrences\nof `v6` within this library documentation but v6 is stored as raw number `6` without the\n`v` prefix. Only backwards incompatible changes cause an increase of the version",
       "type": "string"
@@ -90,6 +83,7 @@
     "kind",
     "module_path",
     "package_dir",
+    "output_dir",
     "profiles",
     "project_root",
     "version"
@@ -759,17 +753,9 @@
       ]
     },
     "FlamegraphSummary": {
-      "description": "File paths for one flamegraph associated with a specific [`EventKind`].\n\nAt least one of `regular_path`, `base_path`, or `diff_path` is present.",
+      "description": "A flamegraph associated with a specific [`EventKind`].",
       "type": "object",
       "properties": {
-        "base_path": {
-          "description": "If present, the path to the file of the old regular (non-differential) flamegraph",
-          "type": ["string", "null"]
-        },
-        "diff_path": {
-          "description": "If present, the path to the file of the differential flamegraph",
-          "type": ["string", "null"]
-        },
         "event_kind": {
           "description": "The `EventKind` of the flamegraph",
           "allOf": [
@@ -777,10 +763,6 @@
               "$ref": "#/definitions/EventKind"
             }
           ]
-        },
-        "regular_path": {
-          "description": "If present, the path to the file of the regular (non-differential) flamegraph",
-          "type": ["string", "null"]
         }
       },
       "required": ["event_kind"]
@@ -1004,20 +986,6 @@
             "$ref": "#/definitions/FlamegraphSummary"
           }
         },
-        "log_paths": {
-          "description": "The paths to the `*.log` files. All tools produce at least one log file",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "out_paths": {
-          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log\nfiles",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "summaries": {
           "description": "The data with the metrics and details about the tool run",
           "allOf": [
@@ -1035,7 +1003,7 @@
           ]
         }
       },
-      "required": ["flamegraphs", "log_paths", "out_paths", "summaries", "tool"]
+      "required": ["flamegraphs", "summaries", "tool"]
     },
     "ProfileData": {
       "description": "All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.\n\nThe [`ProfileTotal`] is always present and summarizes all [`ProfilePart`]s. If the tool produced\nonly one part, the total matches that part's metrics.",
@@ -1082,10 +1050,6 @@
           "format": "uint64",
           "minimum": 0
         },
-        "path": {
-          "description": "The path to the output file containing the data of the tool run",
-          "type": "string"
-        },
         "pid": {
           "description": "The pid of the benchmark process",
           "type": "integer",
@@ -1098,7 +1062,7 @@
           "minimum": 0
         }
       },
-      "required": ["command", "path", "pid"]
+      "required": ["command", "pid"]
     },
     "ProfilePart": {
       "description": "A single part of a tool run with the collected metric data\n\nA tool run can produce multiple parts, for example one per process when child tracing is\nenabled.",
@@ -1151,40 +1115,6 @@
       "items": {
         "$ref": "#/definitions/Profile"
       }
-    },
-    "SummaryFormat": {
-      "description": "Identifies the format of a summary file written by Gungraun.",
-      "oneOf": [
-        {
-          "description": "The format in a space optimal json representation without newlines",
-          "type": "string",
-          "const": "Json"
-        },
-        {
-          "description": "The format in pretty printed json",
-          "type": "string",
-          "const": "PrettyJson"
-        }
-      ]
-    },
-    "SummaryOutput": {
-      "description": "Describes where Gungraun wrote the summary file and in which format.",
-      "type": "object",
-      "properties": {
-        "format": {
-          "description": "The [`SummaryFormat`]",
-          "allOf": [
-            {
-              "$ref": "#/definitions/SummaryFormat"
-            }
-          ]
-        },
-        "path": {
-          "description": "The path to the destination file of this summary",
-          "type": "string"
-        }
-      },
-      "required": ["format", "path"]
     },
     "Tool": {
       "description": "The profiling tools which can be run in a benchmark.",

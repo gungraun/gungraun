@@ -32,7 +32,8 @@ use crate::api::{
 use crate::metrics::logic::TypeChecker;
 use crate::metrics::model::Metric;
 use crate::runner::common::CapturedOutput;
-use crate::summary::model::{BaselineName, SummaryFormat};
+use crate::summary::model::BaselineName;
+use crate::summary::output::SummaryFormat;
 use crate::units::Unit;
 use crate::util;
 

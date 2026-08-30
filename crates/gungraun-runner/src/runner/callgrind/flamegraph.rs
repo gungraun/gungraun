@@ -148,7 +148,7 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
 
         let mut flamegraph_summaries = FlamegraphSummaries::default();
         for event_kind in &flamegraph.config.event_kinds {
-            let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
+            let flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
 
             let stacks_lines = total.to_stack_format(event_kind)?;
@@ -158,7 +158,6 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
                     &mut flamegraph.options(*event_kind, output_path.file_name()),
                     stacks_lines.iter().map(std::string::String::as_str),
                 )?;
-                flamegraph_summary.regular_path = Some(output_path.to_path());
             }
 
             if let Some(base_maps) = &base_maps {
@@ -174,9 +173,6 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
                     *event_kind,
                     &stacks_lines,
                 )?;
-
-                flamegraph_summary.base_path = Some(output_path.to_base_path().to_path());
-                flamegraph_summary.diff_path = Some(output_path.to_diff_path().to_path());
             }
 
             flamegraph_summaries.totals.push(flamegraph_summary);
@@ -223,7 +219,7 @@ impl FlamegraphGenerator for BaselineAndSaveFlamegraphGenerator {
 
         let mut flamegraph_summaries = FlamegraphSummaries::default();
         for event_kind in &flamegraph.config.event_kinds {
-            let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
+            let flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
 
             let stacks_lines = total.to_stack_format(event_kind)?;
@@ -233,7 +229,6 @@ impl FlamegraphGenerator for BaselineAndSaveFlamegraphGenerator {
                     &mut flamegraph.options(*event_kind, output_path.file_name()),
                     stacks_lines.iter().map(String::as_str),
                 )?;
-                flamegraph_summary.regular_path = Some(output_path.to_path());
             }
 
             if let Some(base_total) = &base_total {
@@ -248,9 +243,6 @@ impl FlamegraphGenerator for BaselineAndSaveFlamegraphGenerator {
                     *event_kind,
                     &stacks_lines,
                 )?;
-
-                flamegraph_summary.base_path = Some(output_path.to_base_path().to_path());
-                flamegraph_summary.diff_path = Some(output_path.to_diff_path().to_path());
             }
 
             flamegraph_summaries.totals.push(flamegraph_summary);
@@ -457,7 +449,7 @@ impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
 
             if let Some(base_total) = base_total {
                 for event_kind in &flamegraph.config.event_kinds {
-                    let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
+                    let flamegraph_summary = FlamegraphSummary::new(*event_kind);
                     output_path.set_event_kind(*event_kind);
 
                     Flamegraph::create_differential(
@@ -470,11 +462,6 @@ impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
                         *event_kind,
                         &total.to_stack_format(event_kind)?,
                     )?;
-
-                    flamegraph_summary.regular_path = Some(output_path.to_path());
-                    flamegraph_summary.base_path = Some(output_path.to_base_path().to_path());
-                    flamegraph_summary.diff_path = Some(output_path.to_diff_path().to_path());
-
                     flamegraph_summaries.totals.push(flamegraph_summary);
                 }
             }
@@ -765,7 +752,7 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
 
         let mut flamegraph_summaries = FlamegraphSummaries::default();
         for event_kind in &flamegraph.config.event_kinds {
-            let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
+            let flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
 
             Flamegraph::write(
@@ -776,8 +763,6 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
                     .iter()
                     .map(String::as_str),
             )?;
-
-            flamegraph_summary.regular_path = Some(output_path.to_path());
             flamegraph_summaries.summaries.push(flamegraph_summary);
         }
 

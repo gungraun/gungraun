@@ -51,7 +51,7 @@
       ]
     },
     "module_path": {
-      "description": "The rust path in the form `benchmark_file::group::function_name`",
+      "description": "The rust path in the form `benchmark_file::group::function_name`\n\nIf the `id` is not present, this `module_path` is sufficient to uniquely identify a\ngungraun benchmark.",
       "type": "string"
     },
     "output_dir": {

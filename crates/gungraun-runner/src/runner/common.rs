@@ -142,6 +142,19 @@ pub struct BenchmarkSummaries {
     pub total_time: Option<Duration>,
 }
 
+/// Temporary output files used to capture benchmark stdout and stderr.
+#[derive(Debug)]
+pub struct CapturedOutput {
+    /// Whether Perf control messages are removed when captured output is written to the terminal.
+    ///
+    /// Filtering preserves all other bytes and line endings.
+    pub filter_output: bool,
+    /// Temporary file receiving captured stderr output.
+    pub stderr: File,
+    /// Temporary file receiving captured stdout output.
+    pub stdout: File,
+}
+
 /// The `Config` contains all the information extracted from the UI invocation of the runner
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -208,6 +221,15 @@ pub struct LoadBaselineDataProcessor {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
 
+/// Configuration for perf-specific output formatting and significance thresholds.
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct PerfOutputConfig {
+    /// The alpha threshold used for statistical significance testing.
+    pub alpha: f64,
+    /// The minimum percentage of time the benchmark must be running.
+    pub min_pcnt_running: f64,
+}
+
 /// Configuration controlling how benchmark results are processed and formatted for output.
 #[derive(Debug, PartialEq, Clone)]
 pub struct PostProcessingConfig {
@@ -221,44 +243,13 @@ pub struct PostProcessingConfig {
     pub perf_config: Option<PerfOutputConfig>,
 }
 
-/// Configuration for perf-specific output formatting and significance thresholds.
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub struct PerfOutputConfig {
-    /// The alpha threshold used for statistical significance testing.
-    pub alpha: f64,
-    /// The minimum percentage of time the benchmark must be running.
-    pub min_pcnt_running: f64,
-}
-
-// FIX: Sort structs, impls, ... in this module
-impl PerfOutputConfig {
-    /// Returns the alpha threshold for statistical significance testing.
-    pub fn alpha(&self) -> f64 {
-        self.alpha
-    }
-
-    /// Returns the minimum percentage of time the benchmark must be running.
-    pub fn min_pcnt_running(&self) -> f64 {
-        self.min_pcnt_running
-    }
-}
-
-impl From<(f64, f64)> for PerfOutputConfig {
-    fn from((alpha, min_pcnt_running): (f64, f64)) -> Self {
-        Self {
-            alpha,
-            min_pcnt_running,
-        }
-    }
-}
-
-impl Default for PerfOutputConfig {
-    fn default() -> Self {
-        Self {
-            alpha: DEFAULT_PERF_ALPHA,
-            min_pcnt_running: DEFAULT_PERF_MIN_PCNT_RUNNING,
-        }
-    }
+/// The main runner to run all library or binary benchmarks
+#[derive(Debug)]
+pub struct Runner {
+    config: Arc<Config>,
+    groups: Groups,
+    setup: Option<Assistant>,
+    teardown: Option<Assistant>,
 }
 
 /// The `Sandbox` in which benchmarks should be runs
@@ -274,28 +265,6 @@ pub struct Sandbox {
 pub struct SaveBaselineDataProcessor {
     /// Analyzer pipeline used to parse and process benchmark outputs.
     pub analyzers: Vec<Analyzer>,
-}
-
-/// The main runner to run all library or binary benchmarks
-#[derive(Debug)]
-pub struct Runner {
-    config: Arc<Config>,
-    groups: Groups,
-    setup: Option<Assistant>,
-    teardown: Option<Assistant>,
-}
-
-/// Temporary output files used to capture benchmark stdout and stderr.
-#[derive(Debug)]
-pub struct CapturedOutput {
-    /// Whether Perf control messages are removed when captured output is written to the terminal.
-    ///
-    /// Filtering preserves all other bytes and line endings.
-    pub filter_output: bool,
-    /// Temporary file receiving captured stderr output.
-    pub stderr: File,
-    /// Temporary file receiving captured stdout output.
-    pub stdout: File,
 }
 
 /// Shared post-processing interface for library and binary benchmark runs.
@@ -726,28 +695,6 @@ impl AssistantKind {
     }
 }
 
-impl Display for BaselineName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl FromStr for BaselineName {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for char in s.chars() {
-            if !(char.is_ascii_alphanumeric() || char == '_') {
-                return Err(format!(
-                    "A baseline name can only consist of ascii characters which are alphanumeric \
-                     or '_' but found: '{char}'"
-                ));
-            }
-        }
-        Ok(Self(s.to_owned()))
-    }
-}
-
 impl BenchmarkDataProcessor for BaselineAndSaveDataProcessor {
     fn finalize(
         &mut self,
@@ -872,6 +819,28 @@ impl BenchmarkDataProcessor for BaselineDataProcessor {
     }
 }
 
+impl Display for BaselineName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl FromStr for BaselineName {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for char in s.chars() {
+            if !(char.is_ascii_alphanumeric() || char == '_') {
+                return Err(format!(
+                    "A baseline name can only consist of ascii characters which are alphanumeric \
+                     or '_' but found: '{char}'"
+                ));
+            }
+        }
+        Ok(Self(s.to_owned()))
+    }
+}
+
 impl Benches {
     /// Returns the number of benchmarks stored in this container.
     pub fn len(&self) -> usize {
@@ -944,6 +913,192 @@ impl BenchmarkSummaries {
         if !nosummary {
             SummaryFormatter::new(output_format_kind).print(self);
         }
+    }
+}
+
+impl CapturedOutput {
+    /// Creates new temporary files for capturing stdout and stderr.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if creating temporary files fails.
+    pub fn new(filter_output: bool) -> Result<Self> {
+        tempfile()
+            .and_then(|stdout| {
+                tempfile().map(|stderr| Self {
+                    filter_output,
+                    stderr,
+                    stdout,
+                })
+            })
+            .with_context(|| "Creating captured output failed")
+    }
+
+    /// Creates a duplicate `CapturedOutput` handle backed by cloned file descriptors.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if cloning either stream handle fails.
+    pub fn try_clone(&self) -> Result<Self> {
+        self.stdout
+            .try_clone()
+            .and_then(|stdout| {
+                self.stderr.try_clone().map(|stderr| Self {
+                    filter_output: self.filter_output,
+                    stderr,
+                    stdout,
+                })
+            })
+            .with_context(|| "Cloning captured output failed")
+    }
+
+    /// Flushes and rewinds both captured output files to the beginning.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if flushing or seeking either stream fails.
+    pub fn reset(&mut self) -> Result<()> {
+        self.stdout
+            .flush()
+            .and_then(|()| self.stdout.rewind())
+            .and_then(|()| self.stderr.flush())
+            .and_then(|()| self.stderr.rewind())
+            .with_context(|| "Resetting captured output failed")
+    }
+
+    /// Returns cloned stdout and stderr file handles as [`std::process::Stdio`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stream cloning fails.
+    pub fn into_stdio(&self) -> Result<(StdStdio, StdStdio)> {
+        self.try_clone()
+            .map(|cloned| (cloned.stdout.into(), cloned.stderr.into()))
+    }
+
+    /// Writes captured stdout and stderr to the standard stdout/stderr.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stream reset or copying data to terminal output fails.
+    pub fn dump(&mut self) -> Result<()> {
+        self.reset().and_then(|()| {
+            let mut stdout_lock = stdout().lock();
+            let mut stderr_lock = stderr().lock();
+
+            if self.filter_output {
+                Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
+            } else {
+                std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+            }
+            .and_then(|()| {
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping captured output failed")
+        })
+    }
+
+    /// Writes captured stdout and stderr to terminal output without changing the `self` state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if cloning, resetting, or copying stream data fails.
+    pub fn dump_cloned(&self) -> Result<()> {
+        let mut this = self.try_clone()?;
+        this.reset().and_then(|()| {
+            let mut stdout_lock = stdout().lock();
+            let mut stderr_lock = stderr().lock();
+
+            if self.filter_output {
+                Self::dump_filtered(&mut BufReader::new(&mut this.stdout), &mut stdout_lock)
+            } else {
+                std::io::copy(&mut this.stdout, &mut stdout_lock).map(|_| ())
+            }
+            .and_then(|()| {
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut this.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut this.stderr, &mut stderr_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping cloned captured output failed")
+        })
+    }
+
+    /// Writes captured stdout to the standard stderr stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if flushing, seeking, or copying stderr data fails.
+    pub fn dump_stderr(&mut self) -> Result<()> {
+        self.stderr
+            .flush()
+            .and_then(|()| self.stderr.rewind())
+            .and_then(|()| {
+                let mut stderr_lock = stderr().lock();
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
+                } else {
+                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping stderr failed")
+    }
+
+    /// Writes captured stdout to the standard stdout stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if flushing, seeking, or copying stdout data fails.
+    pub fn dump_stdout(&mut self) -> Result<()> {
+        self.stdout
+            .flush()
+            .and_then(|()| self.stdout.rewind())
+            .and_then(|()| {
+                let mut stdout_lock = stdout().lock();
+                if self.filter_output {
+                    Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
+                } else {
+                    std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
+                }
+            })
+            .with_context(|| "Dumping stdout failed")
+    }
+
+    /// Writes `reader` into `writer` filtering the reader line by line
+    ///
+    /// This function filters the `Events disabled`, `Events enabled` messages issued by perf. They
+    /// usually just clutter the nocapture output especially when using sampling. Bytes and line
+    /// endings are preserved.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if line-wise reading or writing into the `writer` fails
+    pub fn dump_filtered<R, W>(reader: &mut R, writer: &mut W) -> std::io::Result<()>
+    where
+        R: ?Sized + BufRead,
+        W: ?Sized + Write,
+    {
+        let is_perf_event_line = |line: &[u8]| -> bool {
+            let line = line.strip_suffix(b"\n").unwrap_or(line);
+            let line = line.strip_suffix(b"\r").unwrap_or(line);
+            matches!(line, b"Events enabled" | b"Events disabled")
+        };
+
+        let mut line = Vec::new();
+
+        while reader.read_until(b'\n', &mut line)? != 0 {
+            if !is_perf_event_line(&line) {
+                writer.write_all(&line)?;
+            }
+            line.clear(); // retain allocation for the next line
+        }
+
+        Ok(())
     }
 }
 
@@ -1341,141 +1496,6 @@ impl Group {
     }
 }
 
-impl BenchmarkDataProcessor for LoadBaselineDataProcessor {
-    fn finalize(
-        &mut self,
-        benchmark_summary: &mut BenchmarkSummary,
-        config: &Config,
-        header: &Header,
-    ) -> Result<()> {
-        self.parse(benchmark_summary, config, header, None)
-    }
-
-    fn has_benchmarks(&self) -> bool {
-        !self.analyzers.is_empty()
-    }
-
-    fn analyzers(&self) -> &[Analyzer] {
-        &self.analyzers
-    }
-
-    fn generate_flamegraphs(
-        &self,
-        config: &Config,
-        header: &Header,
-        output_path: &ToolOutputPath,
-        flamegraph_config: &ToolFlamegraphConfig,
-        entry_point: &EntryPoint,
-    ) -> Result<Vec<FlamegraphSummary>> {
-        if output_path.tool == Tool::Callgrind
-            && let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config
-        {
-            let loaded_baseline = output_path.loaded_baseline_name().expect(
-                "The loaded baseline of an output path of a loaded baseline should have a name",
-            );
-            let baseline = output_path
-                .baseline_name()
-                .cloned()
-                .expect("The baseline of an output path of a loaded baseline should have a name");
-
-            return LoadBaselineFlamegraphGenerator {
-                baseline,
-                loaded_baseline,
-            }
-            .create(
-                &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
-                output_path,
-                (*entry_point == EntryPoint::Default)
-                    .then(Sentinel::default)
-                    .as_ref(),
-                &config.meta.project_root,
-            );
-        }
-
-        Ok(vec![])
-    }
-}
-
-impl JobResult {
-    /// Finalizes, prints, and stores a single benchmark job result in [`BenchmarkSummaries`]
-    ///
-    /// This method consumes the [`JobResult`] to process its benchmark data through the
-    /// [`BenchmarkDataProcessor`] pipeline. When `compare_by_id` is `true` and the [`OutputFormat`]
-    /// is default (printing to terminal output), the summary is also compared against benchmarks in
-    /// other groups sharing the same benchmark id and stored in `comparison_summaries`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if finalization, printing/saving, or regression checks fail.
-    fn process_data(
-        self,
-        config: &Arc<Config>,
-        compare_by_id: bool,
-        benchmark_summaries: &mut BenchmarkSummaries,
-        comparison_summaries: &mut HashMap<String, Vec<BenchmarkSummary>>,
-    ) -> Result<()> {
-        let Self {
-            mut benchmark_summary,
-            output_format,
-            captured_output,
-            mut data_processor,
-            post_processing_config,
-        } = self;
-
-        if !data_processor.has_benchmarks() {
-            return Ok(());
-        }
-
-        data_processor
-            .finalize(
-                &mut benchmark_summary,
-                config,
-                &post_processing_config.header,
-            )
-            .and_then(|()| {
-                let summary_output = config.meta.args.save_summary.and_then(|format| {
-                    data_processor
-                        .analyzers()
-                        .first()
-                        .map(|(_, output_path, _, _, _)| {
-                            SummaryOutput::new(format, &output_path.dir)
-                        })
-                });
-
-                benchmark_summary.print_and_save(
-                    config,
-                    &output_format,
-                    captured_output,
-                    &post_processing_config,
-                    summary_output.as_ref(),
-                )
-            })
-            .and_then(|()| benchmark_summary.check_regression(post_processing_config.fail_fast))?;
-
-        benchmark_summaries.add_summary(benchmark_summary.clone());
-        if compare_by_id
-            && output_format.is_default()
-            && let Some(id) = &benchmark_summary.id
-        {
-            if let Some(sums) = comparison_summaries.get_mut(id) {
-                for sum in sums.iter() {
-                    sum.compare_and_print(
-                        id,
-                        &benchmark_summary,
-                        &output_format,
-                        post_processing_config.perf_config.as_ref(),
-                    );
-                }
-                sums.push(benchmark_summary);
-            } else {
-                comparison_summaries.insert(id.clone(), vec![benchmark_summary]);
-            }
-        }
-
-        Ok(())
-    }
-}
-
 impl Groups {
     /// Builds benchmark groups from binary benchmark metadata.
     ///
@@ -1851,6 +1871,141 @@ impl Groups {
     }
 }
 
+impl JobResult {
+    /// Finalizes, prints, and stores a single benchmark job result in [`BenchmarkSummaries`]
+    ///
+    /// This method consumes the [`JobResult`] to process its benchmark data through the
+    /// [`BenchmarkDataProcessor`] pipeline. When `compare_by_id` is `true` and the [`OutputFormat`]
+    /// is default (printing to terminal output), the summary is also compared against benchmarks in
+    /// other groups sharing the same benchmark id and stored in `comparison_summaries`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if finalization, printing/saving, or regression checks fail.
+    fn process_data(
+        self,
+        config: &Arc<Config>,
+        compare_by_id: bool,
+        benchmark_summaries: &mut BenchmarkSummaries,
+        comparison_summaries: &mut HashMap<String, Vec<BenchmarkSummary>>,
+    ) -> Result<()> {
+        let Self {
+            mut benchmark_summary,
+            output_format,
+            captured_output,
+            mut data_processor,
+            post_processing_config,
+        } = self;
+
+        if !data_processor.has_benchmarks() {
+            return Ok(());
+        }
+
+        data_processor
+            .finalize(
+                &mut benchmark_summary,
+                config,
+                &post_processing_config.header,
+            )
+            .and_then(|()| {
+                let summary_output = config.meta.args.save_summary.and_then(|format| {
+                    data_processor
+                        .analyzers()
+                        .first()
+                        .map(|(_, output_path, _, _, _)| {
+                            SummaryOutput::new(format, &output_path.dir)
+                        })
+                });
+
+                benchmark_summary.print_and_save(
+                    config,
+                    &output_format,
+                    captured_output,
+                    &post_processing_config,
+                    summary_output.as_ref(),
+                )
+            })
+            .and_then(|()| benchmark_summary.check_regression(post_processing_config.fail_fast))?;
+
+        benchmark_summaries.add_summary(benchmark_summary.clone());
+        if compare_by_id
+            && output_format.is_default()
+            && let Some(id) = &benchmark_summary.id
+        {
+            if let Some(sums) = comparison_summaries.get_mut(id) {
+                for sum in sums.iter() {
+                    sum.compare_and_print(
+                        id,
+                        &benchmark_summary,
+                        &output_format,
+                        post_processing_config.perf_config.as_ref(),
+                    );
+                }
+                sums.push(benchmark_summary);
+            } else {
+                comparison_summaries.insert(id.clone(), vec![benchmark_summary]);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl BenchmarkDataProcessor for LoadBaselineDataProcessor {
+    fn finalize(
+        &mut self,
+        benchmark_summary: &mut BenchmarkSummary,
+        config: &Config,
+        header: &Header,
+    ) -> Result<()> {
+        self.parse(benchmark_summary, config, header, None)
+    }
+
+    fn has_benchmarks(&self) -> bool {
+        !self.analyzers.is_empty()
+    }
+
+    fn analyzers(&self) -> &[Analyzer] {
+        &self.analyzers
+    }
+
+    fn generate_flamegraphs(
+        &self,
+        config: &Config,
+        header: &Header,
+        output_path: &ToolOutputPath,
+        flamegraph_config: &ToolFlamegraphConfig,
+        entry_point: &EntryPoint,
+    ) -> Result<Vec<FlamegraphSummary>> {
+        if output_path.tool == Tool::Callgrind
+            && let ToolFlamegraphConfig::Callgrind(flamegraph_config) = &flamegraph_config
+        {
+            let loaded_baseline = output_path.loaded_baseline_name().expect(
+                "The loaded baseline of an output path of a loaded baseline should have a name",
+            );
+            let baseline = output_path
+                .baseline_name()
+                .cloned()
+                .expect("The baseline of an output path of a loaded baseline should have a name");
+
+            return LoadBaselineFlamegraphGenerator {
+                baseline,
+                loaded_baseline,
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config.to_owned()),
+                output_path,
+                (*entry_point == EntryPoint::Default)
+                    .then(Sentinel::default)
+                    .as_ref(),
+                &config.meta.project_root,
+            );
+        }
+
+        Ok(vec![])
+    }
+}
+
 impl MaxParallel {
     /// Resolves `parallel` and this group-specific limit to an effective worker count.
     ///
@@ -1864,6 +2019,7 @@ impl MaxParallel {
         }
     }
 }
+
 impl From<Option<usize>> for MaxParallel {
     fn from(value: Option<usize>) -> Self {
         match value {
@@ -1924,6 +2080,37 @@ impl ModulePath {
 impl Display for ModulePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
+    }
+}
+
+// FIX: Sort structs, impls, ... in this module
+impl PerfOutputConfig {
+    /// Returns the alpha threshold for statistical significance testing.
+    pub fn alpha(&self) -> f64 {
+        self.alpha
+    }
+
+    /// Returns the minimum percentage of time the benchmark must be running.
+    pub fn min_pcnt_running(&self) -> f64 {
+        self.min_pcnt_running
+    }
+}
+
+impl Default for PerfOutputConfig {
+    fn default() -> Self {
+        Self {
+            alpha: DEFAULT_PERF_ALPHA,
+            min_pcnt_running: DEFAULT_PERF_MIN_PCNT_RUNNING,
+        }
+    }
+}
+
+impl From<(f64, f64)> for PerfOutputConfig {
+    fn from((alpha, min_pcnt_running): (f64, f64)) -> Self {
+        Self {
+            alpha,
+            min_pcnt_running,
+        }
     }
 }
 
@@ -2182,192 +2369,6 @@ impl BenchmarkDataProcessor for SaveBaselineDataProcessor {
         }
 
         Ok(vec![])
-    }
-}
-
-impl CapturedOutput {
-    /// Creates new temporary files for capturing stdout and stderr.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if creating temporary files fails.
-    pub fn new(filter_output: bool) -> Result<Self> {
-        tempfile()
-            .and_then(|stdout| {
-                tempfile().map(|stderr| Self {
-                    filter_output,
-                    stderr,
-                    stdout,
-                })
-            })
-            .with_context(|| "Creating captured output failed")
-    }
-
-    /// Creates a duplicate `CapturedOutput` handle backed by cloned file descriptors.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if cloning either stream handle fails.
-    pub fn try_clone(&self) -> Result<Self> {
-        self.stdout
-            .try_clone()
-            .and_then(|stdout| {
-                self.stderr.try_clone().map(|stderr| Self {
-                    filter_output: self.filter_output,
-                    stderr,
-                    stdout,
-                })
-            })
-            .with_context(|| "Cloning captured output failed")
-    }
-
-    /// Flushes and rewinds both captured output files to the beginning.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if flushing or seeking either stream fails.
-    pub fn reset(&mut self) -> Result<()> {
-        self.stdout
-            .flush()
-            .and_then(|()| self.stdout.rewind())
-            .and_then(|()| self.stderr.flush())
-            .and_then(|()| self.stderr.rewind())
-            .with_context(|| "Resetting captured output failed")
-    }
-
-    /// Returns cloned stdout and stderr file handles as [`std::process::Stdio`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if stream cloning fails.
-    pub fn into_stdio(&self) -> Result<(StdStdio, StdStdio)> {
-        self.try_clone()
-            .map(|cloned| (cloned.stdout.into(), cloned.stderr.into()))
-    }
-
-    /// Writes captured stdout and stderr to the standard stdout/stderr.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if stream reset or copying data to terminal output fails.
-    pub fn dump(&mut self) -> Result<()> {
-        self.reset().and_then(|()| {
-            let mut stdout_lock = stdout().lock();
-            let mut stderr_lock = stderr().lock();
-
-            if self.filter_output {
-                Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
-            } else {
-                std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
-            }
-            .and_then(|()| {
-                if self.filter_output {
-                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
-                } else {
-                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
-                }
-            })
-            .with_context(|| "Dumping captured output failed")
-        })
-    }
-
-    /// Writes captured stdout and stderr to terminal output without changing the `self` state.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if cloning, resetting, or copying stream data fails.
-    pub fn dump_cloned(&self) -> Result<()> {
-        let mut this = self.try_clone()?;
-        this.reset().and_then(|()| {
-            let mut stdout_lock = stdout().lock();
-            let mut stderr_lock = stderr().lock();
-
-            if self.filter_output {
-                Self::dump_filtered(&mut BufReader::new(&mut this.stdout), &mut stdout_lock)
-            } else {
-                std::io::copy(&mut this.stdout, &mut stdout_lock).map(|_| ())
-            }
-            .and_then(|()| {
-                if self.filter_output {
-                    Self::dump_filtered(&mut BufReader::new(&mut this.stderr), &mut stderr_lock)
-                } else {
-                    std::io::copy(&mut this.stderr, &mut stderr_lock).map(|_| ())
-                }
-            })
-            .with_context(|| "Dumping cloned captured output failed")
-        })
-    }
-
-    /// Writes captured stdout to the standard stderr stream.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if flushing, seeking, or copying stderr data fails.
-    pub fn dump_stderr(&mut self) -> Result<()> {
-        self.stderr
-            .flush()
-            .and_then(|()| self.stderr.rewind())
-            .and_then(|()| {
-                let mut stderr_lock = stderr().lock();
-                if self.filter_output {
-                    Self::dump_filtered(&mut BufReader::new(&mut self.stderr), &mut stderr_lock)
-                } else {
-                    std::io::copy(&mut self.stderr, &mut stderr_lock).map(|_| ())
-                }
-            })
-            .with_context(|| "Dumping stderr failed")
-    }
-
-    /// Writes captured stdout to the standard stdout stream.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if flushing, seeking, or copying stdout data fails.
-    pub fn dump_stdout(&mut self) -> Result<()> {
-        self.stdout
-            .flush()
-            .and_then(|()| self.stdout.rewind())
-            .and_then(|()| {
-                let mut stdout_lock = stdout().lock();
-                if self.filter_output {
-                    Self::dump_filtered(&mut BufReader::new(&mut self.stdout), &mut stdout_lock)
-                } else {
-                    std::io::copy(&mut self.stdout, &mut stdout_lock).map(|_| ())
-                }
-            })
-            .with_context(|| "Dumping stdout failed")
-    }
-
-    /// Writes `reader` into `writer` filtering the reader line by line
-    ///
-    /// This function filters the `Events disabled`, `Events enabled` messages issued by perf. They
-    /// usually just clutter the nocapture output especially when using sampling. Bytes and line
-    /// endings are preserved.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if line-wise reading or writing into the `writer` fails
-    pub fn dump_filtered<R, W>(reader: &mut R, writer: &mut W) -> std::io::Result<()>
-    where
-        R: ?Sized + BufRead,
-        W: ?Sized + Write,
-    {
-        let is_perf_event_line = |line: &[u8]| -> bool {
-            let line = line.strip_suffix(b"\n").unwrap_or(line);
-            let line = line.strip_suffix(b"\r").unwrap_or(line);
-            matches!(line, b"Events enabled" | b"Events disabled")
-        };
-
-        let mut line = Vec::new();
-
-        while reader.read_until(b'\n', &mut line)? != 0 {
-            if !is_perf_event_line(&line) {
-                writer.write_all(&line)?;
-            }
-            line.clear(); // retain allocation for the next line
-        }
-
-        Ok(())
     }
 }
 

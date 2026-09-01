@@ -19,6 +19,18 @@ pub struct CachegrindArgs {
     valgrind: ValgrindArgs,
 }
 
+impl Default for CachegrindArgs {
+    fn default() -> Self {
+        Self {
+            i1: DEFAULT_I1.into(),
+            d1: DEFAULT_D1.into(),
+            ll: DEFAULT_LL.into(),
+            cache_sim: DEFAULT_CACHE_SIM,
+            valgrind: ValgrindArgs::new(ValgrindTool::Cachegrind),
+        }
+    }
+}
+
 impl ToolArgsLike for CachegrindArgs {
     fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
         debug_assert_eq!(tool, Tool::Cachegrind);
@@ -47,18 +59,6 @@ impl ToolArgsLike for CachegrindArgs {
     }
 }
 
-impl Default for CachegrindArgs {
-    fn default() -> Self {
-        Self {
-            i1: DEFAULT_I1.into(),
-            d1: DEFAULT_D1.into(),
-            ll: DEFAULT_LL.into(),
-            cache_sim: DEFAULT_CACHE_SIM,
-            valgrind: ValgrindArgs::new(ValgrindTool::Cachegrind),
-        }
-    }
-}
-
 impl From<CachegrindArgs> for ValgrindArgs {
     fn from(value: CachegrindArgs) -> Self {
         let mut valgrind = value.valgrind;
@@ -81,39 +81,6 @@ mod tests {
 
     use super::*;
     use crate::runner::tool::args::FairSched;
-
-    fn default_cachegrind_other_args() -> Vec<String> {
-        strings([
-            "--I1=32768,8,64",
-            "--D1=32768,8,64",
-            "--LL=8388608,16,64",
-            "--cache-sim=yes",
-        ])
-    }
-
-    fn strings<const N: usize>(args: [&str; N]) -> Vec<String> {
-        args.into_iter().map(str::to_owned).collect()
-    }
-
-    #[builder(finish_fn = "fx")]
-    pub fn valgrind_args_f(
-        i1: Option<&str>,
-        fair_sched: Option<FairSched>,
-        other: Option<Vec<String>>,
-    ) -> ValgrindArgs {
-        let mut args = ValgrindArgs::new(ValgrindTool::Cachegrind);
-        if let Some(value) = i1 {
-            args.other.push(format!("--I1={value}"));
-        }
-        if let Some(value) = fair_sched {
-            args.fair_sched = value;
-        }
-        if let Some(value) = other {
-            args.other.extend(value);
-        }
-
-        args
-    }
 
     #[builder(finish_fn = "fx")]
     pub fn cachegrind_args_f(
@@ -141,6 +108,19 @@ mod tests {
         }
 
         args
+    }
+
+    fn default_cachegrind_other_args() -> Vec<String> {
+        strings([
+            "--I1=32768,8,64",
+            "--D1=32768,8,64",
+            "--LL=8388608,16,64",
+            "--cache-sim=yes",
+        ])
+    }
+
+    fn strings<const N: usize>(args: [&str; N]) -> Vec<String> {
+        args.into_iter().map(str::to_owned).collect()
     }
 
     #[rstest]
@@ -223,5 +203,25 @@ mod tests {
         let actual = ValgrindArgs::from(args);
 
         assert_eq!(actual, expected);
+    }
+
+    #[builder(finish_fn = "fx")]
+    pub fn valgrind_args_f(
+        i1: Option<&str>,
+        fair_sched: Option<FairSched>,
+        other: Option<Vec<String>>,
+    ) -> ValgrindArgs {
+        let mut args = ValgrindArgs::new(ValgrindTool::Cachegrind);
+        if let Some(value) = i1 {
+            args.other.push(format!("--I1={value}"));
+        }
+        if let Some(value) = fair_sched {
+            args.fair_sched = value;
+        }
+        if let Some(value) = other {
+            args.other.extend(value);
+        }
+
+        args
     }
 }

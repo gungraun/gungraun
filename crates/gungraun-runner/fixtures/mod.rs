@@ -36,7 +36,9 @@ use crate::runner::format::OutputFormat;
 use crate::runner::meta::Metadata;
 use crate::runner::perf::args::{DEFAULT_PERF_EVENTS, PerfStatArgs};
 use crate::runner::tasks::ProcessHandler;
-use crate::runner::tool::args::{ToolArgs, ToolArgsLike, ValgrindArgs};
+use crate::runner::tool::args::{
+    FairSched, ToolArgs, ToolArgsLike, ValgrindArgs, ValgrindTool, Vgdb,
+};
 use crate::runner::tool::config::{
     DEFAULT_PERF_ALPHA, DEFAULT_PERF_NON_ZERO_METRICS, DhatConfig, PerfConfig, ToolConfig,
     ToolConfigBuilder, ToolConfigOptions, ToolConfigs, ToolFlamegraphConfig,
@@ -73,22 +75,6 @@ pub fn assistant_f(kind: AssistantKind) -> Assistant {
 }
 
 #[builder(finish_fn = "fx")]
-pub fn config_f(
-    bench_bin: &Path,
-    bench_file: Option<&Path>,
-    metadata: Option<&Metadata>,
-) -> Config {
-    Config {
-        bench_bin: bench_bin.to_path_buf(),
-        bench_file: bench_file
-            .map_or_else(|| PathBuf::from("does_not_exist.rs"), Path::to_path_buf),
-        meta: metadata.map_or_else(|| metadata_f().fx(), Clone::clone),
-        module_path: ModulePath::new("does_not_exist"),
-        package_dir: PathBuf::from("test_package"),
-    }
-}
-
-#[builder(finish_fn = "fx")]
 pub fn bench_child_f(
     exe: &Path,
     args: Option<&[&str]>,
@@ -101,6 +87,19 @@ pub fn bench_child_f(
         .fx();
 
     (exe.to_path_buf(), child)
+}
+
+#[builder(finish_fn = "fx")]
+pub fn cachegrind_regression_config_f(
+    soft_limits: Option<Vec<(CachegrindMetric, f64)>>,
+    hard_limits: Option<Vec<(CachegrindMetric, Metric)>>,
+    fail_fast: Option<bool>,
+) -> CachegrindRegressionConfig {
+    CachegrindRegressionConfig {
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
+        fail_fast: fail_fast.unwrap_or(false),
+    }
 }
 
 #[builder(finish_fn = "fx")]
@@ -119,15 +118,18 @@ pub fn command_child_f(exe: &Path, args: Option<&[&str]>, stdout: Option<StdStdi
 }
 
 #[builder(finish_fn = "fx")]
-pub fn cachegrind_regression_config_f(
-    soft_limits: Option<Vec<(CachegrindMetric, f64)>>,
-    hard_limits: Option<Vec<(CachegrindMetric, Metric)>>,
-    fail_fast: Option<bool>,
-) -> CachegrindRegressionConfig {
-    CachegrindRegressionConfig {
-        soft_limits: soft_limits.unwrap_or_default(),
-        hard_limits: hard_limits.unwrap_or_default(),
-        fail_fast: fail_fast.unwrap_or(false),
+pub fn config_f(
+    bench_bin: &Path,
+    bench_file: Option<&Path>,
+    metadata: Option<&Metadata>,
+) -> Config {
+    Config {
+        bench_bin: bench_bin.to_path_buf(),
+        bench_file: bench_file
+            .map_or_else(|| PathBuf::from("does_not_exist.rs"), Path::to_path_buf),
+        meta: metadata.map_or_else(|| metadata_f().fx(), Clone::clone),
+        module_path: ModulePath::new("does_not_exist"),
+        package_dir: PathBuf::from("test_package"),
     }
 }
 
@@ -249,6 +251,31 @@ pub fn process_handler_f(
 }
 
 #[builder(finish_fn = "fx")]
+pub fn run_options_f(env_clear: Option<bool>) -> RunOptions {
+    // Sometimes necessary to be able to run the tests with valgrind
+    let valgrind_lib = OsString::from("VALGRIND_LIB");
+
+    let mut envs = HashMap::new();
+    if let Some(value) = std::env::var_os(&valgrind_lib) {
+        envs.insert(valgrind_lib, value);
+    }
+
+    RunOptions {
+        current_dir: None,
+        delay: None,
+        env_clear: env_clear.unwrap_or(true),
+        envs,
+        exit_with: None,
+        sandbox: None,
+        setup: None,
+        stderr: None,
+        stdin: None,
+        stdout: None,
+        teardown: None,
+    }
+}
+
+#[builder(finish_fn = "fx")]
 pub fn setup_child_f(
     exe: &Path,
     args: Option<&[&str]>,
@@ -289,28 +316,28 @@ pub fn test_file_f(dir: Option<&Path>) -> (PathBuf, File) {
 }
 
 #[builder(finish_fn = "fx")]
-pub fn run_options_f(env_clear: Option<bool>) -> RunOptions {
-    // Sometimes necessary to be able to run the tests with valgrind
-    let valgrind_lib = OsString::from("VALGRIND_LIB");
+pub fn tool_command_child_f(
+    exe: &Path,
+    args: Option<&[&str]>,
+    output_path: ToolOutputPath,
+    tool: Option<Tool>,
+    exit_with: Option<ExitWith>,
+    stdout: Option<StdStdio>,
+) -> ToolCommandChild {
+    let (path, child) = bench_child_f()
+        .exe(exe)
+        .maybe_args(args)
+        .maybe_stdout(stdout)
+        .fx();
 
-    let mut envs = HashMap::new();
-    if let Some(value) = std::env::var_os(&valgrind_lib) {
-        envs.insert(valgrind_lib, value);
-    }
-
-    RunOptions {
-        current_dir: None,
-        delay: None,
-        env_clear: env_clear.unwrap_or(true),
-        envs,
-        exit_with: None,
-        sandbox: None,
-        setup: None,
-        stderr: None,
-        stdin: None,
-        stdout: None,
-        teardown: None,
-    }
+    ToolCommandChild::new(
+        tool.unwrap_or(DEFAULT_TOOL),
+        child,
+        path,
+        exit_with,
+        output_path,
+        None,
+    )
 }
 
 #[builder(finish_fn = "fx")]
@@ -340,31 +367,6 @@ pub fn tool_command_f(
         None,
     )
     .unwrap()
-}
-
-#[builder(finish_fn = "fx")]
-pub fn tool_command_child_f(
-    exe: &Path,
-    args: Option<&[&str]>,
-    output_path: ToolOutputPath,
-    tool: Option<Tool>,
-    exit_with: Option<ExitWith>,
-    stdout: Option<StdStdio>,
-) -> ToolCommandChild {
-    let (path, child) = bench_child_f()
-        .exe(exe)
-        .maybe_args(args)
-        .maybe_stdout(stdout)
-        .fx();
-
-    ToolCommandChild::new(
-        tool.unwrap_or(DEFAULT_TOOL),
-        child,
-        path,
-        exit_with,
-        output_path,
-        None,
-    )
 }
 
 #[builder(finish_fn = "fx")]
@@ -550,4 +552,37 @@ pub fn tool_spec_f(
         show_log,
         options,
     }
+}
+
+#[builder(finish_fn = "fx")]
+pub fn valgrind_args_f(
+    tool: Option<ValgrindTool>,
+    error_exitcode: Option<&str>,
+    fair_sched: Option<FairSched>,
+    other: Option<Vec<String>>,
+    trace_children: Option<bool>,
+    verbose: Option<bool>,
+    vgdb: Option<Vgdb>,
+) -> ValgrindArgs {
+    let mut args = ValgrindArgs::new(tool.unwrap_or(ValgrindTool::Memcheck));
+    if let Some(value) = error_exitcode {
+        value.clone_into(&mut args.error_exitcode);
+    }
+    if let Some(value) = fair_sched {
+        args.fair_sched = value;
+    }
+    if let Some(value) = other {
+        args.other.extend(value);
+    }
+    if let Some(value) = trace_children {
+        args.trace_children = value;
+    }
+    if let Some(value) = verbose {
+        args.verbose = value;
+    }
+    if let Some(value) = vgdb {
+        args.vgdb = value;
+    }
+
+    args
 }

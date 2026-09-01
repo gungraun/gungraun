@@ -459,28 +459,6 @@ impl ToolCommandChild {
     }
 }
 
-/// Clone the stable parts of a [`Command`]
-///
-/// The stable parts are: exe path, args, current dir and env vars
-pub fn clone_command(command: &Command) -> Command {
-    let mut clone = Command::new(command.get_program());
-    clone.args(command.get_args());
-
-    if let Some(current_dir) = command.get_current_dir() {
-        clone.current_dir(current_dir);
-    }
-
-    for (key, value) in command.get_envs() {
-        if let Some(value) = value {
-            clone.env(key, value);
-        } else {
-            clone.env_remove(key);
-        }
-    }
-
-    clone
-}
-
 /// Check the exit code of the [`ToolCommand`] and verify the expected [`ExitWith`] if present
 pub fn check_exit(
     tool: Tool,
@@ -608,43 +586,35 @@ pub fn check_exit(
     }
 }
 
+/// Clone the stable parts of a [`Command`]
+///
+/// The stable parts are: exe path, args, current dir and env vars
+pub fn clone_command(command: &Command) -> Command {
+    let mut clone = Command::new(command.get_program());
+    clone.args(command.get_args());
+
+    if let Some(current_dir) = command.get_current_dir() {
+        clone.current_dir(current_dir);
+    }
+
+    for (key, value) in command.get_envs() {
+        if let Some(value) = value {
+            clone.env(key, value);
+        } else {
+            clone.env_remove(key);
+        }
+    }
+
+    clone
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::fixtures::{tool_config_f, tool_output_path_f};
 
     #[test]
-    fn prepare_perf_command_uses_tool_runner_dest_for_output_arg() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let output_path = tool_output_path_f()
-            .init(true)
-            .target_dir(temp_dir.path())
-            .tool(Tool::Perf)
-            .fx();
-        let config = tool_config_f().tool(Tool::Perf).fx();
-        let tool_runner_dest = Path::new("/runner/dest");
-        let mut command = Command::new("perf");
-
-        let (_perf_data, args, _log_path) = prepare_perf_command(
-            &mut command,
-            &config,
-            &output_path,
-            false,
-            Some(tool_runner_dest),
-        )
-        .unwrap();
-
-        let mut expected = OsString::from("--output=");
-        expected.push(tool_runner_dest.join(output_path.file_name()));
-
-        assert!(
-            args.contains(&expected),
-            "perf args did not contain rebased output path {expected:?}: {args:?}"
-        );
-    }
-
-    #[test]
-    fn append_tool_invocation_rebases_tool_and_benchmark_args() {
+    fn test_append_tool_invocation_rebases_tool_and_benchmark_args() {
         let mut tool_command = ToolCommand {
             command: Command::new("runner"),
             executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
@@ -683,7 +653,7 @@ mod tests {
     }
 
     #[test]
-    fn cloned_tool_command_preserves_rebasing_roots() {
+    fn test_cloned_tool_command_preserves_rebasing_roots() {
         let tool_command = ToolCommand {
             command: Command::new("runner"),
             executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
@@ -703,5 +673,35 @@ mod tests {
             vec![OsStr::new("--input=/container/workspace/data.txt")]
         );
         assert_eq!(cloned.executable, tool_command.executable);
+    }
+
+    #[test]
+    fn test_prepare_perf_command_uses_tool_runner_dest_for_output_arg() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = tool_output_path_f()
+            .init(true)
+            .target_dir(temp_dir.path())
+            .tool(Tool::Perf)
+            .fx();
+        let config = tool_config_f().tool(Tool::Perf).fx();
+        let tool_runner_dest = Path::new("/runner/dest");
+        let mut command = Command::new("perf");
+
+        let (_perf_data, args, _log_path) = prepare_perf_command(
+            &mut command,
+            &config,
+            &output_path,
+            false,
+            Some(tool_runner_dest),
+        )
+        .unwrap();
+
+        let mut expected = OsString::from("--output=");
+        expected.push(tool_runner_dest.join(output_path.file_name()));
+
+        assert!(
+            args.contains(&expected),
+            "perf args did not contain rebased output path {expected:?}: {args:?}"
+        );
     }
 }

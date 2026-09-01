@@ -765,19 +765,6 @@ mod tests {
     use crate::fixtures::tool_config_f;
 
     #[test]
-    fn test_baseline_and_save_benchmark_uses_different_display_baselines() {
-        let benchmark = BaselineAndSaveBenchmark {
-            baseline: BaselineName("main".to_owned()),
-            save_baseline: BaselineName("pr_1234".to_owned()),
-        };
-
-        assert_eq!(
-            benchmark.baselines(),
-            (Some("pr_1234".to_owned()), Some("main".to_owned()))
-        );
-    }
-
-    #[test]
     fn bench_args_uses_run_mode_override() {
         let config = tool_config_f()
             .tool(Tool::Perf)
@@ -788,5 +775,18 @@ mod tests {
         let args = LibBench::bench_args(&config, Some(BenchRunMode::PerfCalibrate), 1, 2, 3, None);
 
         assert_eq!(args[1], OsString::from(BenchRunMode::PerfCalibrate.id()));
+    }
+
+    #[test]
+    fn test_baseline_and_save_benchmark_uses_different_display_baselines() {
+        let benchmark = BaselineAndSaveBenchmark {
+            baseline: BaselineName("main".to_owned()),
+            save_baseline: BaselineName("pr_1234".to_owned()),
+        };
+
+        assert_eq!(
+            benchmark.baselines(),
+            (Some("pr_1234".to_owned()), Some("main".to_owned()))
+        );
     }
 }

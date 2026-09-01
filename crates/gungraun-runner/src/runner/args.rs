@@ -49,8 +49,6 @@ pub const DEFAULT_ALLOW_ASLR: bool = false;
 /// benchmark. Only essential variables like `LD_PRELOAD`, `LD_LIBRARY_PATH` are preserved.
 pub const DEFAULT_ENV_CLEAR: bool = true;
 
-const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
-
 const DEFAULT_PERF_SAMPLING_DURATION: Duration = Duration::from_secs(2);
 
 const DEFAULT_TIME_UNITS: [CustomTimeUnit<'static>; 4] = [
@@ -59,6 +57,8 @@ const DEFAULT_TIME_UNITS: [CustomTimeUnit<'static>; 4] = [
     CustomTimeUnit::with_default(TimeUnit::MilliSecond, &["ms", "msec"]),
     CustomTimeUnit::with_default(TimeUnit::Second, &["s", "sec", "secs", "second", "seconds"]),
 ];
+
+const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
 
 // Utility for complex types intended to be used during the parsing of the command-line arguments
 type Limits<T> = (IndexMap<T, f64>, IndexMap<T, Metric>);
@@ -1707,6 +1707,22 @@ pub struct CommandLineArgs {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RawArgs(Vec<String>);
 
+impl BenchmarkFilter {
+    /// Return `true` if the filter matches the haystack
+    pub fn apply(&self, haystack: &str) -> bool {
+        let Self::WildcardPattern(pattern) = self;
+        pattern.as_str().dowild_with(haystack, DOWILD_OPTIONS)
+    }
+}
+
+impl FromStr for BenchmarkFilter {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::WildcardPattern(s.to_owned()))
+    }
+}
+
 impl CommandLineArgs {
     /// Parses command-line arguments and exits on parsing or validation errors.
     pub fn parse_validated_from<I, T>(iter: I) -> Self
@@ -1741,22 +1757,6 @@ impl CommandLineArgs {
         }
 
         Ok(())
-    }
-}
-
-impl BenchmarkFilter {
-    /// Return `true` if the filter matches the haystack
-    pub fn apply(&self, haystack: &str) -> bool {
-        let Self::WildcardPattern(pattern) = self;
-        pattern.as_str().dowild_with(haystack, DOWILD_OPTIONS)
-    }
-}
-
-impl FromStr for BenchmarkFilter {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::WildcardPattern(s.to_owned()))
     }
 }
 
@@ -2010,22 +2010,6 @@ fn parse_helgrind_metrics(value: &str) -> Result<IndexSet<ErrorMetric>, String> 
     parse_tool_metrics(value, parse_error_metrics)
 }
 
-/// Parse the value of the hidden `--format` libtest-compat shim.
-///
-/// Only `terse` actually changes behavior. `pretty`, `json`, `junit`, the empty string and any
-/// unknown value all map to [`ListFormat::Pretty`] so we keep silently accepting values we don't
-/// natively support (matching the previous `Vec<String>` accept-all behavior).
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "clap value_parser requires Result return type"
-)]
-fn parse_list_format(value: &str) -> Result<ListFormat, String> {
-    match value {
-        "terse" => Ok(ListFormat::Terse),
-        _ => Ok(ListFormat::Pretty),
-    }
-}
-
 fn parse_limits<T: Eq + Hash>(
     value: &str,
     parse_metrics: fn(&str, Option<Metric>) -> ParsedMetrics<T>,
@@ -2074,6 +2058,22 @@ fn parse_limits<T: Eq + Hash>(
     }
 
     Ok((soft_limits, hard_limits))
+}
+
+/// Parse the value of the hidden `--format` libtest-compat shim.
+///
+/// Only `terse` actually changes behavior. `pretty`, `json`, `junit`, the empty string and any
+/// unknown value all map to [`ListFormat::Pretty`] so we keep silently accepting values we don't
+/// natively support (matching the previous `Vec<String>` accept-all behavior).
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "clap value_parser requires Result return type"
+)]
+fn parse_list_format(value: &str) -> Result<ListFormat, String> {
+    match value {
+        "terse" => Ok(ListFormat::Terse),
+        _ => Ok(ListFormat::Pretty),
+    }
 }
 
 /// Parse the Memcheck metrics as error metrics
@@ -2341,46 +2341,33 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_tool_args_when_empty_then_error() {
-        parse_tool_args("").unwrap_err();
+    fn test_arg_cachegrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--cachegrind-metrics"]).unwrap_err();
     }
 
     #[test]
-    fn test_save_baseline_with_baseline_is_allowed() {
-        let result = CommandLineArgs::try_parse_validated_from([
-            "--save-baseline=pr_1234",
-            "--baseline=main_2025_01_02",
-        ])
-        .unwrap();
-
-        assert_eq!(
-            result.save_baseline,
-            Some(BaselineName("pr_1234".to_owned()))
-        );
-        assert_eq!(
-            result.baseline,
-            Some(BaselineName("main_2025_01_02".to_owned()))
-        );
+    fn test_arg_callgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--callgrind-metrics"]).unwrap_err();
     }
 
     #[test]
-    fn test_save_baseline_with_same_baseline_is_rejected() {
-        let error =
-            CommandLineArgs::try_parse_validated_from(["--save-baseline=main", "--baseline=main"])
-                .unwrap_err();
-
-        assert_eq!(error.kind(), clap::error::ErrorKind::ValueValidation);
-        assert!(
-            error
-                .to_string()
-                .contains("use only --save-baseline=main instead")
-        );
+    fn test_arg_dhat_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--dhat-metrics"]).unwrap_err();
     }
 
     #[test]
-    fn test_save_baseline_with_load_baseline_is_rejected() {
-        CommandLineArgs::try_parse_from(["--save-baseline=pr_1234", "--load-baseline=main"])
-            .unwrap_err();
+    fn test_arg_drd_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--drd-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_helgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--helgrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_memcheck_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--memcheck-metrics"]).unwrap_err();
     }
 
     #[rstest]
@@ -2598,6 +2585,135 @@ mod tests {
     }
 
     #[test]
+    fn test_arg_tool_runner() {
+        let file = tempfile::Builder::new()
+            .permissions(Permissions::from_mode(0o755))
+            .tempfile()
+            .unwrap();
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())])
+                .unwrap();
+
+        assert_eq!(result.tool_runner, Some(file.path().to_path_buf()));
+    }
+
+    #[test]
+    fn test_arg_tool_runner_when_directory_then_error() {
+        let dir = tempdir().unwrap();
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner='{}'", dir.path().display())]);
+        result.unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_tool_runner_when_not_executable_then_error() {
+        let file = NamedTempFile::new().unwrap();
+        let result =
+            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())]);
+        result.unwrap_err();
+    }
+
+    #[test]
+    fn test_envs_arg_empty_string() {
+        let result = CommandLineArgs::try_parse_from(["--envs=''"]).unwrap();
+        assert_eq!(result.envs.len(), 1);
+        assert_eq!(result.envs[0], vec![]);
+    }
+
+    #[test]
+    fn test_envs_arg_missing_env_var() {
+        let result = CommandLineArgs::try_parse_from(["--envs=NONEXISTENT_VAR_789"]).unwrap();
+        assert_eq!(result.envs[0], vec![]);
+    }
+
+    #[test]
+    fn test_envs_arg_multiple_delimited() {
+        let result = CommandLineArgs::try_parse_from(["--envs='A=1 B=2 C=3'"]).unwrap();
+        assert_eq!(
+            result.envs[0],
+            vec![
+                (OsString::from("A"), OsString::from("1")),
+                (OsString::from("B"), OsString::from("2")),
+                (OsString::from("C"), OsString::from("3")),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_envs_arg_multiple_invocations() {
+        let result = CommandLineArgs::try_parse_from(["--envs=A=1", "--envs=B=2"]).unwrap();
+        assert_eq!(
+            result.envs,
+            vec![
+                vec![(OsString::from("A"), OsString::from("1"))],
+                vec![(OsString::from("B"), OsString::from("2"))],
+            ]
+        );
+    }
+
+    #[test]
+    fn test_envs_arg_path_with_colons() {
+        let result = CommandLineArgs::try_parse_from(["--envs=PATH=/usr/bin:/bin"]).unwrap();
+        assert_eq!(
+            result.envs[0],
+            vec![(OsString::from("PATH"), OsString::from("/usr/bin:/bin"))]
+        );
+    }
+
+    #[test]
+    fn test_envs_arg_unicode() {
+        let result = CommandLineArgs::try_parse_from(["--envs=CAFÉ=café"]).unwrap();
+        assert_eq!(
+            result.envs[0],
+            vec![(OsString::from("CAFÉ"), OsString::from("café"))]
+        );
+    }
+
+    #[test]
+    fn test_format_bare_flag_followed_by_other_flag_is_pretty() {
+        // `--format` followed by another flag must not gobble the flag as a value.
+        let actual = CommandLineArgs::parse_from(["--format", "--list"]);
+        assert!(actual.list);
+        assert_eq!(actual.format, ListFormat::Pretty);
+    }
+
+    #[test]
+    fn test_format_bare_flag_is_pretty() {
+        let actual = CommandLineArgs::parse_from(["--format"]);
+        assert_eq!(actual.format, ListFormat::Pretty);
+    }
+
+    #[test]
+    fn test_format_default_when_unset_is_pretty() {
+        let actual = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(actual.format, ListFormat::Pretty);
+    }
+
+    #[test]
+    fn test_format_equals_empty_is_pretty() {
+        let actual = CommandLineArgs::parse_from(["--format="]);
+        assert_eq!(actual.format, ListFormat::Pretty);
+    }
+
+    #[test]
+    fn test_format_equals_terse_is_terse() {
+        let actual = CommandLineArgs::parse_from(["--format=terse"]);
+        assert_eq!(actual.format, ListFormat::Terse);
+    }
+
+    #[test]
+    fn test_format_space_terse_is_terse() {
+        let actual = CommandLineArgs::parse_from(["--format", "terse"]);
+        assert_eq!(actual.format, ListFormat::Terse);
+    }
+
+    #[test]
+    fn test_format_unknown_value_is_pretty() {
+        let actual = CommandLineArgs::parse_from(["--format=json"]);
+        assert_eq!(actual.format, ListFormat::Pretty);
+    }
+
+    #[test]
     #[serial_test::serial]
     fn test_home_env() {
         // SAFETY: This test is run serially
@@ -2656,6 +2772,33 @@ mod tests {
     }
 
     #[test]
+    fn test_list_format_terse_ignored_nextest_invocation() {
+        let actual = CommandLineArgs::parse_from(["--list", "--format", "terse", "--ignored"]);
+        assert!(actual.list);
+        assert!(actual.ignored);
+        assert_eq!(actual.format, ListFormat::Terse);
+    }
+
+    #[test]
+    fn test_list_format_terse_nextest_invocation() {
+        let actual = CommandLineArgs::parse_from(["--list", "--format", "terse"]);
+        assert!(actual.list);
+        assert!(!actual.ignored);
+        assert_eq!(actual.format, ListFormat::Terse);
+    }
+
+    #[test]
+    fn test_parse_envs_empty() {
+        let result = parse_envs("").unwrap();
+        assert_eq!(result, vec![]);
+    }
+
+    #[test]
+    fn test_parse_tool_args_when_empty_then_error() {
+        parse_tool_args("").unwrap_err();
+    }
+
+    #[test]
     fn test_perf_args_cli() {
         let actual = CommandLineArgs::parse_from(["--perf-args='--all-user --no-big-num'"]);
         assert_eq!(
@@ -2663,26 +2806,6 @@ mod tests {
             Some(RawToolArgs::new_ignore_flag([
                 "--all-user".to_owned(),
                 "--no-big-num".to_owned(),
-            ]))
-        );
-    }
-
-    #[rstest]
-    #[case::enabled("--perf-record", Some(true))]
-    #[case::disabled("--perf-record=false", Some(false))]
-    fn test_perf_record_cli(#[case] arg: &str, #[case] expected: Option<bool>) {
-        let actual = CommandLineArgs::parse_from([arg]);
-        assert_eq!(actual.perf_record, expected);
-    }
-
-    #[test]
-    fn test_perf_record_args_cli() {
-        let actual = CommandLineArgs::parse_from(["--perf-record-args='--all-cpus --freq=400'"]);
-        assert_eq!(
-            actual.perf_record_args,
-            Some(RawToolArgs::new_ignore_flag([
-                "--all-cpus".to_owned(),
-                "--freq=400".to_owned(),
             ]))
         );
     }
@@ -2697,6 +2820,59 @@ mod tests {
             actual.perf_events,
             vec!["instructions,cycles".to_owned(), "task-clock".to_owned()]
         );
+    }
+
+    #[test]
+    fn test_perf_limits_cli_smoke() {
+        let actual = CommandLineArgs::parse_from([
+            "--perf-limits=*instructions*=1.5%|1000,task-clock*=10%|2.5ms"
+        ]);
+
+        assert_eq!(
+            actual.perf_limits,
+            Some(ToolRegressionConfig::Perf(
+                crate::runner::perf::regression::PerfRegressionConfig {
+                    alpha: 0.05,
+                    fail_fast: false,
+                    hard_limits: vec![
+                        (
+                            crate::api::PerfMetric("*instructions*".to_owned()),
+                            None,
+                            1000.into(),
+                        ),
+                        (
+                            crate::api::PerfMetric("task-clock*".to_owned()),
+                            Some(Unit::Milliseconds),
+                            2.5.into(),
+                        ),
+                    ],
+                    soft_limits: vec![
+                        (crate::api::PerfMetric("*instructions*".to_owned()), 1.5),
+                        (crate::api::PerfMetric("task-clock*".to_owned()), 10.0),
+                    ],
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_perf_record_args_cli() {
+        let actual = CommandLineArgs::parse_from(["--perf-record-args='--all-cpus --freq=400'"]);
+        assert_eq!(
+            actual.perf_record_args,
+            Some(RawToolArgs::new_ignore_flag([
+                "--all-cpus".to_owned(),
+                "--freq=400".to_owned(),
+            ]))
+        );
+    }
+
+    #[rstest]
+    #[case::enabled("--perf-record", Some(true))]
+    #[case::disabled("--perf-record=false", Some(false))]
+    fn test_perf_record_cli(#[case] arg: &str, #[case] expected: Option<bool>) {
+        let actual = CommandLineArgs::parse_from([arg]);
+        assert_eq!(actual.perf_record, expected);
     }
 
     #[rstest]
@@ -2737,13 +2913,6 @@ mod tests {
     }
 
     #[test]
-    fn test_perf_sampling_cli_rejects_unsupported_duration_units() {
-        let error = CommandLineArgs::try_parse_from(["--perf-sampling=1m"])
-            .expect_err("minutes must not be accepted as sampling durations");
-        assert!(error.to_string().contains("Invalid time unit"));
-    }
-
-    #[test]
     fn test_perf_sampling_cli_rejects_invalid_value() {
         let error = CommandLineArgs::try_parse_from(["--perf-sampling=invalid"])
             .expect_err("invalid values must not be accepted");
@@ -2751,6 +2920,51 @@ mod tests {
             error
                 .to_string()
                 .contains("expected yes, no, or <duration>")
+        );
+    }
+
+    #[test]
+    fn test_perf_sampling_cli_rejects_unsupported_duration_units() {
+        let error = CommandLineArgs::try_parse_from(["--perf-sampling=1m"])
+            .expect_err("minutes must not be accepted as sampling durations");
+        assert!(error.to_string().contains("Invalid time unit"));
+    }
+
+    #[test]
+    fn test_save_baseline_with_baseline_is_allowed() {
+        let result = CommandLineArgs::try_parse_validated_from([
+            "--save-baseline=pr_1234",
+            "--baseline=main_2025_01_02",
+        ])
+        .unwrap();
+
+        assert_eq!(
+            result.save_baseline,
+            Some(BaselineName("pr_1234".to_owned()))
+        );
+        assert_eq!(
+            result.baseline,
+            Some(BaselineName("main_2025_01_02".to_owned()))
+        );
+    }
+
+    #[test]
+    fn test_save_baseline_with_load_baseline_is_rejected() {
+        CommandLineArgs::try_parse_from(["--save-baseline=pr_1234", "--load-baseline=main"])
+            .unwrap_err();
+    }
+
+    #[test]
+    fn test_save_baseline_with_same_baseline_is_rejected() {
+        let error =
+            CommandLineArgs::try_parse_validated_from(["--save-baseline=main", "--baseline=main"])
+                .unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::ValueValidation);
+        assert!(
+            error
+                .to_string()
+                .contains("use only --save-baseline=main instead")
         );
     }
 
@@ -2791,39 +3005,6 @@ mod tests {
         unsafe {
             std::env::remove_var("GUNGRAUN_PERF_SAMPLING");
         }
-    }
-
-    #[test]
-    fn test_perf_limits_cli_smoke() {
-        let actual = CommandLineArgs::parse_from([
-            "--perf-limits=*instructions*=1.5%|1000,task-clock*=10%|2.5ms"
-        ]);
-
-        assert_eq!(
-            actual.perf_limits,
-            Some(ToolRegressionConfig::Perf(
-                crate::runner::perf::regression::PerfRegressionConfig {
-                    alpha: 0.05,
-                    fail_fast: false,
-                    hard_limits: vec![
-                        (
-                            crate::api::PerfMetric("*instructions*".to_owned()),
-                            None,
-                            1000.into(),
-                        ),
-                        (
-                            crate::api::PerfMetric("task-clock*".to_owned()),
-                            Some(Unit::Milliseconds),
-                            2.5.into(),
-                        ),
-                    ],
-                    soft_limits: vec![
-                        (crate::api::PerfMetric("*instructions*".to_owned()), 1.5),
-                        (crate::api::PerfMetric("task-clock*".to_owned()), 10.0),
-                    ],
-                }
-            ))
-        );
     }
 
     #[test]
@@ -2907,66 +3088,6 @@ mod tests {
         assert_eq!(parse_list_format(input).unwrap(), expected);
     }
 
-    #[test]
-    fn test_format_default_when_unset_is_pretty() {
-        let actual = CommandLineArgs::parse_from::<[_; 0], &str>([]);
-        assert_eq!(actual.format, ListFormat::Pretty);
-    }
-
-    #[test]
-    fn test_format_bare_flag_is_pretty() {
-        let actual = CommandLineArgs::parse_from(["--format"]);
-        assert_eq!(actual.format, ListFormat::Pretty);
-    }
-
-    #[test]
-    fn test_format_equals_empty_is_pretty() {
-        let actual = CommandLineArgs::parse_from(["--format="]);
-        assert_eq!(actual.format, ListFormat::Pretty);
-    }
-
-    #[test]
-    fn test_format_equals_terse_is_terse() {
-        let actual = CommandLineArgs::parse_from(["--format=terse"]);
-        assert_eq!(actual.format, ListFormat::Terse);
-    }
-
-    #[test]
-    fn test_format_space_terse_is_terse() {
-        let actual = CommandLineArgs::parse_from(["--format", "terse"]);
-        assert_eq!(actual.format, ListFormat::Terse);
-    }
-
-    #[test]
-    fn test_format_unknown_value_is_pretty() {
-        let actual = CommandLineArgs::parse_from(["--format=json"]);
-        assert_eq!(actual.format, ListFormat::Pretty);
-    }
-
-    #[test]
-    fn test_list_format_terse_nextest_invocation() {
-        let actual = CommandLineArgs::parse_from(["--list", "--format", "terse"]);
-        assert!(actual.list);
-        assert!(!actual.ignored);
-        assert_eq!(actual.format, ListFormat::Terse);
-    }
-
-    #[test]
-    fn test_list_format_terse_ignored_nextest_invocation() {
-        let actual = CommandLineArgs::parse_from(["--list", "--format", "terse", "--ignored"]);
-        assert!(actual.list);
-        assert!(actual.ignored);
-        assert_eq!(actual.format, ListFormat::Terse);
-    }
-
-    #[test]
-    fn test_format_bare_flag_followed_by_other_flag_is_pretty() {
-        // `--format` followed by another flag must not gobble the flag as a value.
-        let actual = CommandLineArgs::parse_from(["--format", "--list"]);
-        assert!(actual.list);
-        assert_eq!(actual.format, ListFormat::Pretty);
-    }
-
     #[rstest]
     #[case::one("ir", indexset!{ Ir })]
     #[case::one_with_spaces("  ir ", indexset!{ Ir })]
@@ -2988,11 +3109,6 @@ mod tests {
     #[case::wrong_delimiter("ir;dr")]
     fn test_parse_callgrind_metrics_then_error(#[case] input: &str) {
         parse_callgrind_metrics(input).unwrap_err();
-    }
-
-    #[test]
-    fn test_arg_callgrind_metrics_when_empty_then_error() {
-        CommandLineArgs::try_parse_from(["--callgrind-metrics"]).unwrap_err();
     }
 
     #[test]
@@ -3028,11 +3144,6 @@ mod tests {
     }
 
     #[test]
-    fn test_arg_cachegrind_metrics_when_empty_then_error() {
-        CommandLineArgs::try_parse_from(["--cachegrind-metrics"]).unwrap_err();
-    }
-
-    #[test]
     #[serial_test::serial]
     fn test_arg_cachegrind_metrics_when_env() {
         // SAFETY: This test is run serially
@@ -3058,11 +3169,6 @@ mod tests {
     #[case::group_does_not_exist("@doesnotexist")]
     fn test_parse_dhat_metrics_then_error(#[case] input: &str) {
         parse_dhat_metrics(input).unwrap_err();
-    }
-
-    #[test]
-    fn test_arg_dhat_metrics_when_empty_then_error() {
-        CommandLineArgs::try_parse_from(["--dhat-metrics"]).unwrap_err();
     }
 
     #[test]
@@ -3099,11 +3205,6 @@ mod tests {
     }
 
     #[test]
-    fn test_arg_drd_metrics_when_empty_then_error() {
-        CommandLineArgs::try_parse_from(["--drd-metrics"]).unwrap_err();
-    }
-
-    #[test]
     #[serial_test::serial]
     fn test_arg_drd_metrics_when_env() {
         // SAFETY: This test is run serially
@@ -3137,11 +3238,6 @@ mod tests {
     }
 
     #[test]
-    fn test_arg_memcheck_metrics_when_empty_then_error() {
-        CommandLineArgs::try_parse_from(["--memcheck-metrics"]).unwrap_err();
-    }
-
-    #[test]
     #[serial_test::serial]
     fn test_arg_memcheck_metrics_when_env() {
         // SAFETY: This test is run serially
@@ -3172,11 +3268,6 @@ mod tests {
     #[case::group_does_not_exist("@doesnotexist")]
     fn test_parse_helgrind_metrics_then_error(#[case] input: &str) {
         parse_helgrind_metrics(input).unwrap_err();
-    }
-
-    #[test]
-    fn test_arg_helgrind_metrics_when_empty_then_error() {
-        CommandLineArgs::try_parse_from(["--helgrind-metrics"]).unwrap_err();
     }
 
     #[test]
@@ -3273,35 +3364,6 @@ mod tests {
         assert_eq!(result.truncate_description, Some(TruncateDescription::None));
     }
 
-    #[test]
-    fn test_arg_tool_runner() {
-        let file = tempfile::Builder::new()
-            .permissions(Permissions::from_mode(0o755))
-            .tempfile()
-            .unwrap();
-        let result =
-            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())])
-                .unwrap();
-
-        assert_eq!(result.tool_runner, Some(file.path().to_path_buf()));
-    }
-
-    #[test]
-    fn test_arg_tool_runner_when_directory_then_error() {
-        let dir = tempdir().unwrap();
-        let result =
-            CommandLineArgs::try_parse_from([format!("--tool-runner='{}'", dir.path().display())]);
-        result.unwrap_err();
-    }
-
-    #[test]
-    fn test_arg_tool_runner_when_not_executable_then_error() {
-        let file = NamedTempFile::new().unwrap();
-        let result =
-            CommandLineArgs::try_parse_from([format!("--tool-runner={}", file.path().display())]);
-        result.unwrap_err();
-    }
-
     #[rstest]
     #[case::positional_one(&["--tool-runner-args=foo"], &["foo"])]
     #[case::positional_one_with_quotes(&["--tool-runner-args='foo'"], &["foo"])]
@@ -3320,23 +3382,6 @@ mod tests {
         assert_eq!(
             result.tool_runner_args,
             vec![RawArgs(expected.iter().map(ToString::to_string).collect())]
-        );
-    }
-
-    #[test]
-    fn test_tool_runner_args_when_twice() {
-        let result = CommandLineArgs::try_parse_from([
-            "--tool-runner-args=--foo",
-            "--tool-runner-args=--bar",
-            "--tool-runner=/bin/cat",
-        ])
-        .unwrap();
-        assert_eq!(
-            result.tool_runner_args,
-            vec![
-                RawArgs(vec!["--foo".to_owned()]),
-                RawArgs(vec!["--bar".to_owned()])
-            ]
         );
     }
 
@@ -3396,13 +3441,6 @@ mod tests {
     }
 
     #[test]
-    fn test_envs_arg_empty_string() {
-        let result = CommandLineArgs::try_parse_from(["--envs=''"]).unwrap();
-        assert_eq!(result.envs.len(), 1);
-        assert_eq!(result.envs[0], vec![]);
-    }
-
-    #[test]
     #[serial_test::serial]
     fn test_envs_arg_from_config_env() {
         // SAFETY: This test is run serially
@@ -3418,12 +3456,6 @@ mod tests {
         unsafe {
             std::env::remove_var("GUNGRAUN_ENVS");
         }
-    }
-
-    #[test]
-    fn test_envs_arg_missing_env_var() {
-        let result = CommandLineArgs::try_parse_from(["--envs=NONEXISTENT_VAR_789"]).unwrap();
-        assert_eq!(result.envs[0], vec![]);
     }
 
     #[test]
@@ -3450,31 +3482,6 @@ mod tests {
     }
 
     #[test]
-    fn test_envs_arg_multiple_delimited() {
-        let result = CommandLineArgs::try_parse_from(["--envs='A=1 B=2 C=3'"]).unwrap();
-        assert_eq!(
-            result.envs[0],
-            vec![
-                (OsString::from("A"), OsString::from("1")),
-                (OsString::from("B"), OsString::from("2")),
-                (OsString::from("C"), OsString::from("3")),
-            ]
-        );
-    }
-
-    #[test]
-    fn test_envs_arg_multiple_invocations() {
-        let result = CommandLineArgs::try_parse_from(["--envs=A=1", "--envs=B=2"]).unwrap();
-        assert_eq!(
-            result.envs,
-            vec![
-                vec![(OsString::from("A"), OsString::from("1"))],
-                vec![(OsString::from("B"), OsString::from("2"))],
-            ]
-        );
-    }
-
-    #[test]
     #[serial_test::serial]
     fn test_envs_arg_partial_resolve() {
         // SAFETY: This test is run serially
@@ -3491,15 +3498,6 @@ mod tests {
         unsafe {
             std::env::remove_var("PARTIAL_EXISTS");
         }
-    }
-
-    #[test]
-    fn test_envs_arg_path_with_colons() {
-        let result = CommandLineArgs::try_parse_from(["--envs=PATH=/usr/bin:/bin"]).unwrap();
-        assert_eq!(
-            result.envs[0],
-            vec![(OsString::from("PATH"), OsString::from("/usr/bin:/bin"))]
-        );
     }
 
     #[test]
@@ -3578,15 +3576,6 @@ mod tests {
     }
 
     #[test]
-    fn test_envs_arg_unicode() {
-        let result = CommandLineArgs::try_parse_from(["--envs=CAFÉ=café"]).unwrap();
-        assert_eq!(
-            result.envs[0],
-            vec![(OsString::from("CAFÉ"), OsString::from("café"))]
-        );
-    }
-
-    #[test]
     #[serial_test::serial]
     fn test_parse_env_from_env_var() {
         // SAFETY: This test is run serially
@@ -3605,12 +3594,6 @@ mod tests {
         unsafe {
             std::env::remove_var("TEST_PARSE_ENV_VAR");
         }
-    }
-
-    #[test]
-    fn test_parse_envs_empty() {
-        let result = parse_envs("").unwrap();
-        assert_eq!(result, vec![]);
     }
 
     #[test]
@@ -3693,5 +3676,22 @@ mod tests {
     #[case::invalid_numeric_prefix("1..ms")]
     fn test_parse_perf_hard_limit_value_when_invalid_then_error(#[case] input: &str) {
         parse_perf_hard_limit_value(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_tool_runner_args_when_twice() {
+        let result = CommandLineArgs::try_parse_from([
+            "--tool-runner-args=--foo",
+            "--tool-runner-args=--bar",
+            "--tool-runner=/bin/cat",
+        ])
+        .unwrap();
+        assert_eq!(
+            result.tool_runner_args,
+            vec![
+                RawArgs(vec!["--foo".to_owned()]),
+                RawArgs(vec!["--bar".to_owned()])
+            ]
+        );
     }
 }

@@ -19,11 +19,16 @@ use crate::runner::callgrind;
 use crate::runner::common::{BaselineKind, BaselineName, ModulePath};
 use crate::util::truncate_str_utf8;
 
-/// Sanitized output paths grouped by optional perf part number.
+/// This regex matches the original file name without the prefix as it is created by bbv
 ///
-/// Each entry contains the paths for one optional `p<N>` part and the remaining modifier string,
-/// such as `cal` or `overhead`, when one is present.
-pub type OutputPathParts = HashMap<Option<u64>, Vec<(PathBuf, Option<String>)>>;
+/// Note bbv doesn't support xtree, xleak files
+static BBV_ORIG_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(concat!(
+        "^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?",
+        "(?<bbv_type>[.](?:bb|pc))?(?<pid>[.][#][0-9]+)?(?<thread>[.][0-9]+)?$"
+    ))
+    .expect("Regex should compile")
+});
 
 // This regex matches the original file name without the prefix as it is created by callgrind.
 // The baseline <name> (base@<name>) can only consist of ascii and underscore characters.
@@ -34,17 +39,6 @@ static CALLGRIND_ORIG_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
         "^(?<type>[.](out|log))(?<base>[.](old|base@[^.-]+))?",
         "(?<pid>[.][#][0-9]+)?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
-    ))
-    .expect("Regex should compile")
-});
-
-/// This regex matches the original file name without the prefix as it is created by bbv
-///
-/// Note bbv doesn't support xtree, xleak files
-static BBV_ORIG_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        "^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?",
-        "(?<bbv_type>[.](?:bb|pc))?(?<pid>[.][#][0-9]+)?(?<thread>[.][0-9]+)?$"
     ))
     .expect("Regex should compile")
 });
@@ -70,6 +64,12 @@ static PERF_ORIG_FILENAME_RE: LazyLock<Regex> = LazyLock::new(|| {
     ))
     .expect("Regex should compile")
 });
+
+/// Sanitized output paths grouped by optional perf part number.
+///
+/// Each entry contains the paths for one optional `p<N>` part and the remaining modifier string,
+/// such as `cal` or `overhead`, when one is present.
+pub type OutputPathParts = HashMap<Option<u64>, Vec<(PathBuf, Option<String>)>>;
 
 #[derive(Debug)]
 enum SanitizableBaseline {
@@ -199,6 +199,489 @@ pub struct ToolOutputPath {
     pub temp: Option<Arc<TempDir>>,
     /// The tool
     pub tool: Tool,
+}
+
+impl<'a> PathSanitizer<'a> {
+    fn new(output_path: &'a ToolOutputPath) -> Self {
+        Self { output_path }
+    }
+
+    fn for_each_match_do(
+        &self,
+        regex: &Regex,
+        mut apply: impl FnMut(DirEntry, Captures<'_>) -> Result<()>,
+    ) -> Result<()> {
+        for entry in self.walk_dir(None)? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            let Some(haystack) = self.strip_prefix(&file_name) else {
+                continue;
+            };
+
+            if let Some(caps) = regex.captures(haystack) {
+                if entry.metadata()?.size() == 0 {
+                    std::fs::remove_file(entry.path())?;
+                    continue;
+                }
+
+                apply(entry, caps)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn sanitizable_baseline(caps: &Captures<'_>) -> SanitizableBaseline {
+        let Some(base) = caps.name("base") else {
+            return SanitizableBaseline::NoBaseline;
+        };
+
+        if base.as_str() == ".old" {
+            SanitizableBaseline::OldBaseline
+        } else {
+            SanitizableBaseline::Baseline(base.as_str().to_owned())
+        }
+    }
+
+    /// Sanitize callgrind output file names
+    ///
+    /// This method will remove empty files which are occasionally produced by callgrind and only
+    /// cause problems in the parser. The files are renamed from the callgrind file naming scheme to
+    /// ours which is clearer and easier to handle.
+    ///
+    /// The information about pids, parts and threads is obtained by parsing the header from the
+    /// callgrind output files instead of relying on the sometimes flaky file names produced by
+    /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
+    /// fast. Additionally, `callgrind` might change the naming scheme of its files, so using the
+    /// headers makes us more independent of a specific valgrind/callgrind version.
+    fn sanitize_callgrind(&self) -> Result<()> {
+        type Groups = HashMap<
+            CallgrindTypeKey,
+            HashMap<Option<u32>, HashMap<Option<usize>, Vec<OriginalCallgrindFile>>>,
+        >;
+
+        // To figure out if there are multiple pids/parts/threads present, it's necessary to group
+        // the files in this map. The order doesn't matter since we only rename the original file
+        // names, which doesn't need to follow a specific order.
+        //
+        // At first, we group by (out|log), then base, then pid and then by part in different
+        // hashmaps.
+        let mut groups: Groups = HashMap::new();
+
+        self.for_each_match_do(&CALLGRIND_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
+            };
+
+            let output_type = caps
+                .name("type")
+                .expect("A out|log type should be present")
+                .as_str()
+                .to_owned();
+
+            let (pid, thread, part) = if output_type == ".out" {
+                let properties = callgrind::parser::parse_header(
+                    &mut BufReader::new(File::open(entry.path())?).lines(),
+                )?;
+
+                #[expect(
+                    clippy::cast_sign_loss,
+                    reason = "The i32 pid is historical and casting to u32 is safe"
+                )]
+                (
+                    properties.pid.map(|p| p as u32),
+                    properties.thread,
+                    properties.part,
+                )
+            } else {
+                let pid = caps.name("pid").map(|m| {
+                    m.as_str()[2..]
+                        .parse::<u32>()
+                        .expect("The pid from the match should be number")
+                });
+
+                // The log files don't expose any information about parts or threads, so these are
+                // grouped under the `None` key
+                (pid, None, None)
+            };
+
+            groups
+                .entry(CallgrindTypeKey {
+                    output_type,
+                    baseline: base,
+                })
+                .or_default()
+                .entry(pid)
+                .or_default()
+                .entry(thread)
+                .or_default()
+                .push(OriginalCallgrindFile {
+                    path: entry.path(),
+                    part,
+                });
+            Ok(())
+        })?;
+
+        for (key, bases) in groups {
+            let has_multiple_pids = bases.len() > 1;
+
+            for (pid, threads) in bases {
+                let num_threads = threads.len();
+                let has_multiple_threads = num_threads > 1;
+
+                for (thread, parts) in threads {
+                    let num_parts = parts.len();
+                    let has_multiple_parts = num_parts > 1;
+
+                    for original in parts {
+                        let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
+
+                        file_name_builder.push_pid(pid, has_multiple_pids);
+
+                        if has_multiple_threads {
+                            file_name_builder.push_thread(thread, true, num_threads);
+
+                            if !has_multiple_parts {
+                                file_name_builder.push_part(original.part, num_parts);
+                            }
+                        }
+
+                        if has_multiple_parts {
+                            if !has_multiple_threads {
+                                file_name_builder.push_thread(thread, true, num_threads);
+                            }
+
+                            file_name_builder.push_part(original.part, num_parts);
+                        }
+
+                        file_name_builder.push_str(key.output_type.as_str());
+                        file_name_builder.push_str(key.baseline.as_deref());
+
+                        let from = &original.path;
+                        let to = from.with_file_name(file_name_builder.build());
+
+                        debug!(
+                            "Sanitizing callgrind file from '{}' to '{}'",
+                            from.display(),
+                            to.display()
+                        );
+                        std::fs::rename(from, to)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanitize bbv file names
+    ///
+    /// The original output files of bb have a `.<number>` suffix if there are multiple threads. We
+    /// need the threads as `t<number>` in the modifier part of the final file names.
+    ///
+    /// For example: (orig -> sanitized)
+    ///
+    /// If there are multiple threads, the bb output file name doesn't include the first thread:
+    ///
+    /// `exp-bbv.bench_thread_in_subprocess.548365.bb.out` ->
+    /// `exp-bbv.bench_thread_in_subprocess.548365.t1.bb.out`
+    ///
+    /// `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
+    /// `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
+    fn sanitize_bbv(&self) -> Result<()> {
+        type Groups = HashMap<BbvTypeKey, HashMap<Option<u32>, Vec<OriginalBbvFile>>>;
+        let mut groups: Groups = HashMap::new();
+
+        self.for_each_match_do(&BBV_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
+            };
+
+            let output_type = caps.name("type").unwrap().as_str().to_owned();
+            let bbv_type = caps.name("bbv_type").map(|m| m.as_str().to_owned());
+            let pid = caps.name("pid").map(|p| {
+                p.as_str()[2..]
+                    .parse::<u32>()
+                    .expect("The pid from the regex should be a number")
+            });
+
+            let thread = caps.name("thread").map_or(1, |t| {
+                t.as_str()[1..]
+                    .parse::<usize>()
+                    .expect("The thread from the regex should be a number")
+            });
+
+            groups
+                .entry(BbvTypeKey {
+                    output_type,
+                    baseline: base,
+                    bbv_type,
+                })
+                .or_default()
+                .entry(pid)
+                .or_default()
+                .push(OriginalBbvFile {
+                    path: entry.path(),
+                    thread,
+                });
+            Ok(())
+        })?;
+
+        for (key, pids) in groups {
+            let has_multiple_pids = pids.len() > 1;
+
+            for (pid, threads) in pids {
+                let num_threads = threads.len();
+                let has_multiple_threads = num_threads > 1;
+
+                for original in threads {
+                    let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
+
+                    file_name_builder.push_pid(pid, has_multiple_pids);
+
+                    if has_multiple_threads
+                        && key.bbv_type.as_ref().is_some_and(|b| b.starts_with(".bb"))
+                    {
+                        file_name_builder.push_thread(original.thread, true, num_threads);
+                    }
+
+                    file_name_builder.push_str(key.bbv_type.as_deref());
+                    file_name_builder.push_str(key.output_type.as_str());
+                    file_name_builder.push_str(key.baseline.as_deref());
+
+                    let from = &original.path;
+                    let to = from.with_file_name(file_name_builder.build());
+
+                    debug!(
+                        "Sanitizing bbv file from '{}' to '{}'",
+                        from.display(),
+                        to.display()
+                    );
+                    std::fs::rename(from, to)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanitize file names of all tools if not sanitized by a more specific method
+    ///
+    /// The pids are removed from the file name if there was only a single process (pid).
+    /// Additionally, we check for empty files and remove them.
+    fn sanitize_generic(&self) -> Result<()> {
+        type Groups = HashMap<GenericTypeKey, Vec<OriginalGenericFile>>;
+        let mut groups: Groups = HashMap::new();
+
+        self.for_each_match_do(&GENERIC_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
+            };
+
+            let output_type = caps.name("type").unwrap().as_str().to_owned();
+            let pid = caps.name("pid").map(|p| {
+                p.as_str()[2..]
+                    .parse::<u32>()
+                    .expect("The pid from the regex should be a number")
+            });
+            let ext = caps.name("ext").map(|p| p.as_str().to_owned());
+
+            groups
+                .entry(GenericTypeKey {
+                    output_type,
+                    baseline: base,
+                })
+                .or_default()
+                .push(OriginalGenericFile {
+                    path: entry.path(),
+                    pid,
+                    extension: ext,
+                });
+            Ok(())
+        })?;
+
+        for (key, files) in groups {
+            let has_multiple_pids = files.len() > 1;
+            for original in files {
+                let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
+
+                file_name_builder.push_str(original.extension.as_deref());
+                file_name_builder.push_pid(original.pid, has_multiple_pids);
+                file_name_builder.push_str(key.output_type.as_str());
+                file_name_builder.push_str(key.baseline.as_deref());
+
+                let from = &original.path;
+                let to = from.with_file_name(file_name_builder.build());
+
+                debug!("Sanitizing from '{}' to '{}'", from.display(), to.display());
+                std::fs::rename(from, to)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanitize perf output files
+    ///
+    /// Perf can emit one data, log, or output file per recorded part and modifier. This method
+    /// groups matching files by output type, baseline, and modifier so part suffixes are only kept
+    /// when a modifier group contains multiple parts.
+    fn sanitize_perf(&self) -> Result<()> {
+        type Groups = HashMap<PerfTypeKey, HashMap<Option<String>, Vec<OriginalPerfFile>>>;
+
+        // At first, we group by (out|log), then base, then by modifiers, then by part
+        let mut groups: Groups = HashMap::new();
+
+        self.for_each_match_do(&PERF_ORIG_FILENAME_RE, |entry, caps| {
+            let base = match Self::sanitizable_baseline(&caps) {
+                SanitizableBaseline::Baseline(base) => Some(base),
+                SanitizableBaseline::NoBaseline => None,
+                SanitizableBaseline::OldBaseline => return Ok(()),
+            };
+
+            let output_type = caps
+                .name("type")
+                .expect("A out|log type should be present")
+                .as_str()
+                .to_owned();
+            let ext = caps.name("ext").map(|p| p.as_str().to_owned());
+            let part = caps
+                .name("part")
+                .and_then(|p| p.as_str().strip_prefix(".p")?.parse::<u64>().ok());
+
+            groups
+                .entry(PerfTypeKey {
+                    output_type,
+                    baseline: base,
+                })
+                .or_default()
+                .entry(ext)
+                .or_default()
+                .push(OriginalPerfFile {
+                    path: entry.path(),
+                    part,
+                });
+            Ok(())
+        })?;
+
+        for (key, modifiers) in groups {
+            for (modifier, parts) in modifiers {
+                let num_parts = parts.len();
+                let has_multiple_parts = num_parts > 1;
+
+                for original in parts {
+                    let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
+
+                    if has_multiple_parts {
+                        file_name_builder.push_part(original.part, num_parts);
+                    }
+
+                    file_name_builder.push_str(modifier.as_deref());
+                    file_name_builder.push_str(key.output_type.as_str());
+                    file_name_builder.push_str(key.baseline.as_deref());
+
+                    let from = &original.path;
+                    let to = from.with_file_name(file_name_builder.build());
+
+                    debug!(
+                        "Sanitizing perf file from '{}' to '{}'",
+                        from.display(),
+                        to.display()
+                    );
+                    std::fs::rename(from, to)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanitize file names for a specific tool
+    ///
+    /// Empty files are cleaned up. For more details on a specific tool see the respective
+    /// `sanitize_<tool>` method in [`PathSanitizer`]:
+    ///
+    /// * Callgrind: [`PathSanitizer::sanitize_callgrind`]
+    /// * BBV: [`PathSanitizer::sanitize_bbv`]
+    /// * perf: [`PathSanitizer::sanitize_perf`]
+    /// * All other tools: [`PathSanitizer::sanitize`]
+    pub fn sanitize(&self) -> Result<()> {
+        match self.tool {
+            Tool::Callgrind => self.sanitize_callgrind()?,
+            Tool::BBV => self.sanitize_bbv()?,
+            Tool::Perf => self.sanitize_perf()?,
+            _ => self.sanitize_generic()?,
+        }
+
+        Ok(())
+    }
+}
+
+impl SanitizedFileNameBuilder {
+    fn new(prefix: impl Into<String>) -> Self {
+        Self(prefix.into())
+    }
+
+    fn push_str<'a, T>(&'a mut self, string: T) -> &'a mut Self
+    where
+        T: Into<Option<&'a str>>,
+    {
+        if let Some(suffix) = string.into() {
+            self.0.push_str(suffix);
+        }
+
+        self
+    }
+
+    fn push_pid<T>(&mut self, pid: T, has_multiple: bool) -> &mut Self
+    where
+        T: Into<Option<u32>>,
+    {
+        if has_multiple && let Some(pid) = pid.into() {
+            write!(&mut self.0, ".{pid}").unwrap();
+        }
+
+        self
+    }
+
+    fn push_thread<T>(&mut self, thread: T, has_multiple: bool, num_threads: usize) -> &mut Self
+    where
+        T: Into<Option<usize>>,
+    {
+        if has_multiple && let Some(thread) = thread.into() {
+            let width = Self::width(num_threads);
+            write!(&mut self.0, ".t{thread:0width$}").unwrap();
+        }
+
+        self
+    }
+
+    fn push_part<T>(&mut self, part: T, num_parts: usize) -> &mut Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(part) = part.into() {
+            let width = Self::width(num_parts);
+            write!(&mut self.0, ".p{part:0width$}").unwrap();
+        }
+
+        self
+    }
+
+    fn width(num: usize) -> usize {
+        num.ilog10() as usize + 1
+    }
+
+    fn build(self) -> String {
+        self.0
+    }
 }
 
 impl ToolOutputPath {
@@ -1139,489 +1622,6 @@ impl ToolOutputPath {
     }
 }
 
-impl<'a> PathSanitizer<'a> {
-    fn new(output_path: &'a ToolOutputPath) -> Self {
-        Self { output_path }
-    }
-
-    fn for_each_match_do(
-        &self,
-        regex: &Regex,
-        mut apply: impl FnMut(DirEntry, Captures<'_>) -> Result<()>,
-    ) -> Result<()> {
-        for entry in self.walk_dir(None)? {
-            let file_name = entry.file_name();
-            let file_name = file_name.to_string_lossy();
-
-            let Some(haystack) = self.strip_prefix(&file_name) else {
-                continue;
-            };
-
-            if let Some(caps) = regex.captures(haystack) {
-                if entry.metadata()?.size() == 0 {
-                    std::fs::remove_file(entry.path())?;
-                    continue;
-                }
-
-                apply(entry, caps)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn sanitizable_baseline(caps: &Captures<'_>) -> SanitizableBaseline {
-        let Some(base) = caps.name("base") else {
-            return SanitizableBaseline::NoBaseline;
-        };
-
-        if base.as_str() == ".old" {
-            SanitizableBaseline::OldBaseline
-        } else {
-            SanitizableBaseline::Baseline(base.as_str().to_owned())
-        }
-    }
-
-    /// Sanitize callgrind output file names
-    ///
-    /// This method will remove empty files which are occasionally produced by callgrind and only
-    /// cause problems in the parser. The files are renamed from the callgrind file naming scheme to
-    /// ours which is clearer and easier to handle.
-    ///
-    /// The information about pids, parts and threads is obtained by parsing the header from the
-    /// callgrind output files instead of relying on the sometimes flaky file names produced by
-    /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
-    /// fast. Additionally, `callgrind` might change the naming scheme of its files, so using the
-    /// headers makes us more independent of a specific valgrind/callgrind version.
-    fn sanitize_callgrind(&self) -> Result<()> {
-        type Groups = HashMap<
-            CallgrindTypeKey,
-            HashMap<Option<u32>, HashMap<Option<usize>, Vec<OriginalCallgrindFile>>>,
-        >;
-
-        // To figure out if there are multiple pids/parts/threads present, it's necessary to group
-        // the files in this map. The order doesn't matter since we only rename the original file
-        // names, which doesn't need to follow a specific order.
-        //
-        // At first, we group by (out|log), then base, then pid and then by part in different
-        // hashmaps.
-        let mut groups: Groups = HashMap::new();
-
-        self.for_each_match_do(&CALLGRIND_ORIG_FILENAME_RE, |entry, caps| {
-            let base = match Self::sanitizable_baseline(&caps) {
-                SanitizableBaseline::Baseline(base) => Some(base),
-                SanitizableBaseline::NoBaseline => None,
-                SanitizableBaseline::OldBaseline => return Ok(()),
-            };
-
-            let output_type = caps
-                .name("type")
-                .expect("A out|log type should be present")
-                .as_str()
-                .to_owned();
-
-            let (pid, thread, part) = if output_type == ".out" {
-                let properties = callgrind::parser::parse_header(
-                    &mut BufReader::new(File::open(entry.path())?).lines(),
-                )?;
-
-                #[expect(
-                    clippy::cast_sign_loss,
-                    reason = "The i32 pid is historical and casting to u32 is safe"
-                )]
-                (
-                    properties.pid.map(|p| p as u32),
-                    properties.thread,
-                    properties.part,
-                )
-            } else {
-                let pid = caps.name("pid").map(|m| {
-                    m.as_str()[2..]
-                        .parse::<u32>()
-                        .expect("The pid from the match should be number")
-                });
-
-                // The log files don't expose any information about parts or threads, so these are
-                // grouped under the `None` key
-                (pid, None, None)
-            };
-
-            groups
-                .entry(CallgrindTypeKey {
-                    output_type,
-                    baseline: base,
-                })
-                .or_default()
-                .entry(pid)
-                .or_default()
-                .entry(thread)
-                .or_default()
-                .push(OriginalCallgrindFile {
-                    path: entry.path(),
-                    part,
-                });
-            Ok(())
-        })?;
-
-        for (key, bases) in groups {
-            let has_multiple_pids = bases.len() > 1;
-
-            for (pid, threads) in bases {
-                let num_threads = threads.len();
-                let has_multiple_threads = num_threads > 1;
-
-                for (thread, parts) in threads {
-                    let num_parts = parts.len();
-                    let has_multiple_parts = num_parts > 1;
-
-                    for original in parts {
-                        let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
-
-                        file_name_builder.push_pid(pid, has_multiple_pids);
-
-                        if has_multiple_threads {
-                            file_name_builder.push_thread(thread, true, num_threads);
-
-                            if !has_multiple_parts {
-                                file_name_builder.push_part(original.part, num_parts);
-                            }
-                        }
-
-                        if has_multiple_parts {
-                            if !has_multiple_threads {
-                                file_name_builder.push_thread(thread, true, num_threads);
-                            }
-
-                            file_name_builder.push_part(original.part, num_parts);
-                        }
-
-                        file_name_builder.push_str(key.output_type.as_str());
-                        file_name_builder.push_str(key.baseline.as_deref());
-
-                        let from = &original.path;
-                        let to = from.with_file_name(file_name_builder.build());
-
-                        debug!(
-                            "Sanitizing callgrind file from '{}' to '{}'",
-                            from.display(),
-                            to.display()
-                        );
-                        std::fs::rename(from, to)?;
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Sanitize bbv file names
-    ///
-    /// The original output files of bb have a `.<number>` suffix if there are multiple threads. We
-    /// need the threads as `t<number>` in the modifier part of the final file names.
-    ///
-    /// For example: (orig -> sanitized)
-    ///
-    /// If there are multiple threads, the bb output file name doesn't include the first thread:
-    ///
-    /// `exp-bbv.bench_thread_in_subprocess.548365.bb.out` ->
-    /// `exp-bbv.bench_thread_in_subprocess.548365.t1.bb.out`
-    ///
-    /// `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
-    /// `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
-    fn sanitize_bbv(&self) -> Result<()> {
-        type Groups = HashMap<BbvTypeKey, HashMap<Option<u32>, Vec<OriginalBbvFile>>>;
-        let mut groups: Groups = HashMap::new();
-
-        self.for_each_match_do(&BBV_ORIG_FILENAME_RE, |entry, caps| {
-            let base = match Self::sanitizable_baseline(&caps) {
-                SanitizableBaseline::Baseline(base) => Some(base),
-                SanitizableBaseline::NoBaseline => None,
-                SanitizableBaseline::OldBaseline => return Ok(()),
-            };
-
-            let output_type = caps.name("type").unwrap().as_str().to_owned();
-            let bbv_type = caps.name("bbv_type").map(|m| m.as_str().to_owned());
-            let pid = caps.name("pid").map(|p| {
-                p.as_str()[2..]
-                    .parse::<u32>()
-                    .expect("The pid from the regex should be a number")
-            });
-
-            let thread = caps.name("thread").map_or(1, |t| {
-                t.as_str()[1..]
-                    .parse::<usize>()
-                    .expect("The thread from the regex should be a number")
-            });
-
-            groups
-                .entry(BbvTypeKey {
-                    output_type,
-                    baseline: base,
-                    bbv_type,
-                })
-                .or_default()
-                .entry(pid)
-                .or_default()
-                .push(OriginalBbvFile {
-                    path: entry.path(),
-                    thread,
-                });
-            Ok(())
-        })?;
-
-        for (key, pids) in groups {
-            let has_multiple_pids = pids.len() > 1;
-
-            for (pid, threads) in pids {
-                let num_threads = threads.len();
-                let has_multiple_threads = num_threads > 1;
-
-                for original in threads {
-                    let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
-
-                    file_name_builder.push_pid(pid, has_multiple_pids);
-
-                    if has_multiple_threads
-                        && key.bbv_type.as_ref().is_some_and(|b| b.starts_with(".bb"))
-                    {
-                        file_name_builder.push_thread(original.thread, true, num_threads);
-                    }
-
-                    file_name_builder.push_str(key.bbv_type.as_deref());
-                    file_name_builder.push_str(key.output_type.as_str());
-                    file_name_builder.push_str(key.baseline.as_deref());
-
-                    let from = &original.path;
-                    let to = from.with_file_name(file_name_builder.build());
-
-                    debug!(
-                        "Sanitizing bbv file from '{}' to '{}'",
-                        from.display(),
-                        to.display()
-                    );
-                    std::fs::rename(from, to)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Sanitize file names of all tools if not sanitized by a more specific method
-    ///
-    /// The pids are removed from the file name if there was only a single process (pid).
-    /// Additionally, we check for empty files and remove them.
-    fn sanitize_generic(&self) -> Result<()> {
-        type Groups = HashMap<GenericTypeKey, Vec<OriginalGenericFile>>;
-        let mut groups: Groups = HashMap::new();
-
-        self.for_each_match_do(&GENERIC_ORIG_FILENAME_RE, |entry, caps| {
-            let base = match Self::sanitizable_baseline(&caps) {
-                SanitizableBaseline::Baseline(base) => Some(base),
-                SanitizableBaseline::NoBaseline => None,
-                SanitizableBaseline::OldBaseline => return Ok(()),
-            };
-
-            let output_type = caps.name("type").unwrap().as_str().to_owned();
-            let pid = caps.name("pid").map(|p| {
-                p.as_str()[2..]
-                    .parse::<u32>()
-                    .expect("The pid from the regex should be a number")
-            });
-            let ext = caps.name("ext").map(|p| p.as_str().to_owned());
-
-            groups
-                .entry(GenericTypeKey {
-                    output_type,
-                    baseline: base,
-                })
-                .or_default()
-                .push(OriginalGenericFile {
-                    path: entry.path(),
-                    pid,
-                    extension: ext,
-                });
-            Ok(())
-        })?;
-
-        for (key, files) in groups {
-            let has_multiple_pids = files.len() > 1;
-            for original in files {
-                let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
-
-                file_name_builder.push_str(original.extension.as_deref());
-                file_name_builder.push_pid(original.pid, has_multiple_pids);
-                file_name_builder.push_str(key.output_type.as_str());
-                file_name_builder.push_str(key.baseline.as_deref());
-
-                let from = &original.path;
-                let to = from.with_file_name(file_name_builder.build());
-
-                debug!("Sanitizing from '{}' to '{}'", from.display(), to.display());
-                std::fs::rename(from, to)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Sanitize perf output files
-    ///
-    /// Perf can emit one data, log, or output file per recorded part and modifier. This method
-    /// groups matching files by output type, baseline, and modifier so part suffixes are only kept
-    /// when a modifier group contains multiple parts.
-    fn sanitize_perf(&self) -> Result<()> {
-        type Groups = HashMap<PerfTypeKey, HashMap<Option<String>, Vec<OriginalPerfFile>>>;
-
-        // At first, we group by (out|log), then base, then by modifiers, then by part
-        let mut groups: Groups = HashMap::new();
-
-        self.for_each_match_do(&PERF_ORIG_FILENAME_RE, |entry, caps| {
-            let base = match Self::sanitizable_baseline(&caps) {
-                SanitizableBaseline::Baseline(base) => Some(base),
-                SanitizableBaseline::NoBaseline => None,
-                SanitizableBaseline::OldBaseline => return Ok(()),
-            };
-
-            let output_type = caps
-                .name("type")
-                .expect("A out|log type should be present")
-                .as_str()
-                .to_owned();
-            let ext = caps.name("ext").map(|p| p.as_str().to_owned());
-            let part = caps
-                .name("part")
-                .and_then(|p| p.as_str().strip_prefix(".p")?.parse::<u64>().ok());
-
-            groups
-                .entry(PerfTypeKey {
-                    output_type,
-                    baseline: base,
-                })
-                .or_default()
-                .entry(ext)
-                .or_default()
-                .push(OriginalPerfFile {
-                    path: entry.path(),
-                    part,
-                });
-            Ok(())
-        })?;
-
-        for (key, modifiers) in groups {
-            for (modifier, parts) in modifiers {
-                let num_parts = parts.len();
-                let has_multiple_parts = num_parts > 1;
-
-                for original in parts {
-                    let mut file_name_builder = SanitizedFileNameBuilder::new(self.prefix());
-
-                    if has_multiple_parts {
-                        file_name_builder.push_part(original.part, num_parts);
-                    }
-
-                    file_name_builder.push_str(modifier.as_deref());
-                    file_name_builder.push_str(key.output_type.as_str());
-                    file_name_builder.push_str(key.baseline.as_deref());
-
-                    let from = &original.path;
-                    let to = from.with_file_name(file_name_builder.build());
-
-                    debug!(
-                        "Sanitizing perf file from '{}' to '{}'",
-                        from.display(),
-                        to.display()
-                    );
-                    std::fs::rename(from, to)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Sanitize file names for a specific tool
-    ///
-    /// Empty files are cleaned up. For more details on a specific tool see the respective
-    /// `sanitize_<tool>` method in [`PathSanitizer`]:
-    ///
-    /// * Callgrind: [`PathSanitizer::sanitize_callgrind`]
-    /// * BBV: [`PathSanitizer::sanitize_bbv`]
-    /// * perf: [`PathSanitizer::sanitize_perf`]
-    /// * All other tools: [`PathSanitizer::sanitize`]
-    pub fn sanitize(&self) -> Result<()> {
-        match self.tool {
-            Tool::Callgrind => self.sanitize_callgrind()?,
-            Tool::BBV => self.sanitize_bbv()?,
-            Tool::Perf => self.sanitize_perf()?,
-            _ => self.sanitize_generic()?,
-        }
-
-        Ok(())
-    }
-}
-
-impl SanitizedFileNameBuilder {
-    fn new(prefix: impl Into<String>) -> Self {
-        Self(prefix.into())
-    }
-
-    fn push_str<'a, T>(&'a mut self, string: T) -> &'a mut Self
-    where
-        T: Into<Option<&'a str>>,
-    {
-        if let Some(suffix) = string.into() {
-            self.0.push_str(suffix);
-        }
-
-        self
-    }
-
-    fn push_pid<T>(&mut self, pid: T, has_multiple: bool) -> &mut Self
-    where
-        T: Into<Option<u32>>,
-    {
-        if has_multiple && let Some(pid) = pid.into() {
-            write!(&mut self.0, ".{pid}").unwrap();
-        }
-
-        self
-    }
-
-    fn push_thread<T>(&mut self, thread: T, has_multiple: bool, num_threads: usize) -> &mut Self
-    where
-        T: Into<Option<usize>>,
-    {
-        if has_multiple && let Some(thread) = thread.into() {
-            let width = Self::width(num_threads);
-            write!(&mut self.0, ".t{thread:0width$}").unwrap();
-        }
-
-        self
-    }
-
-    fn push_part<T>(&mut self, part: T, num_parts: usize) -> &mut Self
-    where
-        T: Into<Option<u64>>,
-    {
-        if let Some(part) = part.into() {
-            let width = Self::width(num_parts);
-            write!(&mut self.0, ".p{part:0width$}").unwrap();
-        }
-
-        self
-    }
-
-    fn width(num: usize) -> usize {
-        num.ilog10() as usize + 1
-    }
-
-    fn build(self) -> String {
-        self.0
-    }
-}
-
 impl Display for ToolOutputPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.to_path().display()))
@@ -1636,8 +1636,8 @@ mod tests {
     use super::*;
     use crate::runner::perf::run::{PERF_CALIBRATION_FILE_MODIFIER, PERF_OVERHEAD_FILE_MODIFIER};
 
-    type ExpectedPath<'a> = (&'a str, Option<&'a str>);
     type ExpectedPart<'a> = (Option<u64>, Vec<ExpectedPath<'a>>);
+    type ExpectedPath<'a> = (&'a str, Option<&'a str>);
 
     #[rstest]
     #[case::skips_when_not_multiple(Some(1234), false, "tool.bench")]

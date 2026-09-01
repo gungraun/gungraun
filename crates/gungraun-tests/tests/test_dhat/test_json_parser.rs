@@ -44,40 +44,6 @@ fn test_file() -> (TempDir, PathBuf, Vec<u8>) {
 }
 
 #[test]
-fn test_json_parser_when_sanitize_yes() {
-    let (temp_dir, path, original) = test_file();
-
-    let output = JsonParser::new(
-        tool_output_path_f()
-            .target_dir(temp_dir.path())
-            .tool(Tool::DHAT)
-            .name("dhat")
-            .fx(),
-        EntryPoint::Default,
-        vec![],
-        SanitizeOutput::Yes,
-    )
-    .parse_single(path.clone())
-    .unwrap();
-
-    assert_eq!(output.path, path);
-    let original_data = parse(&Fixtures::get_path_of(DHAT_FIXTURE)).unwrap();
-    assert_eq!(output.header.pid, original_data.metadata.pid);
-    assert_eq!(output.header.parent_pid, None);
-    assert!(output.details.is_empty());
-    assert_eq!(output.metrics, expected_metrics());
-
-    let sanitized = fs::read(&path).unwrap();
-    assert_ne!(sanitized, original);
-    assert!(!path.with_extension("out.orig").exists());
-
-    let data = parse(&path).unwrap();
-    assert_eq!(data.program_points.len(), 1);
-    assert!(data.frame_table.len() < original_data.frame_table.len());
-    assert_frame_indices_are_valid(&data);
-}
-
-#[test]
 fn test_json_parser_when_sanitize_keep_orig() {
     let (temp_dir, path, original) = test_file();
     let orig_path = path.with_extension("out.orig");
@@ -124,4 +90,38 @@ fn test_json_parser_when_sanitize_no() {
     assert_eq!(output.metrics, expected_metrics());
     assert_eq!(fs::read(&path).unwrap(), original);
     assert!(!path.with_extension("out.orig").exists());
+}
+
+#[test]
+fn test_json_parser_when_sanitize_yes() {
+    let (temp_dir, path, original) = test_file();
+
+    let output = JsonParser::new(
+        tool_output_path_f()
+            .target_dir(temp_dir.path())
+            .tool(Tool::DHAT)
+            .name("dhat")
+            .fx(),
+        EntryPoint::Default,
+        vec![],
+        SanitizeOutput::Yes,
+    )
+    .parse_single(path.clone())
+    .unwrap();
+
+    assert_eq!(output.path, path);
+    let original_data = parse(&Fixtures::get_path_of(DHAT_FIXTURE)).unwrap();
+    assert_eq!(output.header.pid, original_data.metadata.pid);
+    assert_eq!(output.header.parent_pid, None);
+    assert!(output.details.is_empty());
+    assert_eq!(output.metrics, expected_metrics());
+
+    let sanitized = fs::read(&path).unwrap();
+    assert_ne!(sanitized, original);
+    assert!(!path.with_extension("out.orig").exists());
+
+    let data = parse(&path).unwrap();
+    assert_eq!(data.program_points.len(), 1);
+    assert!(data.frame_table.len() < original_data.frame_table.len());
+    assert_frame_indices_are_valid(&data);
 }

@@ -208,12 +208,17 @@ mod tests {
     }
 
     #[test]
-    fn parse_perf_log_when_missing_repetitions_then_0() {
-        let data = parse(&["Command: bench", "Pid: 123", "Part: 1", "", "body"]).unwrap();
+    fn parse_perf_log_rejects_invalid_repetitions() {
+        let error = parse(&[
+            "Command: bench",
+            "Pid: 123",
+            "Part: 1",
+            "",
+            "gungraun::__perf_repetitions: dynamic",
+        ])
+        .unwrap_err();
 
-        assert_eq!(data.header.command, "bench");
-        assert_eq!(data.header.pid, 123);
-        assert_eq!(data.repetitions, 0);
+        assert!(error.to_string().contains("invalid perf repetition count"));
     }
 
     #[test]
@@ -232,6 +237,15 @@ mod tests {
     }
 
     #[test]
+    fn parse_perf_log_when_missing_repetitions_then_0() {
+        let data = parse(&["Command: bench", "Pid: 123", "Part: 1", "", "body"]).unwrap();
+
+        assert_eq!(data.header.command, "bench");
+        assert_eq!(data.header.pid, 123);
+        assert_eq!(data.repetitions, 0);
+    }
+
+    #[test]
     fn parse_perf_log_when_zero_repetitions() {
         let data = parse(&[
             "Command: bench",
@@ -243,19 +257,5 @@ mod tests {
         .unwrap();
 
         assert_eq!(data.repetitions, 0);
-    }
-
-    #[test]
-    fn parse_perf_log_rejects_invalid_repetitions() {
-        let error = parse(&[
-            "Command: bench",
-            "Pid: 123",
-            "Part: 1",
-            "",
-            "gungraun::__perf_repetitions: dynamic",
-        ])
-        .unwrap_err();
-
-        assert!(error.to_string().contains("invalid perf repetition count"));
     }
 }

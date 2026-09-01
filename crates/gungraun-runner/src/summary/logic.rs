@@ -618,18 +618,6 @@ impl IntoIterator for Profiles {
     }
 }
 
-impl ToolMetrics {
-    /// Associates `metrics` with the error-reporting `tool` that produced them.
-    pub fn from_error_metric(tool: Tool, metrics: Metrics<ErrorMetric>) -> Self {
-        match tool {
-            Tool::Memcheck => Self::Memcheck(metrics),
-            Tool::Helgrind => Self::Helgrind(metrics),
-            Tool::DRD => Self::DRD(metrics),
-            _ => unreachable!("{tool} does not report error metrics"),
-        }
-    }
-}
-
 impl ToolMetricSummary {
     /// Returns `true` if this summary is a typed variant with no metric diffs present.
     ///
@@ -905,6 +893,18 @@ impl ToolMetricSummary {
     }
 }
 
+impl ToolMetrics {
+    /// Associates `metrics` with the error-reporting `tool` that produced them.
+    pub fn from_error_metric(tool: Tool, metrics: Metrics<ErrorMetric>) -> Self {
+        match tool {
+            Tool::Memcheck => Self::Memcheck(metrics),
+            Tool::Helgrind => Self::Helgrind(metrics),
+            Tool::DRD => Self::DRD(metrics),
+            _ => unreachable!("{tool} does not report error metrics"),
+        }
+    }
+}
+
 impl ToolRegression {
     /// Creates a new `ToolRegression`.
     pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
@@ -942,33 +942,32 @@ mod tests {
     use crate::units::Unit;
 
     #[test]
-    fn test_when_serializing_new_summary_then_paths_under_project_root_are_relative() {
-        let summary = BenchmarkSummary::new(
-            BenchmarkKind::LibraryBenchmark,
-            PathBuf::from("/project"),
-            PathBuf::from("/project/crates/example"),
-            PathBuf::from("crates/example/benches/benchmark.rs"),
-            PathBuf::from("target/release/benchmark"),
-            &ModulePath::new("example::benchmark"),
-            "benchmark",
-            "example",
-            None,
-            None,
-            PathBuf::from("/project/target/gungraun/example"),
-            (None, None),
+    fn test_tool_regression_with_preserves_unit() {
+        let regression = ToolRegression::with(
+            MetricKind::Perf,
+            RegressionMetrics::Soft(
+                PerfMetric("foo".to_owned()),
+                Some("foo [s]".to_owned()),
+                Some(Unit::Seconds),
+                Metric::Int(5),
+                Metric::Int(4),
+                25.0,
+                10.0,
+            ),
         );
 
-        let value = serde_json::to_value(summary).unwrap();
-
-        assert_eq!(value["project_root"], "/project");
-        assert_eq!(value["output_dir"], "target/gungraun/example");
-        assert_eq!(value["package_dir"], "crates/example");
         assert_eq!(
-            value["benchmark_file"],
-            "crates/example/benches/benchmark.rs"
+            regression,
+            ToolRegression::Soft {
+                metric: MetricKind::Perf(PerfMetric("foo".to_owned())),
+                display: Some("foo [s]".to_owned()),
+                unit: Some(Unit::Seconds),
+                new: Metric::Int(5),
+                old: Metric::Int(4),
+                diff_pct: 25.0,
+                limit: 10.0,
+            }
         );
-        assert_eq!(value["benchmark_exe"], "target/release/benchmark");
-        assert!(value.get("summary_output").is_none());
     }
 
     #[test]
@@ -1005,31 +1004,32 @@ mod tests {
     }
 
     #[test]
-    fn test_tool_regression_with_preserves_unit() {
-        let regression = ToolRegression::with(
-            MetricKind::Perf,
-            RegressionMetrics::Soft(
-                PerfMetric("foo".to_owned()),
-                Some("foo [s]".to_owned()),
-                Some(Unit::Seconds),
-                Metric::Int(5),
-                Metric::Int(4),
-                25.0,
-                10.0,
-            ),
+    fn test_when_serializing_new_summary_then_paths_under_project_root_are_relative() {
+        let summary = BenchmarkSummary::new(
+            BenchmarkKind::LibraryBenchmark,
+            PathBuf::from("/project"),
+            PathBuf::from("/project/crates/example"),
+            PathBuf::from("crates/example/benches/benchmark.rs"),
+            PathBuf::from("target/release/benchmark"),
+            &ModulePath::new("example::benchmark"),
+            "benchmark",
+            "example",
+            None,
+            None,
+            PathBuf::from("/project/target/gungraun/example"),
+            (None, None),
         );
 
+        let value = serde_json::to_value(summary).unwrap();
+
+        assert_eq!(value["project_root"], "/project");
+        assert_eq!(value["output_dir"], "target/gungraun/example");
+        assert_eq!(value["package_dir"], "crates/example");
         assert_eq!(
-            regression,
-            ToolRegression::Soft {
-                metric: MetricKind::Perf(PerfMetric("foo".to_owned())),
-                display: Some("foo [s]".to_owned()),
-                unit: Some(Unit::Seconds),
-                new: Metric::Int(5),
-                old: Metric::Int(4),
-                diff_pct: 25.0,
-                limit: 10.0,
-            }
+            value["benchmark_file"],
+            "crates/example/benches/benchmark.rs"
         );
+        assert_eq!(value["benchmark_exe"], "target/release/benchmark");
+        assert!(value.get("summary_output").is_none());
     }
 }

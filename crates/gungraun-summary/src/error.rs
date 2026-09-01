@@ -3,6 +3,9 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Convenience alias for results returned by this crate.
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// Errors returned by the version-aware and version-specific summary parsers.
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -18,6 +21,3 @@ pub enum Error {
     #[error("error parsing command line argument {0}: {1}")]
     CliArgument(String, String),
 }
-
-/// Convenience alias for results returned by this crate.
-pub type Result<T> = std::result::Result<T, Error>;

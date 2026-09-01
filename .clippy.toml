@@ -1,4 +1,5 @@
 msrv = "1.88.0"
+module-items-ordered-within-groupings = "all"
 module-item-order-groupings = [
   [
     "macro",
@@ -21,18 +22,63 @@ module-item-order-groupings = [
     ],
   ],
   [
-    "everything_else",
+    "global_asm",
     [
       "global_asm",
+    ],
+  ],
+  [
+    "statics",
+    [
       "static",
+    ],
+  ],
+  [
+    "consts",
+    [
       "const",
+    ],
+  ],
+  [
+    "ty_aliases",
+    [
       "ty_alias",
+    ],
+  ],
+  [
+    "enums",
+    [
       "enum",
+    ],
+  ],
+  [
+    "structs",
+    [
       "struct",
+    ],
+  ],
+  [
+    "unions",
+    [
       "union",
+    ],
+  ],
+  [
+    "traits",
+    [
       "trait",
       "trait_alias",
+    ],
+  ],
+  [
+    "impls",
+    [
       "impl",
+    ],
+  ],
+  [
+    "fns",
+    [
       "fn",
     ],
   ],

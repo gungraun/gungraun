@@ -6,15 +6,6 @@ use valgrind_requests::{
 };
 use valgrind_requests_tests::MARKER;
 
-fn do_work(start: i32) -> i32 {
-    let mut sum = start;
-
-    for i in 1..10 {
-        sum += i;
-    }
-    sum
-}
-
 fn client_requests_1() -> i32 {
     let mut sum = do_work(0);
 
@@ -38,6 +29,15 @@ fn client_requests_2() -> i32 {
     sum += client_requests_1();
     callgrind::toggle_collect();
 
+    sum
+}
+
+fn do_work(start: i32) -> i32 {
+    let mut sum = start;
+
+    for i in 1..10 {
+        sum += i;
+    }
     sum
 }
 

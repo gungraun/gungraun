@@ -21,34 +21,14 @@ use crate::util::float_64;
 /// The version string stored in version 6 summary JSON files.
 pub const SCHEMA_VERSION: &str = "6";
 
-/// The Valgrind tools which can be run in a benchmark
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Identifies whether a summary describes a library or binary benchmark.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ValgrindTool {
-    /// Callgrind: a call-graph generating cache and branch prediction profiler
-    /// <https://valgrind.org/docs/manual/cl-manual.html>
-    Callgrind,
-    /// Cachegrind: a high-precision tracing profiler
-    /// <https://valgrind.org/docs/manual/cg-manual.html>
-    Cachegrind,
-    /// DHAT: a dynamic heap analysis tool
-    /// <https://valgrind.org/docs/manual/dh-manual.html>
-    DHAT,
-    /// Memcheck: a memory error detector
-    /// <https://valgrind.org/docs/manual/mc-manual.html>
-    Memcheck,
-    /// Helgrind: a thread error detector
-    /// <https://valgrind.org/docs/manual/hg-manual.html>
-    Helgrind,
-    /// DRD: a thread error detector
-    /// <https://valgrind.org/docs/manual/drd-manual.html>
-    DRD,
-    /// Massif: a heap profiler
-    /// <https://valgrind.org/docs/manual/ms-manual.html>
-    Massif,
-    /// BBV: an experimental basic block vector generation tool
-    /// <https://valgrind.org/docs/manual/bbv-manual.html>
-    BBV,
+pub enum BenchmarkKind {
+    /// A library benchmark
+    LibraryBenchmark,
+    /// A binary benchmark
+    BinaryBenchmark,
 }
 
 /// Identifies a metric kind by tool
@@ -72,36 +52,6 @@ pub enum MetricKind {
     Helgrind(ErrorMetric),
     /// The DRD metric kind
     DRD(ErrorMetric),
-}
-
-/// Comparison data for one metric in a parsed summary.
-///
-/// If both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.
-/// Otherwise the summary only stores whichever side is available. Per convention, the left side or
-/// [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]
-/// stores the old metric.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct MetricsDiff {
-    /// If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present
-    pub diffs: Option<Diffs>,
-    /// Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both metrics
-    pub metrics: EitherOrBoth<Metric>,
-}
-
-/// An insertion-ordered mapping from metric identifier to [`MetricsDiff`].
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct MetricsSummary<K: Hash + Eq = EventKind>(pub IndexMap<K, MetricsDiff>);
-
-/// Identifies whether a summary describes a library or binary benchmark.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum BenchmarkKind {
-    /// A library benchmark
-    LibraryBenchmark,
-    /// A binary benchmark
-    BinaryBenchmark,
 }
 
 /// Identifies the format of a summary file written by Gungraun.
@@ -212,6 +162,36 @@ pub enum ToolRegression {
     },
 }
 
+/// The Valgrind tools which can be run in a benchmark
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ValgrindTool {
+    /// Callgrind: a call-graph generating cache and branch prediction profiler
+    /// <https://valgrind.org/docs/manual/cl-manual.html>
+    Callgrind,
+    /// Cachegrind: a high-precision tracing profiler
+    /// <https://valgrind.org/docs/manual/cg-manual.html>
+    Cachegrind,
+    /// DHAT: a dynamic heap analysis tool
+    /// <https://valgrind.org/docs/manual/dh-manual.html>
+    DHAT,
+    /// Memcheck: a memory error detector
+    /// <https://valgrind.org/docs/manual/mc-manual.html>
+    Memcheck,
+    /// Helgrind: a thread error detector
+    /// <https://valgrind.org/docs/manual/hg-manual.html>
+    Helgrind,
+    /// DRD: a thread error detector
+    /// <https://valgrind.org/docs/manual/drd-manual.html>
+    DRD,
+    /// Massif: a heap profiler
+    /// <https://valgrind.org/docs/manual/ms-manual.html>
+    Massif,
+    /// BBV: an experimental basic block vector generation tool
+    /// <https://valgrind.org/docs/manual/bbv-manual.html>
+    BBV,
+}
+
 /// A `BenchmarkSummary` which contains all collected data of a single benchmark run
 ///
 /// This is the top-level type most consumers work with after deserializing a Gungraun summary file.
@@ -295,6 +275,26 @@ pub struct FlamegraphSummary {
     /// If present, the path to the file of the regular (non-differential) flamegraph
     pub regular_path: Option<PathBuf>,
 }
+
+/// Comparison data for one metric in a parsed summary.
+///
+/// If both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.
+/// Otherwise the summary only stores whichever side is available. Per convention, the left side or
+/// [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]
+/// stores the old metric.
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct MetricsDiff {
+    /// If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present
+    pub diffs: Option<Diffs>,
+    /// Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both metrics
+    pub metrics: EitherOrBoth<Metric>,
+}
+
+/// An insertion-ordered mapping from metric identifier to [`MetricsDiff`].
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct MetricsSummary<K: Hash + Eq = EventKind>(pub IndexMap<K, MetricsDiff>);
 
 /// `Profile` data for one [`ValgrindTool`] recorded in a benchmark summary.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

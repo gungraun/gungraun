@@ -40,50 +40,28 @@ fn test_smoke() {
     assert_eq!(summary.version, "6");
 }
 
-/// Build a minimal version 6 summary with a single Memcheck profile carrying the given tool
-/// metric summary object in the part and in the total.
-fn v6_summary(metrics_summary: &serde_json::Value) -> Vec<u8> {
-    let summary = json!({
-        "baselines": [null, null],
-        "benchmark_exe": "/project/target/deps/bench",
-        "benchmark_file": "/project/benches/example.rs",
-        "details": null,
-        "function_name": "some_benchmark_function",
-        "id": null,
-        "kind": "LibraryBenchmark",
-        "module_path": "example::some_benchmark_function",
-        "package_dir": "/project",
-        "profiles": [{
-            "flamegraphs": [],
-            "log_paths": ["/tmp/gungraun/bench.log"],
-            "out_paths": [],
-            "summaries": {
-                "parts": [{
-                    "details": {
-                        "Left": {
-                            "command": "bench",
-                            "details": null,
-                            "parent_pid": null,
-                            "part": null,
-                            "path": "/tmp/gungraun/bench.out",
-                            "pid": 1,
-                            "thread": null
-                        }
-                    },
-                    "metrics_summary": metrics_summary.clone()
-                }],
-                "total": {
-                    "regressions": [],
-                    "summary": metrics_summary
-                }
-            },
-            "tool": "Memcheck"
-        }],
-        "project_root": "/project",
-        "summary_output": null,
-        "version": "6"
-    });
-    serde_json::to_vec(&summary).unwrap()
+#[test]
+#[cfg(feature = "schema")]
+fn test_v6_freeze_of_models() {
+    use std::process::Command;
+
+    let expected = include_str!("../schemas/summary.v6.schema.json");
+    let mut expected_json: Value =
+        serde_json::from_str(expected).expect("The loaded schema should be valid json");
+
+    let bin = env!("CARGO_BIN_EXE_gungraun-summary-schemagen");
+    let output = Command::new(bin)
+        .arg("v6")
+        .output()
+        .expect("Running schema generation should succeed");
+
+    let mut actual_json: Value =
+        serde_json::from_slice(&output.stdout).expect("The generated should be valid json");
+
+    strip_descriptions(&mut expected_json);
+    strip_descriptions(&mut actual_json);
+
+    assert_eq!(actual_json, expected_json);
 }
 
 #[test]
@@ -136,26 +114,48 @@ fn test_v6_snapshot_rejects_memcheck_tag() {
     );
 }
 
-#[test]
-#[cfg(feature = "schema")]
-fn test_v6_freeze_of_models() {
-    use std::process::Command;
-
-    let expected = include_str!("../schemas/summary.v6.schema.json");
-    let mut expected_json: Value =
-        serde_json::from_str(expected).expect("The loaded schema should be valid json");
-
-    let bin = env!("CARGO_BIN_EXE_gungraun-summary-schemagen");
-    let output = Command::new(bin)
-        .arg("v6")
-        .output()
-        .expect("Running schema generation should succeed");
-
-    let mut actual_json: Value =
-        serde_json::from_slice(&output.stdout).expect("The generated should be valid json");
-
-    strip_descriptions(&mut expected_json);
-    strip_descriptions(&mut actual_json);
-
-    assert_eq!(actual_json, expected_json);
+/// Build a minimal version 6 summary with a single Memcheck profile carrying the given tool
+/// metric summary object in the part and in the total.
+fn v6_summary(metrics_summary: &serde_json::Value) -> Vec<u8> {
+    let summary = json!({
+        "baselines": [null, null],
+        "benchmark_exe": "/project/target/deps/bench",
+        "benchmark_file": "/project/benches/example.rs",
+        "details": null,
+        "function_name": "some_benchmark_function",
+        "id": null,
+        "kind": "LibraryBenchmark",
+        "module_path": "example::some_benchmark_function",
+        "package_dir": "/project",
+        "profiles": [{
+            "flamegraphs": [],
+            "log_paths": ["/tmp/gungraun/bench.log"],
+            "out_paths": [],
+            "summaries": {
+                "parts": [{
+                    "details": {
+                        "Left": {
+                            "command": "bench",
+                            "details": null,
+                            "parent_pid": null,
+                            "part": null,
+                            "path": "/tmp/gungraun/bench.out",
+                            "pid": 1,
+                            "thread": null
+                        }
+                    },
+                    "metrics_summary": metrics_summary.clone()
+                }],
+                "total": {
+                    "regressions": [],
+                    "summary": metrics_summary
+                }
+            },
+            "tool": "Memcheck"
+        }],
+        "project_root": "/project",
+        "summary_output": null,
+        "version": "6"
+    });
+    serde_json::to_vec(&summary).unwrap()
 }

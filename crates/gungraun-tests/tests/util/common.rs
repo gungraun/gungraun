@@ -25,22 +25,21 @@ use gungraun_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_TOOL: Tool = Tool::Callgrind;
-pub const FIXTURES_ROOT: &str = "tests/fixtures";
-
 pub static BENCH_BIN_FAKE_EXE: LazyLock<PathBuf> =
     LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_bench-bin-fake")));
-pub static ECHO_EXE: LazyLock<PathBuf> =
-    LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_echo")));
-pub static TIMEOUT_EXE: LazyLock<PathBuf> =
-    LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_timeout")));
+pub static CAT_EXE: LazyLock<PathBuf> = LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_cat")));
 pub static DELAY_EXE: LazyLock<PathBuf> =
     LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_delay")));
-pub static CAT_EXE: LazyLock<PathBuf> = LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_cat")));
+pub static ECHO_EXE: LazyLock<PathBuf> =
+    LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_echo")));
 pub static EXIT_WITH_EXE: LazyLock<PathBuf> =
     LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_exit-with")));
 pub static FILE_EXISTS_EXE: LazyLock<PathBuf> =
     LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_file-exists")));
+pub static TIMEOUT_EXE: LazyLock<PathBuf> =
+    LazyLock::new(|| PathBuf::from(env!("CARGO_BIN_EXE_timeout")));
+pub const DEFAULT_TOOL: Tool = Tool::Callgrind;
+pub const FIXTURES_ROOT: &str = "tests/fixtures";
 
 #[derive(Debug)]
 pub struct Fixtures;
@@ -307,26 +306,6 @@ pub fn cleanup_test_process_handler(process_handler: ProcessHandler) {
     }
 }
 
-/// If the [`log::Level`] matches dump the content of all output files into the `writer`
-pub fn tool_output_path_dump<W>(tool_output_path: &ToolOutputPath, writer: &mut W) -> Result<()>
-where
-    W: Write,
-{
-    for path in tool_output_path.sanitized_paths()? {
-        let file = File::open(&path).with_context(|| {
-            format!(
-                "Error opening {} output file '{}'",
-                tool_output_path.tool.id(),
-                path.display()
-            )
-        })?;
-
-        let mut reader = BufReader::new(file);
-        std::io::copy(&mut reader, writer)?;
-    }
-    Ok(())
-}
-
 pub fn get_project_root() -> PathBuf {
     let meta = cargo_metadata::MetadataCommand::new()
         .no_deps()
@@ -352,4 +331,24 @@ pub fn get_runner_version() -> Version {
             })
         })
         .expect("The version information for gungraun-runner should exists")
+}
+
+/// If the [`log::Level`] matches dump the content of all output files into the `writer`
+pub fn tool_output_path_dump<W>(tool_output_path: &ToolOutputPath, writer: &mut W) -> Result<()>
+where
+    W: Write,
+{
+    for path in tool_output_path.sanitized_paths()? {
+        let file = File::open(&path).with_context(|| {
+            format!(
+                "Error opening {} output file '{}'",
+                tool_output_path.tool.id(),
+                path.display()
+            )
+        })?;
+
+        let mut reader = BufReader::new(file);
+        std::io::copy(&mut reader, writer)?;
+    }
+    Ok(())
 }

@@ -32,6 +32,11 @@ use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
 };
 
+const DEFAULT_FILTER_OUTPUT: bool = false;
+const DEFAULT_SHOW_GRID: bool = false;
+const DEFAULT_SHOW_INTERMEDIATE: bool = false;
+const DEFAULT_SHOW_ONLY_COMPARISON: bool = false;
+const DEFAULT_TRUNCATE_DESCRIPTION: Option<usize> = Some(50);
 /// The width in bytes of the difference (and factor)
 pub const DIFF_WIDTH: usize = 9;
 /// The width in bytes of the FIELD as in `  FIELD: METRIC | METRIC (DIFF_PCT) [FACTOR]`
@@ -56,29 +61,11 @@ pub const UNKNOWN: &str = "*********";
 /// The string used to signal that the difference is in the tolerance margin
 pub const WITHIN_TOLERANCE: &str = "Tolerance";
 
-const DEFAULT_FILTER_OUTPUT: bool = false;
-const DEFAULT_SHOW_GRID: bool = false;
-const DEFAULT_SHOW_INTERMEDIATE: bool = false;
-const DEFAULT_SHOW_ONLY_COMPARISON: bool = false;
-const DEFAULT_TRUNCATE_DESCRIPTION: Option<usize> = Some(50);
-
 #[derive(Debug)]
 enum IndentKind {
     Normal,
     ToolHeadline,
     ToolSubHeadline,
-}
-
-/// The kind of the output format can be either json or the default terminal output
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum OutputFormatKind {
-    /// The default terminal output
-    #[default]
-    Default,
-    /// Json terminal output
-    Json,
-    /// Pretty json terminal output
-    PrettyJson,
 }
 
 /// The libtest-compatible list format selected via `--format` together with `--list`
@@ -93,6 +80,18 @@ pub enum ListFormat {
     Pretty,
     /// Print only per-benchmark lines, suppressing the blank line and the summary
     Terse,
+}
+
+/// The kind of the output format can be either json or the default terminal output
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum OutputFormatKind {
+    /// The default terminal output
+    #[default]
+    Default,
+    /// Json terminal output
+    Json,
+    /// Pretty json terminal output
+    PrettyJson,
 }
 
 /// The first line and header of a binary benchmark run
@@ -1630,6 +1629,14 @@ pub fn format_float(float: f64, unit: char) -> ColoredString {
     }
 }
 
+fn format_metric_with_unit(metric: &Metric, unit: Option<&Unit>) -> String {
+    if let Some(unit) = unit {
+        format!("{metric} [{unit}]")
+    } else {
+        metric.to_string()
+    }
+}
+
 fn format_significance_factor(float: f64) -> ColoredString {
     let unsigned_short = to_string_unsigned_short(float);
     if !float.is_finite() {
@@ -1805,14 +1812,6 @@ fn regression_display_name<'a>(metric: &MetricKind, display: Option<&'a str>) ->
     )
 }
 
-fn format_metric_with_unit(metric: &Metric, unit: Option<&Unit>) -> String {
-    if let Some(unit) = unit {
-        format!("{metric} [{unit}]")
-    } else {
-        metric.to_string()
-    }
-}
-
 fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
     if let Some(num) = truncate_description {
         let new_description = truncate_str_utf8(description, num);
@@ -1835,15 +1834,15 @@ mod tests {
     use super::*;
     use crate::metrics::model::{Metrics, MetricsSummary};
 
-    const TWENTY_DIGITS: &str = "12345678901234567890";
-    const TWENTY_ONE_DIGITS: &str = "123456789012345678901";
-    const FIELD_SOME_5: &str = "Some:";
-    const FIELD_35: &str = "Some Field1234567890Some Field1234:";
     const FIELD_34: &str = "Some Field1234567890Some Field123:";
+    const FIELD_35: &str = "Some Field1234567890Some Field1234:";
     const FIELD_50: &str = "Some Field1234567890Some Field1234567890123456789:";
     const FIELD_53: &str = "Some Field1234567890Some Field1234567890Some Field12:";
     const FIELD_54: &str = "Some Field1234567890Some Field1234567890Some Field123:";
     const FIELD_55: &str = "Some Field1234567890Some Field1234567890Some Field1234:";
+    const FIELD_SOME_5: &str = "Some:";
+    const TWENTY_DIGITS: &str = "12345678901234567890";
+    const TWENTY_ONE_DIGITS: &str = "123456789012345678901";
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]

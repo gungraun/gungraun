@@ -65,592 +65,12 @@ macro_rules! binary_benchmark_attribute {
     }};
 }
 
-/// The `gungraun::main` macro expands to a `main` function which runs all the benchmarks.
-///
-/// Using Gungraun requires disabling the benchmark harness. This can be done like so in the
-/// `Cargo.toml` file:
-///
-/// ```toml
-/// [[bench]]
-/// name = "my_bench"
-/// harness = false
-/// ```
-///
-/// To be able to run any gungraun benchmarks, you'll also need the `gungraun-runner`
-/// installed with the binary somewhere in your `$PATH` for example with
-///
-/// ```shell
-/// cargo install gungraun-runner
-/// ```
-///
-/// `my_bench` has to be a rust file inside the 'benches' directory.
-///
-/// # Library Benchmarks
-///
-/// The [`crate::main`] macro has one form to run library benchmarks:
-///
-/// ```rust
-/// # use gungraun::prelude::*;
-/// # #[library_benchmark]
-/// # fn bench_fibonacci() { }
-/// # library_benchmark_group!(
-/// #    name = some_group,
-/// #    benchmarks = bench_fibonacci
-/// # );
-/// # fn main() {
-/// main!(library_benchmark_groups = some_group);
-/// # }
-/// ```
-///
-/// which accepts the following top-level arguments in this order (separated by a comma):
-///
-/// * __`config`__ (optional): Optionally specify a [`crate::LibraryBenchmarkConfig`] valid for all
-///   benchmark groups
-/// * __`setup`__ (optional): A setup function or any valid expression which is run before all
-///   benchmarks
-/// * __`teardown`__ (optional): A setup function or any valid expression which is run after all
-///   benchmarks
-/// * __`library_benchmark_groups`__ (mandatory): The __name__ of one or more
-///   [`library_benchmark_group!`](crate::library_benchmark_group) macros. Multiple __names__ are
-///   expected to be a comma separated array (`library_benchmark_groups = [group_1, group_2]`).
-///
-/// A library benchmark consists of
-/// [`library_benchmark_groups`](crate::library_benchmark_group) and with
-/// [`#[library_benchmark]`](crate::library_benchmark) annotated benchmark functions.
-///
-/// ```rust
-/// use std::hint::black_box;
-///
-/// use gungraun::prelude::*;
-///
-/// fn fibonacci(n: u64) -> u64 {
-///     match n {
-///         0 => 1,
-///         1 => 1,
-///         n => fibonacci(n - 1) + fibonacci(n - 2),
-///     }
-/// }
-///
-/// #[library_benchmark]
-/// #[bench::short(10)]
-/// #[bench::long(30)]
-/// fn bench_fibonacci(value: u64) -> u64 {
-///     black_box(fibonacci(black_box(value)))
-/// }
-///
-/// library_benchmark_group!(name = bench_fibonacci_group, benchmarks = bench_fibonacci);
-///
-/// # fn main() {
-/// main!(library_benchmark_groups = bench_fibonacci_group);
-/// # }
-/// ```
-///
-/// If you need to pass arguments to Valgrind's Callgrind or other tools, you can specify arguments
-/// via [`crate::Callgrind::args`], [`crate::Dhat::args`], ...:
-///
-/// ```rust
-/// # use gungraun::prelude::*;
-/// # use gungraun::Callgrind;
-/// # #[library_benchmark]
-/// # fn bench_fibonacci() { }
-/// # library_benchmark_group!(
-/// #    name = some_group,
-/// #    benchmarks = bench_fibonacci
-/// # );
-/// # fn main() {
-/// main!(
-///     config = LibraryBenchmarkConfig::default().tool(Callgrind::with_args([
-///         "--arg-with-flags=yes",
-///         "arg-without-flags=is_ok_too"
-///     ])),
-///     library_benchmark_groups = some_group
-/// );
-/// # }
-/// ```
-///
-/// See also [Callgrind Command-line
-/// options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
-///
-/// For an in-depth description of library benchmarks and more examples see the
-/// [guide](https://gungraun.github.io/gungraun/latest/html/benchmarks/library_benchmarks.html).
-///
-/// # Binary Benchmarks
-///
-/// Setting up binary benchmarks is almost the same as setting up library benchmarks but using the
-/// `#[binary_benchmark]` macro. For example, if you're crate's binary is called `my-foo`:
-///
-/// ```rust
-/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-/// use gungraun::prelude::*;
-///
-/// #[binary_benchmark]
-/// #[bench::hello_world("hello world")]
-/// #[bench::foo("foo")]
-/// fn bench_binary(arg: &str) -> gungraun::Command {
-///     gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
-///         .arg(arg)
-///         .build()
-/// }
-///
-/// binary_benchmark_group!(name = my_group, benchmarks = bench_binary);
-///
-/// # fn main() {
-/// main!(binary_benchmark_groups = my_group);
-/// # }
-/// ```
-///
-/// See the documentation of [`crate::binary_benchmark_group`] and [`crate::Command`] for more
-/// details.
-#[macro_export]
-macro_rules! main {
-    (
-        $( config = $config:expr; $(;)* )?
-        $( setup = $setup:expr ; $(;)* )?
-        $( teardown = $teardown:expr ; $(;)* )?
-        binary_benchmark_groups =
-    ) => {
-        compile_error!("The binary_benchmark_groups argument needs at least one \
-            `name` of a `binary_benchmark_group!`");
-    };
-    (
-        $( config = $config:expr; $(;)* )?
-        $( setup = $setup:expr ; $(;)* )?
-        $( teardown = $teardown:expr ; $(;)* )?
-        binary_benchmark_groups = $( $group:ident ),+ $(,)*
-    ) => {
-        fn __run() -> Result<(), $crate::__internal::error::Errors> {
-            if option_env!("IAI_CALLGRIND_RUNNER").is_some() &&
-                option_env!("GUNGRAUN_RUNNER").is_none() {
-                    eprintln!(
-                        "gungraun: WARNING: With version 0.17.0, the environment variable
-                        `IAI_CALLGRIND_RUNNER` has changed to `GUNGRAUN_RUNNER`.\n The
-                        `GUNGRAUN_RUNNER` variable has to point to the absolute path of the new
-                        `gungraun-runner` executable."
-                    );
-            }
-
-            let mut this_args = std::env::args();
-            let mut runner = $crate::__internal::Runner::new(
-                option_env!("GUNGRAUN_RUNNER").or_else(||
-                            option_env!("CARGO_BIN_EXE_gungraun-runner")
-                ),
-                &$crate::__internal::BenchmarkKind::BinaryBenchmark,
-                env!("CARGO_MANIFEST_DIR"),
-                env!("CARGO_PKG_NAME"),
-                file!(),
-                module_path!(),
-                this_args.next().unwrap(),
-            );
-
-            let mut config: Option<$crate::__internal::InternalBinaryBenchmarkConfig> = None;
-            $(
-                config = Some($config.into());
-            )?
-
-            let mut groups_builder = $crate::__internal::bin_bench::GroupsBuilder::new(
-                config, this_args.collect(), __run_setup(false), __run_teardown(false),
-            );
-
-            $(
-                let mut group = $crate::BinaryBenchmarkGroup::default();
-                $group::$group(&mut group);
-
-                groups_builder.add_group(
-                        group,
-                        stringify!($group).to_owned(),
-                        &module_path!(),
-                        $group::__IS_ATTRIBUTE,
-                        $group::__get_config(),
-                        $group::__run_setup(false),
-                        $group::__run_teardown(false),
-                        $group::__compare_by_id(),
-                        $group::__max_parallel(),
-                        $group::__BENCHES
-                );
-            )+
-
-            let groups = groups_builder.build()?;
-            let encoded = $crate::bincode::serde::encode_to_vec(
-                &groups, $crate::bincode::config::legacy()
-            ).expect("Encoded benchmark");
-            runner.exec(encoded)
-        }
-
-        fn __run_setup(__run: bool) -> bool {
-            let mut __has_setup = false;
-            $(
-                __has_setup = true;
-                if __run {
-                    $setup;
-                }
-            )?
-            __has_setup
-        }
-
-        fn __run_teardown(__run: bool) -> bool {
-            let mut __has_teardown = false;
-            $(
-                __has_teardown = true;
-                if __run {
-                    $teardown;
-                }
-            )?
-            __has_teardown
-        }
-
-        fn main() {
-            const GROUPS: &[
-                (
-                    fn(bool) -> bool,
-                    fn(bool) -> bool,
-                    fn(usize, usize, Option<usize>),
-                    fn(usize, usize, Option<usize>)
-                )
-            ] = &[
-                $(
-                    (
-                        $group::__run_setup,
-                        $group::__run_teardown,
-                        $group::__run_bench_setup,
-                        $group::__run_bench_teardown,
-                    )
-                ),*
-            ];
-
-            let mut args_iter = std::env::args().skip(1);
-            if args_iter
-                .next()
-                .as_ref()
-                .map_or(false, |value| value == "--gungraun-run")
-            {
-                let _ = args_iter
-                    .next()
-                    .expect("A benchmark run mode should be present");
-                let mut current = args_iter.next().expect("At least two values should be present");
-                let next = args_iter.next();
-                match (current.as_str(), next) {
-                    ("setup", None) => {
-                        __run_setup(true);
-                    },
-                    ("teardown", None) => {
-                        __run_teardown(true);
-                    },
-                    (index, Some(next)) => {
-                        let main_index = index
-                            .parse::<usize>()
-                            .expect("A valid main index should be present");
-                        let current = next;
-                        let next = args_iter.next();
-
-                        match (current.as_str(), next) {
-                            ("setup", None) => {
-                                (GROUPS[main_index].0)(true);
-                            },
-                            ("teardown", None) => {
-                                (GROUPS[main_index].1)(true);
-                            }
-                            (key @ ("setup" | "teardown"), Some(next)) => {
-                                let group_index = next
-                                        .parse::<usize>()
-                                        .expect("The group index should be a valid number");
-                                let bench_index = args_iter
-                                        .next()
-                                        .expect("The bench index should be present")
-                                        .parse::<usize>()
-                                        .expect("The bench index should be a valid number");
-                                let iter_index = args_iter
-                                    .next()
-                                    .and_then(|a| a.parse::<usize>().ok());
-                                if key == "setup" {
-                                    (GROUPS[main_index].2)(
-                                        group_index,
-                                        bench_index,
-                                        iter_index
-                                    );
-                                } else {
-                                    (GROUPS[main_index].3)(
-                                        group_index,
-                                        bench_index,
-                                        iter_index
-                                    );
-                                }
-                            }
-                            (name, _) => panic!(
-                                "Invalid function '{}' in group with index '{}'",
-                                name, main_index
-                            )
-                        }
-                    }
-                    (name, _) => panic!(
-                        "Invalid configuration with value '{}' found in this scope",
-                        name
-                    )
-                }
-            } else {
-                if let Err(errors) = __run() {
-                    eprintln!("{errors}");
-                    std::process::exit(1);
-                }
-            };
-        }
-    };
-    (
-        $( config = $config:expr, $(,)* )?
-        $( setup = $setup:expr , $(,)* )?
-        $( teardown = $teardown:expr , $(,)* )?
-        binary_benchmark_groups = $group:ident
-    ) => {
-        main!(
-            $( config = $config; )?
-            $( setup = $setup; )?
-            $( teardown = $teardown; )?
-            binary_benchmark_groups = $group
-        );
-    };
-    (
-        $( config = $config:expr, $(,)* )?
-        $( setup = $setup:expr , $(,)* )?
-        $( teardown = $teardown:expr , $(,)* )?
-        binary_benchmark_groups = [ $( $group:ident ),+ $(,)* ]
-    ) => {
-        main!(
-            $( config = $config; )?
-            $( setup = $setup; )?
-            $( teardown = $teardown; )?
-            binary_benchmark_groups = $( $group ),+
-        );
-    };
-    (
-        $( config = $config:expr; $(;)* )?
-        $( setup = $setup:expr ; $(;)* )?
-        $( teardown = $teardown:expr ; $(;)* )?
-        library_benchmark_groups =
-    ) => {
-        compile_error!("The library_benchmark_groups argument needs at least one \
-            `name` of a `library_benchmark_group!`");
-    };
-    (
-        $( config = $config:expr ; $(;)* )?
-        $( setup = $setup:expr ; $(;)* )?
-        $( teardown = $teardown:expr ; $(;)* )?
-        library_benchmark_groups = $( $group:ident ),+ $(,)*
-    ) => {
-        #[inline(never)]
-        fn __run() {
-            if option_env!("IAI_CALLGRIND_RUNNER").is_some() &&
-                option_env!("GUNGRAUN_RUNNER").is_none() {
-                    eprintln!(
-                        "gungraun: WARNING: With version 0.17.0, the environment variable
-                        `IAI_CALLGRIND_RUNNER` has changed to `GUNGRAUN_RUNNER`.\n The
-                        `GUNGRAUN_RUNNER` variable has to point to the absolute path of the new
-                        `gungraun-runner` executable."
-                    );
-            }
-
-            let mut this_args = std::env::args();
-            let mut runner = $crate::__internal::Runner::new(
-                option_env!("GUNGRAUN_RUNNER").or_else(||
-                    option_env!("CARGO_BIN_EXE_gungraun-runner")
-                ),
-                &$crate::__internal::BenchmarkKind::LibraryBenchmark,
-                env!("CARGO_MANIFEST_DIR"),
-                env!("CARGO_PKG_NAME"),
-                file!(),
-                module_path!(),
-                this_args.next().unwrap(),
-            );
-
-            let mut config: Option<$crate::__internal::InternalLibraryBenchmarkConfig> = None;
-            $(
-                config = Some($config.into());
-            )?
-
-            let mut groups_builder = $crate::__internal::lib_bench::GroupsBuilder::new(
-                config, this_args.collect(), __run_setup(false), __run_teardown(false),
-            );
-
-            $(
-                groups_builder.add_group(
-                    stringify!($group).to_owned(),
-                    $group::__get_config(),
-                    $group::__compare_by_id(),
-                    $group::__max_parallel(),
-                    $group::__run_setup(false),
-                    $group::__run_teardown(false),
-                    $group::__BENCHES
-                );
-            )+
-
-            let encoded = $crate::bincode::serde::encode_to_vec(
-                groups_builder.build(), $crate::bincode::config::legacy()
-            ).expect("Encoded benchmark");
-
-            if let Err(errors) = runner.exec(encoded) {
-                eprintln!("{errors}");
-                std::process::exit(1);
-            }
-        }
-
-        #[inline(never)]
-        fn __run_setup(__run: bool) -> bool {
-            let mut __has_setup = false;
-            $(
-                __has_setup = true;
-                if __run {
-                    $setup;
-                }
-            )?
-            __has_setup
-        }
-
-        #[inline(never)]
-        fn __run_teardown(__run: bool) -> bool {
-            let mut __has_teardown = false;
-            $(
-                __has_teardown = true;
-                if __run {
-                    $teardown;
-                }
-            )?
-            __has_teardown
-        }
-
-        /// Keep the logic to run the benchmark function within the main function to avoid heap
-        /// allocations in functions other than main which are part of the benchmarking framework.
-        /// DHAT needs a fallback (matched with `file::*::*`) to the benchmark function (matched
-        /// with `*::__gungraun_wrapper_mod::*`) since the benchmark function is sometimes
-        /// inlined even if annotated with `#[inline(never)]`.
-        fn main() {
-            const GROUPS: &[
-                (
-                    fn(bool) -> bool,
-                    fn(bool) -> bool,
-                    fn($crate::__internal::InternalBenchRunMode, usize, usize, Option<usize>)
-                )
-            ] = &[
-                $(
-                    (
-                        $group::__run_setup,
-                        $group::__run_teardown,
-                        $group::__run
-                    )
-                ),*
-            ];
-
-            let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
-            if args_iter
-                .next()
-                .as_ref()
-                .map_or(false, |value| value == "--gungraun-run")
-            {
-                let mut current = std::hint::black_box(
-                    args_iter.next().expect("A mode should be present")
-                );
-
-                let mode = std::hint::black_box(
-                    $crate::__internal::InternalBenchRunMode::from_id(&current)
-                        .expect("The benchmark run mode should be valid")
-                );
-
-                current = std::hint::black_box(
-                    args_iter.next().expect("Expecting a function type")
-                );
-
-                let mut next = std::hint::black_box(args_iter.next());
-                match current.as_str() {
-                    "setup" if next.is_none() => {
-                        __run_setup(true);
-                    },
-                    "teardown" if next.is_none() => {
-                        __run_teardown(true);
-                    },
-                    _ => {
-                        let main_index = std::hint::black_box(
-                            current.parse::<usize>()
-                            .expect("The main index should be a valid integer")
-                        );
-
-                        current = next.expect("A setup/teardown or group index should be present");
-                        next = std::hint::black_box(args_iter.next());
-                        match current.as_str() {
-                            "setup" if next.is_none() => {
-                                (GROUPS[main_index].0)(true);
-                            },
-                            "teardown" if next.is_none() => {
-                                (GROUPS[main_index].1)(true);
-                            }
-                            _ => {
-                                let group_index = std::hint::black_box(
-                                    current
-                                        .parse::<usize>()
-                                        .expect("Expecting a valid group index")
-                                );
-                                let bench_index = std::hint::black_box(
-                                    next.expect("A bench index should be present")
-                                        .parse::<usize>()
-                                        .expect("Expecting a valid bench index")
-                                );
-                                let iter_index = std::hint::black_box(
-                                    args_iter
-                                        .next()
-                                        .and_then(|a| a.parse::<usize>().ok())
-                                );
-                                (GROUPS[main_index].2)
-                                    (mode, group_index, bench_index, iter_index);
-                            }
-                        }
-                    }
-                    name => panic!("function '{}' not found in this scope", name)
-                }
-            } else {
-                std::hint::black_box(__run());
-            };
-        }
-    };
-    (
-        $( config = $config:expr , $(,)* )?
-        $( setup = $setup:expr , $(,)* )?
-        $( teardown = $teardown:expr , $(,)* )?
-        library_benchmark_groups = $group:ident
-    ) => {
-        main!(
-            $( config = $config; )?
-            $( setup = $setup; )?
-            $( teardown = $teardown; )?
-            library_benchmark_groups = $group
-        );
-    };
-    (
-        $( config = $config:expr , $(,)* )?
-        $( setup = $setup:expr , $(,)* )?
-        $( teardown = $teardown:expr , $(,)* )?
-        library_benchmark_groups = [ $( $group:ident ),+ $(,)* ]
-    ) => {
-        main!(
-            $( config = $config; )?
-            $( setup = $setup; )?
-            $( teardown = $teardown; )?
-            library_benchmark_groups = $( $group ),+
-        );
-    };
-    ( $( $some:tt )* ) => {
-        compile_error!(
-            "You are using an invalid or deprecated syntax of the main! macro to set up \
-            benchmarks. See the documentation of this macro, the README \
-            (https://github.com/gungraun/gungraun) and docs \
-            (https://docs.rs/gungraun/latest/gungraun/) for further details."
-        );
-        pub fn main() {}
-    };
-}
-
 /// Macro used to define a group of binary benchmarks
 ///
 /// There are two apis to set up binary benchmarks. The recommended way is to [use the
 /// `#[binary_benchmark]` attribute](#using-the-high-level-api-with-the-binary-benchmark-attribute).
 /// But, if you find yourself in the situation that the attribute isn't enough you can fall back to
-/// the [low level api](#the-low-level-api) or even [intermix both
-/// styles](#intermixing-both-apis).
+/// the [low level api](#the-low-level-api) or even [intermix both styles](#intermixing-both-apis).
 ///
 /// # The macro's arguments in detail:
 ///
@@ -739,11 +159,11 @@ macro_rules! main {
 ///
 /// Using the low-level api has advantages but when it comes to stability in terms of usability, the
 /// low level api might be considered less stable. What does this mean? If we have to make changes
-/// to the inner workings of gungraun which not necessarily change the high-level api it is
-/// more likely that the low-level api has to be adjusted. This implies you might have to adjust
-/// your benchmarks more often with a version update of `gungraun`. Hence, it is recommended to
-/// use the high-level api as much as possible and only use the low-level api under special
-/// circumstances. You can also [intermix both styles](#intermixing-both-apis)!
+/// to the inner workings of gungraun which not necessarily change the high-level api it is more
+/// likely that the low-level api has to be adjusted. This implies you might have to adjust your
+/// benchmarks more often with a version update of `gungraun`. Hence, it is recommended to use the
+/// high-level api as much as possible and only use the low-level api under special circumstances.
+/// You can also [intermix both styles](#intermixing-both-apis)!
 ///
 /// The low-level api mirrors the high-level constructs as close as possible. The
 /// [`crate::BinaryBenchmarkGroup`] is a special case, since we use the information from the
@@ -810,8 +230,8 @@ macro_rules! main {
 /// * [`crate::BenchmarkId`]: The benchmark id is for example used in
 ///   [`crate::BinaryBenchmark::new`] and [`crate::Bench::new`]
 ///
-/// Note there's no equivalent for the `#[benches]` attribute. The [`crate::Bench`] behaves exactly
-/// as the `#[benches]` attribute if more than a single [`crate::Command`] is added.
+/// Note there's no equivalent for the `#[benches]` attribute. The [`crate::Bench`] behaves
+/// exactly as the `#[benches]` attribute if more than a single [`crate::Command`] is added.
 ///
 /// # Intermixing both apis
 ///
@@ -1626,5 +1046,585 @@ macro_rules! library_benchmark_group {
             (https://docs.rs/gungraun/latest/gungraun) for further details.\n\n\
             hint: library_benchmark_group!(name = some_name, benchmarks = [ bench_1, bench_2 ]);"
         );
+    };
+}
+
+/// The `gungraun::main` macro expands to a `main` function which runs all the benchmarks.
+///
+/// Using Gungraun requires disabling the benchmark harness. This can be done like so in the
+/// `Cargo.toml` file:
+///
+/// ```toml
+/// [[bench]]
+/// name = "my_bench"
+/// harness = false
+/// ```
+///
+/// To be able to run any gungraun benchmarks, you'll also need the `gungraun-runner`
+/// installed with the binary somewhere in your `$PATH` for example with
+///
+/// ```shell
+/// cargo install gungraun-runner
+/// ```
+///
+/// `my_bench` has to be a rust file inside the 'benches' directory.
+///
+/// # Library Benchmarks
+///
+/// The [`crate::main`] macro has one form to run library benchmarks:
+///
+/// ```rust
+/// # use gungraun::prelude::*;
+/// # #[library_benchmark]
+/// # fn bench_fibonacci() { }
+/// # library_benchmark_group!(
+/// #    name = some_group,
+/// #    benchmarks = bench_fibonacci
+/// # );
+/// # fn main() {
+/// main!(library_benchmark_groups = some_group);
+/// # }
+/// ```
+///
+/// which accepts the following top-level arguments in this order (separated by a comma):
+///
+/// * __`config`__ (optional): Optionally specify a [`crate::LibraryBenchmarkConfig`] valid for all
+///   benchmark groups
+/// * __`setup`__ (optional): A setup function or any valid expression which is run before all
+///   benchmarks
+/// * __`teardown`__ (optional): A setup function or any valid expression which is run after all
+///   benchmarks
+/// * __`library_benchmark_groups`__ (mandatory): The __name__ of one or more
+///   [`library_benchmark_group!`](crate::library_benchmark_group) macros. Multiple __names__ are
+///   expected to be a comma separated array (`library_benchmark_groups = [group_1, group_2]`).
+///
+/// A library benchmark consists of
+/// [`library_benchmark_groups`](crate::library_benchmark_group) and with
+/// [`#[library_benchmark]`](crate::library_benchmark) annotated benchmark functions.
+///
+/// ```rust
+/// use std::hint::black_box;
+///
+/// use gungraun::prelude::*;
+///
+/// fn fibonacci(n: u64) -> u64 {
+///     match n {
+///         0 => 1,
+///         1 => 1,
+///         n => fibonacci(n - 1) + fibonacci(n - 2),
+///     }
+/// }
+///
+/// #[library_benchmark]
+/// #[bench::short(10)]
+/// #[bench::long(30)]
+/// fn bench_fibonacci(value: u64) -> u64 {
+///     black_box(fibonacci(black_box(value)))
+/// }
+///
+/// library_benchmark_group!(name = bench_fibonacci_group, benchmarks = bench_fibonacci);
+///
+/// # fn main() {
+/// main!(library_benchmark_groups = bench_fibonacci_group);
+/// # }
+/// ```
+///
+/// If you need to pass arguments to Valgrind's Callgrind or other tools, you can specify
+/// arguments via [`crate::Callgrind::args`], [`crate::Dhat::args`], ...:
+///
+/// ```rust
+/// # use gungraun::prelude::*;
+/// # use gungraun::Callgrind;
+/// # #[library_benchmark]
+/// # fn bench_fibonacci() { }
+/// # library_benchmark_group!(
+/// #    name = some_group,
+/// #    benchmarks = bench_fibonacci
+/// # );
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default().tool(Callgrind::with_args([
+///         "--arg-with-flags=yes",
+///         "arg-without-flags=is_ok_too"
+///     ])),
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+///
+/// See also [Callgrind Command-line
+/// options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
+///
+/// For an in-depth description of library benchmarks and more examples see the
+/// [guide](https://gungraun.github.io/gungraun/latest/html/benchmarks/library_benchmarks.html).
+///
+/// # Binary Benchmarks
+///
+/// Setting up binary benchmarks is almost the same as setting up library benchmarks but using
+/// the `#[binary_benchmark]` macro. For example, if you're crate's binary is called
+/// `my-foo`:
+///
+/// ```rust
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// use gungraun::prelude::*;
+///
+/// #[binary_benchmark]
+/// #[bench::hello_world("hello world")]
+/// #[bench::foo("foo")]
+/// fn bench_binary(arg: &str) -> gungraun::Command {
+///     gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///         .arg(arg)
+///         .build()
+/// }
+///
+/// binary_benchmark_group!(name = my_group, benchmarks = bench_binary);
+///
+/// # fn main() {
+/// main!(binary_benchmark_groups = my_group);
+/// # }
+/// ```
+///
+/// See the documentation of [`crate::binary_benchmark_group`] and [`crate::Command`] for more
+/// details.
+#[macro_export]
+macro_rules! main {
+    (
+        $( config = $config:expr; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
+        binary_benchmark_groups =
+    ) => {
+        compile_error!("The binary_benchmark_groups argument needs at least one \
+            `name` of a `binary_benchmark_group!`");
+    };
+    (
+        $( config = $config:expr; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
+        binary_benchmark_groups = $( $group:ident ),+ $(,)*
+    ) => {
+        fn __run() -> Result<(), $crate::__internal::error::Errors> {
+            if option_env!("IAI_CALLGRIND_RUNNER").is_some() &&
+                option_env!("GUNGRAUN_RUNNER").is_none() {
+                    eprintln!(
+                        "gungraun: WARNING: With version 0.17.0, the environment variable
+                        `IAI_CALLGRIND_RUNNER` has changed to `GUNGRAUN_RUNNER`.\n The
+                        `GUNGRAUN_RUNNER` variable has to point to the absolute path of the new
+                        `gungraun-runner` executable."
+                    );
+            }
+
+            let mut this_args = std::env::args();
+            let mut runner = $crate::__internal::Runner::new(
+                option_env!("GUNGRAUN_RUNNER").or_else(||
+                            option_env!("CARGO_BIN_EXE_gungraun-runner")
+                ),
+                &$crate::__internal::BenchmarkKind::BinaryBenchmark,
+                env!("CARGO_MANIFEST_DIR"),
+                env!("CARGO_PKG_NAME"),
+                file!(),
+                module_path!(),
+                this_args.next().unwrap(),
+            );
+
+            let mut config: Option<$crate::__internal::InternalBinaryBenchmarkConfig> = None;
+            $(
+                config = Some($config.into());
+            )?
+
+            let mut groups_builder = $crate::__internal::bin_bench::GroupsBuilder::new(
+                config, this_args.collect(), __run_setup(false), __run_teardown(false),
+            );
+
+            $(
+                let mut group = $crate::BinaryBenchmarkGroup::default();
+                $group::$group(&mut group);
+
+                groups_builder.add_group(
+                        group,
+                        stringify!($group).to_owned(),
+                        &module_path!(),
+                        $group::__IS_ATTRIBUTE,
+                        $group::__get_config(),
+                        $group::__run_setup(false),
+                        $group::__run_teardown(false),
+                        $group::__compare_by_id(),
+                        $group::__max_parallel(),
+                        $group::__BENCHES
+                );
+            )+
+
+            let groups = groups_builder.build()?;
+            let encoded = $crate::bincode::serde::encode_to_vec(
+                &groups, $crate::bincode::config::legacy()
+            ).expect("Encoded benchmark");
+            runner.exec(encoded)
+        }
+
+        fn __run_setup(__run: bool) -> bool {
+            let mut __has_setup = false;
+            $(
+                __has_setup = true;
+                if __run {
+                    $setup;
+                }
+            )?
+            __has_setup
+        }
+
+        fn __run_teardown(__run: bool) -> bool {
+            let mut __has_teardown = false;
+            $(
+                __has_teardown = true;
+                if __run {
+                    $teardown;
+                }
+            )?
+            __has_teardown
+        }
+
+        fn main() {
+            const GROUPS: &[
+                (
+                    fn(bool) -> bool,
+                    fn(bool) -> bool,
+                    fn(usize, usize, Option<usize>),
+                    fn(usize, usize, Option<usize>)
+                )
+            ] = &[
+                $(
+                    (
+                        $group::__run_setup,
+                        $group::__run_teardown,
+                        $group::__run_bench_setup,
+                        $group::__run_bench_teardown,
+                    )
+                ),*
+            ];
+
+            let mut args_iter = std::env::args().skip(1);
+            if args_iter
+                .next()
+                .as_ref()
+                .map_or(false, |value| value == "--gungraun-run")
+            {
+                let _ = args_iter
+                    .next()
+                    .expect("A benchmark run mode should be present");
+                let mut current = args_iter.next().expect("At least two values should be present");
+                let next = args_iter.next();
+                match (current.as_str(), next) {
+                    ("setup", None) => {
+                        __run_setup(true);
+                    },
+                    ("teardown", None) => {
+                        __run_teardown(true);
+                    },
+                    (index, Some(next)) => {
+                        let main_index = index
+                            .parse::<usize>()
+                            .expect("A valid main index should be present");
+                        let current = next;
+                        let next = args_iter.next();
+
+                        match (current.as_str(), next) {
+                            ("setup", None) => {
+                                (GROUPS[main_index].0)(true);
+                            },
+                            ("teardown", None) => {
+                                (GROUPS[main_index].1)(true);
+                            }
+                            (key @ ("setup" | "teardown"), Some(next)) => {
+                                let group_index = next
+                                        .parse::<usize>()
+                                        .expect("The group index should be a valid number");
+                                let bench_index = args_iter
+                                        .next()
+                                        .expect("The bench index should be present")
+                                        .parse::<usize>()
+                                        .expect("The bench index should be a valid number");
+                                let iter_index = args_iter
+                                    .next()
+                                    .and_then(|a| a.parse::<usize>().ok());
+                                if key == "setup" {
+                                    (GROUPS[main_index].2)(
+                                        group_index,
+                                        bench_index,
+                                        iter_index
+                                    );
+                                } else {
+                                    (GROUPS[main_index].3)(
+                                        group_index,
+                                        bench_index,
+                                        iter_index
+                                    );
+                                }
+                            }
+                            (name, _) => panic!(
+                                "Invalid function '{}' in group with index '{}'",
+                                name, main_index
+                            )
+                        }
+                    }
+                    (name, _) => panic!(
+                        "Invalid configuration with value '{}' found in this scope",
+                        name
+                    )
+                }
+            } else {
+                if let Err(errors) = __run() {
+                    eprintln!("{errors}");
+                    std::process::exit(1);
+                }
+            };
+        }
+    };
+    (
+        $( config = $config:expr, $(,)* )?
+        $( setup = $setup:expr , $(,)* )?
+        $( teardown = $teardown:expr , $(,)* )?
+        binary_benchmark_groups = $group:ident
+    ) => {
+        main!(
+            $( config = $config; )?
+            $( setup = $setup; )?
+            $( teardown = $teardown; )?
+            binary_benchmark_groups = $group
+        );
+    };
+    (
+        $( config = $config:expr, $(,)* )?
+        $( setup = $setup:expr , $(,)* )?
+        $( teardown = $teardown:expr , $(,)* )?
+        binary_benchmark_groups = [ $( $group:ident ),+ $(,)* ]
+    ) => {
+        main!(
+            $( config = $config; )?
+            $( setup = $setup; )?
+            $( teardown = $teardown; )?
+            binary_benchmark_groups = $( $group ),+
+        );
+    };
+    (
+        $( config = $config:expr; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
+        library_benchmark_groups =
+    ) => {
+        compile_error!("The library_benchmark_groups argument needs at least one \
+            `name` of a `library_benchmark_group!`");
+    };
+    (
+        $( config = $config:expr ; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
+        library_benchmark_groups = $( $group:ident ),+ $(,)*
+    ) => {
+        #[inline(never)]
+        fn __run() {
+            if option_env!("IAI_CALLGRIND_RUNNER").is_some() &&
+                option_env!("GUNGRAUN_RUNNER").is_none() {
+                    eprintln!(
+                        "gungraun: WARNING: With version 0.17.0, the environment variable
+                        `IAI_CALLGRIND_RUNNER` has changed to `GUNGRAUN_RUNNER`.\n The
+                        `GUNGRAUN_RUNNER` variable has to point to the absolute path of the new
+                        `gungraun-runner` executable."
+                    );
+            }
+
+            let mut this_args = std::env::args();
+            let mut runner = $crate::__internal::Runner::new(
+                option_env!("GUNGRAUN_RUNNER").or_else(||
+                    option_env!("CARGO_BIN_EXE_gungraun-runner")
+                ),
+                &$crate::__internal::BenchmarkKind::LibraryBenchmark,
+                env!("CARGO_MANIFEST_DIR"),
+                env!("CARGO_PKG_NAME"),
+                file!(),
+                module_path!(),
+                this_args.next().unwrap(),
+            );
+
+            let mut config: Option<$crate::__internal::InternalLibraryBenchmarkConfig> = None;
+            $(
+                config = Some($config.into());
+            )?
+
+            let mut groups_builder = $crate::__internal::lib_bench::GroupsBuilder::new(
+                config, this_args.collect(), __run_setup(false), __run_teardown(false),
+            );
+
+            $(
+                groups_builder.add_group(
+                    stringify!($group).to_owned(),
+                    $group::__get_config(),
+                    $group::__compare_by_id(),
+                    $group::__max_parallel(),
+                    $group::__run_setup(false),
+                    $group::__run_teardown(false),
+                    $group::__BENCHES
+                );
+            )+
+
+            let encoded = $crate::bincode::serde::encode_to_vec(
+                groups_builder.build(), $crate::bincode::config::legacy()
+            ).expect("Encoded benchmark");
+
+            if let Err(errors) = runner.exec(encoded) {
+                eprintln!("{errors}");
+                std::process::exit(1);
+            }
+        }
+
+        #[inline(never)]
+        fn __run_setup(__run: bool) -> bool {
+            let mut __has_setup = false;
+            $(
+                __has_setup = true;
+                if __run {
+                    $setup;
+                }
+            )?
+            __has_setup
+        }
+
+        #[inline(never)]
+        fn __run_teardown(__run: bool) -> bool {
+            let mut __has_teardown = false;
+            $(
+                __has_teardown = true;
+                if __run {
+                    $teardown;
+                }
+            )?
+            __has_teardown
+        }
+
+        /// Keep the logic to run the benchmark function within the main function to avoid heap
+        /// allocations in functions other than main which are part of the benchmarking framework.
+        /// DHAT needs a fallback (matched with `file::*::*`) to the benchmark function (matched
+        /// with `*::__gungraun_wrapper_mod::*`) since the benchmark function is sometimes
+        /// inlined even if annotated with `#[inline(never)]`.
+        fn main() {
+            const GROUPS: &[
+                (
+                    fn(bool) -> bool,
+                    fn(bool) -> bool,
+                    fn($crate::__internal::InternalBenchRunMode, usize, usize, Option<usize>)
+                )
+            ] = &[
+                $(
+                    (
+                        $group::__run_setup,
+                        $group::__run_teardown,
+                        $group::__run
+                    )
+                ),*
+            ];
+
+            let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
+            if args_iter
+                .next()
+                .as_ref()
+                .map_or(false, |value| value == "--gungraun-run")
+            {
+                let mut current = std::hint::black_box(
+                    args_iter.next().expect("A mode should be present")
+                );
+
+                let mode = std::hint::black_box(
+                    $crate::__internal::InternalBenchRunMode::from_id(&current)
+                        .expect("The benchmark run mode should be valid")
+                );
+
+                current = std::hint::black_box(
+                    args_iter.next().expect("Expecting a function type")
+                );
+
+                let mut next = std::hint::black_box(args_iter.next());
+                match current.as_str() {
+                    "setup" if next.is_none() => {
+                        __run_setup(true);
+                    },
+                    "teardown" if next.is_none() => {
+                        __run_teardown(true);
+                    },
+                    _ => {
+                        let main_index = std::hint::black_box(
+                            current.parse::<usize>()
+                            .expect("The main index should be a valid integer")
+                        );
+
+                        current = next.expect("A setup/teardown or group index should be present");
+                        next = std::hint::black_box(args_iter.next());
+                        match current.as_str() {
+                            "setup" if next.is_none() => {
+                                (GROUPS[main_index].0)(true);
+                            },
+                            "teardown" if next.is_none() => {
+                                (GROUPS[main_index].1)(true);
+                            }
+                            _ => {
+                                let group_index = std::hint::black_box(
+                                    current
+                                        .parse::<usize>()
+                                        .expect("Expecting a valid group index")
+                                );
+                                let bench_index = std::hint::black_box(
+                                    next.expect("A bench index should be present")
+                                        .parse::<usize>()
+                                        .expect("Expecting a valid bench index")
+                                );
+                                let iter_index = std::hint::black_box(
+                                    args_iter
+                                        .next()
+                                        .and_then(|a| a.parse::<usize>().ok())
+                                );
+                                (GROUPS[main_index].2)
+                                    (mode, group_index, bench_index, iter_index);
+                            }
+                        }
+                    }
+                    name => panic!("function '{}' not found in this scope", name)
+                }
+            } else {
+                std::hint::black_box(__run());
+            };
+        }
+    };
+    (
+        $( config = $config:expr , $(,)* )?
+        $( setup = $setup:expr , $(,)* )?
+        $( teardown = $teardown:expr , $(,)* )?
+        library_benchmark_groups = $group:ident
+    ) => {
+        main!(
+            $( config = $config; )?
+            $( setup = $setup; )?
+            $( teardown = $teardown; )?
+            library_benchmark_groups = $group
+        );
+    };
+    (
+        $( config = $config:expr , $(,)* )?
+        $( setup = $setup:expr , $(,)* )?
+        $( teardown = $teardown:expr , $(,)* )?
+        library_benchmark_groups = [ $( $group:ident ),+ $(,)* ]
+    ) => {
+        main!(
+            $( config = $config; )?
+            $( setup = $setup; )?
+            $( teardown = $teardown; )?
+            library_benchmark_groups = $( $group ),+
+        );
+    };
+    ( $( $some:tt )* ) => {
+        compile_error!(
+            "You are using an invalid or deprecated syntax of the main! macro to set up \
+            benchmarks. See the documentation of this macro, the README \
+            (https://github.com/gungraun/gungraun) and docs \
+            (https://docs.rs/gungraun/latest/gungraun/) for further details."
+        );
+        pub fn main() {}
     };
 }

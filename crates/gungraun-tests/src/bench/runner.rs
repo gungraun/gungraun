@@ -63,13 +63,13 @@ use crate::config::Partition;
 use crate::expected_files::{SCHEMA_PATH, TEMPLATE_DATA};
 use crate::filter::CapturedOutput;
 
+const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
+const CONTINUE_FILE_NAME: &str = "gungraun-tests.continue";
 const TEMPLATE_BENCH_NAME: &str = "test_bench_template";
 const TEMPLATE_CONTENT: &str = r#"fn main() {
     panic!("should be replaced by a rendered template");
 }
 "#;
-const CONTINUE_FILE_NAME: &str = "gungraun-tests.continue";
-const CARGO_LLVM_COV: &str = "CARGO_LLVM_COV";
 
 /// Inputs that vary between individual `cargo bench` invocations of one [`SystemTest`].
 ///

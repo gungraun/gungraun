@@ -11,63 +11,6 @@ use gungraun_macros::IntoInner;
 
 use crate::{__internal, DelayKind, ExitWith, Stdin, Stdio, Tool};
 
-/// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BenchmarkId(String);
-
-/// The configuration of a binary benchmark
-///
-/// The [`BinaryBenchmarkConfig`] can be specified at multiple levels and configures the benchmarks
-/// at this level. For example a [`BinaryBenchmarkConfig`] at (`main`)[`crate::main`] level
-/// configures all benchmarks. A configuration at [`group`](crate::binary_benchmark_group) level
-/// configures all benchmarks in this group inheriting the configuration of the `main` level and if
-/// not specified otherwise overwrites the values of the `main` configuration if the option is
-/// specified in both [`BinaryBenchmarkConfig`]s. The deeper levels are the
-/// (`#[binary_benchmark] attribute`)[`crate::binary_benchmark`], then `#[bench]` and the
-/// `#[benches]` attribute.
-///
-/// # Examples
-///
-/// ```rust
-/// # use gungraun::binary_benchmark_group;
-/// # binary_benchmark_group!(name = some_group,
-/// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-/// use gungraun::{BinaryBenchmarkConfig, Callgrind, main};
-///
-/// main!(
-///     config = BinaryBenchmarkConfig::default()
-///         .tool(Callgrind::with_args(["toggle-collect=something"])),
-///     binary_benchmark_groups = some_group
-/// );
-/// ```
-#[derive(Debug, Default, Clone, IntoInner, AsRef)]
-pub struct BinaryBenchmarkConfig(__internal::InternalBinaryBenchmarkConfig);
-
-/// [low level api](`crate::binary_benchmark_group`) only: The top level struct to add binary
-/// benchmarks to
-///
-/// This struct doesn't need to be instantiated by yourself. It is passed as mutable reference to
-/// the expression in `benchmarks`.
-///
-/// ```rust
-/// use gungraun::binary_benchmark_group;
-///
-/// binary_benchmark_group!(
-///     name = my_group,
-///     benchmarks = |group: &mut BinaryBenchmarkGroup| {
-///         // Access the BinaryBenchmarkGroup with the identifier `group` to add benchmarks to the
-///         // group.
-///         //
-///         // group.binary_benchmark(/* BinaryBenchmark::new(...) */);
-///     }
-/// );
-/// ```
-#[derive(Debug, Default, PartialEq, Clone)]
-pub struct BinaryBenchmarkGroup {
-    /// All [`BinaryBenchmark`]s
-    pub binary_benchmarks: Vec<BinaryBenchmark>,
-}
-
 /// [low level api](`crate::binary_benchmark_group`) only: This struct mirrors the `#[bench]` and
 /// `#[benches]` attribute of a [`crate::binary_benchmark`]
 #[derive(Debug, Clone)]
@@ -87,6 +30,10 @@ pub struct Bench {
     /// The `teardown` function to be executed after the [`Command`] is executed
     pub teardown: __internal::InternalBinAssistantKind,
 }
+
+/// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BenchmarkId(String);
 
 /// [low level api](`crate::binary_benchmark_group`) only: Mirror the [`crate::binary_benchmark`]
 /// attribute
@@ -148,6 +95,59 @@ pub struct BinaryBenchmark {
     /// The default `teardown` function for all [`Bench`]es within this [`BinaryBenchmark`]. It can
     /// be overwritten in a [`Bench`]
     pub teardown: Option<fn()>,
+}
+
+/// The configuration of a binary benchmark
+///
+/// The [`BinaryBenchmarkConfig`] can be specified at multiple levels and configures the benchmarks
+/// at this level. For example a [`BinaryBenchmarkConfig`] at (`main`)[`crate::main`] level
+/// configures all benchmarks. A configuration at [`group`](crate::binary_benchmark_group) level
+/// configures all benchmarks in this group inheriting the configuration of the `main` level and if
+/// not specified otherwise overwrites the values of the `main` configuration if the option is
+/// specified in both [`BinaryBenchmarkConfig`]s. The deeper levels are the
+/// (`#[binary_benchmark] attribute`)[`crate::binary_benchmark`], then `#[bench]` and the
+/// `#[benches]` attribute.
+///
+/// # Examples
+///
+/// ```rust
+/// # use gungraun::binary_benchmark_group;
+/// # binary_benchmark_group!(name = some_group,
+/// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
+/// use gungraun::{BinaryBenchmarkConfig, Callgrind, main};
+///
+/// main!(
+///     config = BinaryBenchmarkConfig::default()
+///         .tool(Callgrind::with_args(["toggle-collect=something"])),
+///     binary_benchmark_groups = some_group
+/// );
+/// ```
+#[derive(Debug, Default, Clone, IntoInner, AsRef)]
+pub struct BinaryBenchmarkConfig(__internal::InternalBinaryBenchmarkConfig);
+
+/// [low level api](`crate::binary_benchmark_group`) only: The top level struct to add binary
+/// benchmarks to
+///
+/// This struct doesn't need to be instantiated by yourself. It is passed as mutable reference to
+/// the expression in `benchmarks`.
+///
+/// ```rust
+/// use gungraun::binary_benchmark_group;
+///
+/// binary_benchmark_group!(
+///     name = my_group,
+///     benchmarks = |group: &mut BinaryBenchmarkGroup| {
+///         // Access the BinaryBenchmarkGroup with the identifier `group` to add benchmarks to the
+///         // group.
+///         //
+///         // group.binary_benchmark(/* BinaryBenchmark::new(...) */);
+///     }
+/// );
+/// ```
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct BinaryBenchmarkGroup {
+    /// All [`BinaryBenchmark`]s
+    pub binary_benchmarks: Vec<BinaryBenchmark>,
 }
 
 /// Provide the [`Command`] to be benchmarked
@@ -771,12 +771,6 @@ impl BenchmarkId {
 impl Display for BenchmarkId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
-    }
-}
-
-impl From<BenchmarkId> for String {
-    fn from(value: BenchmarkId) -> Self {
-        value.0
     }
 }
 
@@ -2388,6 +2382,12 @@ where
             kind: DelayKind::DurationElapse(duration.into()),
             ..Default::default()
         })
+    }
+}
+
+impl From<BenchmarkId> for String {
+    fn from(value: BenchmarkId) -> Self {
+        value.0
     }
 }
 

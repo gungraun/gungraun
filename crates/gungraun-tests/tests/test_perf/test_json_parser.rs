@@ -53,23 +53,24 @@ fn read_dir_sorted(path: &Path) -> Vec<String> {
 }
 
 #[test]
-fn test_perf_one() {
-    let (temp_dir, output_path) = copy_perf_fixtures("one");
-
-    let file_path = output_path.dest_dir().join("perf.one.out");
-    let original = fs::read(&file_path).unwrap();
+fn test_perf_adjustment_priority() {
+    // This copies the cal, overhead and regular benchmark files
+    let (temp_dir, output_path) = copy_perf_fixtures("adjustment_priority");
+    let file_path = output_path.dest_dir().join("perf.adjustment_priority.out");
+    let original = fs::read(file_path.clone()).unwrap();
     let parser = json_parser_f().output_path(output_path.clone()).fx();
 
-    let expected_header = header_f().part(1).command("bench").pid(12345).fx();
-    let expected_metrics = tool_metrics_perf_f()
-        .metrics([metric_perf_f()
-            .event("event_1")
-            .value(42.0)
-            .qualities(PerfQualities::new(None, 100.0, None, None, None))
-            .unit(Unit::Unknown("count".to_owned()))
-            .fx()])
+    let expected_header = header_f()
+        .part(6)
+        .command("adjustment-priority-benchmark")
+        .pid(67890)
         .fx();
-
+    let expected_metrics = tool_metrics_perf_f()
+        .metrics([
+            metric_perf_f().event("event_priority_01").value(100).fx(),
+            metric_perf_f().event("event_priority_02").value(200).fx(),
+        ])
+        .fx();
     let expected_parser_output = parser_output_f()
         .path(file_path.clone())
         .header(expected_header)
@@ -78,14 +79,181 @@ fn test_perf_one() {
 
     let outputs = parser.parse_with(&output_path).unwrap();
 
-    assert_eq!(outputs.len(), 1);
-    let output = &outputs[0];
-    assert_eq!(output, &expected_parser_output);
-    assert_eq!(fs::read(&file_path).unwrap(), original);
+    assert_eq!(outputs, vec![expected_parser_output]);
+    assert_ne!(fs::read(&file_path).unwrap(), original);
     assert_eq!(
         read_dir_sorted(output_path.dest_dir()),
-        ["perf.one.log".to_owned(), "perf.one.out".to_owned()]
+        [
+            "perf.adjustment_priority.log".to_owned(),
+            "perf.adjustment_priority.out".to_owned()
+        ]
     );
+
+    temp_dir.close().unwrap();
+}
+
+#[test]
+fn test_perf_calibration_adjustment() {
+    let (temp_dir, output_path) = copy_perf_fixtures("calibration");
+    let file_path = output_path.dest_dir().join("perf.calibration.out");
+    let original = fs::read(file_path.clone()).unwrap();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
+
+    let expected_header = header_f()
+        .part(5)
+        .command("calibration-benchmark")
+        .pid(56789)
+        .fx();
+    let expected_metrics = tool_metrics_perf_f()
+        .metrics([
+            metric_perf_f()
+                .event("event_calibration_01")
+                .value(100)
+                .fx(),
+            metric_perf_f()
+                .event("event_calibration_02")
+                .value(200)
+                .fx(),
+        ])
+        .fx();
+    let expected_parser_output = parser_output_f()
+        .path(file_path.clone())
+        .header(expected_header)
+        .tool_metrics(expected_metrics)
+        .fx();
+
+    let outputs = parser.parse_with(&output_path).unwrap();
+
+    assert_eq!(outputs, vec![expected_parser_output]);
+    assert_ne!(fs::read(&file_path).unwrap(), original);
+    assert_eq!(
+        read_dir_sorted(output_path.dest_dir()),
+        [
+            "perf.calibration.log".to_owned(),
+            "perf.calibration.out".to_owned()
+        ]
+    );
+
+    temp_dir.close().unwrap();
+}
+
+#[test]
+fn test_perf_duplicates_write_back() {
+    let (_temp_dir, output_path) = copy_perf_fixtures("duplicates");
+    let out_path = output_path.dest_dir().join("perf.duplicates.out");
+    let original = {
+        let path: &Path = &out_path;
+        fs::read(path).unwrap()
+    };
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
+
+    let expected_header = header_f()
+        .part(4)
+        .command("duplicates-benchmark")
+        .pid(45678)
+        .fx();
+    let expected_metrics = tool_metrics_perf_f()
+        .metrics([
+            metric_perf_f()
+                .event("event_dup_01")
+                .value(66.666_666_666_666_67)
+                .unit(Unit::Unknown("count".to_owned()))
+                .qualities(PerfQualities::new(
+                    None,
+                    None,
+                    0.5,
+                    2,
+                    66.666_666_666_666_67,
+                ))
+                .fx(),
+            metric_perf_f()
+                .event("event_control_01")
+                .value(300.0)
+                .unit(Unit::Milliseconds)
+                .qualities(PerfQualities::new(None, None, 0.04, None, None))
+                .fx(),
+        ])
+        .fx();
+    let expected_parser_output = parser_output_f()
+        .path(out_path.clone())
+        .header(expected_header)
+        .tool_metrics(expected_metrics)
+        .fx();
+
+    let expected_records = [
+        json!({
+            "counter-value": "66.666667",
+            "event": "event_dup_01",
+            "gungraun-mean": 66.666_666_666_666_67,
+            "gungraun-n": 2,
+            "unit": "count",
+            "variance": 50.0,
+        }),
+        json!({
+            "counter-value": "300.000000",
+            "event": "event_control_01",
+            "unit": "msec",
+            "variance": 4.0,
+        }),
+    ];
+
+    let outputs = parser.parse_with(&output_path).unwrap();
+
+    assert_eq!(outputs, vec![expected_parser_output]);
+    assert_ne!(fs::read(&out_path).unwrap(), original);
+
+    let rewritten = fs::read_to_string(&out_path).unwrap();
+    let records = rewritten
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(records, expected_records);
+    assert_eq!(
+        read_dir_sorted(output_path.dest_dir()),
+        [
+            "perf.duplicates.log".to_owned(),
+            "perf.duplicates.out".to_owned()
+        ]
+    );
+}
+
+#[test]
+fn test_perf_filtered_empty_min_running() {
+    let fixture_path = Fixtures::get_path().join("perf/perf.filtered.out");
+    let original = fs::read(fixture_path.clone()).unwrap();
+    let (temp_dir, output_path) = copy_perf_fixtures("filtered");
+    let parser = json_parser_f()
+        .min_pcnt_running(50.0)
+        .output_path(output_path.clone())
+        .fx();
+
+    let outputs = parser.parse_with(&output_path).unwrap();
+
+    assert_eq!(outputs.len(), 1);
+    let output = &outputs[0];
+    assert!(matches!(&output.metrics, ToolMetrics::Perf(m) if m.is_empty()));
+    assert_eq!(fs::read(&fixture_path).unwrap(), original);
+
+    temp_dir.close().unwrap();
+}
+
+#[test]
+fn test_perf_filtered_empty_non_zero() {
+    let fixture_path = Fixtures::get_path().join("perf/perf.filtered.out");
+    let original = fs::read(fixture_path.clone()).unwrap();
+    let (temp_dir, output_path) = copy_perf_fixtures("filtered");
+    let parser = json_parser_f()
+        .min_pcnt_running(0.0)
+        .non_zero_metrics(["event_filtered/01"])
+        .output_path(output_path.clone())
+        .fx();
+
+    let outputs = parser.parse_with(&output_path).unwrap();
+
+    assert_eq!(outputs.len(), 1);
+    let output = &outputs[0];
+    assert!(matches!(&output.metrics, ToolMetrics::Perf(m) if m.is_empty()));
+    assert_eq!(fs::read(&fixture_path).unwrap(), original);
 
     temp_dir.close().unwrap();
 }
@@ -158,6 +326,44 @@ fn test_perf_mixed() {
     assert_eq!(
         read_dir_sorted(output_path.dest_dir()),
         ["perf.mixed.log".to_owned(), "perf.mixed.out".to_owned()]
+    );
+
+    temp_dir.close().unwrap();
+}
+
+#[test]
+fn test_perf_one() {
+    let (temp_dir, output_path) = copy_perf_fixtures("one");
+
+    let file_path = output_path.dest_dir().join("perf.one.out");
+    let original = fs::read(&file_path).unwrap();
+    let parser = json_parser_f().output_path(output_path.clone()).fx();
+
+    let expected_header = header_f().part(1).command("bench").pid(12345).fx();
+    let expected_metrics = tool_metrics_perf_f()
+        .metrics([metric_perf_f()
+            .event("event_1")
+            .value(42.0)
+            .qualities(PerfQualities::new(None, 100.0, None, None, None))
+            .unit(Unit::Unknown("count".to_owned()))
+            .fx()])
+        .fx();
+
+    let expected_parser_output = parser_output_f()
+        .path(file_path.clone())
+        .header(expected_header)
+        .tool_metrics(expected_metrics)
+        .fx();
+
+    let outputs = parser.parse_with(&output_path).unwrap();
+
+    assert_eq!(outputs.len(), 1);
+    let output = &outputs[0];
+    assert_eq!(output, &expected_parser_output);
+    assert_eq!(fs::read(&file_path).unwrap(), original);
+    assert_eq!(
+        read_dir_sorted(output_path.dest_dir()),
+        ["perf.one.log".to_owned(), "perf.one.out".to_owned()]
     );
 
     temp_dir.close().unwrap();
@@ -263,212 +469,6 @@ fn test_perf_repeated_event_records() {
             "perf.repeated.out".to_owned()
         ]
     );
-
-    temp_dir.close().unwrap();
-}
-
-#[test]
-fn test_perf_duplicates_write_back() {
-    let (_temp_dir, output_path) = copy_perf_fixtures("duplicates");
-    let out_path = output_path.dest_dir().join("perf.duplicates.out");
-    let original = {
-        let path: &Path = &out_path;
-        fs::read(path).unwrap()
-    };
-    let parser = json_parser_f().output_path(output_path.clone()).fx();
-
-    let expected_header = header_f()
-        .part(4)
-        .command("duplicates-benchmark")
-        .pid(45678)
-        .fx();
-    let expected_metrics = tool_metrics_perf_f()
-        .metrics([
-            metric_perf_f()
-                .event("event_dup_01")
-                .value(66.666_666_666_666_67)
-                .unit(Unit::Unknown("count".to_owned()))
-                .qualities(PerfQualities::new(
-                    None,
-                    None,
-                    0.5,
-                    2,
-                    66.666_666_666_666_67,
-                ))
-                .fx(),
-            metric_perf_f()
-                .event("event_control_01")
-                .value(300.0)
-                .unit(Unit::Milliseconds)
-                .qualities(PerfQualities::new(None, None, 0.04, None, None))
-                .fx(),
-        ])
-        .fx();
-    let expected_parser_output = parser_output_f()
-        .path(out_path.clone())
-        .header(expected_header)
-        .tool_metrics(expected_metrics)
-        .fx();
-
-    let expected_records = [
-        json!({
-            "counter-value": "66.666667",
-            "event": "event_dup_01",
-            "gungraun-mean": 66.666_666_666_666_67,
-            "gungraun-n": 2,
-            "unit": "count",
-            "variance": 50.0,
-        }),
-        json!({
-            "counter-value": "300.000000",
-            "event": "event_control_01",
-            "unit": "msec",
-            "variance": 4.0,
-        }),
-    ];
-
-    let outputs = parser.parse_with(&output_path).unwrap();
-
-    assert_eq!(outputs, vec![expected_parser_output]);
-    assert_ne!(fs::read(&out_path).unwrap(), original);
-
-    let rewritten = fs::read_to_string(&out_path).unwrap();
-    let records = rewritten
-        .lines()
-        .map(|line| serde_json::from_str::<Value>(line).unwrap())
-        .collect::<Vec<_>>();
-    assert_eq!(records, expected_records);
-    assert_eq!(
-        read_dir_sorted(output_path.dest_dir()),
-        [
-            "perf.duplicates.log".to_owned(),
-            "perf.duplicates.out".to_owned()
-        ]
-    );
-}
-
-#[test]
-fn test_perf_calibration_adjustment() {
-    let (temp_dir, output_path) = copy_perf_fixtures("calibration");
-    let file_path = output_path.dest_dir().join("perf.calibration.out");
-    let original = fs::read(file_path.clone()).unwrap();
-    let parser = json_parser_f().output_path(output_path.clone()).fx();
-
-    let expected_header = header_f()
-        .part(5)
-        .command("calibration-benchmark")
-        .pid(56789)
-        .fx();
-    let expected_metrics = tool_metrics_perf_f()
-        .metrics([
-            metric_perf_f()
-                .event("event_calibration_01")
-                .value(100)
-                .fx(),
-            metric_perf_f()
-                .event("event_calibration_02")
-                .value(200)
-                .fx(),
-        ])
-        .fx();
-    let expected_parser_output = parser_output_f()
-        .path(file_path.clone())
-        .header(expected_header)
-        .tool_metrics(expected_metrics)
-        .fx();
-
-    let outputs = parser.parse_with(&output_path).unwrap();
-
-    assert_eq!(outputs, vec![expected_parser_output]);
-    assert_ne!(fs::read(&file_path).unwrap(), original);
-    assert_eq!(
-        read_dir_sorted(output_path.dest_dir()),
-        [
-            "perf.calibration.log".to_owned(),
-            "perf.calibration.out".to_owned()
-        ]
-    );
-
-    temp_dir.close().unwrap();
-}
-
-#[test]
-fn test_perf_adjustment_priority() {
-    // This copies the cal, overhead and regular benchmark files
-    let (temp_dir, output_path) = copy_perf_fixtures("adjustment_priority");
-    let file_path = output_path.dest_dir().join("perf.adjustment_priority.out");
-    let original = fs::read(file_path.clone()).unwrap();
-    let parser = json_parser_f().output_path(output_path.clone()).fx();
-
-    let expected_header = header_f()
-        .part(6)
-        .command("adjustment-priority-benchmark")
-        .pid(67890)
-        .fx();
-    let expected_metrics = tool_metrics_perf_f()
-        .metrics([
-            metric_perf_f().event("event_priority_01").value(100).fx(),
-            metric_perf_f().event("event_priority_02").value(200).fx(),
-        ])
-        .fx();
-    let expected_parser_output = parser_output_f()
-        .path(file_path.clone())
-        .header(expected_header)
-        .tool_metrics(expected_metrics)
-        .fx();
-
-    let outputs = parser.parse_with(&output_path).unwrap();
-
-    assert_eq!(outputs, vec![expected_parser_output]);
-    assert_ne!(fs::read(&file_path).unwrap(), original);
-    assert_eq!(
-        read_dir_sorted(output_path.dest_dir()),
-        [
-            "perf.adjustment_priority.log".to_owned(),
-            "perf.adjustment_priority.out".to_owned()
-        ]
-    );
-
-    temp_dir.close().unwrap();
-}
-
-#[test]
-fn test_perf_filtered_empty_min_running() {
-    let fixture_path = Fixtures::get_path().join("perf/perf.filtered.out");
-    let original = fs::read(fixture_path.clone()).unwrap();
-    let (temp_dir, output_path) = copy_perf_fixtures("filtered");
-    let parser = json_parser_f()
-        .min_pcnt_running(50.0)
-        .output_path(output_path.clone())
-        .fx();
-
-    let outputs = parser.parse_with(&output_path).unwrap();
-
-    assert_eq!(outputs.len(), 1);
-    let output = &outputs[0];
-    assert!(matches!(&output.metrics, ToolMetrics::Perf(m) if m.is_empty()));
-    assert_eq!(fs::read(&fixture_path).unwrap(), original);
-
-    temp_dir.close().unwrap();
-}
-
-#[test]
-fn test_perf_filtered_empty_non_zero() {
-    let fixture_path = Fixtures::get_path().join("perf/perf.filtered.out");
-    let original = fs::read(fixture_path.clone()).unwrap();
-    let (temp_dir, output_path) = copy_perf_fixtures("filtered");
-    let parser = json_parser_f()
-        .min_pcnt_running(0.0)
-        .non_zero_metrics(["event_filtered/01"])
-        .output_path(output_path.clone())
-        .fx();
-
-    let outputs = parser.parse_with(&output_path).unwrap();
-
-    assert_eq!(outputs.len(), 1);
-    let output = &outputs[0];
-    assert!(matches!(&output.metrics, ToolMetrics::Perf(m) if m.is_empty()));
-    assert_eq!(fs::read(&fixture_path).unwrap(), original);
 
     temp_dir.close().unwrap();
 }

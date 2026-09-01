@@ -283,6 +283,31 @@ impl From<&ProgramPoint> for Data {
     }
 }
 
+impl From<DhatTree> for DhatData {
+    fn from(tree: DhatTree) -> Self {
+        let mapping_table = tree.mapping_table();
+        let mut program_points = Vec::default();
+        tree.root
+            .collect_program_points(Vec::default(), &mut program_points, &mapping_table);
+
+        Self {
+            metadata: tree.metadata,
+            program_points,
+            frame_table: tree.table.into_values().collect(),
+        }
+    }
+}
+
+impl From<RootTree> for DhatData {
+    fn from(tree: RootTree) -> Self {
+        Self {
+            metadata: tree.metadata,
+            program_points: Vec::default(),
+            frame_table: tree.table.into_values().collect(),
+        }
+    }
+}
+
 impl Tree for DhatTree {
     /// Insert a prefix with the given [`Data`] into this tree
     ///
@@ -373,21 +398,6 @@ impl Tree for DhatTree {
 
     fn root_node(self) -> Box<Node> {
         self.root
-    }
-}
-
-impl From<DhatTree> for DhatData {
-    fn from(tree: DhatTree) -> Self {
-        let mapping_table = tree.mapping_table();
-        let mut program_points = Vec::default();
-        tree.root
-            .collect_program_points(Vec::default(), &mut program_points, &mapping_table);
-
-        Self {
-            metadata: tree.metadata,
-            program_points,
-            frame_table: tree.table.into_values().collect(),
-        }
     }
 }
 
@@ -533,16 +543,6 @@ impl Tree for RootTree {
     }
 }
 
-impl From<RootTree> for DhatData {
-    fn from(tree: RootTree) -> Self {
-        Self {
-            metadata: tree.metadata,
-            program_points: Vec::default(),
-            frame_table: tree.table.into_values().collect(),
-        }
-    }
-}
-
 fn sum_options<T: Add<Output = T>>(lhs: Option<T>, rhs: Option<T>) -> Option<T> {
     match (lhs, rhs) {
         (None, None) => None,
@@ -574,15 +574,31 @@ mod tests {
         }
     }
 
-    fn metadata_fixture() -> DhatMetadata {
-        DhatMetadata {
-            mode: Mode::Heap,
-            ..Default::default()
+    fn dhat_tree_fixture() -> DhatTree {
+        DhatTree {
+            metadata: metadata_fixture(),
+            table: BTreeMap::default(),
+            root: Box::new(Node::without_orig(
+                vec![],
+                vec![Node::without_orig(
+                    vec![1, 2, 3],
+                    vec![Node::with_cloned_orig(vec![4, 5], vec![], data_fixture(1))],
+                    data_fixture(2),
+                )],
+                data_fixture(2),
+            )),
         }
     }
 
     fn frame_table_fixture() -> Vec<Frame> {
         vec![Frame::Root; 7]
+    }
+
+    fn metadata_fixture() -> DhatMetadata {
+        DhatMetadata {
+            mode: Mode::Heap,
+            ..Default::default()
+        }
     }
 
     fn program_point_fixture(frames: Vec<usize>, total_bytes: u64) -> ProgramPoint {
@@ -607,20 +623,23 @@ mod tests {
         indices.iter().map(|index| (*index, Frame::Root)).collect()
     }
 
-    fn dhat_tree_fixture() -> DhatTree {
-        DhatTree {
-            metadata: metadata_fixture(),
-            table: BTreeMap::default(),
-            root: Box::new(Node::without_orig(
-                vec![],
-                vec![Node::without_orig(
-                    vec![1, 2, 3],
-                    vec![Node::with_cloned_orig(vec![4, 5], vec![], data_fixture(1))],
-                    data_fixture(2),
-                )],
-                data_fixture(2),
-            )),
-        }
+    #[rstest]
+    #[case::unset_accesses_plus_accesses(None, Some(vec![1, 2]), Some(vec![1, 2]))]
+    #[case::same_length_accesses(Some(vec![1, 2]), Some(vec![3, 4]), Some(vec![4, 6]))]
+    #[case::different_length_accesses(Some(vec![1]), Some(vec![2, 3]), Some(vec![]))]
+    #[case::accesses_plus_no_accesses(Some(vec![1]), Some(vec![]), Some(vec![]))]
+    #[case::no_accesses_plus_accesses(Some(vec![]), Some(vec![1]), Some(vec![]))]
+    fn test_data_add_accesses(
+        #[case] lhs: Option<Vec<i64>>,
+        #[case] rhs: Option<Vec<i64>>,
+        #[case] expected: Option<Vec<i64>>,
+    ) {
+        let mut lhs = data_with_accesses(lhs);
+        let rhs = data_with_accesses(rhs);
+
+        lhs.add(&rhs);
+
+        assert_eq!(lhs.accesses, expected.map(Accesses));
     }
 
     #[test]
@@ -646,23 +665,44 @@ mod tests {
         assert_eq!(program_point.accesses, Some(Accesses(vec![1, -2, 3])));
     }
 
-    #[rstest]
-    #[case::unset_accesses_plus_accesses(None, Some(vec![1, 2]), Some(vec![1, 2]))]
-    #[case::same_length_accesses(Some(vec![1, 2]), Some(vec![3, 4]), Some(vec![4, 6]))]
-    #[case::different_length_accesses(Some(vec![1]), Some(vec![2, 3]), Some(vec![]))]
-    #[case::accesses_plus_no_accesses(Some(vec![1]), Some(vec![]), Some(vec![]))]
-    #[case::no_accesses_plus_accesses(Some(vec![]), Some(vec![1]), Some(vec![]))]
-    fn test_data_add_accesses(
-        #[case] lhs: Option<Vec<i64>>,
-        #[case] rhs: Option<Vec<i64>>,
-        #[case] expected: Option<Vec<i64>>,
-    ) {
-        let mut lhs = data_with_accesses(lhs);
-        let rhs = data_with_accesses(rhs);
+    #[test]
+    fn test_dhat_data_dhat_tree_round_trip_rebases_sparse_frame_ids() {
+        let frame = Frame::from(("0x5", "sparse", "lib.rs:5"));
+        let mut frame_table = vec![Frame::Root; 6];
+        frame_table[5] = frame.clone();
+        let input = DhatData {
+            metadata: metadata_fixture(),
+            program_points: vec![program_point_fixture(vec![5], 1)],
+            frame_table,
+        };
 
-        lhs.add(&rhs);
+        let tree = DhatTree::from_json(input);
+        let actual = DhatData::from(tree);
 
-        assert_eq!(lhs.accesses, expected.map(Accesses));
+        assert_eq!(actual.frame_table, vec![Frame::Root, frame]);
+        assert_eq!(program_point_summary(&actual), vec![(vec![1], 1)]);
+    }
+
+    #[test]
+    fn test_dhat_data_dhat_tree_round_trip_reconstructs_program_points() {
+        let input = DhatData {
+            metadata: metadata_fixture(),
+            program_points: vec![
+                program_point_fixture(vec![1], 1),
+                program_point_fixture(vec![1, 2, 3], 2),
+            ],
+            frame_table: vec![Frame::Root; 4],
+        };
+
+        let tree = DhatTree::from_json(input.clone());
+        let actual = DhatData::from(tree);
+
+        assert_eq!(actual.metadata, input.metadata);
+        assert_eq!(actual.frame_table, input.frame_table);
+        assert_eq!(
+            program_point_summary(&actual),
+            vec![(vec![1], 1), (vec![1, 2, 3], 2)]
+        );
     }
 
     #[test]
@@ -806,17 +846,67 @@ mod tests {
     }
 
     #[test]
-    fn test_root_tree_insert() {
-        let expected = RootTree {
-            metadata: metadata_fixture(),
-            root: Box::new(Node::without_orig(vec![], vec![], data_fixture(1))),
-            table: table_fixture(&[1, 2, 3]),
-        };
+    fn test_dhat_tree_into_data_rebases_sparse_frame_ids() {
+        let mut tree = DhatTree::with_metadata(metadata_fixture());
+        let table = frame_table_fixture();
 
-        let mut tree = RootTree::default();
-        tree.insert(&[1, 2, 3], &data_fixture(1), &frame_table_fixture());
+        tree.insert(&[5], &data_fixture(1), &table);
 
-        assert_eq!(tree, expected);
+        let data = DhatData::from(tree);
+
+        assert_eq!(data.frame_table, vec![Frame::Root; 2]);
+        assert_eq!(data.program_points.len(), 1);
+        assert_eq!(data.program_points[0].frames, [1]);
+        assert_eq!(data.program_points[0].total_bytes, 1);
+    }
+
+    #[test]
+    fn test_dhat_tree_into_data_reconstructs_prefix_program_point() {
+        let mut tree = DhatTree::with_metadata(metadata_fixture());
+        let table = frame_table_fixture();
+
+        tree.insert(&[1, 2, 3], &data_fixture(2), &table);
+        tree.insert(&[1], &data_fixture(1), &table);
+
+        let data = DhatData::from(tree);
+
+        assert_eq!(data.frame_table, vec![Frame::Root; 4]);
+        assert_eq!(data.program_points.len(), 2);
+        assert!(
+            data.program_points
+                .iter()
+                .any(|pp| pp.frames == [1, 2, 3] && pp.total_bytes == 2)
+        );
+        assert!(
+            data.program_points
+                .iter()
+                .any(|pp| pp.frames == [1] && pp.total_bytes == 1)
+        );
+    }
+
+    #[test]
+    fn test_dhat_tree_into_data_skips_synthetic_split_program_point() {
+        let mut tree = DhatTree::with_metadata(metadata_fixture());
+        let table = frame_table_fixture();
+
+        tree.insert(&[1, 2], &data_fixture(2), &table);
+        tree.insert(&[1, 3], &data_fixture(3), &table);
+
+        let data = DhatData::from(tree);
+
+        assert_eq!(data.frame_table, vec![Frame::Root; 4]);
+        assert_eq!(data.program_points.len(), 2);
+        assert!(
+            data.program_points
+                .iter()
+                .any(|pp| pp.frames == [1, 2] && pp.total_bytes == 2)
+        );
+        assert!(
+            data.program_points
+                .iter()
+                .any(|pp| pp.frames == [1, 3] && pp.total_bytes == 3)
+        );
+        assert!(!data.program_points.iter().any(|pp| pp.frames == [1]));
     }
 
     #[rstest]
@@ -872,6 +962,20 @@ mod tests {
     }
 
     #[test]
+    fn test_root_tree_insert() {
+        let expected = RootTree {
+            metadata: metadata_fixture(),
+            root: Box::new(Node::without_orig(vec![], vec![], data_fixture(1))),
+            table: table_fixture(&[1, 2, 3]),
+        };
+
+        let mut tree = RootTree::default();
+        tree.insert(&[1, 2, 3], &data_fixture(1), &frame_table_fixture());
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
     fn test_root_tree_insert_two() {
         let expected = RootTree {
             metadata: metadata_fixture(),
@@ -884,109 +988,5 @@ mod tests {
         tree.insert(&[1], &data_fixture(2), &frame_table_fixture());
 
         assert_eq!(tree, expected);
-    }
-
-    #[test]
-    fn test_dhat_tree_into_data_reconstructs_prefix_program_point() {
-        let mut tree = DhatTree::with_metadata(metadata_fixture());
-        let table = frame_table_fixture();
-
-        tree.insert(&[1, 2, 3], &data_fixture(2), &table);
-        tree.insert(&[1], &data_fixture(1), &table);
-
-        let data = DhatData::from(tree);
-
-        assert_eq!(data.frame_table, vec![Frame::Root; 4]);
-        assert_eq!(data.program_points.len(), 2);
-        assert!(
-            data.program_points
-                .iter()
-                .any(|pp| pp.frames == [1, 2, 3] && pp.total_bytes == 2)
-        );
-        assert!(
-            data.program_points
-                .iter()
-                .any(|pp| pp.frames == [1] && pp.total_bytes == 1)
-        );
-    }
-
-    #[test]
-    fn test_dhat_tree_into_data_skips_synthetic_split_program_point() {
-        let mut tree = DhatTree::with_metadata(metadata_fixture());
-        let table = frame_table_fixture();
-
-        tree.insert(&[1, 2], &data_fixture(2), &table);
-        tree.insert(&[1, 3], &data_fixture(3), &table);
-
-        let data = DhatData::from(tree);
-
-        assert_eq!(data.frame_table, vec![Frame::Root; 4]);
-        assert_eq!(data.program_points.len(), 2);
-        assert!(
-            data.program_points
-                .iter()
-                .any(|pp| pp.frames == [1, 2] && pp.total_bytes == 2)
-        );
-        assert!(
-            data.program_points
-                .iter()
-                .any(|pp| pp.frames == [1, 3] && pp.total_bytes == 3)
-        );
-        assert!(!data.program_points.iter().any(|pp| pp.frames == [1]));
-    }
-
-    #[test]
-    fn test_dhat_tree_into_data_rebases_sparse_frame_ids() {
-        let mut tree = DhatTree::with_metadata(metadata_fixture());
-        let table = frame_table_fixture();
-
-        tree.insert(&[5], &data_fixture(1), &table);
-
-        let data = DhatData::from(tree);
-
-        assert_eq!(data.frame_table, vec![Frame::Root; 2]);
-        assert_eq!(data.program_points.len(), 1);
-        assert_eq!(data.program_points[0].frames, [1]);
-        assert_eq!(data.program_points[0].total_bytes, 1);
-    }
-
-    #[test]
-    fn test_dhat_data_dhat_tree_round_trip_reconstructs_program_points() {
-        let input = DhatData {
-            metadata: metadata_fixture(),
-            program_points: vec![
-                program_point_fixture(vec![1], 1),
-                program_point_fixture(vec![1, 2, 3], 2),
-            ],
-            frame_table: vec![Frame::Root; 4],
-        };
-
-        let tree = DhatTree::from_json(input.clone());
-        let actual = DhatData::from(tree);
-
-        assert_eq!(actual.metadata, input.metadata);
-        assert_eq!(actual.frame_table, input.frame_table);
-        assert_eq!(
-            program_point_summary(&actual),
-            vec![(vec![1], 1), (vec![1, 2, 3], 2)]
-        );
-    }
-
-    #[test]
-    fn test_dhat_data_dhat_tree_round_trip_rebases_sparse_frame_ids() {
-        let frame = Frame::from(("0x5", "sparse", "lib.rs:5"));
-        let mut frame_table = vec![Frame::Root; 6];
-        frame_table[5] = frame.clone();
-        let input = DhatData {
-            metadata: metadata_fixture(),
-            program_points: vec![program_point_fixture(vec![5], 1)],
-            frame_table,
-        };
-
-        let tree = DhatTree::from_json(input);
-        let actual = DhatData::from(tree);
-
-        assert_eq!(actual.frame_table, vec![Frame::Root, frame]);
-        assert_eq!(program_point_summary(&actual), vec![(vec![1], 1)]);
     }
 }

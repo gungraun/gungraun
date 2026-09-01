@@ -34,15 +34,21 @@ use crate::runner::common::{
 };
 use crate::summary::model::{BenchmarkKind, BenchmarkSummary};
 
-const DEFAULT_STDIN: Stdin = Stdin::Pipe;
-const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
-const DEFAULT_PERF_RUN_MODE: PerfRunMode = PerfRunMode::Direct;
 const DEFAULT_DELAY_POLL: Duration = Duration::from_millis(10);
 const DEFAULT_DELAY_TIMEOUT: Duration = Duration::from_secs(600);
+const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
+const DEFAULT_PERF_RUN_MODE: PerfRunMode = PerfRunMode::Direct;
 const DEFAULT_SETUP_PARALLEL: bool = false;
+const DEFAULT_STDIN: Stdin = Stdin::Pipe;
 
 const MIN_DELAY_TIMEOUT: Duration = Duration::from_millis(10);
 const WORKSPACE_ROOT_ENV_VAR: &str = "_WORKSPACE_ROOT";
+
+#[derive(Debug)]
+struct BaselineAndSaveBenchmark {
+    baseline: BaselineName,
+    save_baseline: BaselineName,
+}
 
 #[derive(Debug)]
 struct BaselineBenchmark {
@@ -104,12 +110,6 @@ pub struct Delay {
 struct LoadBaselineBenchmark {
     baseline: BaselineName,
     loaded_baseline: BaselineName,
-}
-
-#[derive(Debug)]
-struct BaselineAndSaveBenchmark {
-    baseline: BaselineName,
-    save_baseline: BaselineName,
 }
 
 #[derive(Debug)]

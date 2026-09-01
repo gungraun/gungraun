@@ -368,73 +368,6 @@ mod tests {
         })))
     }
 
-    #[rstest]
-    #[case::fail_fast(
-        api_perf_regression_config_f().fail_fast(true).fx(),
-        perf_regression_config_f().fail_fast(true).fx(),
-    )]
-    #[case::alpha(
-        api_perf_regression_config_f().alpha(0.10).fx(),
-        perf_regression_config_f().alpha(0.10).fx(),
-    )]
-    #[case::soft_limit(
-        api_perf_regression_config_f()
-            .soft_limits(vec![("instructions".to_owned(), 5f64)])
-            .fx(),
-        perf_regression_config_f().soft_limits(vec![(PerfMetric("instructions".to_owned()), 5f64)]).fx(),
-    )]
-    #[case::hard_limit(
-        api_perf_regression_config_f()
-            .hard_limits(vec![("instructions".to_owned(), Some(Unit::Seconds), Limit::Int(10))])
-            .fx(),
-        perf_regression_config_f()
-            .hard_limits(vec![(
-                PerfMetric("instructions".to_owned()),
-                Some(Unit::Seconds),
-                Metric::Int(10),
-            )])
-            .fx(),
-    )]
-    fn test_try_from_regression_config(
-        #[case] input: api::PerfRegressionConfig,
-        #[case] expected: PerfRegressionConfig,
-    ) {
-        let config = PerfRegressionConfig::try_from(input).unwrap();
-
-        assert_eq!(config, expected);
-    }
-
-    #[test]
-    fn test_soft_limit_preserves_metric_unit() {
-        let config = PerfRegressionConfig {
-            alpha: DEFAULT_PERF_ALPHA,
-            fail_fast: false,
-            soft_limits: vec![(PerfMetric("duration".to_owned()), 50.0)],
-            hard_limits: vec![],
-        };
-
-        let summary = perf_summary(
-            "duration",
-            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        );
-
-        let regressions = config.check(&summary);
-
-        assert_eq!(
-            regressions,
-            vec![ToolRegression::Soft {
-                metric: MetricKind::Perf(PerfMetric("duration".to_owned())),
-                display: Some("duration".to_owned()),
-                unit: Some(Unit::Milliseconds),
-                new: Metric::Int(2000),
-                old: Metric::Int(1000),
-                diff_pct: 100.0,
-                limit: 50.0,
-            }]
-        );
-    }
-
     #[test]
     fn test_hard_limit_normalizes_to_limit_unit() {
         let config = PerfRegressionConfig {
@@ -490,6 +423,54 @@ mod tests {
     }
 
     #[test]
+    fn test_soft_limit_matches_slash_pattern_to_colon_metric() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![(PerfMetric("task-clock/u".to_owned()), 50.0)],
+            hard_limits: vec![],
+        };
+        let summary = perf_summary(
+            "task-clock:u",
+            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
+            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
+        );
+
+        assert_eq!(config.check(&summary).len(), 1);
+    }
+
+    #[test]
+    fn test_soft_limit_preserves_metric_unit() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![(PerfMetric("duration".to_owned()), 50.0)],
+            hard_limits: vec![],
+        };
+
+        let summary = perf_summary(
+            "duration",
+            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
+            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
+        );
+
+        let regressions = config.check(&summary);
+
+        assert_eq!(
+            regressions,
+            vec![ToolRegression::Soft {
+                metric: MetricKind::Perf(PerfMetric("duration".to_owned())),
+                display: Some("duration".to_owned()),
+                unit: Some(Unit::Milliseconds),
+                new: Metric::Int(2000),
+                old: Metric::Int(1000),
+                diff_pct: 100.0,
+                limit: 50.0,
+            }]
+        );
+    }
+
+    #[test]
     fn test_soft_limit_without_limit_unit_preserves_metric_unit() {
         let config = PerfRegressionConfig {
             alpha: DEFAULT_PERF_ALPHA,
@@ -513,20 +494,39 @@ mod tests {
         assert_eq!(unit, Some(&Unit::Milliseconds));
     }
 
-    #[test]
-    fn test_soft_limit_matches_slash_pattern_to_colon_metric() {
-        let config = PerfRegressionConfig {
-            alpha: DEFAULT_PERF_ALPHA,
-            fail_fast: false,
-            soft_limits: vec![(PerfMetric("task-clock/u".to_owned()), 50.0)],
-            hard_limits: vec![],
-        };
-        let summary = perf_summary(
-            "task-clock:u",
-            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        );
+    #[rstest]
+    #[case::fail_fast(
+        api_perf_regression_config_f().fail_fast(true).fx(),
+        perf_regression_config_f().fail_fast(true).fx(),
+    )]
+    #[case::alpha(
+        api_perf_regression_config_f().alpha(0.10).fx(),
+        perf_regression_config_f().alpha(0.10).fx(),
+    )]
+    #[case::soft_limit(
+        api_perf_regression_config_f()
+            .soft_limits(vec![("instructions".to_owned(), 5f64)])
+            .fx(),
+        perf_regression_config_f().soft_limits(vec![(PerfMetric("instructions".to_owned()), 5f64)]).fx(),
+    )]
+    #[case::hard_limit(
+        api_perf_regression_config_f()
+            .hard_limits(vec![("instructions".to_owned(), Some(Unit::Seconds), Limit::Int(10))])
+            .fx(),
+        perf_regression_config_f()
+            .hard_limits(vec![(
+                PerfMetric("instructions".to_owned()),
+                Some(Unit::Seconds),
+                Metric::Int(10),
+            )])
+            .fx(),
+    )]
+    fn test_try_from_regression_config(
+        #[case] input: api::PerfRegressionConfig,
+        #[case] expected: PerfRegressionConfig,
+    ) {
+        let config = PerfRegressionConfig::try_from(input).unwrap();
 
-        assert_eq!(config.check(&summary).len(), 1);
+        assert_eq!(config, expected);
     }
 }

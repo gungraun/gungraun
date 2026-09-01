@@ -327,9 +327,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_header_when_format_banner_is_present() {
+    fn parse_header_when_format_banner_is_missing() {
         let mut lines = [
-            Ok(String::from("# callgrind format")),
+            Ok(String::new()),
             Ok(String::from("pid: 123")),
             Ok(String::from("cmd: bench command")),
             Ok(String::from("events: Ir Dr Dw")),
@@ -344,9 +344,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_header_when_format_banner_is_missing() {
+    fn parse_header_when_format_banner_is_present() {
         let mut lines = [
-            Ok(String::new()),
+            Ok(String::from("# callgrind format")),
             Ok(String::from("pid: 123")),
             Ok(String::from("cmd: bench command")),
             Ok(String::from("events: Ir Dr Dw")),

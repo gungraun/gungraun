@@ -10,14 +10,12 @@ use gungraun::{Callgrind, Dhat, EntryPoint, EventKind, Massif};
 // These two functions from the gungraun-tests library serve as functions we want to benchmark
 use gungraun_tests::{bubble_sort, fibonacci};
 
-// This function is used to create the worst case array we want to sort with our implementation of
-// bubble sort
-fn setup_worst_case_array(start: i32) -> Vec<i32> {
-    if start.is_negative() {
-        (start..0).rev().collect()
-    } else {
-        (0..start).rev().collect()
-    }
+/// Read the content of a file and produce an iterable vector with valid `u64` numbers as elements
+fn read_file(path: &str) -> Vec<u64> {
+    BufReader::new(File::open(path).unwrap())
+        .lines()
+        .filter_map(|line| line.ok().and_then(|line| line.parse::<u64>().ok()))
+        .collect()
 }
 
 // This function is used to create the best case array we want to sort with our implementation of
@@ -27,6 +25,16 @@ fn setup_best_case_array(start: i32) -> Vec<i32> {
         (start..0).collect()
     } else {
         (0..start).collect()
+    }
+}
+
+// This function is used to create the worst case array we want to sort with our implementation of
+// bubble sort
+fn setup_worst_case_array(start: i32) -> Vec<i32> {
+    if start.is_negative() {
+        (start..0).rev().collect()
+    } else {
+        (0..start).rev().collect()
     }
 }
 
@@ -97,14 +105,6 @@ fn bench_fibonacci_sum(first: u64, second: u64) -> u64 {
 #[benches::with_setup(args = [1, 5], setup = setup_worst_case_array)]
 fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(black_box(input)))
-}
-
-/// Read the content of a file and produce an iterable vector with valid `u64` numbers as elements
-fn read_file(path: &str) -> Vec<u64> {
-    BufReader::new(File::open(path).unwrap())
-        .lines()
-        .filter_map(|line| line.ok().and_then(|line| line.parse::<u64>().ok()))
-        .collect()
 }
 
 #[library_benchmark]

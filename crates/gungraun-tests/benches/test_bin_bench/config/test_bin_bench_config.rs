@@ -21,25 +21,6 @@ fn check_args() -> Vec<String> {
     default_args
 }
 
-fn is_cleared_args(is_cleared: bool) -> Vec<String> {
-    if let Ok(value) = std::env::var("CLI_ENV_CLEAR_TEST_VALUE") {
-        vec![format!("--is-cleared={value}")]
-    } else if is_cleared {
-        vec!["--is-cleared=true".to_owned()]
-    } else {
-        vec!["--is-cleared=false".to_owned()]
-    }
-}
-
-#[binary_benchmark(config = BinaryBenchmarkConfig::default().env("BINARY_BENCHMARK_ENV", "3"))]
-#[bench::with_env(config = BinaryBenchmarkConfig::default().env("BENCH_ENV", "4"))]
-fn bench_binary() -> gungraun::Command {
-    gungraun::Command::new(env!("CARGO_BIN_EXE_env"))
-        .args(check_args())
-        .env("COMMAND_ENV", "5")
-        .build()
-}
-
 fn check_setup_is_not_cleared() {
     println!("SETUP:");
     Command::new(env!("CARGO_BIN_EXE_env"))
@@ -62,6 +43,25 @@ fn check_teardown_is_not_cleared() {
         .args(check_args())
         .status()
         .unwrap();
+}
+
+fn is_cleared_args(is_cleared: bool) -> Vec<String> {
+    if let Ok(value) = std::env::var("CLI_ENV_CLEAR_TEST_VALUE") {
+        vec![format!("--is-cleared={value}")]
+    } else if is_cleared {
+        vec!["--is-cleared=true".to_owned()]
+    } else {
+        vec!["--is-cleared=false".to_owned()]
+    }
+}
+
+#[binary_benchmark(config = BinaryBenchmarkConfig::default().env("BINARY_BENCHMARK_ENV", "3"))]
+#[bench::with_env(config = BinaryBenchmarkConfig::default().env("BENCH_ENV", "4"))]
+fn bench_binary() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_env"))
+        .args(check_args())
+        .env("COMMAND_ENV", "5")
+        .build()
 }
 
 #[binary_benchmark(config = BinaryBenchmarkConfig::default().env("BINARY_BENCHMARK_ENV", "3"))]

@@ -19,7 +19,7 @@
       "minItems": 2
     },
     "benchmark_exe": {
-      "description": "The path to the binary which is executed by Gungraun and in turn Valgrind.\n\nIn case of a library benchmark this is the compiled benchmark file. In case of a binary\nbenchmark this is the path to the executable.",
+      "description": "The path to the binary which is executed by Gungraun and in turn Valgrind or Perf.\n\nIn case of a library benchmark this is the compiled benchmark file. In case of a binary\nbenchmark this is the path to the executable.",
       "type": "string"
     },
     "benchmark_file": {
@@ -34,8 +34,12 @@
       "description": "The name of the function under test",
       "type": "string"
     },
+    "group": {
+      "description": "The name of the `benchmark_group`",
+      "type": "string"
+    },
     "id": {
-      "description": "The user provided id of this benchmark",
+      "description": "The optional id of this benchmark.\n\nTh id is provided by the `#[bench::id]` attribute macro. The `#[benches::id]` adds a\ncounter as suffix in the form `id_X` for example (`id_0`, `id_100`, ...)\n\nA gungraun benchmark can be uniquely identified by the `module_path`\n(`benchmark_file::group::function_name`) and this `id`. If the `id` is not present, then\nthe `module_path` is sufficient to identify a benchmark.",
       "type": ["string", "null"]
     },
     "kind": {
@@ -47,11 +51,15 @@
       ]
     },
     "module_path": {
-      "description": "The rust path in the form `bench_file::group::bench`",
+      "description": "The rust path in the form `benchmark_file::group::function_name`\n\nIf the `id` is not present, this `module_path` is sufficient to uniquely identify a\ngungraun benchmark.",
+      "type": "string"
+    },
+    "output_dir": {
+      "description": "The directory containing all generated benchmark artifacts.\n\nThis path, together with the other retained path fields, is relative to `project_root` when\nit is located below the project root. Otherwise, it is absolute.",
       "type": "string"
     },
     "package_dir": {
-      "description": "The directory of the package",
+      "description": "The relative path to the directory of the cargo package containing the benchmark",
       "type": "string"
     },
     "profiles": {
@@ -63,19 +71,8 @@
       ]
     },
     "project_root": {
-      "description": "The project's root directory",
+      "description": "The project's absolute root directory",
       "type": "string"
-    },
-    "summary_output": {
-      "description": "The destination and kind of the summary file",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/SummaryOutput"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "version": {
       "description": "The version string of this format.\n\nThis is not semver and only major version numbers are used. There might be text occurrences\nof `v6` within this library documentation but v6 is stored as raw number `6` without the\n`v` prefix. Only backwards incompatible changes cause an increase of the version",
@@ -87,8 +84,10 @@
     "benchmark_exe",
     "benchmark_file",
     "function_name",
+    "group",
     "kind",
     "module_path",
+    "output_dir",
     "package_dir",
     "profiles",
     "project_root",
@@ -759,17 +758,9 @@
       ]
     },
     "FlamegraphSummary": {
-      "description": "File paths for one flamegraph associated with a specific [`EventKind`].\n\nAt least one of `regular_path`, `base_path`, or `diff_path` is present.",
+      "description": "A flamegraph associated with a specific [`EventKind`].",
       "type": "object",
       "properties": {
-        "base_path": {
-          "description": "If present, the path to the file of the old regular (non-differential) flamegraph",
-          "type": ["string", "null"]
-        },
-        "diff_path": {
-          "description": "If present, the path to the file of the differential flamegraph",
-          "type": ["string", "null"]
-        },
         "event_kind": {
           "description": "The `EventKind` of the flamegraph",
           "allOf": [
@@ -777,10 +768,6 @@
               "$ref": "#/definitions/EventKind"
             }
           ]
-        },
-        "regular_path": {
-          "description": "If present, the path to the file of the regular (non-differential) flamegraph",
-          "type": ["string", "null"]
         }
       },
       "required": ["event_kind"]
@@ -1004,20 +991,6 @@
             "$ref": "#/definitions/FlamegraphSummary"
           }
         },
-        "log_paths": {
-          "description": "The paths to the `*.log` files. All tools produce at least one log file",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "out_paths": {
-          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log\nfiles",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "summaries": {
           "description": "The data with the metrics and details about the tool run",
           "allOf": [
@@ -1035,7 +1008,7 @@
           ]
         }
       },
-      "required": ["flamegraphs", "log_paths", "out_paths", "summaries", "tool"]
+      "required": ["flamegraphs", "summaries", "tool"]
     },
     "ProfileData": {
       "description": "All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.\n\nThe [`ProfileTotal`] is always present and summarizes all [`ProfilePart`]s. If the tool produced\nonly one part, the total matches that part's metrics.",
@@ -1077,14 +1050,10 @@
           "format": "int32"
         },
         "part": {
-          "description": "The part number of this tool run if present (only Callgrind)",
+          "description": "The part number of this tool run if present (only Callgrind and Perf)",
           "type": ["integer", "null"],
           "format": "uint64",
           "minimum": 0
-        },
-        "path": {
-          "description": "The path to the output file containing the data of the tool run",
-          "type": "string"
         },
         "pid": {
           "description": "The pid of the benchmark process",
@@ -1098,7 +1067,7 @@
           "minimum": 0
         }
       },
-      "required": ["command", "path", "pid"]
+      "required": ["command", "pid"]
     },
     "ProfilePart": {
       "description": "A single part of a tool run with the collected metric data\n\nA tool run can produce multiple parts, for example one per process when child tracing is\nenabled.",
@@ -1152,40 +1121,6 @@
         "$ref": "#/definitions/Profile"
       }
     },
-    "SummaryFormat": {
-      "description": "Identifies the format of a summary file written by Gungraun.",
-      "oneOf": [
-        {
-          "description": "The format in a space optimal json representation without newlines",
-          "type": "string",
-          "const": "Json"
-        },
-        {
-          "description": "The format in pretty printed json",
-          "type": "string",
-          "const": "PrettyJson"
-        }
-      ]
-    },
-    "SummaryOutput": {
-      "description": "Describes where Gungraun wrote the summary file and in which format.",
-      "type": "object",
-      "properties": {
-        "format": {
-          "description": "The [`SummaryFormat`]",
-          "allOf": [
-            {
-              "$ref": "#/definitions/SummaryFormat"
-            }
-          ]
-        },
-        "path": {
-          "description": "The path to the destination file of this summary",
-          "type": "string"
-        }
-      },
-      "required": ["format", "path"]
-    },
     "Tool": {
       "description": "The profiling tools which can be run in a benchmark.",
       "oneOf": [
@@ -1237,7 +1172,7 @@
       ]
     },
     "ToolMetricSummary": {
-      "description": "A [`Tool`] metric data summary.\n\nEach variant contains all metric data including the differences to the old or a\n[`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained\n[`MetricsSummary`] is keyed by the metric enum used by that tool.\n\nThe [`ToolMetricSummary::ErrorTool`] variant is used by Memcheck, Helgrind and DRD. Massif and\nBBV are special cases because they do not have a metrics summary and therefore use the\n[`ToolMetricSummary::None`] variant.\n\n# Examples\n\nThis is the summary of a Callgrind run which had only [`EventKind::Ir`] (instruction counts)\nmeasurement activated. Since there is a [`Diffs`] present, there was an old run and a new run\nwhich were compared with each other. Per convention the new run is on the left side of an\n[`EitherOrBoth::Both`] or [`EitherOrBoth::Left`] and the old run on the right side or a\n[`EitherOrBoth::Right`].\n\n```rust\nuse either_or_both::EitherOrBoth;\nuse gungraun_runner::api::EventKind;\nuse gungraun_runner::metrics::model::{Metric, MetricsDiff, MetricsSummary};\nuse gungraun_runner::summary::model::{Diffs, ToolMetricSummary};\nuse indexmap::IndexMap;\n\nlet callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(\n    EventKind::Ir,\n    MetricsDiff {\n        diffs: Some(Diffs {\n            diff_pct: -50.0,\n            factor: -2.0,\n        }),\n        metrics: EitherOrBoth::Both(Metric::Int(1), Metric::Int(2)),\n    },\n)])));\n\nmatch callgrind_summary {\n    ToolMetricSummary::Callgrind(metrics) => {\n        assert!(metrics.0.contains_key(&EventKind::Ir));\n    }\n    _ => {}\n}\n```\n\n[`Tool`]: crate::api::Tool",
+      "description": "A [`Tool`] metric data summary.\n\nEach variant contains all metric data including the differences to the old or a\n[`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained\n[`MetricsSummary`] is keyed by the metric enum used by that tool.\n\nThe [`ToolMetricSummary::Memcheck`], [`ToolMetricSummary::Helgrind`], and\n[`ToolMetricSummary::DRD`] variants contain the corresponding error metrics. Massif and BBV are\nspecial cases because they do not have a metrics summary and therefore use the\n[`ToolMetricSummary::None`] variant.\n\n# Examples\n\nThis is the summary of a Callgrind run which had only [`EventKind::Ir`] (instruction counts)\nmeasurement activated. Since there is a [`Diffs`] present, there was an old run and a new run\nwhich were compared with each other. Per convention the new run is on the left side of an\n[`EitherOrBoth::Both`] or [`EitherOrBoth::Left`] and the old run on the right side or a\n[`EitherOrBoth::Right`].\n\n```rust\nuse either_or_both::EitherOrBoth;\nuse gungraun_runner::api::EventKind;\nuse gungraun_runner::metrics::model::{Metric, MetricsDiff, MetricsSummary};\nuse gungraun_runner::summary::model::{Diffs, ToolMetricSummary};\nuse indexmap::IndexMap;\n\nlet callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(\n    EventKind::Ir,\n    MetricsDiff {\n        diffs: Some(Diffs {\n            diff_pct: -50.0,\n            factor: -2.0,\n        }),\n        metrics: EitherOrBoth::Both(Metric::Int(1), Metric::Int(2)),\n    },\n)])));\n\nmatch callgrind_summary {\n    ToolMetricSummary::Callgrind(metrics) => {\n        assert!(metrics.0.contains_key(&EventKind::Ir));\n    }\n    _ => {}\n}\n```\n\n[`Tool`]: crate::api::Tool",
       "oneOf": [
         {
           "description": "If there are no metrics extracted (currently Massif, BBV)",
@@ -1245,15 +1180,37 @@
           "const": "None"
         },
         {
-          "description": "The summary of tools which report errors (Memcheck, Helgrind, DRD) ([`ErrorMetric`])",
+          "description": "The [`ErrorMetric`] summary for Memcheck.",
           "type": "object",
           "properties": {
-            "ErrorTool": {
+            "Memcheck": {
               "$ref": "#/definitions/MetricsSummary"
             }
           },
           "additionalProperties": false,
-          "required": ["ErrorTool"]
+          "required": ["Memcheck"]
+        },
+        {
+          "description": "The [`ErrorMetric`] summary for Helgrind.",
+          "type": "object",
+          "properties": {
+            "Helgrind": {
+              "$ref": "#/definitions/MetricsSummary"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Helgrind"]
+        },
+        {
+          "description": "The [`ErrorMetric`] summary for DRD.",
+          "type": "object",
+          "properties": {
+            "DRD": {
+              "$ref": "#/definitions/MetricsSummary"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["DRD"]
         },
         {
           "description": "The metric summary of [`DhatMetric`]s",

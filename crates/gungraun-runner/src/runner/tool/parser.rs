@@ -136,6 +136,7 @@ pub fn parser_factory(
             Box::new(ErrorMetricLogfileParser {
                 output_path: output_path.to_log_output(),
                 root_dir,
+                tool: output_path.tool,
             })
         }
         ToolConfigOptions::Perf(perf_config) => Box::new(perf::json_parser::JsonParser {

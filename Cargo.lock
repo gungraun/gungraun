@@ -913,6 +913,7 @@ dependencies = [
  "either-or-both",
  "gungraun-runner",
  "indexmap",
+ "pretty_assertions",
  "schemars",
  "serde",
  "serde_json",

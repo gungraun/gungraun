@@ -25,6 +25,33 @@ use regex::{Captures, Regex};
 // The regex patterns working on the `stdout` must not include the indentation. The indentation can
 // be different depending on the `show_grid` option and starts either with 2 spaces (`  `) or if
 // `show_grid` is `true` with a pipe character (`|`)
+static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("[']([/][^/']+)+[']").expect("Regex should compile"));
+
+static ABSOLUTE_PATH_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\s+|^|')([/][^/]*)+").expect("Regex should compile"));
+
+// Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
+static COMMAND_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
+        .expect("Regex should compile")
+});
+
+static DETAILS_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("^Details:").expect("Regex should compile"));
+
+// `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
+static FRAGMENT_HEADER_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile")
+});
+
+static NOT_DETAILS_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:(?:\S)|(?:[a-zA-Z]))").expect("Regex should compile"));
+
+// Do not match (*********); those placeholder lines should stay unchanged.
+static NUMBERS_DIFF_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\([^)*]*\)(?:\s+\[[^\]]+\])?$").expect("Regex should compile"));
+
 static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
@@ -37,20 +64,32 @@ static NUMBERS_RE: LazyLock<Regex> = LazyLock::new(|| {
     .expect("Regex should compile")
 });
 
-// Do not match (*********); those placeholder lines should stay unchanged.
-static NUMBERS_DIFF_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\([^)*]*\)(?:\s+\[[^\]]+\])?$").expect("Regex should compile"));
-
-static UNIT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?<prefix>)(?<unit>\s*\[[^\]]+\])(?<suffix>:\s*)").expect("Regex should compile")
-});
-
-static RUNNING_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("^[ ]+Running .*$").expect("Regex should compile"));
+static PID_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(p?pid:\s*)([0-9]+)(\s+)?").expect("Regex should compile"));
 
 static PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
         .expect("Regex should compile")
+});
+
+// * Performance has regressed: Instructions (70021) exceeds limit by 69821 (>200)
+// * Performance has regressed: cpu_core/instructions/u [*instructions*] (7002804) exceeds limit by
+//   6997804 (>5000)
+// * Performance has regressed: task-clock:u [*task-clock*] (601.931 [us]) exceeds limit by 501.931
+//   [us] (>100 [us])
+// $1<__NUM__>$3<__NUM__>$5<__NUM__>$7
+static REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?x)
+            ^(Performance\s*has\s*regressed:\s*[^0-9]+\()
+            ([^)]+)
+            (\)\s*exceeds\s*limit\s*by\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*\([><])
+            ([^)]+)
+            (\))$",
+    )
+    .expect("Regex should compile")
 });
 
 // Performance has regressed: Instructions (123 -> 196) regressed by +47.3684% (>+0.00000%)
@@ -74,43 +113,13 @@ static REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
     .expect("Regex should compile")
 });
 
-// * Performance has regressed: Instructions (70021) exceeds limit by 69821 (>200)
-// * Performance has regressed: cpu_core/instructions/u [*instructions*] (7002804) exceeds limit by
-//   6997804 (>5000)
-// * Performance has regressed: task-clock:u [*task-clock*] (601.931 [us]) exceeds limit by 501.931
-//   [us] (>100 [us])
-// $1<__NUM__>$3<__NUM__>$5<__NUM__>$7
-static REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"(?x)
-            ^(Performance\s*has\s*regressed:\s*[^0-9]+\()
-            ([^)]+)
-            (\)\s*exceeds\s*limit\s*by\s*)
-            ([0-9.]+(?:\s*\[\S+\])?)
-            (\s*\([><])
-            ([^)]+)
-            (\))$",
-    )
-    .expect("Regex should compile")
-});
+static RUNNING_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("^[ ]+Running .*$").expect("Regex should compile"));
 
-// Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
-// $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
-static SUMMARY_REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"(?x)
-            ^(\s*[^0-9]+\()
-            ([0-9.]+(?:\s*\[\S+\])?)
-            (\s*->\s*)
-            ([0-9.]+(?:\s*\[\S+\])?)
-            (\):\s*[+-])
-            ([0-9.]+)
-            (%\s*exceeds\s*limit\s*of\s*[+-])
-            ([0-9.]+)
-            (%\s*)
-            $",
-    )
-    .expect("Regex should compile")
+// Gungraun result: Success. 2 completed without regressions; 0 regressed; 0 filtered;
+// 2 benchmarks finished in 0.296s
+static SUMMARY_LINE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(Gungraun result:.*finished in\s*)([0-9.]+)(s$)").expect("Regex should compile")
 });
 
 // * Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
@@ -135,33 +144,23 @@ static SUMMARY_REGRESSION_HARD_RE: LazyLock<Regex> = LazyLock::new(|| {
     .expect("Regex should compile")
 });
 
-// Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
-static COMMAND_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
-        .expect("Regex should compile")
-});
-
-static PID_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(p?pid:\s*)([0-9]+)(\s+)?").expect("Regex should compile"));
-
-static DETAILS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("^Details:").expect("Regex should compile"));
-
-static NOT_DETAILS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(?:(?:\S)|(?:[a-zA-Z]))").expect("Regex should compile"));
-
-// `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
-static FRAGMENT_HEADER_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile")
-});
-
-static ABSOLUTE_PATH_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(\s+|^|')([/][^/]*)+").expect("Regex should compile"));
-
-// Gungraun result: Success. 2 completed without regressions; 0 regressed; 0 filtered;
-// 2 benchmarks finished in 0.296s
-static SUMMARY_LINE_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(Gungraun result:.*finished in\s*)([0-9.]+)(s$)").expect("Regex should compile")
+// Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
+// $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
+static SUMMARY_REGRESSION_SOFT_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?x)
+            ^(\s*[^0-9]+\()
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\s*->\s*)
+            ([0-9.]+(?:\s*\[\S+\])?)
+            (\):\s*[+-])
+            ([0-9.]+)
+            (%\s*exceeds\s*limit\s*of\s*[+-])
+            ([0-9.]+)
+            (%\s*)
+            $",
+    )
+    .expect("Regex should compile")
 });
 
 static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
@@ -172,8 +171,9 @@ static THREAD_PANICKED: LazyLock<Regex> = LazyLock::new(|| {
     .expect("Regex should compile")
 });
 
-static ABSOLUTE_PATH_APOSTROPHE_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("[']([/][^/']+)+[']").expect("Regex should compile"));
+static UNIT_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?<prefix>)(?<unit>\s*\[[^\]]+\])(?<suffix>:\s*)").expect("Regex should compile")
+});
 
 /// Captured result of one cargo bench invocation.
 ///

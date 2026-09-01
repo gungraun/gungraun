@@ -8,13 +8,6 @@ use gungraun::{
 };
 use gungraun_tests::{bubble_sort, setup_worst_case_array};
 
-fn make_hashmap(num: usize) -> HashMap<String, usize> {
-    (0..num).fold(HashMap::new(), |mut acc, e| {
-        acc.insert(format!("element: {e}"), e);
-        acc
-    })
-}
-
 // The --collect-systime=nsec option is not supported on freebsd and apple, so we use
 // --collect-systime=yes instead on these targets
 //
@@ -43,6 +36,13 @@ pub fn base_config() -> LibraryBenchmarkConfig {
             "branch-sim=yes",
         ]))
         .clone()
+}
+
+fn make_hashmap(num: usize) -> HashMap<String, usize> {
+    (0..num).fold(HashMap::new(), |mut acc, e| {
+        acc.insert(format!("element: {e}"), e);
+        acc
+    })
 }
 
 #[library_benchmark]

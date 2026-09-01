@@ -3,14 +3,6 @@ use std::path::PathBuf;
 
 use fs_extra::dir::CopyOptions;
 
-fn set_env_var<K, V>(key: K, value: V)
-where
-    K: AsRef<str>,
-    V: AsRef<str>,
-{
-    println!("cargo:rustc-env={}={}", key.as_ref(), value.as_ref());
-}
-
 pub fn get_rust_version() -> String {
     let output = std::process::Command::new(
         std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
@@ -67,4 +59,12 @@ fn main() {
 
     let rust_version = get_rust_version();
     set_env_var("VALGRIND_REQUESTS_TESTS_RUST_VERSION", rust_version);
+}
+
+fn set_env_var<K, V>(key: K, value: V)
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    println!("cargo:rustc-env={}={}", key.as_ref(), value.as_ref());
 }

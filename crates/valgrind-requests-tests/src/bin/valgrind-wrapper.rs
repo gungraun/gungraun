@@ -10,22 +10,24 @@ use std::sync::LazyLock;
 use regex::Regex;
 use valgrind_requests_tests::MARKER;
 
-static STRIP_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\s*(==|--|\*\*)([0-9:.]+\s+)?[0-9]+(==|--|\*\*)\s*(?<rest>.*)$")
-        .expect("Regex should compile")
+static BACKTRACE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^((at|by)\s*0x[0-9A-Za-z]+\s*:)").expect("Regex should compile"));
+static CACHEGRIND_NUM_REFS_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"((I|D|LL)\s*refs:\s*)([ 0-9,()+rdw]*)\s*$").expect("Regex should compile")
 });
 static CALLGRIND_EXCLUDED_LINES_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("^(For interactive control,)").expect("Regex should compile"));
-static CALLGRIND_RM_DUMP_TO_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("^(Dump to).*$").expect("Regex should compile"));
-static CALLGRIND_RM_BB_NUM_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(at BB\s+)([0-9]+)(\s+.*)$").expect("Regex should compile"));
 static CALLGRIND_RM_ADDR_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"((at|by)\s+)(0x[0-9A-Za-z]+\s*:.*)$").expect("Regex should compile")
 });
-static CALLGRIND_RM_NUM_REFS_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"((I|D|LL)\s*refs:)[ 0-9,()+rdw]*$").expect("Regex should compile")
-});
+static CALLGRIND_RM_BB_NUM_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(at BB\s+)([0-9]+)(\s+.*)$").expect("Regex should compile"));
+static CALLGRIND_RM_DUMP_TO_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("^(Dump to).*$").expect("Regex should compile"));
+static CALLGRIND_RM_LINE_NUM_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\(.*:)([0-9]+)(\))\s*$").expect("Regex should compile"));
+static CALLGRIND_RM_NUM_COLLECTED_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(Collected\s*:)[ 0-9]*$").expect("Regex should compile"));
 static CALLGRIND_RM_NUM_MISS_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"((I1|D1|LL|LLi|LLd)\s*(misses|miss rate):)[ 0-9,()+rdw%.]*$")
         .expect("Regex should compile")
@@ -34,17 +36,11 @@ static CALLGRIND_RM_NUM_RATE_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new("((Branches|Mispredicts|Mispred rate):)[ 0-9,()+condi%.]*$")
         .expect("Regex should compile")
 });
-static CALLGRIND_RM_NUM_COLLECTED_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(Collected\s*:)[ 0-9]*$").expect("Regex should compile"));
-static CALLGRIND_RM_LINE_NUM_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(\(.*:)([0-9]+)(\))\s*$").expect("Regex should compile"));
-static BACKTRACE_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^((at|by)\s*0x[0-9A-Za-z]+\s*:)").expect("Regex should compile"));
+static CALLGRIND_RM_NUM_REFS_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"((I|D|LL)\s*refs:)[ 0-9,()+rdw]*$").expect("Regex should compile")
+});
 static MEMCHECK_CHECKED_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(\s*Checked\s*)([0-9,.]+)(\s*bytes)\s*$").expect("Regex should compile")
-});
-static MEMCHECK_TOTAL_HEAP_USAGE_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(?i:(\s*total heap usage:\s*))(.*)$").expect("Regex should compile")
 });
 static MEMCHECK_LEAK_SUMMARY_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
@@ -56,20 +52,24 @@ static MEMCHECK_LEAK_SUMMARY_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 static MEMCHECK_RM_NUMBERS_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("[+-]?[0-9][0-9,.]*").expect("Regex should compile"));
+static MEMCHECK_TOTAL_HEAP_USAGE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?i:(\s*total heap usage:\s*))(.*)$").expect("Regex should compile")
+});
 static MEMORY_ADDRESS_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("0x[0-9A-Za-z]+").expect("Regex should compile"));
-static CACHEGRIND_NUM_REFS_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"((I|D|LL)\s*refs:\s*)([ 0-9,()+rdw]*)\s*$").expect("Regex should compile")
+static NUMBER_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("[0-9]+").expect("Regex should compile"));
+static READING_EXIDX_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("^[ ]*Reading EXIDX entries:.*$").expect("Regex should compile"));
+static REDIR_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("^(REDIR:)(.*)").expect("Regex should compile"));
+static STRIP_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\s*(==|--|\*\*)([0-9:.]+\s+)?[0-9]+(==|--|\*\*)\s*(?<rest>.*)$")
+        .expect("Regex should compile")
 });
 static WARNING_EXIDX_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new("^[ ]*Warning: whilst reading EXIDX:.*$").expect("Regex should compile")
 });
-static READING_EXIDX_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("^[ ]*Reading EXIDX entries:.*$").expect("Regex should compile"));
-static NUMBER_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("[0-9]+").expect("Regex should compile"));
-static REDIR_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("^(REDIR:)(.*)").expect("Regex should compile"));
 
 #[derive(Debug)]
 enum Tool {
@@ -77,6 +77,12 @@ enum Tool {
     Memcheck,
     Helgrind,
     Cachegrind,
+}
+
+impl Display for Tool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(format!("{self:?}").to_ascii_lowercase().as_str())
+    }
 }
 
 impl FromStr for Tool {
@@ -93,9 +99,41 @@ impl FromStr for Tool {
     }
 }
 
-impl Display for Tool {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(format!("{self:?}").to_ascii_lowercase().as_str())
+fn cachegrind_filter(bytes: &[u8], writer: &mut impl Write) {
+    #[derive(Debug, PartialEq, Eq)]
+    enum State {
+        Header,
+        Body,
+    }
+    let mut state = State::Header;
+    for line in BufReader::new(bytes).lines().map(Result::unwrap) {
+        if state == State::Header {
+            if line.contains(MARKER) {
+                state = State::Body;
+            }
+            continue;
+        }
+
+        let rest = STRIP_PREFIX_RE
+            .captures(&line)
+            .unwrap_or_else(|| {
+                panic!("Cachegrind output line should be a valid output line: was {line}")
+            })
+            .name("rest")
+            .unwrap()
+            .as_str();
+
+        if WARNING_EXIDX_RE.is_match(rest) {
+            continue;
+        }
+        let rest = if READING_EXIDX_RE.is_match(rest) {
+            NUMBER_RE.replace_all(rest, "<__NUMBER__>")
+        } else {
+            Cow::Borrowed(rest)
+        };
+
+        let replaced = CACHEGRIND_NUM_REFS_RE.replace_all(&rest, "$1<__FILTER__>");
+        writeln!(writer, "{replaced}").unwrap();
     }
 }
 
@@ -161,89 +199,6 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
                 writeln!(writer, "{rest}").unwrap();
             }
         }
-    }
-}
-
-fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
-    #[derive(Debug, PartialEq, Eq)]
-    enum State {
-        Header,
-        Body,
-    }
-    let mut state = State::Header;
-    let mut is_backtrace = false;
-    for line in BufReader::new(bytes).lines().map(Result::unwrap) {
-        if state == State::Header {
-            if line.contains(MARKER) {
-                state = State::Body;
-            }
-            continue;
-        }
-        let rest = STRIP_PREFIX_RE
-            .captures(&line)
-            .unwrap_or_else(|| {
-                panic!("Memcheck output line should be a valid output line: was {line}")
-            })
-            .name("rest")
-            .unwrap()
-            .as_str();
-
-        // backtraces are too different on different targets
-        if BACKTRACE_RE.is_match(rest) {
-            if !is_backtrace {
-                writeln!(writer, "<__BACKTRACE__>").unwrap();
-                is_backtrace = true;
-            }
-            continue;
-        }
-        is_backtrace = false;
-
-        let replaced = REDIR_RE.replace_all(rest, "$1 <__FILTER__>");
-        let replaced = MEMCHECK_CHECKED_RE.replace_all(&replaced, "$1<__FILTER__>$3");
-        let replaced = MEMCHECK_TOTAL_HEAP_USAGE_RE.replace_all(&replaced, "$1<__FILTER__>");
-        let replaced =
-            MEMCHECK_LEAK_SUMMARY_RE.replace_all(&replaced, "$1<__FILTER__> $4<__FILTER__> $6");
-        let replaced = MEMORY_ADDRESS_RE.replace_all(&replaced, "<__FILTER__>");
-        let replaced = MEMCHECK_RM_NUMBERS_RE.replace_all(&replaced, "<__NUMBER__>");
-        writeln!(writer, "{replaced}").unwrap();
-    }
-}
-
-fn cachegrind_filter(bytes: &[u8], writer: &mut impl Write) {
-    #[derive(Debug, PartialEq, Eq)]
-    enum State {
-        Header,
-        Body,
-    }
-    let mut state = State::Header;
-    for line in BufReader::new(bytes).lines().map(Result::unwrap) {
-        if state == State::Header {
-            if line.contains(MARKER) {
-                state = State::Body;
-            }
-            continue;
-        }
-
-        let rest = STRIP_PREFIX_RE
-            .captures(&line)
-            .unwrap_or_else(|| {
-                panic!("Cachegrind output line should be a valid output line: was {line}")
-            })
-            .name("rest")
-            .unwrap()
-            .as_str();
-
-        if WARNING_EXIDX_RE.is_match(rest) {
-            continue;
-        }
-        let rest = if READING_EXIDX_RE.is_match(rest) {
-            NUMBER_RE.replace_all(rest, "<__NUMBER__>")
-        } else {
-            Cow::Borrowed(rest)
-        };
-
-        let replaced = CACHEGRIND_NUM_REFS_RE.replace_all(&rest, "$1<__FILTER__>");
-        writeln!(writer, "{replaced}").unwrap();
     }
 }
 
@@ -322,5 +277,50 @@ fn main() {
     } else {
         eprintln!("{output:?}");
         std::process::exit(-1);
+    }
+}
+
+fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
+    #[derive(Debug, PartialEq, Eq)]
+    enum State {
+        Header,
+        Body,
+    }
+    let mut state = State::Header;
+    let mut is_backtrace = false;
+    for line in BufReader::new(bytes).lines().map(Result::unwrap) {
+        if state == State::Header {
+            if line.contains(MARKER) {
+                state = State::Body;
+            }
+            continue;
+        }
+        let rest = STRIP_PREFIX_RE
+            .captures(&line)
+            .unwrap_or_else(|| {
+                panic!("Memcheck output line should be a valid output line: was {line}")
+            })
+            .name("rest")
+            .unwrap()
+            .as_str();
+
+        // backtraces are too different on different targets
+        if BACKTRACE_RE.is_match(rest) {
+            if !is_backtrace {
+                writeln!(writer, "<__BACKTRACE__>").unwrap();
+                is_backtrace = true;
+            }
+            continue;
+        }
+        is_backtrace = false;
+
+        let replaced = REDIR_RE.replace_all(rest, "$1 <__FILTER__>");
+        let replaced = MEMCHECK_CHECKED_RE.replace_all(&replaced, "$1<__FILTER__>$3");
+        let replaced = MEMCHECK_TOTAL_HEAP_USAGE_RE.replace_all(&replaced, "$1<__FILTER__>");
+        let replaced =
+            MEMCHECK_LEAK_SUMMARY_RE.replace_all(&replaced, "$1<__FILTER__> $4<__FILTER__> $6");
+        let replaced = MEMORY_ADDRESS_RE.replace_all(&replaced, "<__FILTER__>");
+        let replaced = MEMCHECK_RM_NUMBERS_RE.replace_all(&replaced, "<__NUMBER__>");
+        writeln!(writer, "{replaced}").unwrap();
     }
 }

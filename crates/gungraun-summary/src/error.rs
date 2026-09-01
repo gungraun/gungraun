@@ -3,6 +3,9 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Convenience alias for results returned by this crate.
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// Errors returned by the version-aware and version-specific summary parsers.
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -14,7 +17,7 @@ pub enum Error {
     /// Parsing failed because the summary declares a schema version this crate does not support.
     #[error("failed parsing summary: unsupported version '{0}'")]
     UnsupportedVersion(String),
+    /// Parsing of a command-line argument failed.
+    #[error("error parsing command line argument {0}: {1}")]
+    CliArgument(String, String),
 }
-
-/// Convenience alias for results returned by this crate.
-pub type Result<T> = std::result::Result<T, Error>;

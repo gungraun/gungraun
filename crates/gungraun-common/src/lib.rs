@@ -18,15 +18,6 @@ use strum::EnumIter;
 #[cfg(feature = "strum")]
 pub use strum::IntoEnumIterator;
 
-/// Tool families supported by the benchmark's compilation target.
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
-pub struct SupportedTools {
-    /// Whether the target supports Linux Perf.
-    pub perf: bool,
-    /// Whether the target supports Valgrind-based tools.
-    pub valgrind: bool,
-}
-
 /// Valgrind client-request implementation available for a target.
 ///
 /// Each variant identifies the architecture-specific implementation selected by
@@ -51,6 +42,15 @@ pub enum ValgrindSupport {
     Powerpc,
     /// 64-bit PowerPC targets, both little- and big-endian.
     Powerpc64,
+}
+
+/// Tool families supported by the benchmark's compilation target.
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+pub struct SupportedTools {
+    /// Whether the target supports Linux Perf.
+    pub perf: bool,
+    /// Whether the target supports Valgrind-based tools.
+    pub valgrind: bool,
 }
 
 impl SupportedTools {

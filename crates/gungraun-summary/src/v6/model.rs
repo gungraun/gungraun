@@ -1,29 +1,25 @@
-//! Summary data model types to build the top-level [`BenchmarkSummary`]
+//! Frozen version 6 summary data model.
 //!
-//! Aggregating a [`BenchmarkSummary`] from a benchmark run serves two main purposes:
-//!
-//! 1. It allows running the benchmark and process the data in completely separate steps.
-//! 2. Being able to print a json benchmark summary which at a minimum contains all data of the
-//!    terminal output in a machine-readable format.
-//!
-//! These types define the main consumer-facing structure that is serialized to and deserialized
-//! from summary files.
+//! These types are copied from `gungraun-runner` as it produced version 6 summaries at the
+//! latest `gungraun-summary` v6 release, including the `ErrorTool` variants used by Memcheck,
+//! Helgrind and DRD. They are owned by this snapshot so parsing version 6 summaries keeps working
+//! even if newer summary versions change the shared model in `gungraun-runner`.
 
+use std::hash::Hash;
 use std::path::PathBuf;
 
 use either_or_both::EitherOrBoth;
+use gungraun_runner::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
+use gungraun_runner::metrics::model::Metric;
+use indexmap::IndexMap;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool};
-use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, Metrics, MetricsSummary, PerfQualities,
-};
-use crate::units::Unit;
+use crate::util::float_64;
 
-/// The version string stored in version summary JSON files.
-pub const SCHEMA_VERSION: &str = "7";
+/// The version string stored in version 6 summary JSON files.
+pub const SCHEMA_VERSION: &str = "6";
 
 /// Identifies whether a summary describes a library or binary benchmark.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -35,15 +31,47 @@ pub enum BenchmarkKind {
     BinaryBenchmark,
 }
 
-/// A [`Tool`] metric data summary.
+/// Identifies a metric kind by tool
+///
+/// This enum appears in places where a summary needs to describe a metric without separately
+/// carrying the tool family that owns it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum MetricKind {
+    /// The `None` kind if there are no metrics for a tool (i.e. BBV and Massif)
+    None,
+    /// The Callgrind metric kind
+    Callgrind(EventKind),
+    /// The Cachegrind metric kind
+    Cachegrind(CachegrindMetric),
+    /// The DHAT metric kind
+    Dhat(DhatMetric),
+    /// The Memcheck metric kind
+    Memcheck(ErrorMetric),
+    /// The Helgrind metric kind
+    Helgrind(ErrorMetric),
+    /// The DRD metric kind
+    DRD(ErrorMetric),
+}
+
+/// Identifies the format of a summary file written by Gungraun.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum SummaryFormat {
+    /// The format in a space optimal json representation without newlines
+    Json,
+    /// The format in pretty printed json
+    PrettyJson,
+}
+
+/// A [`ValgrindTool`] metric data summary.
 ///
 /// Each variant contains all metric data including the differences to the old or a
-/// [`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained
+/// [`BenchmarkSummary::baselines`] run for a single [`ValgrindTool`]. The contained
 /// [`MetricsSummary`] is keyed by the metric enum used by that tool.
 ///
-/// The [`ToolMetricSummary::Memcheck`], [`ToolMetricSummary::Helgrind`], and
-/// [`ToolMetricSummary::DRD`] variants contain the corresponding error metrics. Massif and BBV are
-/// special cases because they do not have a metrics summary and therefore use the
+/// The [`ToolMetricSummary::ErrorTool`] variant is used by Memcheck, Helgrind and DRD. Massif and
+/// BBV are special cases because they do not have a metrics summary and therefore use the
 /// [`ToolMetricSummary::None`] variant.
 ///
 /// # Examples
@@ -56,9 +84,9 @@ pub enum BenchmarkKind {
 ///
 /// ```rust
 /// use either_or_both::EitherOrBoth;
-/// use gungraun_runner::api::EventKind;
-/// use gungraun_runner::metrics::model::{Metric, MetricsDiff, MetricsSummary};
-/// use gungraun_runner::summary::model::{Diffs, ToolMetricSummary};
+/// use gungraun_summary::v6::{
+///     Diffs, EventKind, Metric, MetricsDiff, MetricsSummary, ToolMetricSummary,
+/// };
 /// use indexmap::IndexMap;
 ///
 /// let callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(
@@ -79,63 +107,20 @@ pub enum BenchmarkKind {
 ///     _ => {}
 /// }
 /// ```
-///
-/// [`Tool`]: crate::api::Tool
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ToolMetricSummary {
     /// If there are no metrics extracted (currently Massif, BBV)
     #[default]
     None,
-    /// The [`ErrorMetric`] summary for Memcheck.
-    Memcheck(MetricsSummary<ErrorMetric>),
-    /// The [`ErrorMetric`] summary for Helgrind.
-    Helgrind(MetricsSummary<ErrorMetric>),
-    /// The [`ErrorMetric`] summary for DRD.
-    DRD(MetricsSummary<ErrorMetric>),
+    /// The summary of tools which report errors (Memcheck, Helgrind, DRD) ([`ErrorMetric`])
+    ErrorTool(MetricsSummary<ErrorMetric>),
     /// The metric summary of [`DhatMetric`]s
     Dhat(MetricsSummary<DhatMetric>),
     /// The Callgrind summary of [`EventKind`]
     Callgrind(MetricsSummary<EventKind>),
     /// The summary of [`CachegrindMetric`]s
     Cachegrind(MetricsSummary<CachegrindMetric>),
-    /// Perf summaries for a single parsed part or direct new/old comparison.
-    ///
-    /// Unlike the valgrind-based tools, perf does not currently produce a synthetic aggregated
-    /// `total` summary across parts in [`ProfileData::new`].
-    Perf(MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>),
-}
-
-/// A per-tool collection of raw metric values.
-///
-/// This enum is used where the summary needs to store metrics keyed by the tool that produced them,
-/// without comparison metadata.
-///
-/// # Benchmark Summary
-///
-/// This struct is not part of the recent summary anymore.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub enum ToolMetrics {
-    /// If there are no metrics extracted from a tool (currently Massif, BBV)
-    #[default]
-    None,
-    /// The metrics of a dhat benchmark
-    Dhat(Metrics<DhatMetric>),
-    /// The error metrics from a Memcheck run.
-    Memcheck(Metrics<ErrorMetric>),
-    /// The error metrics from a Helgrind run.
-    Helgrind(Metrics<ErrorMetric>),
-    /// The error metrics from a DRD run.
-    DRD(Metrics<ErrorMetric>),
-    /// The metrics of a Callgrind benchmark
-    Callgrind(Metrics<EventKind>),
-    /// The metrics of a Cachegrind benchmark
-    Cachegrind(Metrics<CachegrindMetric>),
-    /// Perf metrics with attached runtime and variability metadata.
-    ///
-    /// These metrics are summarized per part, but no synthetic aggregate `total` is currently
-    /// constructed across parts.
-    Perf(Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>),
 }
 
 /// A regression detected while evaluating a [`BenchmarkSummary`].
@@ -149,25 +134,18 @@ pub enum ToolRegression {
     Soft {
         /// The [`MetricKind`] per tool
         metric: MetricKind,
-        /// An optional human-readable display label for the regression metric, used in formatted
-        /// output.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        display: Option<String>,
-        /// The unit of the metric values, if present.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        unit: Option<Unit>,
         /// The [`Metric`] value of the new benchmark run
         new: Metric,
         /// The [`Metric`] value of the old benchmark run
         old: Metric,
         /// The difference between new and old in percent. Serialized as string to preserve
         /// infinity values and avoid null in json.
-        #[serde(with = "crate::serde::float_64")]
+        #[serde(with = "float_64")]
         #[cfg_attr(feature = "schema", schemars(with = "String"))]
         diff_pct: f64,
         /// The value of the limit which was exceeded to cause a performance regression. Serialized
         /// as string to preserve infinity values and avoid null in json.
-        #[serde(with = "crate::serde::float_64")]
+        #[serde(with = "float_64")]
         #[cfg_attr(feature = "schema", schemars(with = "String"))]
         limit: f64,
     },
@@ -175,13 +153,6 @@ pub enum ToolRegression {
     Hard {
         /// The [`MetricKind`] per tool
         metric: MetricKind,
-        /// An optional human-readable display label for the regression metric, used in formatted
-        /// output.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        display: Option<String>,
-        /// The unit of the metric values, if present.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        unit: Option<Unit>,
         /// The [`Metric`] value of the benchmark run
         new: Metric,
         /// The difference between new and the limit as [`Metric`]
@@ -189,6 +160,36 @@ pub enum ToolRegression {
         /// The limit as [`Metric`]
         limit: Metric,
     },
+}
+
+/// The Valgrind tools which can be run in a benchmark
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ValgrindTool {
+    /// Callgrind: a call-graph generating cache and branch prediction profiler
+    /// <https://valgrind.org/docs/manual/cl-manual.html>
+    Callgrind,
+    /// Cachegrind: a high-precision tracing profiler
+    /// <https://valgrind.org/docs/manual/cg-manual.html>
+    Cachegrind,
+    /// DHAT: a dynamic heap analysis tool
+    /// <https://valgrind.org/docs/manual/dh-manual.html>
+    DHAT,
+    /// Memcheck: a memory error detector
+    /// <https://valgrind.org/docs/manual/mc-manual.html>
+    Memcheck,
+    /// Helgrind: a thread error detector
+    /// <https://valgrind.org/docs/manual/hg-manual.html>
+    Helgrind,
+    /// DRD: a thread error detector
+    /// <https://valgrind.org/docs/manual/drd-manual.html>
+    DRD,
+    /// Massif: a heap profiler
+    /// <https://valgrind.org/docs/manual/ms-manual.html>
+    Massif,
+    /// BBV: an experimental basic block vector generation tool
+    /// <https://valgrind.org/docs/manual/bbv-manual.html>
+    BBV,
 }
 
 /// A `BenchmarkSummary` which contains all collected data of a single benchmark run
@@ -207,7 +208,7 @@ pub struct BenchmarkSummary {
     /// An absent first baseline indicates that new output was produced. An absent second baseline
     /// indicates the usage of the usual "*.old" output.
     pub baselines: (Option<String>, Option<String>),
-    /// The path to the binary which is executed by Gungraun and in turn Valgrind or Perf.
+    /// The path to the binary which is executed by Gungraun and in turn Valgrind.
     ///
     /// In case of a library benchmark this is the compiled benchmark file. In case of a binary
     /// benchmark this is the path to the executable.
@@ -218,38 +219,23 @@ pub struct BenchmarkSummary {
     pub details: Option<String>,
     /// The name of the function under test
     pub function_name: String,
-    /// The name of the `benchmark_group`
-    pub group: String,
-    /// The optional id of this benchmark.
-    ///
-    /// Th id is provided by the `#[bench::id]` attribute macro. The `#[benches::id]` adds a
-    /// counter as suffix in the form `id_X` for example (`id_0`, `id_100`, ...)
-    ///
-    /// A gungraun benchmark can be uniquely identified by the `module_path`
-    /// (`benchmark_file::group::function_name`) and this `id`. If the `id` is not present, then
-    /// the `module_path` is sufficient to identify a benchmark.
+    /// The user provided id of this benchmark
     pub id: Option<String>,
     /// Whether this summary describes a library or binary benchmark
     pub kind: BenchmarkKind,
-    /// The rust path in the form `benchmark_file::group::function_name`
-    ///
-    /// If the `id` is not present, this `module_path` is sufficient to uniquely identify a
-    /// gungraun benchmark.
+    /// The rust path in the form `bench_file::group::bench`
     pub module_path: String,
-    /// The directory containing all generated benchmark artifacts.
-    ///
-    /// This path, together with the other retained path fields, is relative to `project_root` when
-    /// it is located below the project root. Otherwise, it is absolute.
-    pub output_dir: PathBuf,
-    /// The relative path to the directory of the cargo package containing the benchmark
+    /// The directory of the package
     pub package_dir: PathBuf,
     /// This is the container with all the benchmark data (metrics, differences, comparisons, ...)
     ///
     /// If there were no errors during the benchmark run, there is at least one [`Profile`]
     /// present.
     pub profiles: Profiles,
-    /// The project's absolute root directory
+    /// The project's root directory
     pub project_root: PathBuf,
+    /// The destination and kind of the summary file
+    pub summary_output: Option<SummaryOutput>,
     /// The version string of this format.
     ///
     /// This is not semver and only major version numbers are used. There might be text occurrences
@@ -264,43 +250,67 @@ pub struct BenchmarkSummary {
 pub struct Diffs {
     /// The percentage of the difference between two `Metrics` serialized as string to preserve
     /// infinity values and avoid `null` in json
-    #[serde(with = "crate::serde::float_64")]
+    #[serde(with = "float_64")]
     #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub diff_pct: f64,
     /// The factor of the difference between two `Metrics` serialized as string to preserve
     /// infinity values and avoid `null` in json
-    #[serde(with = "crate::serde::float_64")]
+    #[serde(with = "float_64")]
     #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub factor: f64,
 }
 
-/// All flamegraph outputs recorded for a benchmark and their totals.
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FlamegraphSummaries {
-    /// The `FlamegraphSummary`s
-    pub summaries: Vec<FlamegraphSummary>,
-    /// The totals over the `FlamegraphSummary`s
-    pub totals: Vec<FlamegraphSummary>,
-}
-
-/// A flamegraph associated with a specific [`EventKind`].
+/// File paths for one flamegraph associated with a specific [`EventKind`].
+///
+/// At least one of `regular_path`, `base_path`, or `diff_path` is present.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummary {
+    /// If present, the path to the file of the old regular (non-differential) flamegraph
+    pub base_path: Option<PathBuf>,
+    /// If present, the path to the file of the differential flamegraph
+    pub diff_path: Option<PathBuf>,
     /// The `EventKind` of the flamegraph
     pub event_kind: EventKind,
+    /// If present, the path to the file of the regular (non-differential) flamegraph
+    pub regular_path: Option<PathBuf>,
 }
 
-/// `Profile` data for one [`Tool`] recorded in a benchmark summary.
+/// Comparison data for one metric in a parsed summary.
+///
+/// If both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.
+/// Otherwise the summary only stores whichever side is available. Per convention, the left side or
+/// [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]
+/// stores the old metric.
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct MetricsDiff {
+    /// If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present
+    pub diffs: Option<Diffs>,
+    /// Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both metrics
+    pub metrics: EitherOrBoth<Metric>,
+}
+
+/// An insertion-ordered mapping from metric identifier to [`MetricsDiff`].
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct MetricsSummary<K: Hash + Eq = EventKind>(pub IndexMap<K, MetricsDiff>);
+
+/// `Profile` data for one [`ValgrindTool`] recorded in a benchmark summary.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profile {
     /// Details and information about the created flamegraphs if any
     pub flamegraphs: Vec<FlamegraphSummary>,
+    /// The paths to the `*.log` files. All tools produce at least one log file
+    pub log_paths: Vec<PathBuf>,
+    /// The paths to the `*.out` files. Not all tools produce an output in addition to the log
+    /// files
+    pub out_paths: Vec<PathBuf>,
     /// The data with the metrics and details about the tool run
     pub summaries: ProfileData,
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
-    pub tool: Tool,
+    pub tool: ValgrindTool,
 }
 
 /// All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.
@@ -326,8 +336,10 @@ pub struct ProfileInfo {
     pub details: Option<String>,
     /// The parent pid of this process if present
     pub parent_pid: Option<i32>,
-    /// The part number of this tool run if present (only Callgrind and Perf)
+    /// The part number of this tool run if present (only Callgrind)
     pub part: Option<u64>,
+    /// The path to the output file containing the data of the tool run
+    pub path: PathBuf,
     /// The pid of the benchmark process
     pub pid: i32,
     /// The thread number of this tool run if present (only Callgrind)
@@ -357,7 +369,17 @@ pub struct ProfileTotal {
     pub summary: ToolMetricSummary,
 }
 
-/// Contains all [`Profile`]s with the data for each [`Tool`] run
+/// Contains all [`Profile`]s with the data for each [`ValgrindTool`] run
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profiles(pub Vec<Profile>);
+
+/// Describes where Gungraun wrote the summary file and in which format.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct SummaryOutput {
+    /// The [`SummaryFormat`]
+    pub format: SummaryFormat,
+    /// The path to the destination file of this summary
+    pub path: PathBuf,
+}

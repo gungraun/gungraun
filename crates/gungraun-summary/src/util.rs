@@ -2,13 +2,13 @@
 //!
 //! This module is the entrypoint for callers that do not know the summary schema version ahead of
 //! time. The parse functions first inspect the summary's `version` field and then dispatch to the
-//! matching versioned parser, such as [`crate::v6`].
+//! matching versioned parser, such as [`crate::v6`] or [`crate::v7`].
 //!
 //! Use [`parse`] when reading from a file path and [`parse_slice`] when the summary JSON is already
 //! available in memory.
 //!
-//! If you already know that the input is version 6, prefer the convenience parsers from the
-//! [`crate::v6`] directly.
+//! If you already know that the input is version 6 or 7, prefer the convenience parsers from the
+//! corresponding version module directly.
 //!
 //! # Examples
 //!
@@ -23,7 +23,10 @@
 //!     SummaryByVersion::V6(summary) => {
 //!         assert_eq!(summary.version, "6");
 //!     }
-//!     _ => unreachable!("no other summary versions are currently supported"),
+//!     SummaryByVersion::V7(summary) => {
+//!         assert_eq!(summary.version, "7");
+//!     }
+//!     other => eprintln!("unsupported summary: {other:?}"),
 //! }
 //! # Ok::<(), gungraun_summary::error::Error>(())
 //! ```
@@ -53,18 +56,72 @@
 //!     SummaryByVersion::V6(summary) => {
 //!         assert_eq!(summary.version, "6");
 //!     }
-//!     _ => unreachable!("no other summary versions are currently supported"),
+//!     SummaryByVersion::V7(summary) => {
+//!         assert_eq!(summary.version, "7");
+//!     }
+//!     other => eprintln!("unsupported summary: {other:?}"),
 //! }
 //! # Ok::<(), gungraun_summary::error::Error>(())
 //! ```
 
+/// To prevent serializing f64 values inf, -inf, NaN into a null value, serialize f64 as string.
+/// That way the reverse operation retains the original value.
+pub(crate) mod float_64 {
+    use std::str::FromStr;
+
+    use serde::de::Visitor;
+    use serde::{Deserializer, Serializer};
+
+    struct FieldVisitor;
+
+    impl Visitor<'_> for FieldVisitor {
+        type Value = f64;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a string with a f64 value")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            f64::from_str(v).map_err(|error| serde::de::Error::custom(error.to_string()))
+        }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_str(&v)
+        }
+    }
+
+    /// Deserializes a `String` into a `f64`.
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<f64, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(FieldVisitor)
+    }
+
+    /// Serializes `f64` into a `String`.
+    #[expect(clippy::trivially_copy_pass_by_ref)]
+    pub fn serialize<S>(input: &f64, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&input.to_string())
+    }
+}
+
 use std::fs;
 use std::path::Path;
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use crate::v6;
+use crate::{v6, v7};
 
 /// A parsed summary tagged with the schema version used to deserialize it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -72,6 +129,8 @@ use crate::v6;
 pub enum SummaryByVersion {
     /// A summary parsed according to schema version 6.
     V6(v6::BenchmarkSummary),
+    /// A summary parsed according to schema version 7.
+    V7(v7::BenchmarkSummary),
 }
 
 /// A schema version supported by this crate.
@@ -79,6 +138,8 @@ pub enum SummaryByVersion {
 pub enum Version {
     /// Schema version 6.
     V6,
+    /// Schema version 7.
+    V7,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -91,6 +152,7 @@ impl SummaryByVersion {
     pub fn version(&self) -> Version {
         match self {
             Self::V6(_) => Version::V6,
+            Self::V7(_) => Version::V7,
         }
     }
 }
@@ -100,6 +162,22 @@ impl Version {
     pub const fn as_str(&self) -> &str {
         match self {
             Self::V6 => v6::SCHEMA_VERSION,
+            Self::V7 => v7::SCHEMA_VERSION,
+        }
+    }
+}
+
+impl FromStr for Version {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "v6" => Ok(Self::V6),
+            "v7" => Ok(Self::V7),
+            _ => Err(Error::CliArgument(
+                "schema version".to_owned(),
+                format!("invalid value '{s}'"),
+            )),
         }
     }
 }
@@ -136,6 +214,7 @@ pub fn parse_slice(buffer: &[u8]) -> Result<SummaryByVersion> {
 
     match probe.version.as_str() {
         v6::SCHEMA_VERSION => v6::parse_slice(buffer).map(SummaryByVersion::V6),
+        v7::SCHEMA_VERSION => v7::parse_slice(buffer).map(SummaryByVersion::V7),
         version => Err(Error::UnsupportedVersion(version.to_owned())),
     }
 }

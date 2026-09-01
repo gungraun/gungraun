@@ -77,6 +77,10 @@ use crate::runner::tool::args::ToolArgs;
 use crate::runner::{DEFAULT_TOGGLE, cachegrind, callgrind, perf};
 use crate::summary::model::BenchmarkSummary;
 
+const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
+
+/// Default significance level used for perf regression checks when no alpha is configured.
+pub const DEFAULT_PERF_ALPHA: f64 = 0.05;
 /// Default minimum percentage of time a PMU counter must be running before the runner keeps its
 /// sampled metrics.
 ///
@@ -85,16 +89,50 @@ use crate::summary::model::BenchmarkSummary;
 /// each counter was actually active. The runner drops sampled records whose `pcnt_running` falls
 /// below this threshold.
 pub const DEFAULT_PERF_MIN_PCNT_RUNNING: f64 = 100.0;
-/// Default significance level used for perf regression checks when no alpha is configured.
-pub const DEFAULT_PERF_ALPHA: f64 = 0.05;
 /// Default patterns for perf metrics that must not be zero.
 ///
 /// Metrics matching these patterns with a zero value cause the entire measurement batch to be
 /// discarded. Patterns use `simplematch` glob syntax.
 pub const DEFAULT_PERF_NON_ZERO_METRICS: &[&str] = &["task-clock*", "cpu-clock*", "*instructions*"];
 
-const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
 const DEFAULT_TOOL_ENABLED: bool = true;
+
+/// The active tool variant and its resolved tool-specific configuration.
+///
+/// Each variant corresponds to a supported profiling tool. The runner uses this enum to determine
+/// which tool is active and to access tool-specific settings such as [`PerfConfig`] for perf or
+/// [`DhatConfig`] for DHAT. Tools without special configuration (Callgrind, Cachegrind, etc.) are
+/// represented as unit variants.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolConfigOptions {
+    /// Callgrind variant — no special runner-resolved configuration.
+    Callgrind,
+    /// Cachegrind variant — no special runner-resolved configuration.
+    Cachegrind,
+    /// [`PerfConfig`] of the resolved perf tool configuration.
+    Perf(PerfConfig),
+    /// [`DhatConfig`] of the resolved DHAT tool configuration.
+    DHAT(DhatConfig),
+    /// Memcheck variant — no special runner-resolved configuration.
+    Memcheck,
+    /// Helgrind variant — no special runner-resolved configuration.
+    Helgrind,
+    /// DRD variant — no special runner-resolved configuration.
+    DRD,
+    /// Massif variant — no special runner-resolved configuration.
+    Massif,
+    /// BBV variant — no special runner-resolved configuration.
+    BBV,
+}
+
+/// The tool specific flamegraph configuration
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolFlamegraphConfig {
+    /// The callgrind configuration
+    Callgrind(FlamegraphConfig),
+    /// If there is no configuration
+    None,
+}
 
 /// The DHAT-specific configuration stored in [`ToolConfigOptions::DHAT`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,15 +166,6 @@ pub struct PerfConfig {
     pub run_mode: PerfRunMode,
     /// Whether this perf configuration runs `perf stat` in sampled mode.
     pub use_sampling: bool,
-}
-
-/// The tool specific flamegraph configuration
-#[derive(Debug, Clone, PartialEq)]
-pub enum ToolFlamegraphConfig {
-    /// The callgrind configuration
-    Callgrind(FlamegraphConfig),
-    /// If there is no configuration
-    None,
 }
 
 /// The [`ToolConfig`] containing the basic configuration values to run the benchmark for this tool
@@ -197,34 +226,6 @@ pub struct ToolConfigBuilder {
     timeout: Option<Duration>,
     tool: Tool,
     tool_spec: Option<ToolSpec>,
-}
-
-/// The active tool variant and its resolved tool-specific configuration.
-///
-/// Each variant corresponds to a supported profiling tool. The runner uses this enum to determine
-/// which tool is active and to access tool-specific settings such as [`PerfConfig`] for perf or
-/// [`DhatConfig`] for DHAT. Tools without special configuration (Callgrind, Cachegrind, etc.) are
-/// represented as unit variants.
-#[derive(Debug, Clone, PartialEq)]
-pub enum ToolConfigOptions {
-    /// Callgrind variant — no special runner-resolved configuration.
-    Callgrind,
-    /// Cachegrind variant — no special runner-resolved configuration.
-    Cachegrind,
-    /// [`PerfConfig`] of the resolved perf tool configuration.
-    Perf(PerfConfig),
-    /// [`DhatConfig`] of the resolved DHAT tool configuration.
-    DHAT(DhatConfig),
-    /// Memcheck variant — no special runner-resolved configuration.
-    Memcheck,
-    /// Helgrind variant — no special runner-resolved configuration.
-    Helgrind,
-    /// DRD variant — no special runner-resolved configuration.
-    DRD,
-    /// Massif variant — no special runner-resolved configuration.
-    Massif,
-    /// BBV variant — no special runner-resolved configuration.
-    BBV,
 }
 
 /// A collection of [`ToolConfig`]s that owns their execution and provides shared helpers.
@@ -1140,95 +1141,6 @@ impl From<api::ToolFlamegraphConfig> for ToolFlamegraphConfig {
     }
 }
 
-/// Resolve the [`ToolConfigOptions`] and related state from an explicit [`ToolSpec`].
-///
-/// Return a tuple with `(options, record, record_args, timeout)`.
-///
-/// # Errors
-///
-/// Returns an error if any perf validation fails (invalid alpha, `min_pcnt_running`, sample
-/// duration, zero calibration duration, ...).
-fn resolve_tool_spec_options(
-    tool_spec: &ToolSpec,
-    tool: Tool,
-    perf_mode_override: Option<PerfRunMode>,
-) -> Result<(Vec<ToolConfigOptions>, bool, RawToolArgs, Option<Duration>)> {
-    let (options, record, record_args, timeout) = match &tool_spec.options {
-        api::ToolSpecOptions::Perf(perf_spec) => {
-            let alpha = resolve_perf_alpha(perf_spec.alpha).map_err(anyhow::Error::msg)?;
-            let min_pcnt_running = resolve_perf_min_pcnt_running(perf_spec.min_pcnt_running)?;
-            let non_zero_metrics =
-                resolve_perf_non_zero_metrics(perf_spec.non_zero_metrics.as_deref());
-            let run_mode = resolve_perf_run_mode(perf_spec.run_mode, perf_mode_override)?;
-
-            let options = perf_spec.events.as_ref().map_or_else(
-                || {
-                    Ok(vec![ToolConfigOptions::Perf(PerfConfig {
-                        alpha,
-                        events: DEFAULT_PERF_EVENTS.into(),
-                        non_zero_metrics: non_zero_metrics.clone(),
-                        run_mode,
-                        use_sampling: perf_spec.sample_duration.is_some(),
-                        min_pcnt_running,
-                    })])
-                },
-                |events| {
-                    events
-                        .iter()
-                        .map(|e| {
-                            if e.is_empty() {
-                                Err(anyhow!("perf: empty event set"))
-                            } else {
-                                Ok(ToolConfigOptions::Perf(PerfConfig {
-                                    alpha,
-                                    events: e.clone(),
-                                    non_zero_metrics: non_zero_metrics.clone(),
-                                    run_mode,
-                                    use_sampling: perf_spec.sample_duration.is_some(),
-                                    min_pcnt_running,
-                                }))
-                            }
-                        })
-                        .collect::<Result<Vec<ToolConfigOptions>>>()
-                },
-            )?;
-
-            (
-                options,
-                perf_spec.record.unwrap_or_default(),
-                perf_spec.record_args.clone(),
-                validate_perf_sample_duration(perf_spec.sample_duration)?,
-            )
-        }
-        api::ToolSpecOptions::Dhat(dhat_spec) => (
-            vec![ToolConfigOptions::DHAT(DhatConfig {
-                frames: dhat_spec
-                    .frames
-                    .as_ref()
-                    .map_or_else(Vec::default, Clone::clone),
-            })],
-            false,
-            RawToolArgs::default(),
-            None,
-        ),
-        api::ToolSpecOptions::None => {
-            let options = match tool {
-                Tool::Callgrind => ToolConfigOptions::Callgrind,
-                Tool::Cachegrind => ToolConfigOptions::Cachegrind,
-                Tool::Memcheck => ToolConfigOptions::Memcheck,
-                Tool::Helgrind => ToolConfigOptions::Helgrind,
-                Tool::DRD => ToolConfigOptions::DRD,
-                Tool::Massif => ToolConfigOptions::Massif,
-                Tool::BBV => ToolConfigOptions::BBV,
-                _ => unreachable!(),
-            };
-            (vec![options], false, RawToolArgs::default(), None)
-        }
-    };
-
-    Ok((options, record, record_args, timeout))
-}
-
 /// Resolve the default [`ToolConfigOptions`] and related state when no [`ToolSpec`] is provided.
 ///
 /// Return a tuple with `(options, record, record_args, timeout)`.
@@ -1359,6 +1271,95 @@ fn resolve_perf_run_mode(
     Ok(run_mode)
 }
 
+/// Resolve the [`ToolConfigOptions`] and related state from an explicit [`ToolSpec`].
+///
+/// Return a tuple with `(options, record, record_args, timeout)`.
+///
+/// # Errors
+///
+/// Returns an error if any perf validation fails (invalid alpha, `min_pcnt_running`, sample
+/// duration, zero calibration duration, ...).
+fn resolve_tool_spec_options(
+    tool_spec: &ToolSpec,
+    tool: Tool,
+    perf_mode_override: Option<PerfRunMode>,
+) -> Result<(Vec<ToolConfigOptions>, bool, RawToolArgs, Option<Duration>)> {
+    let (options, record, record_args, timeout) = match &tool_spec.options {
+        api::ToolSpecOptions::Perf(perf_spec) => {
+            let alpha = resolve_perf_alpha(perf_spec.alpha).map_err(anyhow::Error::msg)?;
+            let min_pcnt_running = resolve_perf_min_pcnt_running(perf_spec.min_pcnt_running)?;
+            let non_zero_metrics =
+                resolve_perf_non_zero_metrics(perf_spec.non_zero_metrics.as_deref());
+            let run_mode = resolve_perf_run_mode(perf_spec.run_mode, perf_mode_override)?;
+
+            let options = perf_spec.events.as_ref().map_or_else(
+                || {
+                    Ok(vec![ToolConfigOptions::Perf(PerfConfig {
+                        alpha,
+                        events: DEFAULT_PERF_EVENTS.into(),
+                        non_zero_metrics: non_zero_metrics.clone(),
+                        run_mode,
+                        use_sampling: perf_spec.sample_duration.is_some(),
+                        min_pcnt_running,
+                    })])
+                },
+                |events| {
+                    events
+                        .iter()
+                        .map(|e| {
+                            if e.is_empty() {
+                                Err(anyhow!("perf: empty event set"))
+                            } else {
+                                Ok(ToolConfigOptions::Perf(PerfConfig {
+                                    alpha,
+                                    events: e.clone(),
+                                    non_zero_metrics: non_zero_metrics.clone(),
+                                    run_mode,
+                                    use_sampling: perf_spec.sample_duration.is_some(),
+                                    min_pcnt_running,
+                                }))
+                            }
+                        })
+                        .collect::<Result<Vec<ToolConfigOptions>>>()
+                },
+            )?;
+
+            (
+                options,
+                perf_spec.record.unwrap_or_default(),
+                perf_spec.record_args.clone(),
+                validate_perf_sample_duration(perf_spec.sample_duration)?,
+            )
+        }
+        api::ToolSpecOptions::Dhat(dhat_spec) => (
+            vec![ToolConfigOptions::DHAT(DhatConfig {
+                frames: dhat_spec
+                    .frames
+                    .as_ref()
+                    .map_or_else(Vec::default, Clone::clone),
+            })],
+            false,
+            RawToolArgs::default(),
+            None,
+        ),
+        api::ToolSpecOptions::None => {
+            let options = match tool {
+                Tool::Callgrind => ToolConfigOptions::Callgrind,
+                Tool::Cachegrind => ToolConfigOptions::Cachegrind,
+                Tool::Memcheck => ToolConfigOptions::Memcheck,
+                Tool::Helgrind => ToolConfigOptions::Helgrind,
+                Tool::DRD => ToolConfigOptions::DRD,
+                Tool::Massif => ToolConfigOptions::Massif,
+                Tool::BBV => ToolConfigOptions::BBV,
+                _ => unreachable!(),
+            };
+            (vec![options], false, RawToolArgs::default(), None)
+        }
+    };
+
+    Ok((options, record, record_args, timeout))
+}
+
 /// Validate that [`crate::api::PerfSpec::sample_duration`] is nonzero
 ///
 /// # Errors
@@ -1387,6 +1388,404 @@ mod tests {
     use crate::fixtures::perf::{perf_config_f, perf_spec_f};
     use crate::fixtures::{metadata_f, tool_config_builder_f, tool_config_f, tool_spec_f};
 
+    #[test]
+    fn test_absent_cli_perf_sampling_preserves_spec_sample_duration() {
+        let spec = tool_spec_f()
+            .tool(Tool::Perf)
+            .options(ToolSpecOptions::Perf(
+                perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
+            ))
+            .fx();
+        let builder = tool_config_builder_f()
+            .tool(Tool::Perf)
+            .tool_spec(spec)
+            .fx();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs[0].timeout, Some(Duration::from_secs(5)));
+        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
+            unreachable!("expected perf config")
+        };
+        assert!(perf_config.use_sampling);
+    }
+
+    #[test]
+    fn test_build_malformed_tool_args_returns_error() {
+        let builder = tool_config_builder_f()
+            .tool(Tool::Callgrind)
+            .valgrind_args(RawToolArgs::from_iter(&["--fair-sched=invalid"]))
+            .fx();
+
+        builder.build().unwrap_err();
+    }
+
+    #[test]
+    fn test_build_multi_event_perf_order_is_stat_then_record() {
+        let builder = tool_config_builder_f()
+            .tool(Tool::Perf)
+            .tool_spec(
+                tool_spec_f()
+                    .tool(Tool::Perf)
+                    .enable(true)
+                    .options(ToolSpecOptions::Perf(
+                        perf_spec_f()
+                            .events(vec!["cycles", "instructions"])
+                            .record(true)
+                            .fx(),
+                    ))
+                    .fx(),
+            )
+            .fx();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs.len(), 4);
+
+        assert!(matches!(configs[0].options, ToolConfigOptions::Perf(_)));
+        assert!(!configs[0].is_perf_record());
+        assert_eq!(configs[0].part, Some(1));
+        assert!(configs[0].is_default);
+        assert!(configs[0].has_analyzer);
+
+        assert!(configs[1].is_perf_record());
+        assert_eq!(configs[1].part, Some(1));
+        assert!(!configs[1].is_default);
+        assert!(!configs[1].has_analyzer);
+
+        assert!(matches!(configs[2].options, ToolConfigOptions::Perf(_)));
+        assert!(!configs[2].is_perf_record());
+        assert_eq!(configs[2].part, Some(2));
+        assert!(!configs[2].is_default);
+        assert!(!configs[2].has_analyzer);
+
+        assert!(configs[3].is_perf_record());
+        assert_eq!(configs[3].part, Some(2));
+        assert!(!configs[3].is_default);
+        assert!(!configs[3].has_analyzer);
+    }
+
+    #[test]
+    fn test_build_non_perf_tool_has_no_record() {
+        let builder = tool_config_builder_f().tool(Tool::Callgrind).fx();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs.len(), 1);
+        assert!(!configs[0].is_perf_record());
+    }
+
+    #[test]
+    fn test_build_record_args_parses_empty_args() {
+        let args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
+        assert!(matches!(args, ToolArgs::Perf(_)));
+        assert!(args.is_perf_record());
+    }
+
+    #[test]
+    #[expect(clippy::float_cmp)]
+    fn test_build_record_config_changes_only_perf_run_mode_and_sampling() {
+        let base = tool_config_f()
+            .tool(Tool::Perf)
+            .entry_point(EntryPoint::Default)
+            .sanitize_output(SanitizeOutput::No)
+            .options(ToolConfigOptions::Perf(
+                perf_config_f()
+                    .alpha(0.5)
+                    .events("cycles,instructions")
+                    .min_pcnt_running(50.0)
+                    .non_zero_metrics(vec!["metric1"])
+                    .run_mode(PerfRunMode::DynamicBatch)
+                    .use_sampling(false)
+                    .fx(),
+            ))
+            .timeout(Duration::from_secs(30))
+            .fx();
+
+        let record_args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
+        let record_config =
+            ToolConfigBuilder::build_record_config(&base, record_args, base.options.clone());
+
+        if let ToolConfigOptions::Perf(perf) = &record_config.options {
+            assert_eq!(perf.run_mode, PerfRunMode::Direct);
+            assert!(!perf.use_sampling);
+            assert_eq!(perf.alpha, 0.5);
+            assert_eq!(perf.events, "cycles,instructions");
+            assert_eq!(perf.min_pcnt_running, 50.0);
+            assert_eq!(perf.non_zero_metrics, vec!["metric1".to_owned()]);
+        } else {
+            panic!("Expected Perf options");
+        }
+        assert_eq!(record_config.timeout, Some(Duration::from_secs(30)));
+    }
+
+    #[test]
+    fn test_build_record_config_clears_timeout_when_sampling() {
+        let base = tool_config_f()
+            .tool(Tool::Perf)
+            .entry_point(EntryPoint::Default)
+            .sanitize_output(SanitizeOutput::No)
+            .options(ToolConfigOptions::Perf(
+                perf_config_f()
+                    .alpha(DEFAULT_PERF_ALPHA)
+                    .events(DEFAULT_PERF_EVENTS)
+                    .min_pcnt_running(DEFAULT_PERF_MIN_PCNT_RUNNING)
+                    .non_zero_metrics(DEFAULT_PERF_NON_ZERO_METRICS.to_vec())
+                    .run_mode(PerfRunMode::DynamicBatch)
+                    .use_sampling(true)
+                    .fx(),
+            ))
+            .timeout(Duration::from_secs(30))
+            .fx();
+
+        let record_args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
+        let record_config =
+            ToolConfigBuilder::build_record_config(&base, record_args, base.options.clone());
+
+        assert_eq!(record_config.timeout, None);
+    }
+
+    #[test]
+    fn test_build_record_config_inherits_all_top_level_fields() {
+        let base = tool_config_f()
+            .tool(Tool::Perf)
+            .entry_point(EntryPoint::Default)
+            .sanitize_output(SanitizeOutput::Yes)
+            .part(1)
+            .options(ToolConfigOptions::Perf(
+                perf_config_f()
+                    .alpha(0.5)
+                    .events("cycles,instructions")
+                    .min_pcnt_running(50.0)
+                    .non_zero_metrics(vec!["metric1"])
+                    .run_mode(PerfRunMode::DynamicBatch)
+                    .use_sampling(true)
+                    .fx(),
+            ))
+            .timeout(Duration::from_secs(30))
+            .fx();
+
+        let record_args = ToolConfigBuilder::build_record_args(
+            Tool::Perf,
+            &RawToolArgs::default(),
+            &RawToolArgs::default(),
+        )
+        .unwrap();
+        let record_config = ToolConfigBuilder::build_record_config(
+            &base,
+            record_args.clone(),
+            base.options.clone(),
+        );
+
+        assert_eq!(record_config.entry_point, base.entry_point);
+        assert_eq!(record_config.regression_config, base.regression_config);
+        assert_eq!(record_config.flamegraph_config, base.flamegraph_config);
+        assert_eq!(record_config.sanitize_output, base.sanitize_output);
+        assert_eq!(record_config.part, base.part);
+        assert_eq!(record_config.args, record_args);
+        assert!(!record_config.is_default);
+        assert!(!record_config.has_analyzer);
+    }
+
+    #[rstest]
+    #[case::callgrind(Tool::Callgrind)]
+    #[case::cachegrind(Tool::Cachegrind)]
+    #[case::perf(Tool::Perf)]
+    #[case::memcheck(Tool::Memcheck)]
+    fn test_build_tool_args_parses_empty_args_for_tool(#[case] tool: Tool) {
+        let args = ToolConfigBuilder::build_tool_args(tool, &RawToolArgs::default()).unwrap();
+        match tool {
+            Tool::Perf => assert!(matches!(args, ToolArgs::Perf(_))),
+            _ => assert!(matches!(args, ToolArgs::Valgrind(_))),
+        }
+    }
+
+    #[rstest]
+    #[case::no_part(None)]
+    #[case::part_one(Some(1))]
+    #[case::part_two(Some(2))]
+    fn test_build_tool_configs(#[case] part: Option<usize>) {
+        let builder = tool_config_builder_f().tool(Tool::Perf).fx();
+
+        let args = ToolConfigBuilder::build_tool_args(Tool::Perf, &RawToolArgs::default()).unwrap();
+        let options = ToolConfigOptions::Perf(PerfConfig::default());
+        let config = builder
+            .build_tool_configs(args, part, false, false, &options)
+            .unwrap();
+
+        assert_eq!(config.len(), 1);
+
+        let first = config.first().unwrap();
+
+        assert_eq!(first.part, part);
+        assert!(!first.is_default);
+        assert!(!first.has_analyzer);
+    }
+
+    #[test]
+    fn test_cli_perf_sampling_enables_default_duration() {
+        let builder = tool_config_builder_f()
+            .tool(Tool::Perf)
+            .raw_command_line_args(["--perf-sampling=yes"])
+            .fx();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs.len(), 1);
+        assert_eq!(configs[0].timeout, Some(Duration::from_secs(2)));
+        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
+            unreachable!("expected perf config")
+        };
+        assert!(perf_config.use_sampling);
+    }
+
+    #[test]
+    fn test_cli_perf_sampling_no_overrides_spec_sample_duration() {
+        let spec = tool_spec_f()
+            .tool(Tool::Perf)
+            .options(ToolSpecOptions::Perf(
+                perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
+            ))
+            .fx();
+        let builder = tool_config_builder_f()
+            .tool(Tool::Perf)
+            .tool_spec(spec)
+            .raw_command_line_args(["--perf-sampling=no"])
+            .fx();
+
+        let configs = builder.build().unwrap();
+        assert_eq!(configs[0].timeout, None);
+        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
+            unreachable!("expected perf config")
+        };
+        assert!(!perf_config.use_sampling);
+    }
+
+    #[test]
+    fn test_cli_perf_sampling_zero_duration_returns_error() {
+        let result = ToolConfigBuilder::new(
+            Tool::Perf,
+            None,
+            true,
+            &HashMap::default(),
+            &ModulePath::new("foo::bar"),
+            None,
+            &metadata_f()
+                .raw_command_line_args(["--perf-sampling=0"])
+                .fx(),
+            &RawToolArgs::default(),
+            &EntryPoint::Default,
+            None,
+        );
+
+        let error = result.expect_err("zero sampling duration must be rejected");
+        assert!(error.to_string().contains("perf sample duration was zero"));
+    }
+
+    #[test]
+    fn test_resolve_default_options_callgrind_returns_expected_defaults() {
+        let (options, record, record_args, timeout) =
+            resolve_default_options(Tool::Callgrind, None).unwrap();
+
+        assert!(!record);
+        assert_eq!(record_args, RawToolArgs::default());
+        assert_eq!(timeout, None);
+        assert_eq!(options, vec![ToolConfigOptions::Callgrind]);
+    }
+
+    #[test]
+    fn test_resolve_default_options_dhat_returns_empty_frames() {
+        let (options, record, record_args, timeout) =
+            resolve_default_options(Tool::DHAT, None).unwrap();
+
+        assert!(!record);
+        assert_eq!(record_args, RawToolArgs::default());
+        assert_eq!(timeout, None);
+        assert_eq!(
+            options,
+            vec![ToolConfigOptions::DHAT(DhatConfig { frames: Vec::new() })]
+        );
+    }
+
+    #[test]
+    fn test_resolve_default_options_non_perf_ignores_perf_override() {
+        let base = resolve_default_options(Tool::Callgrind, None).unwrap();
+        let overridden = resolve_default_options(
+            Tool::Callgrind,
+            Some(PerfRunMode::Calibrate(Duration::from_secs(1))),
+        )
+        .unwrap();
+
+        assert_eq!(base, overridden);
+    }
+
+    #[test]
+    fn test_resolve_default_options_perf_calibrate_zero_duration_returns_error() {
+        resolve_default_options(Tool::Perf, Some(PerfRunMode::Calibrate(Duration::ZERO)))
+            .unwrap_err();
+    }
+
+    #[test]
+    #[expect(clippy::float_cmp)]
+    fn test_resolve_default_options_perf_override_changes_only_run_mode() {
+        let base = resolve_default_options(Tool::Perf, None).unwrap();
+        let overridden =
+            resolve_default_options(Tool::Perf, Some(PerfRunMode::DynamicBatch)).unwrap();
+
+        assert_eq!(base.1, overridden.1);
+        assert_eq!(base.2, overridden.2);
+        assert_eq!(base.3, overridden.3);
+
+        let [ToolConfigOptions::Perf(base_perf)] = &base.0[..] else {
+            unreachable!("expected one perf option")
+        };
+        let [ToolConfigOptions::Perf(overridden_perf)] = &overridden.0[..] else {
+            unreachable!("expected one perf option")
+        };
+
+        assert_eq!(base_perf.alpha, overridden_perf.alpha);
+        assert_eq!(base_perf.events, overridden_perf.events);
+        assert_eq!(base_perf.min_pcnt_running, overridden_perf.min_pcnt_running);
+        assert_eq!(base_perf.non_zero_metrics, overridden_perf.non_zero_metrics);
+        assert_eq!(base_perf.use_sampling, overridden_perf.use_sampling);
+        assert_eq!(overridden_perf.run_mode, PerfRunMode::DynamicBatch);
+        assert_eq!(base_perf.run_mode, PerfRunMode::Direct);
+    }
+
+    #[test]
+    fn test_resolve_default_options_perf_returns_expected_defaults() {
+        let (options, record, record_args, timeout) =
+            resolve_default_options(Tool::Perf, None).unwrap();
+
+        assert!(!record);
+        assert_eq!(record_args, RawToolArgs::default());
+        assert_eq!(timeout, None);
+        assert_eq!(
+            options,
+            vec![ToolConfigOptions::Perf(
+                perf_config_f()
+                    .alpha(DEFAULT_PERF_ALPHA)
+                    .events(DEFAULT_PERF_EVENTS)
+                    .min_pcnt_running(DEFAULT_PERF_MIN_PCNT_RUNNING)
+                    .non_zero_metrics(DEFAULT_PERF_NON_ZERO_METRICS.to_vec())
+                    .run_mode(PerfRunMode::Direct)
+                    .use_sampling(false)
+                    .fx(),
+            )]
+        );
+    }
+
     #[rstest]
     #[case::default(None, DEFAULT_PERF_MIN_PCNT_RUNNING)]
     #[case::zero(Some(0.0), 0.0)]
@@ -1398,6 +1797,102 @@ mod tests {
         {
             assert_eq!(actual, expected);
         }
+    }
+
+    #[rstest]
+    #[case::negative(
+        Some(-0.1), "Invalid min_pcnt_running value '-0.1'".to_owned()
+    )]
+    #[case::barely_above_range(
+        Some(100.000_000_1), "Invalid min_pcnt_running value '100.0000001'".to_owned()
+    )]
+    #[case::nan(Some(f64::NAN), "Invalid min_pcnt_running value 'NaN'".to_owned())]
+    #[case::positive_infinity(
+        Some(f64::INFINITY), "Invalid min_pcnt_running value 'inf'".to_owned()
+    )]
+    #[case::negative_infinity(
+        Some(f64::NEG_INFINITY), "Invalid min_pcnt_running value '-inf'".to_owned()
+    )]
+    fn test_resolve_perf_min_pcnt_running_when_invalid_then_error(
+        #[case] input: Option<f64>,
+        #[case] expected: String,
+    ) {
+        let actual = resolve_perf_min_pcnt_running(input).unwrap_err();
+        assert!(actual.to_string().contains(&expected));
+    }
+
+    #[test]
+    fn test_resolve_tool_spec_options_dhat_preserves_frames() {
+        let spec = tool_spec_f()
+            .tool(Tool::DHAT)
+            .options(ToolSpecOptions::Dhat(
+                dhat_spec_f().frames(vec!["a", "b"]).fx(),
+            ))
+            .fx();
+
+        let (options, record, record_args, timeout) =
+            resolve_tool_spec_options(&spec, Tool::DHAT, None).unwrap();
+
+        assert!(!record);
+        assert_eq!(record_args, RawToolArgs::default());
+        assert_eq!(timeout, None);
+        assert_eq!(
+            options,
+            vec![ToolConfigOptions::DHAT(DhatConfig {
+                frames: vec!["a".into(), "b".into()],
+            })]
+        );
+    }
+
+    #[test]
+    fn test_resolve_tool_spec_options_invalid_alpha_returns_error() {
+        let spec = tool_spec_f()
+            .tool(Tool::Perf)
+            .options(ToolSpecOptions::Perf(perf_spec_f().alpha(0.0).fx()))
+            .fx();
+
+        resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
+    }
+
+    #[test]
+    fn test_resolve_tool_spec_options_invalid_min_pcnt_running_returns_error() {
+        let spec = tool_spec_f()
+            .tool(Tool::Perf)
+            .options(ToolSpecOptions::Perf(
+                perf_spec_f().alpha(0.2).min_pcnt_running(-1.0).fx(),
+            ))
+            .fx();
+
+        resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
+    }
+
+    #[test]
+    fn test_resolve_tool_spec_options_none_for_callgrind_returns_callgrind() {
+        let spec = tool_spec_f().tool(Tool::Callgrind).fx();
+
+        let (options, record, record_args, timeout) =
+            resolve_tool_spec_options(&spec, Tool::Callgrind, None).unwrap();
+
+        assert!(!record);
+        assert_eq!(record_args, RawToolArgs::default());
+        assert_eq!(timeout, None);
+        assert_eq!(options, vec![ToolConfigOptions::Callgrind]);
+    }
+
+    #[test]
+    fn test_resolve_tool_spec_options_perf_enable_false_disables_tool() {
+        let spec = tool_spec_f()
+            .tool(Tool::Perf)
+            .enable(false)
+            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
+            .fx();
+
+        let (_, record, record_args, timeout) =
+            resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
+
+        assert!(!record);
+        assert_eq!(record_args, RawToolArgs::default());
+        assert_eq!(timeout, None);
     }
 
     #[test]
@@ -1480,77 +1975,18 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_tool_spec_options_perf_enable_false_disables_tool() {
+    fn test_resolve_tool_spec_options_zero_calibration_duration_via_override_returns_error() {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
-            .enable(false)
             .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
             .fx();
 
-        let (_, record, record_args, timeout) =
-            resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap();
-
-        assert!(!record);
-        assert_eq!(record_args, RawToolArgs::default());
-        assert_eq!(timeout, None);
-    }
-
-    #[test]
-    fn test_resolve_tool_spec_options_dhat_preserves_frames() {
-        let spec = tool_spec_f()
-            .tool(Tool::DHAT)
-            .options(ToolSpecOptions::Dhat(
-                dhat_spec_f().frames(vec!["a", "b"]).fx(),
-            ))
-            .fx();
-
-        let (options, record, record_args, timeout) =
-            resolve_tool_spec_options(&spec, Tool::DHAT, None).unwrap();
-
-        assert!(!record);
-        assert_eq!(record_args, RawToolArgs::default());
-        assert_eq!(timeout, None);
-        assert_eq!(
-            options,
-            vec![ToolConfigOptions::DHAT(DhatConfig {
-                frames: vec!["a".into(), "b".into()],
-            })]
-        );
-    }
-
-    #[test]
-    fn test_resolve_tool_spec_options_none_for_callgrind_returns_callgrind() {
-        let spec = tool_spec_f().tool(Tool::Callgrind).fx();
-
-        let (options, record, record_args, timeout) =
-            resolve_tool_spec_options(&spec, Tool::Callgrind, None).unwrap();
-
-        assert!(!record);
-        assert_eq!(record_args, RawToolArgs::default());
-        assert_eq!(timeout, None);
-        assert_eq!(options, vec![ToolConfigOptions::Callgrind]);
-    }
-
-    #[test]
-    fn test_resolve_tool_spec_options_invalid_alpha_returns_error() {
-        let spec = tool_spec_f()
-            .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(perf_spec_f().alpha(0.0).fx()))
-            .fx();
-
-        resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
-    }
-
-    #[test]
-    fn test_resolve_tool_spec_options_invalid_min_pcnt_running_returns_error() {
-        let spec = tool_spec_f()
-            .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(
-                perf_spec_f().alpha(0.2).min_pcnt_running(-1.0).fx(),
-            ))
-            .fx();
-
-        resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
+        resolve_tool_spec_options(
+            &spec,
+            Tool::Perf,
+            Some(PerfRunMode::Calibrate(Duration::ZERO)),
+        )
+        .unwrap_err();
     }
 
     #[test]
@@ -1567,440 +2003,5 @@ mod tests {
             .fx();
 
         resolve_tool_spec_options(&spec, Tool::Perf, None).unwrap_err();
-    }
-
-    #[test]
-    fn test_cli_perf_sampling_enables_default_duration() {
-        let builder = tool_config_builder_f()
-            .tool(Tool::Perf)
-            .raw_command_line_args(["--perf-sampling=yes"])
-            .fx();
-
-        let configs = builder.build().unwrap();
-        assert_eq!(configs.len(), 1);
-        assert_eq!(configs[0].timeout, Some(Duration::from_secs(2)));
-        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
-            unreachable!("expected perf config")
-        };
-        assert!(perf_config.use_sampling);
-    }
-
-    #[test]
-    fn test_cli_perf_sampling_no_overrides_spec_sample_duration() {
-        let spec = tool_spec_f()
-            .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(
-                perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
-            ))
-            .fx();
-        let builder = tool_config_builder_f()
-            .tool(Tool::Perf)
-            .tool_spec(spec)
-            .raw_command_line_args(["--perf-sampling=no"])
-            .fx();
-
-        let configs = builder.build().unwrap();
-        assert_eq!(configs[0].timeout, None);
-        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
-            unreachable!("expected perf config")
-        };
-        assert!(!perf_config.use_sampling);
-    }
-
-    #[test]
-    fn test_absent_cli_perf_sampling_preserves_spec_sample_duration() {
-        let spec = tool_spec_f()
-            .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(
-                perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
-            ))
-            .fx();
-        let builder = tool_config_builder_f()
-            .tool(Tool::Perf)
-            .tool_spec(spec)
-            .fx();
-
-        let configs = builder.build().unwrap();
-        assert_eq!(configs[0].timeout, Some(Duration::from_secs(5)));
-        let ToolConfigOptions::Perf(perf_config) = &configs[0].options else {
-            unreachable!("expected perf config")
-        };
-        assert!(perf_config.use_sampling);
-    }
-
-    #[test]
-    fn test_cli_perf_sampling_zero_duration_returns_error() {
-        let result = ToolConfigBuilder::new(
-            Tool::Perf,
-            None,
-            true,
-            &HashMap::default(),
-            &ModulePath::new("foo::bar"),
-            None,
-            &metadata_f()
-                .raw_command_line_args(["--perf-sampling=0"])
-                .fx(),
-            &RawToolArgs::default(),
-            &EntryPoint::Default,
-            None,
-        );
-
-        let error = result.expect_err("zero sampling duration must be rejected");
-        assert!(error.to_string().contains("perf sample duration was zero"));
-    }
-
-    #[test]
-    fn test_resolve_tool_spec_options_zero_calibration_duration_via_override_returns_error() {
-        let spec = tool_spec_f()
-            .tool(Tool::Perf)
-            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
-            .fx();
-
-        resolve_tool_spec_options(
-            &spec,
-            Tool::Perf,
-            Some(PerfRunMode::Calibrate(Duration::ZERO)),
-        )
-        .unwrap_err();
-    }
-
-    #[test]
-    fn test_resolve_default_options_perf_returns_expected_defaults() {
-        let (options, record, record_args, timeout) =
-            resolve_default_options(Tool::Perf, None).unwrap();
-
-        assert!(!record);
-        assert_eq!(record_args, RawToolArgs::default());
-        assert_eq!(timeout, None);
-        assert_eq!(
-            options,
-            vec![ToolConfigOptions::Perf(
-                perf_config_f()
-                    .alpha(DEFAULT_PERF_ALPHA)
-                    .events(DEFAULT_PERF_EVENTS)
-                    .min_pcnt_running(DEFAULT_PERF_MIN_PCNT_RUNNING)
-                    .non_zero_metrics(DEFAULT_PERF_NON_ZERO_METRICS.to_vec())
-                    .run_mode(PerfRunMode::Direct)
-                    .use_sampling(false)
-                    .fx(),
-            )]
-        );
-    }
-
-    #[test]
-    fn test_resolve_default_options_callgrind_returns_expected_defaults() {
-        let (options, record, record_args, timeout) =
-            resolve_default_options(Tool::Callgrind, None).unwrap();
-
-        assert!(!record);
-        assert_eq!(record_args, RawToolArgs::default());
-        assert_eq!(timeout, None);
-        assert_eq!(options, vec![ToolConfigOptions::Callgrind]);
-    }
-
-    #[test]
-    fn test_resolve_default_options_dhat_returns_empty_frames() {
-        let (options, record, record_args, timeout) =
-            resolve_default_options(Tool::DHAT, None).unwrap();
-
-        assert!(!record);
-        assert_eq!(record_args, RawToolArgs::default());
-        assert_eq!(timeout, None);
-        assert_eq!(
-            options,
-            vec![ToolConfigOptions::DHAT(DhatConfig { frames: Vec::new() })]
-        );
-    }
-
-    #[test]
-    #[expect(clippy::float_cmp)]
-    fn test_resolve_default_options_perf_override_changes_only_run_mode() {
-        let base = resolve_default_options(Tool::Perf, None).unwrap();
-        let overridden =
-            resolve_default_options(Tool::Perf, Some(PerfRunMode::DynamicBatch)).unwrap();
-
-        assert_eq!(base.1, overridden.1);
-        assert_eq!(base.2, overridden.2);
-        assert_eq!(base.3, overridden.3);
-
-        let [ToolConfigOptions::Perf(base_perf)] = &base.0[..] else {
-            unreachable!("expected one perf option")
-        };
-        let [ToolConfigOptions::Perf(overridden_perf)] = &overridden.0[..] else {
-            unreachable!("expected one perf option")
-        };
-
-        assert_eq!(base_perf.alpha, overridden_perf.alpha);
-        assert_eq!(base_perf.events, overridden_perf.events);
-        assert_eq!(base_perf.min_pcnt_running, overridden_perf.min_pcnt_running);
-        assert_eq!(base_perf.non_zero_metrics, overridden_perf.non_zero_metrics);
-        assert_eq!(base_perf.use_sampling, overridden_perf.use_sampling);
-        assert_eq!(overridden_perf.run_mode, PerfRunMode::DynamicBatch);
-        assert_eq!(base_perf.run_mode, PerfRunMode::Direct);
-    }
-
-    #[test]
-    fn test_resolve_default_options_non_perf_ignores_perf_override() {
-        let base = resolve_default_options(Tool::Callgrind, None).unwrap();
-        let overridden = resolve_default_options(
-            Tool::Callgrind,
-            Some(PerfRunMode::Calibrate(Duration::from_secs(1))),
-        )
-        .unwrap();
-
-        assert_eq!(base, overridden);
-    }
-
-    #[test]
-    fn test_resolve_default_options_perf_calibrate_zero_duration_returns_error() {
-        resolve_default_options(Tool::Perf, Some(PerfRunMode::Calibrate(Duration::ZERO)))
-            .unwrap_err();
-    }
-
-    #[rstest]
-    #[case::negative(
-        Some(-0.1), "Invalid min_pcnt_running value '-0.1'".to_owned()
-    )]
-    #[case::barely_above_range(
-        Some(100.000_000_1), "Invalid min_pcnt_running value '100.0000001'".to_owned()
-    )]
-    #[case::nan(Some(f64::NAN), "Invalid min_pcnt_running value 'NaN'".to_owned())]
-    #[case::positive_infinity(
-        Some(f64::INFINITY), "Invalid min_pcnt_running value 'inf'".to_owned()
-    )]
-    #[case::negative_infinity(
-        Some(f64::NEG_INFINITY), "Invalid min_pcnt_running value '-inf'".to_owned()
-    )]
-    fn test_resolve_perf_min_pcnt_running_when_invalid_then_error(
-        #[case] input: Option<f64>,
-        #[case] expected: String,
-    ) {
-        let actual = resolve_perf_min_pcnt_running(input).unwrap_err();
-        assert!(actual.to_string().contains(&expected));
-    }
-
-    #[rstest]
-    #[case::callgrind(Tool::Callgrind)]
-    #[case::cachegrind(Tool::Cachegrind)]
-    #[case::perf(Tool::Perf)]
-    #[case::memcheck(Tool::Memcheck)]
-    fn test_build_tool_args_parses_empty_args_for_tool(#[case] tool: Tool) {
-        let args = ToolConfigBuilder::build_tool_args(tool, &RawToolArgs::default()).unwrap();
-        match tool {
-            Tool::Perf => assert!(matches!(args, ToolArgs::Perf(_))),
-            _ => assert!(matches!(args, ToolArgs::Valgrind(_))),
-        }
-    }
-
-    #[test]
-    fn test_build_record_args_parses_empty_args() {
-        let args = ToolConfigBuilder::build_record_args(
-            Tool::Perf,
-            &RawToolArgs::default(),
-            &RawToolArgs::default(),
-        )
-        .unwrap();
-        assert!(matches!(args, ToolArgs::Perf(_)));
-        assert!(args.is_perf_record());
-    }
-
-    #[rstest]
-    #[case::no_part(None)]
-    #[case::part_one(Some(1))]
-    #[case::part_two(Some(2))]
-    fn test_build_tool_configs(#[case] part: Option<usize>) {
-        let builder = tool_config_builder_f().tool(Tool::Perf).fx();
-
-        let args = ToolConfigBuilder::build_tool_args(Tool::Perf, &RawToolArgs::default()).unwrap();
-        let options = ToolConfigOptions::Perf(PerfConfig::default());
-        let config = builder
-            .build_tool_configs(args, part, false, false, &options)
-            .unwrap();
-
-        assert_eq!(config.len(), 1);
-
-        let first = config.first().unwrap();
-
-        assert_eq!(first.part, part);
-        assert!(!first.is_default);
-        assert!(!first.has_analyzer);
-    }
-
-    #[test]
-    fn test_build_record_config_inherits_all_top_level_fields() {
-        let base = tool_config_f()
-            .tool(Tool::Perf)
-            .entry_point(EntryPoint::Default)
-            .sanitize_output(SanitizeOutput::Yes)
-            .part(1)
-            .options(ToolConfigOptions::Perf(
-                perf_config_f()
-                    .alpha(0.5)
-                    .events("cycles,instructions")
-                    .min_pcnt_running(50.0)
-                    .non_zero_metrics(vec!["metric1"])
-                    .run_mode(PerfRunMode::DynamicBatch)
-                    .use_sampling(true)
-                    .fx(),
-            ))
-            .timeout(Duration::from_secs(30))
-            .fx();
-
-        let record_args = ToolConfigBuilder::build_record_args(
-            Tool::Perf,
-            &RawToolArgs::default(),
-            &RawToolArgs::default(),
-        )
-        .unwrap();
-        let record_config = ToolConfigBuilder::build_record_config(
-            &base,
-            record_args.clone(),
-            base.options.clone(),
-        );
-
-        assert_eq!(record_config.entry_point, base.entry_point);
-        assert_eq!(record_config.regression_config, base.regression_config);
-        assert_eq!(record_config.flamegraph_config, base.flamegraph_config);
-        assert_eq!(record_config.sanitize_output, base.sanitize_output);
-        assert_eq!(record_config.part, base.part);
-        assert_eq!(record_config.args, record_args);
-        assert!(!record_config.is_default);
-        assert!(!record_config.has_analyzer);
-    }
-
-    #[test]
-    #[expect(clippy::float_cmp)]
-    fn test_build_record_config_changes_only_perf_run_mode_and_sampling() {
-        let base = tool_config_f()
-            .tool(Tool::Perf)
-            .entry_point(EntryPoint::Default)
-            .sanitize_output(SanitizeOutput::No)
-            .options(ToolConfigOptions::Perf(
-                perf_config_f()
-                    .alpha(0.5)
-                    .events("cycles,instructions")
-                    .min_pcnt_running(50.0)
-                    .non_zero_metrics(vec!["metric1"])
-                    .run_mode(PerfRunMode::DynamicBatch)
-                    .use_sampling(false)
-                    .fx(),
-            ))
-            .timeout(Duration::from_secs(30))
-            .fx();
-
-        let record_args = ToolConfigBuilder::build_record_args(
-            Tool::Perf,
-            &RawToolArgs::default(),
-            &RawToolArgs::default(),
-        )
-        .unwrap();
-        let record_config =
-            ToolConfigBuilder::build_record_config(&base, record_args, base.options.clone());
-
-        if let ToolConfigOptions::Perf(perf) = &record_config.options {
-            assert_eq!(perf.run_mode, PerfRunMode::Direct);
-            assert!(!perf.use_sampling);
-            assert_eq!(perf.alpha, 0.5);
-            assert_eq!(perf.events, "cycles,instructions");
-            assert_eq!(perf.min_pcnt_running, 50.0);
-            assert_eq!(perf.non_zero_metrics, vec!["metric1".to_owned()]);
-        } else {
-            panic!("Expected Perf options");
-        }
-        assert_eq!(record_config.timeout, Some(Duration::from_secs(30)));
-    }
-
-    #[test]
-    fn build_record_config_clears_timeout_when_sampling() {
-        let base = tool_config_f()
-            .tool(Tool::Perf)
-            .entry_point(EntryPoint::Default)
-            .sanitize_output(SanitizeOutput::No)
-            .options(ToolConfigOptions::Perf(
-                perf_config_f()
-                    .alpha(DEFAULT_PERF_ALPHA)
-                    .events(DEFAULT_PERF_EVENTS)
-                    .min_pcnt_running(DEFAULT_PERF_MIN_PCNT_RUNNING)
-                    .non_zero_metrics(DEFAULT_PERF_NON_ZERO_METRICS.to_vec())
-                    .run_mode(PerfRunMode::DynamicBatch)
-                    .use_sampling(true)
-                    .fx(),
-            ))
-            .timeout(Duration::from_secs(30))
-            .fx();
-
-        let record_args = ToolConfigBuilder::build_record_args(
-            Tool::Perf,
-            &RawToolArgs::default(),
-            &RawToolArgs::default(),
-        )
-        .unwrap();
-        let record_config =
-            ToolConfigBuilder::build_record_config(&base, record_args, base.options.clone());
-
-        assert_eq!(record_config.timeout, None);
-    }
-
-    #[test]
-    fn test_build_multi_event_perf_order_is_stat_then_record() {
-        let builder = tool_config_builder_f()
-            .tool(Tool::Perf)
-            .tool_spec(
-                tool_spec_f()
-                    .tool(Tool::Perf)
-                    .enable(true)
-                    .options(ToolSpecOptions::Perf(
-                        perf_spec_f()
-                            .events(vec!["cycles", "instructions"])
-                            .record(true)
-                            .fx(),
-                    ))
-                    .fx(),
-            )
-            .fx();
-
-        let configs = builder.build().unwrap();
-        assert_eq!(configs.len(), 4);
-
-        assert!(matches!(configs[0].options, ToolConfigOptions::Perf(_)));
-        assert!(!configs[0].is_perf_record());
-        assert_eq!(configs[0].part, Some(1));
-        assert!(configs[0].is_default);
-        assert!(configs[0].has_analyzer);
-
-        assert!(configs[1].is_perf_record());
-        assert_eq!(configs[1].part, Some(1));
-        assert!(!configs[1].is_default);
-        assert!(!configs[1].has_analyzer);
-
-        assert!(matches!(configs[2].options, ToolConfigOptions::Perf(_)));
-        assert!(!configs[2].is_perf_record());
-        assert_eq!(configs[2].part, Some(2));
-        assert!(!configs[2].is_default);
-        assert!(!configs[2].has_analyzer);
-
-        assert!(configs[3].is_perf_record());
-        assert_eq!(configs[3].part, Some(2));
-        assert!(!configs[3].is_default);
-        assert!(!configs[3].has_analyzer);
-    }
-
-    #[test]
-    fn test_build_non_perf_tool_has_no_record() {
-        let builder = tool_config_builder_f().tool(Tool::Callgrind).fx();
-
-        let configs = builder.build().unwrap();
-        assert_eq!(configs.len(), 1);
-        assert!(!configs[0].is_perf_record());
-    }
-
-    #[test]
-    fn test_build_malformed_tool_args_returns_error() {
-        let builder = tool_config_builder_f()
-            .tool(Tool::Callgrind)
-            .valgrind_args(RawToolArgs::from_iter(&["--fair-sched=invalid"]))
-            .fx();
-
-        builder.build().unwrap_err();
     }
 }

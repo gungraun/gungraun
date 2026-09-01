@@ -3,21 +3,17 @@
 //! This module implements the internal behavior used to build, aggregate, compare, print, and save
 //! benchmark summaries.
 
-use std::fmt::Display;
-use std::fs::File;
 use std::io::stdout;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::PathBuf;
 
 use anyhow::{Context, Result, anyhow};
 use either_or_both::EitherOrBoth;
-use glob::glob;
 use itertools::Itertools;
 use serde_json::Value;
 
 use crate::api::{ErrorMetric, EventKind, Tool};
 use crate::error::Error;
-use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
+use crate::metrics::model::{Metric, MetricKind, Metrics, MetricsSummary};
 use crate::runner::args::NoCapture;
 use crate::runner::common::{
     Baselines, CapturedOutput, Config, ModulePath, PerfOutputConfig, PostProcessingConfig,
@@ -29,38 +25,17 @@ use crate::runner::format::{
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
 use crate::summary::model::{
-    BaselineName, BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData,
-    ProfileInfo, ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, SummaryFormat, SummaryOutput,
-    ToolMetricSummary, ToolMetrics, ToolRegression,
+    BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData, ProfileInfo,
+    ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricSummary, ToolMetrics,
+    ToolRegression,
 };
-use crate::util::{factor_diff, make_absolute, percentage_diff};
-
-impl Display for BaselineName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl FromStr for BaselineName {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for char in s.chars() {
-            if !(char.is_ascii_alphanumeric() || char == '_') {
-                return Err(format!(
-                    "A baseline name can only consist of ascii characters which are alphanumeric \
-                     or '_' but found: '{char}'"
-                ));
-            }
-        }
-        Ok(Self(s.to_owned()))
-    }
-}
+use crate::summary::output::{SummaryFormat, SummaryOutput};
+use crate::util::{factor_diff, make_absolute, make_relative, percentage_diff};
 
 impl BenchmarkSummary {
     /// Creates a new `BenchmarkSummary`.
     ///
-    /// Relative paths are made absolute with the `project_root` as base directory.
+    /// Paths below `project_root` are made relative, while paths outside it remain absolute.
     pub fn new(
         kind: BenchmarkKind,
         project_root: PathBuf,
@@ -69,24 +44,32 @@ impl BenchmarkSummary {
         benchmark_exe: PathBuf,
         module_path: &ModulePath,
         function_name: &str,
+        group: &str,
         id: Option<String>,
         details: Option<String>,
-        output: Option<SummaryOutput>,
+        output_dir: PathBuf,
         baselines: Baselines,
     ) -> Self {
         Self {
             version: SCHEMA_VERSION.to_owned(),
             kind,
-            benchmark_file: make_absolute(&project_root, benchmark_file),
-            benchmark_exe: make_absolute(&project_root, benchmark_exe),
+            benchmark_file: make_relative(
+                &project_root,
+                make_absolute(&project_root, benchmark_file),
+            ),
+            benchmark_exe: make_relative(
+                &project_root,
+                make_absolute(&project_root, benchmark_exe),
+            ),
             module_path: module_path.to_string(),
             function_name: function_name.to_owned(),
+            group: group.to_owned(),
             id,
             details,
             profiles: Profiles::default(),
-            summary_output: output,
+            output_dir: make_relative(&project_root, make_absolute(&project_root, output_dir)),
+            package_dir: make_relative(&project_root, make_absolute(&project_root, package_dir)),
             project_root,
-            package_dir,
             baselines,
         }
     }
@@ -178,12 +161,13 @@ impl BenchmarkSummary {
     }
 
     /// If the summary is json output, print it and eventually safe it, if configured to do so
-    pub fn print_and_save(
+    pub(crate) fn print_and_save(
         &self,
         config: &Config,
         output_format: &OutputFormat,
         captured_output: CapturedOutput,
         post_processing_config: &PostProcessingConfig,
+        summary_output: Option<&SummaryOutput>,
     ) -> Result<()> {
         match output_format.kind {
             OutputFormatKind::Default => self
@@ -194,7 +178,7 @@ impl BenchmarkSummary {
                     post_processing_config,
                 )
                 .and_then(|()| {
-                    if let Some(output) = &self.summary_output {
+                    if let Some(output) = summary_output {
                         serde_json::to_value(self)
                             .with_context(|| "Failed to serialize summary to json")
                             .and_then(|value| Self::save_summary(&value, output))
@@ -207,7 +191,7 @@ impl BenchmarkSummary {
                 .and_then(|value| {
                     let pretty = matches!(output_format.kind, OutputFormatKind::PrettyJson);
                     Self::print_json(&value, pretty).and_then(|()| {
-                        if let Some(output) = &self.summary_output {
+                        if let Some(output) = summary_output {
                             Self::save_summary(&value, output)
                         } else {
                             Ok(())
@@ -284,12 +268,7 @@ impl Diffs {
 impl FlamegraphSummary {
     /// Creates a new `FlamegraphSummary`.
     pub fn new(event_kind: EventKind) -> Self {
-        Self {
-            event_kind,
-            regular_path: Option::default(),
-            base_path: Option::default(),
-            diff_path: Option::default(),
-        }
+        Self { event_kind }
     }
 }
 
@@ -313,10 +292,11 @@ impl ProfileData {
     {
         match tool.into() {
             Some(tool) => !self.parts.iter().all(|p| match (tool, &p.metrics_summary) {
-                (
-                    Tool::Helgrind | Tool::DRD | Tool::Memcheck,
-                    ToolMetricSummary::ErrorTool(metrics_summary),
-                ) => metrics_summary.is_empty(),
+                (Tool::Memcheck, ToolMetricSummary::Memcheck(metrics_summary))
+                | (Tool::Helgrind, ToolMetricSummary::Helgrind(metrics_summary))
+                | (Tool::DRD, ToolMetricSummary::DRD(metrics_summary)) => {
+                    metrics_summary.is_empty()
+                }
                 (Tool::DHAT, ToolMetricSummary::Dhat(metrics_summary)) => {
                     metrics_summary.is_empty()
                 }
@@ -330,7 +310,10 @@ impl ProfileData {
                     metrics_summary.is_empty()
                 }
                 (Tool::Massif | Tool::BBV, ToolMetricSummary::None) => true,
-                (..) => unreachable!(),
+                (..) => {
+                    debug_assert!(false, "tool and metric summary variants must match");
+                    false
+                }
             }),
             None => !self.parts.iter().all(|p| p.metrics_summary.is_empty()),
         }
@@ -434,7 +417,9 @@ impl ProfileData {
             // Perf currently has no synthetic total summary; only per-part summaries are kept.
             ToolMetrics::None | ToolMetrics::Perf(_) => ToolMetricSummary::None,
             ToolMetrics::Dhat(_) => ToolMetricSummary::Dhat(MetricsSummary::default()),
-            ToolMetrics::ErrorTool(_) => ToolMetricSummary::ErrorTool(MetricsSummary::default()),
+            ToolMetrics::Memcheck(_) => ToolMetricSummary::Memcheck(MetricsSummary::default()),
+            ToolMetrics::Helgrind(_) => ToolMetricSummary::Helgrind(MetricsSummary::default()),
+            ToolMetrics::DRD(_) => ToolMetricSummary::DRD(MetricsSummary::default()),
             ToolMetrics::Callgrind(_) => ToolMetricSummary::Callgrind(MetricsSummary::default()),
             ToolMetrics::Cachegrind(_) => ToolMetricSummary::Cachegrind(MetricsSummary::default()),
         };
@@ -517,7 +502,6 @@ impl From<ParserOutput> for ProfileInfo {
             pid: value.header.pid,
             parent_pid: value.header.parent_pid,
             details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            path: value.path,
             part: value.header.part,
             thread: value.header.thread,
         }
@@ -533,7 +517,9 @@ impl ProfilePart {
             | ToolMetricSummary::Cachegrind(_)
             | ToolMetricSummary::Callgrind(_)
             | ToolMetricSummary::Perf(_) => false,
-            ToolMetricSummary::ErrorTool(metrics) => metrics
+            ToolMetricSummary::Memcheck(metrics)
+            | ToolMetricSummary::Helgrind(metrics)
+            | ToolMetricSummary::DRD(metrics) => metrics
                 .diff_by_kind(&ErrorMetric::Errors)
                 .is_some_and(|e| e.metrics.has_left_and(|new| new > Metric::Int(0))),
         }
@@ -632,44 +618,6 @@ impl IntoIterator for Profiles {
     }
 }
 
-impl SummaryOutput {
-    /// Creates a new `SummaryOutput` with `dir` as base dir and an extension fitting the.
-    /// [`SummaryFormat`]
-    pub fn new(format: SummaryFormat, dir: &Path) -> Self {
-        Self {
-            format,
-            path: Self::path(dir),
-        }
-    }
-
-    /// Initialize this `SummaryOutput` removing old summary files
-    pub fn init(&self) -> Result<()> {
-        for entry in glob(self.path.with_extension("*").to_string_lossy().as_ref())
-            .expect("Glob pattern should be valid")
-        {
-            let entry = entry?;
-            std::fs::remove_file(entry.as_path()).with_context(|| {
-                format!(
-                    "Failed removing summary file '{}'",
-                    entry.as_path().display()
-                )
-            })?;
-        }
-
-        Ok(())
-    }
-
-    /// Try to create an empty summary file returning the [`File`] object
-    pub fn create(&self) -> Result<File> {
-        File::create(&self.path).with_context(|| "Failed to create json summary file")
-    }
-
-    /// Returns the path to this summary file.
-    pub fn path(dir: &Path) -> PathBuf {
-        dir.join("summary.json")
-    }
-}
-
 impl ToolMetricSummary {
     /// Returns `true` if this summary is a typed variant with no metric diffs present.
     ///
@@ -677,7 +625,9 @@ impl ToolMetricSummary {
     pub fn is_empty(&self) -> bool {
         match self {
             Self::None => false,
-            Self::ErrorTool(summary) => summary.is_empty(),
+            Self::Memcheck(summary) | Self::Helgrind(summary) | Self::DRD(summary) => {
+                summary.is_empty()
+            }
             Self::Dhat(summary) => summary.is_empty(),
             Self::Callgrind(summary) => summary.is_empty(),
             Self::Cachegrind(summary) => summary.is_empty(),
@@ -688,7 +638,9 @@ impl ToolMetricSummary {
     /// Sum up another summary metrics to these metrics
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
-            (Self::ErrorTool(this), Self::ErrorTool(other)) => {
+            (Self::Memcheck(this), Self::Memcheck(other))
+            | (Self::Helgrind(this), Self::Helgrind(other))
+            | (Self::DRD(this), Self::DRD(other)) => {
                 this.add(other);
             }
             (Self::Dhat(this), Self::Dhat(other)) => {
@@ -714,8 +666,14 @@ impl ToolMetricSummary {
             ToolMetrics::Dhat(metrics) => {
                 Self::Dhat(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => {
-                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            ToolMetrics::Memcheck(metrics) => {
+                Self::Memcheck(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
+            ToolMetrics::Helgrind(metrics) => {
+                Self::Helgrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
+            ToolMetrics::DRD(metrics) => {
+                Self::DRD(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
             ToolMetrics::Callgrind(metrics) => {
                 Self::Callgrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
@@ -736,8 +694,14 @@ impl ToolMetricSummary {
             ToolMetrics::Dhat(metrics) => {
                 Self::Dhat(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => {
-                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            ToolMetrics::Memcheck(metrics) => {
+                Self::Memcheck(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::Helgrind(metrics) => {
+                Self::Helgrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::DRD(metrics) => {
+                Self::DRD(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
             }
             ToolMetrics::Callgrind(metrics) => {
                 Self::Callgrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
@@ -764,12 +728,21 @@ impl ToolMetricSummary {
             (ToolMetrics::Dhat(new_metrics), ToolMetrics::Dhat(old_metrics)) => Ok(Self::Dhat(
                 MetricsSummary::new(EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone())),
             )),
-            (ToolMetrics::ErrorTool(new_metrics), ToolMetrics::ErrorTool(old_metrics)) => {
-                Ok(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+            (ToolMetrics::Memcheck(new_metrics), ToolMetrics::Memcheck(old_metrics)) => {
+                Ok(Self::Memcheck(MetricsSummary::new(EitherOrBoth::Both(
                     new_metrics.clone(),
                     old_metrics.clone(),
                 ))))
             }
+            (ToolMetrics::Helgrind(new_metrics), ToolMetrics::Helgrind(old_metrics)) => {
+                Ok(Self::Helgrind(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
+            }
+            (ToolMetrics::DRD(new_metrics), ToolMetrics::DRD(old_metrics)) => Ok(Self::DRD(
+                MetricsSummary::new(EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone())),
+            )),
             (ToolMetrics::Callgrind(new_metrics), ToolMetrics::Callgrind(old_metrics)) => {
                 Ok(Self::Callgrind(MetricsSummary::new(EitherOrBoth::Both(
                     new_metrics.clone(),
@@ -809,7 +782,7 @@ impl ToolMetricSummary {
                     None
                 }
             }
-            (Self::ErrorTool(metrics), Self::ErrorTool(other_metrics)) => {
+            (Self::Memcheck(metrics), Self::Memcheck(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -818,7 +791,39 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+                    Some(Self::Memcheck(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
+                } else {
+                    None
+                }
+            }
+            (Self::Helgrind(metrics), Self::Helgrind(other_metrics)) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(Self::Helgrind(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
+                } else {
+                    None
+                }
+            }
+            (Self::DRD(metrics), Self::DRD(other_metrics)) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(Self::DRD(MetricsSummary::new(EitherOrBoth::Both(
                         new, other_new,
                     ))))
                 } else {
@@ -888,6 +893,18 @@ impl ToolMetricSummary {
     }
 }
 
+impl ToolMetrics {
+    /// Associates `metrics` with the error-reporting `tool` that produced them.
+    pub fn from_error_metric(tool: Tool, metrics: Metrics<ErrorMetric>) -> Self {
+        match tool {
+            Tool::Memcheck => Self::Memcheck(metrics),
+            Tool::Helgrind => Self::Helgrind(metrics),
+            Tool::DRD => Self::DRD(metrics),
+            _ => unreachable!("{tool} does not report error metrics"),
+        }
+    }
+}
+
 impl ToolRegression {
     /// Creates a new `ToolRegression`.
     pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
@@ -921,6 +938,7 @@ mod tests {
 
     use super::*;
     use crate::api::PerfMetric;
+    use crate::runner::common::ModulePath;
     use crate::units::Unit;
 
     #[test]
@@ -950,5 +968,68 @@ mod tests {
                 limit: 10.0,
             }
         );
+    }
+
+    #[test]
+    fn test_when_serializing_new_summary_then_paths_outside_project_root_remain_absolute() {
+        let summary = BenchmarkSummary::new(
+            BenchmarkKind::LibraryBenchmark,
+            PathBuf::from("/project"),
+            PathBuf::from("/tmp/package"),
+            PathBuf::from("/tmp/benchmark.rs"),
+            PathBuf::from("/tmp/benchmark"),
+            &ModulePath::new("example::benchmark"),
+            "benchmark",
+            "example",
+            None,
+            None,
+            PathBuf::from("/tmp/gungraun"),
+            (None, None),
+        );
+
+        let value = serde_json::to_value(summary).unwrap();
+
+        assert_eq!(value["output_dir"], "/tmp/gungraun");
+        assert_eq!(value["package_dir"], "/tmp/package");
+        assert_eq!(value["benchmark_file"], "/tmp/benchmark.rs");
+        assert_eq!(value["benchmark_exe"], "/tmp/benchmark");
+        for key in [
+            "output_dir",
+            "package_dir",
+            "benchmark_file",
+            "benchmark_exe",
+        ] {
+            assert!(!value[key].as_str().unwrap().starts_with(".."));
+        }
+    }
+
+    #[test]
+    fn test_when_serializing_new_summary_then_paths_under_project_root_are_relative() {
+        let summary = BenchmarkSummary::new(
+            BenchmarkKind::LibraryBenchmark,
+            PathBuf::from("/project"),
+            PathBuf::from("/project/crates/example"),
+            PathBuf::from("crates/example/benches/benchmark.rs"),
+            PathBuf::from("target/release/benchmark"),
+            &ModulePath::new("example::benchmark"),
+            "benchmark",
+            "example",
+            None,
+            None,
+            PathBuf::from("/project/target/gungraun/example"),
+            (None, None),
+        );
+
+        let value = serde_json::to_value(summary).unwrap();
+
+        assert_eq!(value["project_root"], "/project");
+        assert_eq!(value["output_dir"], "target/gungraun/example");
+        assert_eq!(value["package_dir"], "crates/example");
+        assert_eq!(
+            value["benchmark_file"],
+            "crates/example/benches/benchmark.rs"
+        );
+        assert_eq!(value["benchmark_exe"], "target/release/benchmark");
+        assert!(value.get("summary_output").is_none());
     }
 }

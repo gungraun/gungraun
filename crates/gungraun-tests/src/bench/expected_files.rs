@@ -42,10 +42,10 @@ use valico::json_schema::schema::ScopedSchema;
 
 use super::io::{deserialize_json, print_error, print_info, serialize_yaml};
 
+pub static TEMPLATE_DATA: OnceCell<HashMap<String, serde_json::Value>> = OnceCell::new();
+
 pub const SCHEMA_PATH: &str = "crates/gungraun-summary/schemas";
 pub const SCHEMA_VERSION: &str = "7";
-
-pub static TEMPLATE_DATA: OnceCell<HashMap<String, serde_json::Value>> = OnceCell::new();
 
 /// Expected files and globs for one benchmark output directory.
 ///

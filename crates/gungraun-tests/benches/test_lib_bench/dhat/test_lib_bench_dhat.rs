@@ -10,17 +10,6 @@ fn custom_setup(start: i32) -> Vec<i32> {
     setup_worst_case_array(start)
 }
 
-#[inline(never)]
-fn teardown(mut data: Vec<i32>) {
-    let other = std::mem::take(&mut data);
-    drop(data);
-    drop(other);
-}
-
-fn is_coverage_run() -> bool {
-    std::env::var("CARGO_LLVM_COV").is_ok_and(|e| e == "1")
-}
-
 fn hard_limits(tb: u64, tbk: u64, rb: u64, wb: u64) -> Vec<(DhatMetric, u64)> {
     if is_coverage_run() {
         vec![
@@ -37,6 +26,17 @@ fn hard_limits(tb: u64, tbk: u64, rb: u64, wb: u64) -> Vec<(DhatMetric, u64)> {
             (DhatMetric::WritesBytes, wb),
         ]
     }
+}
+
+fn is_coverage_run() -> bool {
+    std::env::var("CARGO_LLVM_COV").is_ok_and(|e| e == "1")
+}
+
+#[inline(never)]
+fn teardown(mut data: Vec<i32>) {
+    let other = std::mem::take(&mut data);
+    drop(data);
+    drop(other);
 }
 
 #[library_benchmark(

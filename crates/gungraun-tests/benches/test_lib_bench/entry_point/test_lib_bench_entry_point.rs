@@ -7,63 +7,10 @@ use gungraun_runner::runner::callgrind::hashmap_parser::SourcePath;
 use gungraun_runner::summary::model::{BenchmarkSummary, ToolMetricSummary};
 use gungraun_tests::assert::Assert;
 
-#[inline(never)]
-fn nested() -> u64 {
-    gungraun_tests::fibonacci(10)
-}
-
-#[inline(never)]
-fn some_func() -> u64 {
-    nested()
-}
-
-#[library_benchmark]
-#[bench::none(
-    config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::default()
-            .entry_point(EntryPoint::None)
-        )
-)]
-#[bench::default(
-    config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::default()
-            .entry_point(EntryPoint::Default)
-        )
-)]
-#[bench::nested(
-    config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::default()
-            .entry_point(EntryPoint::from("test_lib_bench_entry_point::nested"))
-        )
-)]
-fn bench_lib() -> u64 {
-    black_box(some_func())
-}
-
-// We need to check some gory details in the group teardown to see if the entry point is being
-// applied correctly.
-fn assert_none() {
-    let assert = Assert::new(module_path!(), "my_group", "bench_lib", "none").unwrap();
-    assert
-        .summary(|b| {
-            let callgrind_summary = b
-                .profiles
-                .iter()
-                .find(|p| p.tool == Tool::Callgrind)
-                .unwrap();
-            let ToolMetricSummary::Callgrind(metrics_summary) =
-                &callgrind_summary.summaries.parts[0].metrics_summary
-            else {
-                panic!();
-            };
-            let new_ir = metrics_summary
-                .diff_by_kind(&EventKind::Ir)
-                .unwrap()
-                .metrics
-                .unwrap_left();
-            new_ir > Metric::Int(400_000)
-        })
-        .unwrap();
+fn assert_benchmarks() {
+    assert_none();
+    assert_default();
+    assert_nested();
 }
 
 fn assert_default() {
@@ -153,10 +100,63 @@ fn assert_nested() {
         .unwrap();
 }
 
-fn assert_benchmarks() {
-    assert_none();
-    assert_default();
-    assert_nested();
+// We need to check some gory details in the group teardown to see if the entry point is being
+// applied correctly.
+fn assert_none() {
+    let assert = Assert::new(module_path!(), "my_group", "bench_lib", "none").unwrap();
+    assert
+        .summary(|b| {
+            let callgrind_summary = b
+                .profiles
+                .iter()
+                .find(|p| p.tool == Tool::Callgrind)
+                .unwrap();
+            let ToolMetricSummary::Callgrind(metrics_summary) =
+                &callgrind_summary.summaries.parts[0].metrics_summary
+            else {
+                panic!();
+            };
+            let new_ir = metrics_summary
+                .diff_by_kind(&EventKind::Ir)
+                .unwrap()
+                .metrics
+                .unwrap_left();
+            new_ir > Metric::Int(400_000)
+        })
+        .unwrap();
+}
+
+#[library_benchmark]
+#[bench::none(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
+            .entry_point(EntryPoint::None)
+        )
+)]
+#[bench::default(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
+            .entry_point(EntryPoint::Default)
+        )
+)]
+#[bench::nested(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
+            .entry_point(EntryPoint::from("test_lib_bench_entry_point::nested"))
+        )
+)]
+fn bench_lib() -> u64 {
+    black_box(some_func())
+}
+
+#[inline(never)]
+fn nested() -> u64 {
+    gungraun_tests::fibonacci(10)
+}
+
+#[inline(never)]
+fn some_func() -> u64 {
+    nested()
 }
 
 library_benchmark_group!(

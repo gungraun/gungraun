@@ -14,65 +14,6 @@ use gungraun_runner::runner::tool::regression::ToolRegressionConfig;
 use gungraun_runner::units::Unit;
 
 #[test]
-fn test_tool_configs_apply_cli_valgrind_args_to_default_tool() {
-    let tool_configs = tool_configs_f()
-        .raw_command_line_args(["--valgrind-args='--trace-children=no --num-callers=50'"])
-        .fx();
-
-    let callgrind_config = tool_configs
-        .0
-        .iter()
-        .find(|config| config.tool() == Tool::Callgrind)
-        .expect("callgrind config should be present");
-
-    let args = callgrind_config.args.to_vec();
-    assert!(args.iter().any(|a| a == "--trace-children=no"));
-    assert!(args.iter().any(|a| a == "--num-callers=50"));
-}
-
-#[test]
-fn test_tool_configs_apply_cli_valgrind_args_to_additional_tool() {
-    let tool_configs = tool_configs_f()
-        .raw_command_line_args(["--valgrind-args=--trace-children=no"])
-        .tool_specs(ToolSpecs(vec![ToolSpec::new(Tool::Memcheck)]))
-        .fx();
-
-    let memcheck_config = tool_configs
-        .0
-        .iter()
-        .find(|config| config.tool() == Tool::Memcheck)
-        .expect("memcheck config should be present");
-
-    assert!(
-        memcheck_config
-            .args
-            .to_vec()
-            .iter()
-            .any(|a| a == "--trace-children=no")
-    );
-}
-
-#[test]
-fn test_tool_configs_cli_tool_args_override_cli_valgrind_args() {
-    let tool_configs = tool_configs_f()
-        .raw_command_line_args([
-            "--valgrind-args=--trace-children=no",
-            "--callgrind-args=--trace-children=yes",
-        ])
-        .fx();
-
-    let callgrind_config = tool_configs
-        .0
-        .iter()
-        .find(|config| config.tool() == Tool::Callgrind)
-        .expect("callgrind config should be present");
-
-    let args = callgrind_config.args.to_vec();
-    assert!(args.iter().any(|a| a == "--trace-children=yes"));
-    assert!(args.iter().all(|a| a != "--trace-children=no"));
-}
-
-#[test]
 fn test_test_configs_when_perf_default() {
     let expected = vec![
         tool_config_f()
@@ -127,6 +68,32 @@ fn test_test_configs_when_perf_multiple_events_expands_to_multiple_configs() {
     let actual = builder.build().unwrap();
 
     assert_eq!(expected, actual);
+}
+
+#[test]
+fn test_tool_configs_absent_cli_perf_sampling_preserves_benchmark_sample_duration() {
+    let perf_tool_spec = tool_spec_f()
+        .tool(Tool::Perf)
+        .options(ToolSpecOptions::Perf(
+            perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
+        ))
+        .fx();
+
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args(["--tools=perf"])
+        .tool_specs(ToolSpecs(vec![perf_tool_spec]))
+        .fx();
+
+    let perf_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.tool() == Tool::Perf)
+        .expect("perf config should be present");
+    assert_eq!(perf_config.timeout, Some(Duration::from_secs(5)));
+    let ToolConfigOptions::Perf(options) = &perf_config.options else {
+        unreachable!("expected perf options")
+    };
+    assert!(options.use_sampling);
 }
 
 #[test]
@@ -202,6 +169,86 @@ fn test_tool_configs_apply_cli_perf_options() {
 }
 
 #[test]
+fn test_tool_configs_apply_cli_valgrind_args_to_additional_tool() {
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args(["--valgrind-args=--trace-children=no"])
+        .tool_specs(ToolSpecs(vec![ToolSpec::new(Tool::Memcheck)]))
+        .fx();
+
+    let memcheck_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.tool() == Tool::Memcheck)
+        .expect("memcheck config should be present");
+
+    assert!(
+        memcheck_config
+            .args
+            .to_vec()
+            .iter()
+            .any(|a| a == "--trace-children=no")
+    );
+}
+
+#[test]
+fn test_tool_configs_apply_cli_valgrind_args_to_default_tool() {
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args(["--valgrind-args='--trace-children=no --num-callers=50'"])
+        .fx();
+
+    let callgrind_config = tool_configs
+        .0
+        .iter()
+        .find(|config| config.tool() == Tool::Callgrind)
+        .expect("callgrind config should be present");
+
+    let args = callgrind_config.args.to_vec();
+    assert!(args.iter().any(|a| a == "--trace-children=no"));
+    assert!(args.iter().any(|a| a == "--num-callers=50"));
+}
+
+#[test]
+fn test_tool_configs_cli_perf_record_options_override_benchmark_options() {
+    let perf_tool_spec = tool_spec_f()
+        .tool(Tool::Perf)
+        .options(ToolSpecOptions::Perf(
+            perf_spec_f()
+                .record(false)
+                .record_args(RawToolArgs::from_iter(["--old-record-arg"]))
+                .fx(),
+        ))
+        .fx();
+
+    let tool_configs = tool_configs_f()
+        .raw_command_line_args([
+            "--tools=perf",
+            "--perf-record",
+            "--perf-record-args=--metric-only",
+        ])
+        .tool_specs(ToolSpecs(vec![perf_tool_spec]))
+        .fx();
+
+    let perf_configs = tool_configs
+        .0
+        .iter()
+        .filter(|config| config.tool() == Tool::Perf)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        perf_configs.len(),
+        2,
+        "expected perf stat and perf record configs"
+    );
+
+    let record_config = perf_configs
+        .iter()
+        .find(|config| config.is_perf_record())
+        .expect("perf record config should exist");
+    let record_args = record_config.args.to_vec();
+    assert!(record_args.iter().any(|arg| arg == "--metric-only"));
+    assert!(record_args.iter().all(|arg| arg != "--old-record-arg"));
+}
+
+#[test]
 fn test_tool_configs_cli_perf_sampling_enables_sampling() {
     let tool_configs = tool_configs_f()
         .raw_command_line_args(["--tools=perf", "--perf-sampling=250ms"])
@@ -246,29 +293,23 @@ fn test_tool_configs_cli_perf_sampling_no_overrides_benchmark_sample_duration() 
 }
 
 #[test]
-fn test_tool_configs_absent_cli_perf_sampling_preserves_benchmark_sample_duration() {
-    let perf_tool_spec = tool_spec_f()
-        .tool(Tool::Perf)
-        .options(ToolSpecOptions::Perf(
-            perf_spec_f().sample_duration(Duration::from_secs(5)).fx(),
-        ))
-        .fx();
-
+fn test_tool_configs_cli_tool_args_override_cli_valgrind_args() {
     let tool_configs = tool_configs_f()
-        .raw_command_line_args(["--tools=perf"])
-        .tool_specs(ToolSpecs(vec![perf_tool_spec]))
+        .raw_command_line_args([
+            "--valgrind-args=--trace-children=no",
+            "--callgrind-args=--trace-children=yes",
+        ])
         .fx();
 
-    let perf_config = tool_configs
+    let callgrind_config = tool_configs
         .0
         .iter()
-        .find(|config| config.tool() == Tool::Perf)
-        .expect("perf config should be present");
-    assert_eq!(perf_config.timeout, Some(Duration::from_secs(5)));
-    let ToolConfigOptions::Perf(options) = &perf_config.options else {
-        unreachable!("expected perf options")
-    };
-    assert!(options.use_sampling);
+        .find(|config| config.tool() == Tool::Callgrind)
+        .expect("callgrind config should be present");
+
+    let args = callgrind_config.args.to_vec();
+    assert!(args.iter().any(|a| a == "--trace-children=yes"));
+    assert!(args.iter().all(|a| a != "--trace-children=no"));
 }
 
 #[test]
@@ -294,47 +335,6 @@ fn test_tool_configs_perf_record_clears_cli_sampling_timeout() {
         unreachable!("expected perf options")
     };
     assert!(!record_options.use_sampling);
-}
-
-#[test]
-fn test_tool_configs_cli_perf_record_options_override_benchmark_options() {
-    let perf_tool_spec = tool_spec_f()
-        .tool(Tool::Perf)
-        .options(ToolSpecOptions::Perf(
-            perf_spec_f()
-                .record(false)
-                .record_args(RawToolArgs::from_iter(["--old-record-arg"]))
-                .fx(),
-        ))
-        .fx();
-
-    let tool_configs = tool_configs_f()
-        .raw_command_line_args([
-            "--tools=perf",
-            "--perf-record",
-            "--perf-record-args=--metric-only",
-        ])
-        .tool_specs(ToolSpecs(vec![perf_tool_spec]))
-        .fx();
-
-    let perf_configs = tool_configs
-        .0
-        .iter()
-        .filter(|config| config.tool() == Tool::Perf)
-        .collect::<Vec<_>>();
-    assert_eq!(
-        perf_configs.len(),
-        2,
-        "expected perf stat and perf record configs"
-    );
-
-    let record_config = perf_configs
-        .iter()
-        .find(|config| config.is_perf_record())
-        .expect("perf record config should exist");
-    let record_args = record_config.args.to_vec();
-    assert!(record_args.iter().any(|arg| arg == "--metric-only"));
-    assert!(record_args.iter().all(|arg| arg != "--old-record-arg"));
 }
 
 #[test]

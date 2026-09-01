@@ -4,6 +4,10 @@ use std::path::PathBuf;
 use gungraun::prelude::*;
 use gungraun::{Callgrind, OutputFormat, Sandbox};
 
+fn create_file() {
+    std::fs::write("some.txt", b"content of file\n").unwrap();
+}
+
 fn create_script(path: &str) {
     let script = r#"#!/usr/bin/env sh
         /bin/cat "$1"
@@ -15,10 +19,6 @@ fn create_script(path: &str) {
     std::fs::set_permissions(path, permissions).unwrap();
 
     create_file();
-}
-
-fn create_file() {
-    std::fs::write("some.txt", b"content of file\n").unwrap();
 }
 
 #[binary_benchmark(

@@ -24,14 +24,12 @@ use crate::api::{
 use crate::error::Error;
 use crate::runner::args;
 use crate::runner::common::{
-    BaselineAndSaveDataProcessor, BaselineDataProcessor, Baselines, BenchmarkDataProcessor,
-    BenchmarkSummaries, CapturedOutput, Config, Groups, LoadBaselineDataProcessor, ModulePath,
-    Runner, SaveBaselineDataProcessor,
+    BaselineAndSaveDataProcessor, BaselineDataProcessor, BaselineKind, BaselineName, Baselines,
+    BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config, Groups,
+    LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
 };
 use crate::runner::tool::config::ToolConfig;
-use crate::summary::model::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput,
-};
+use crate::summary::model::{BenchmarkKind, BenchmarkSummary};
 
 /// Implements [`Benchmark`] to compare a [`LibBench`] against one baseline and save the new run as
 /// another baseline.
@@ -62,6 +60,8 @@ pub struct LibBench {
     pub display: Option<String>,
     /// The name of the annotated function
     pub function_name: String,
+    /// The name of the `benchmark_group`
+    pub group: String,
     /// The index of the `#[library_benchmark]` in the `library_benchmark_group!`
     pub group_index: usize,
     /// The id of the benchmark as in `#[bench::id]`
@@ -375,6 +375,7 @@ impl LibBench {
         bench_index: usize,
         iter_index: Option<usize>,
         default_tool: Tool,
+        group: String,
     ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|s| format!("{s}_{iter_index}"))
@@ -450,6 +451,7 @@ impl LibBench {
             iter_index,
             id,
             function_name,
+            group,
             display,
             consts_display,
             run_options: RunOptions {
@@ -521,12 +523,6 @@ impl LibBench {
         description: Option<String>,
         baselines: Baselines,
     ) -> BenchmarkSummary {
-        let summary_output = config
-            .meta
-            .args
-            .save_summary
-            .map(|format| SummaryOutput::new(format, &output_path.dir));
-
         BenchmarkSummary::new(
             BenchmarkKind::LibraryBenchmark,
             config.meta.project_root.clone(),
@@ -535,9 +531,10 @@ impl LibBench {
             config.bench_bin.clone(),
             &self.module_path,
             function_name,
+            &self.group,
             self.id.clone(),
             description,
-            summary_output,
+            output_path.dir.clone(),
             baselines,
         )
     }
@@ -768,19 +765,6 @@ mod tests {
     use crate::fixtures::tool_config_f;
 
     #[test]
-    fn test_baseline_and_save_benchmark_uses_different_display_baselines() {
-        let benchmark = BaselineAndSaveBenchmark {
-            baseline: BaselineName("main".to_owned()),
-            save_baseline: BaselineName("pr_1234".to_owned()),
-        };
-
-        assert_eq!(
-            benchmark.baselines(),
-            (Some("pr_1234".to_owned()), Some("main".to_owned()))
-        );
-    }
-
-    #[test]
     fn bench_args_uses_run_mode_override() {
         let config = tool_config_f()
             .tool(Tool::Perf)
@@ -791,5 +775,18 @@ mod tests {
         let args = LibBench::bench_args(&config, Some(BenchRunMode::PerfCalibrate), 1, 2, 3, None);
 
         assert_eq!(args[1], OsString::from(BenchRunMode::PerfCalibrate.id()));
+    }
+
+    #[test]
+    fn test_baseline_and_save_benchmark_uses_different_display_baselines() {
+        let benchmark = BaselineAndSaveBenchmark {
+            baseline: BaselineName("main".to_owned()),
+            save_baseline: BaselineName("pr_1234".to_owned()),
+        };
+
+        assert_eq!(
+            benchmark.baselines(),
+            (Some("pr_1234".to_owned()), Some("main".to_owned()))
+        );
     }
 }

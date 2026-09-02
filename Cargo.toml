@@ -32,7 +32,7 @@ bincode-next = { version = ">=2,<=3.1", default-features = false, features = [
 ] }
 bindgen = { version = ">=0.69, <0.73" }
 bon = { version = "3.9" }
-cargo_metadata = { version = "0.20" }
+cargo_metadata = { version = "0.23" }
 cc = { version = "1.0.100" }
 cfg-if = { version = "1" }
 clap = { version = "4.0.12", features = ["derive", "env"] }

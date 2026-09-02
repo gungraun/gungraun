@@ -13,7 +13,7 @@ use std::fmt::Display;
 
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "runner")]
 use crate::metrics::model::Metric;
@@ -22,8 +22,9 @@ use crate::metrics::model::Metric;
 ///
 /// Supports time, data size, frequency, and hardware-specific units. Can represent compound
 /// [`Self::Rate`]s and [`Self::Unknown`] units parsed from raw strings.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "schema", schemars(with = "String"))]
 pub enum Unit {
     /// Nanoseconds (`ns`).
     Nanoseconds,
@@ -94,56 +95,7 @@ pub enum UnitDimension {
     Frequency,
 }
 
-#[cfg(feature = "runner")]
 impl Unit {
-    /// Returns the base scale factor for converting this unit to its canonical base unit.
-    ///
-    /// For example, `Milliseconds` has a base scale of `1e-3` (to convert to seconds).
-    /// Returns `None` for units without a defined base scale.
-    pub fn base_scale(&self) -> Option<f64> {
-        match self {
-            Self::Nanoseconds => Some(1e-9),
-            Self::Microseconds => Some(1e-6),
-            Self::Milliseconds => Some(1e-3),
-            Self::Seconds | Self::Bytes | Self::Hertz => Some(1.0),
-
-            Self::Kilobytes | Self::Kilohertz => Some(1e3),
-            Self::Megabytes | Self::Megahertz => Some(1e6),
-            Self::Gigabytes | Self::Gigahertz => Some(1e9),
-            Self::Kibibytes => Some(1024.0),
-            Self::Mebibytes => Some(1024.0 * 1024.0),
-            Self::Gibibytes => Some(1024.0 * 1024.0 * 1024.0),
-
-            _ => None,
-        }
-    }
-
-    /// Returns the [`UnitDimension`] of this unit, if it belongs to a known dimension.
-    pub fn dimension(&self) -> Option<UnitDimension> {
-        match self {
-            Self::Nanoseconds | Self::Microseconds | Self::Milliseconds | Self::Seconds => {
-                Some(UnitDimension::Time)
-            }
-            Self::Bytes
-            | Self::Kilobytes
-            | Self::Megabytes
-            | Self::Gigabytes
-            | Self::Kibibytes
-            | Self::Mebibytes
-            | Self::Gibibytes => Some(UnitDimension::Data),
-            Self::Hertz | Self::Kilohertz | Self::Megahertz | Self::Gigahertz => {
-                Some(UnitDimension::Frequency)
-            }
-            _ => None,
-        }
-    }
-
-    /// Returns `true` if this unit and `other` share the same [`UnitDimension`].
-    pub fn is_same_dimension(&self, other: &Self) -> bool {
-        self.dimension()
-            .is_some_and(|d| other.dimension().is_some_and(|o| d == o))
-    }
-
     /// Parses a unit string into a [`Unit`].
     ///
     /// Recognizes SI and binary data prefixes, time units, frequency units, and hardware-specific
@@ -210,18 +162,70 @@ impl Unit {
             Self::RevolutionsPerMinute
         } else if unit.eq_ignore_ascii_case("celsius") || unit.eq_ignore_ascii_case("'c") {
             Self::Celsius
-        } else if unit.eq_ignore_ascii_case("capacity") {
+        } else if unit.eq_ignore_ascii_case("capacity") || unit.eq_ignore_ascii_case("cap") {
             Self::Capacity
-        } else if unit.eq_ignore_ascii_case("cycles") {
+        } else if unit.eq_ignore_ascii_case("cycles") || unit.eq_ignore_ascii_case("cyc") {
             Self::Cycles
         } else {
             Self::Unknown(unit.to_owned())
         }
     }
 
+    #[cfg(feature = "runner")]
+    /// Returns the base scale factor for converting this unit to its canonical base unit.
+    ///
+    /// For example, `Milliseconds` has a base scale of `1e-3` (to convert to seconds).
+    /// Returns `None` for units without a defined base scale.
+    pub fn base_scale(&self) -> Option<f64> {
+        match self {
+            Self::Nanoseconds => Some(1e-9),
+            Self::Microseconds => Some(1e-6),
+            Self::Milliseconds => Some(1e-3),
+            Self::Seconds | Self::Bytes | Self::Hertz => Some(1.0),
+
+            Self::Kilobytes | Self::Kilohertz => Some(1e3),
+            Self::Megabytes | Self::Megahertz => Some(1e6),
+            Self::Gigabytes | Self::Gigahertz => Some(1e9),
+            Self::Kibibytes => Some(1024.0),
+            Self::Mebibytes => Some(1024.0 * 1024.0),
+            Self::Gibibytes => Some(1024.0 * 1024.0 * 1024.0),
+
+            _ => None,
+        }
+    }
+
+    /// Returns the [`UnitDimension`] of this unit, if it belongs to a known dimension.
+    #[cfg(feature = "runner")]
+    pub fn dimension(&self) -> Option<UnitDimension> {
+        match self {
+            Self::Nanoseconds | Self::Microseconds | Self::Milliseconds | Self::Seconds => {
+                Some(UnitDimension::Time)
+            }
+            Self::Bytes
+            | Self::Kilobytes
+            | Self::Megabytes
+            | Self::Gigabytes
+            | Self::Kibibytes
+            | Self::Mebibytes
+            | Self::Gibibytes => Some(UnitDimension::Data),
+            Self::Hertz | Self::Kilohertz | Self::Megahertz | Self::Gigahertz => {
+                Some(UnitDimension::Frequency)
+            }
+            _ => None,
+        }
+    }
+
+    /// Returns `true` if this unit and `other` share the same [`UnitDimension`].
+    #[cfg(feature = "runner")]
+    pub fn is_same_dimension(&self, other: &Self) -> bool {
+        self.dimension()
+            .is_some_and(|d| other.dimension().is_some_and(|o| d == o))
+    }
+
     /// Returns the multiplicative factor to convert a value from this unit to `target`.
     ///
     /// Returns `None` if the units are not convertible (different dimensions or unknown units).
+    #[cfg(feature = "runner")]
     pub fn scale_factor(&self, target: &Self) -> Option<f64> {
         if self == target {
             return Some(1.0);
@@ -238,6 +242,7 @@ impl Unit {
         }
     }
 
+    #[cfg(feature = "runner")]
     fn scale_ladder(&self) -> Option<&'static [Self]> {
         match self {
             Self::Nanoseconds | Self::Microseconds | Self::Milliseconds | Self::Seconds => Some(&[
@@ -305,6 +310,7 @@ impl Unit {
     ///     (500.0, Rate(Box::new(Kilobytes), Box::new(Seconds)))
     /// );
     /// ```
+    #[cfg(feature = "runner")]
     pub fn rescale(&self, value: f64) -> (f64, Self) {
         if !value.is_finite() || value == 0.0 {
             return (value, self.clone());
@@ -355,6 +361,7 @@ impl Unit {
     /// - `Kilobytes.base_value(2.0) == 2000.0`
     ///
     /// Returns the input unchanged for units without a base scale.
+    #[cfg(feature = "runner")]
     pub fn base_value(&self, value: f64) -> f64 {
         self.base_scale().map_or(value, |scale| value * scale)
     }
@@ -368,6 +375,7 @@ impl Unit {
     /// - `Kilobytes.rebase(2000.0) == 2.0`
     ///
     /// Returns the input unchanged for units without a base scale.
+    #[cfg(feature = "runner")]
     pub fn rebase(&self, value: f64) -> f64 {
         self.base_scale().map_or(value, |scale| value / scale)
     }
@@ -384,6 +392,7 @@ impl Unit {
     ///
     /// [`Metric::Int(1000)`]: Metric::Int
     #[must_use]
+    #[cfg(feature = "runner")]
     pub fn scale_factor_metric(&self, target: &Self) -> Option<Metric> {
         if self == target {
             return Some(Metric::Int(1));
@@ -425,6 +434,7 @@ impl Unit {
     }
 
     /// Returns the multiplicative base of a unit ladder (1000 for SI, 1024 for binary).
+    #[cfg(feature = "runner")]
     fn ladder_base(ladder: &[Self]) -> u64 {
         if ladder.contains(&Self::Kibibytes)
             || ladder.contains(&Self::Mebibytes)
@@ -434,6 +444,15 @@ impl Unit {
         } else {
             1000
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Unit {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer).map(|unit| Self::parse(&unit))
     }
 }
 
@@ -462,6 +481,7 @@ impl Display for Unit {
             Self::Amperes => f.write_str("A"),
             Self::RevolutionsPerMinute => f.write_str("rpm"),
             Self::Celsius => f.write_str("'C"),
+            // FIX: Why not the original long names cycles and capacity?
             Self::Capacity => f.write_str("cap"),
             Self::Cycles => f.write_str("cyc"),
             Self::Rate(numerator, denominator) => write!(f, "{numerator}/{denominator}"),
@@ -470,10 +490,20 @@ impl Display for Unit {
     }
 }
 
+impl Serialize for Unit {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
     use rstest::rstest;
+    use serde_json::json;
 
     use super::*;
     use crate::metrics::model::Metric;
@@ -625,5 +655,78 @@ mod tests {
             (None, None) => {}
             _ => panic!("scale_factor_metric mismatch: got {actual:?}, expected {expected:?}"),
         }
+    }
+
+    #[test]
+    fn test_unit_display_values_parse_to_original_unit() {
+        let units = [
+            Unit::Nanoseconds,
+            Unit::Microseconds,
+            Unit::Milliseconds,
+            Unit::Seconds,
+            Unit::Hertz,
+            Unit::Kilohertz,
+            Unit::Megahertz,
+            Unit::Gigahertz,
+            Unit::Bytes,
+            Unit::Kilobytes,
+            Unit::Megabytes,
+            Unit::Gigabytes,
+            Unit::Kibibytes,
+            Unit::Mebibytes,
+            Unit::Gibibytes,
+            Unit::Percent,
+            Unit::Joules,
+            Unit::Watts,
+            Unit::Volts,
+            Unit::Amperes,
+            Unit::RevolutionsPerMinute,
+            Unit::Celsius,
+            Unit::Capacity,
+            Unit::Cycles,
+            Unit::Rate(Box::new(Unit::Kilobytes), Box::new(Unit::Seconds)),
+            Unit::Unknown("some_unit".to_owned()),
+        ];
+
+        for unit in units {
+            assert_eq!(Unit::parse(&unit.to_string()), unit);
+        }
+    }
+
+    #[rstest]
+    #[case::known(Unit::Milliseconds, json!("ms"))]
+    #[case::rate(
+        Unit::Rate(Box::new(Unit::Kilobytes), Box::new(Unit::Seconds)),
+        json!("KB/s")
+    )]
+    #[case::unknown(Unit::Unknown("some_unit".to_owned()), json!("some_unit"))]
+    fn test_unit_serialize(#[case] unit: Unit, #[case] expected: serde_json::Value) {
+        assert_eq!(serde_json::to_value(unit).unwrap(), expected);
+    }
+
+    #[cfg(feature = "schema")]
+    #[test]
+    fn test_unit_schema_accepts_any_string() {
+        let schema = serde_json::to_value(schemars::schema_for!(Unit)).unwrap();
+
+        assert_eq!(schema["type"], json!("string"));
+        assert!(schema.get("enum").is_none());
+        assert!(schema.get("oneOf").is_none());
+    }
+
+    #[test]
+    fn test_unit_serde_rejects_non_string() {
+        let error = serde_json::from_value::<Unit>(json!({ "Unknown": "some_unit" }))
+            .expect_err("non-string units should be rejected");
+
+        assert!(error.to_string().contains("string"));
+    }
+
+    #[test]
+    fn test_unit_serde_unknown() {
+        let json = json!("some_unit");
+        let unit: Unit = serde_json::from_value(json).unwrap();
+
+        assert_eq!(unit, Unit::Unknown("some_unit".to_owned()));
     }
 }

@@ -61,7 +61,7 @@ runner = [
   "either-or-both/indexmap",
 ]
 schema = ["summary", "dep:schemars", "either-or-both/schema"]
-summary = ["api", "indexmap/serde"]
+summary = ["api", "dep:serde_json", "indexmap/serde"]
 
 [package.metadata.docs.rs]
 all-features = true

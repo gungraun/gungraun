@@ -1,5 +1,77 @@
 //! The main test module
 
+mod helpers {
+    use super::*;
+
+    /// Recursively remove all `description` keys from a JSON schema value.
+    ///
+    /// The doc comments of the frozen v6 model drifted from the ones used when the stored schema
+    /// was generated, so the freeze test compares the structural properties only.
+    #[cfg(feature = "schema")]
+    pub fn strip_descriptions(value: &mut Value) {
+        match value {
+            Value::Object(map) => {
+                map.remove("description");
+                for child in map.values_mut() {
+                    strip_descriptions(child);
+                }
+            }
+            Value::Array(items) => {
+                for item in items {
+                    strip_descriptions(item);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Build a minimal version 6 summary with a single Memcheck profile carrying the given tool
+    /// metric summary object in the part and in the total.
+    pub fn v6_summary(metrics_summary: &serde_json::Value) -> Vec<u8> {
+        let summary = json!({
+            "baselines": [null, null],
+            "benchmark_exe": "/project/target/deps/bench",
+            "benchmark_file": "/project/benches/example.rs",
+            "details": null,
+            "function_name": "some_benchmark_function",
+            "id": null,
+            "kind": "LibraryBenchmark",
+            "module_path": "example::some_benchmark_function",
+            "package_dir": "/project",
+            "profiles": [{
+                "flamegraphs": [],
+                "log_paths": ["/tmp/gungraun/bench.log"],
+                "out_paths": [],
+                "summaries": {
+                    "parts": [{
+                        "details": {
+                            "Left": {
+                                "command": "bench",
+                                "details": null,
+                                "parent_pid": null,
+                                "part": null,
+                                "path": "/tmp/gungraun/bench.out",
+                                "pid": 1,
+                                "thread": null
+                            }
+                        },
+                        "metrics_summary": metrics_summary.clone()
+                    }],
+                    "total": {
+                        "regressions": [],
+                        "summary": metrics_summary
+                    }
+                },
+                "tool": "Memcheck"
+            }],
+            "project_root": "/project",
+            "summary_output": null,
+            "version": "6"
+        });
+        serde_json::to_vec(&summary).unwrap()
+    }
+}
+
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -10,27 +82,9 @@ use pretty_assertions::assert_eq;
 use serde_json::Value;
 use serde_json::json;
 
-/// Recursively remove all `description` keys from a JSON schema value.
-///
-/// The doc comments of the frozen v6 model drifted from the ones used when the stored schema was
-/// generated, so the freeze test compares the structural properties only.
 #[cfg(feature = "schema")]
-fn strip_descriptions(value: &mut Value) {
-    match value {
-        Value::Object(map) => {
-            map.remove("description");
-            for child in map.values_mut() {
-                strip_descriptions(child);
-            }
-        }
-        Value::Array(items) => {
-            for item in items {
-                strip_descriptions(item);
-            }
-        }
-        _ => {}
-    }
-}
+use crate::helpers::strip_descriptions;
+use crate::helpers::v6_summary;
 
 #[test]
 fn test_smoke() {
@@ -114,48 +168,24 @@ fn test_v6_snapshot_rejects_memcheck_tag() {
     );
 }
 
-/// Build a minimal version 6 summary with a single Memcheck profile carrying the given tool
-/// metric summary object in the part and in the total.
-fn v6_summary(metrics_summary: &serde_json::Value) -> Vec<u8> {
-    let summary = json!({
-        "baselines": [null, null],
-        "benchmark_exe": "/project/target/deps/bench",
-        "benchmark_file": "/project/benches/example.rs",
-        "details": null,
-        "function_name": "some_benchmark_function",
-        "id": null,
-        "kind": "LibraryBenchmark",
-        "module_path": "example::some_benchmark_function",
-        "package_dir": "/project",
-        "profiles": [{
-            "flamegraphs": [],
-            "log_paths": ["/tmp/gungraun/bench.log"],
-            "out_paths": [],
-            "summaries": {
-                "parts": [{
-                    "details": {
-                        "Left": {
-                            "command": "bench",
-                            "details": null,
-                            "parent_pid": null,
-                            "part": null,
-                            "path": "/tmp/gungraun/bench.out",
-                            "pid": 1,
-                            "thread": null
-                        }
-                    },
-                    "metrics_summary": metrics_summary.clone()
-                }],
-                "total": {
-                    "regressions": [],
-                    "summary": metrics_summary
-                }
-            },
-            "tool": "Memcheck"
-        }],
-        "project_root": "/project",
-        "summary_output": null,
-        "version": "6"
-    });
-    serde_json::to_vec(&summary).unwrap()
+#[test]
+#[cfg(feature = "schema")]
+fn test_v7_metric_summaries_are_open_maps() {
+    let schema: Value = serde_json::from_str(include_str!("../schemas/summary.v7.schema.json"))
+        .expect("The loaded schema should be valid json");
+
+    for definition in ["ProfilePart", "ProfileTotal"] {
+        let field = if definition == "ProfilePart" {
+            "metrics_summary"
+        } else {
+            "summary"
+        };
+        let metric_summary = &schema["definitions"][definition]["properties"][field];
+        let variants = metric_summary["additionalProperties"]["oneOf"]
+            .as_array()
+            .expect("metric summaries should allow either supported metric-diff value shape");
+
+        assert_eq!(variants.len(), 2);
+        assert!(metric_summary.get("oneOf").is_none());
+    }
 }

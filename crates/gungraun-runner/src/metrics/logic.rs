@@ -2396,7 +2396,7 @@ mod tests {
         })));
 
         let value = serde_json::to_value(summary).unwrap();
-        let expected_value = serde_json::to_value("Milliseconds").unwrap();
+        let expected_value = serde_json::to_value("ms").unwrap();
 
         assert_eq!(
             expected_value,

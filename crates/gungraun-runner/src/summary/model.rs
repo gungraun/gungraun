@@ -9,12 +9,17 @@
 //! These types define the main consumer-facing structure that is serialized to and deserialized
 //! from summary files.
 
+use std::hash::Hash;
 use std::path::PathBuf;
 
 use either_or_both::EitherOrBoth;
+use indexmap::IndexMap;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::de::{DeserializeOwned, Error as _};
+use serde::ser::SerializeMap;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool};
 use crate::metrics::model::{
@@ -81,7 +86,7 @@ pub enum BenchmarkKind {
 /// ```
 ///
 /// [`Tool`]: crate::api::Tool
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ToolMetricSummary {
     /// If there are no metrics extracted (currently Massif, BBV)
@@ -148,6 +153,7 @@ pub enum ToolRegression {
     /// A performance regression triggered by a soft limit
     Soft {
         /// The [`MetricKind`] per tool
+        #[cfg_attr(feature = "schema", schemars(with = "String"))]
         metric: MetricKind,
         /// An optional human-readable display label for the regression metric, used in formatted
         /// output.
@@ -174,6 +180,7 @@ pub enum ToolRegression {
     /// A performance regression triggered by a hard limit
     Hard {
         /// The [`MetricKind`] per tool
+        #[cfg_attr(feature = "schema", schemars(with = "String"))]
         metric: MetricKind,
         /// An optional human-readable display label for the regression metric, used in formatted
         /// output.
@@ -247,6 +254,7 @@ pub struct BenchmarkSummary {
     ///
     /// If there were no errors during the benchmark run, there is at least one [`Profile`]
     /// present.
+    #[serde(deserialize_with = "deserialize_profiles")]
     pub profiles: Profiles,
     /// The project's absolute root directory
     pub project_root: PathBuf,
@@ -288,11 +296,12 @@ pub struct FlamegraphSummaries {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummary {
     /// The `EventKind` of the flamegraph
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub event_kind: EventKind,
 }
 
 /// `Profile` data for one [`Tool`] recorded in a benchmark summary.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profile {
     /// Details and information about the created flamegraphs if any
@@ -300,6 +309,7 @@ pub struct Profile {
     /// The data with the metrics and details about the tool run
     pub summaries: ProfileData,
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub tool: Tool,
 }
 
@@ -307,13 +317,19 @@ pub struct Profile {
 ///
 /// The [`ProfileTotal`] is always present and summarizes all [`ProfilePart`]s. If the tool produced
 /// only one part, the total matches that part's metrics.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileData {
     /// All [`ProfilePart`]s
     pub parts: Vec<ProfilePart>,
     /// The total over the [`ProfilePart`]s
     pub total: ProfileTotal,
+}
+
+#[derive(Deserialize)]
+struct ProfileDataWire {
+    parts: Vec<ProfilePartWire>,
+    total: ProfileTotalWire,
 }
 
 /// Metadata describing a single [`ProfilePart`] of a benchmark
@@ -338,26 +354,348 @@ pub struct ProfileInfo {
 ///
 /// A tool run can produce multiple parts, for example one per process when child tracing is
 /// enabled.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfilePart {
     /// [`ProfileInfo`] like command, pid, ppid, thread number etc.
     pub details: EitherOrBoth<ProfileInfo>,
     /// The [`ToolMetricSummary`] containing the actual data
+    #[cfg_attr(feature = "schema", schemars(schema_with = "metric_summary_schema"))]
     pub metrics_summary: ToolMetricSummary,
 }
 
+#[derive(Deserialize)]
+struct ProfilePartWire {
+    details: EitherOrBoth<ProfileInfo>,
+    metrics_summary: IndexMap<String, Value>,
+}
+
 /// Aggregated metrics, differences and regressions over all parts of a tool run.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileTotal {
     /// The detected regressions if any
     pub regressions: Vec<ToolRegression>,
     /// The [`ToolMetricSummary`] of the tool containing the collected metric data
+    #[cfg_attr(feature = "schema", schemars(schema_with = "metric_summary_schema"))]
     pub summary: ToolMetricSummary,
+}
+
+#[derive(Deserialize)]
+struct ProfileTotalWire {
+    regressions: Vec<Value>,
+    summary: IndexMap<String, Value>,
+}
+
+#[derive(Deserialize)]
+struct ProfileWire {
+    flamegraphs: Vec<Value>,
+    summaries: ProfileDataWire,
+    tool: Tool,
 }
 
 /// Contains all [`Profile`]s with the data for each [`Tool`] run
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profiles(pub Vec<Profile>);
+
+impl<'de> Deserialize<'de> for Profile {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::try_from(ProfileWire::deserialize(deserializer)?).map_err(D::Error::custom)
+    }
+}
+
+impl TryFrom<ProfileWire> for Profile {
+    type Error = serde_json::Error;
+
+    fn try_from(wire: ProfileWire) -> Result<Self, Self::Error> {
+        let flamegraphs = parse_typed_values(wire.flamegraphs);
+        let parts = wire
+            .summaries
+            .parts
+            .into_iter()
+            .map(|part| {
+                let metrics_summary = parse_metrics_summary(wire.tool, part.metrics_summary)?;
+                Ok(ProfilePart {
+                    details: part.details,
+                    metrics_summary,
+                })
+            })
+            .collect::<Result<Vec<_>, serde_json::Error>>()?;
+
+        let total = parse_metrics_summary(wire.tool, wire.summaries.total.summary)?;
+        let regressions = parse_typed_values(wire.summaries.total.regressions);
+
+        Ok(Self {
+            flamegraphs,
+            summaries: ProfileData {
+                parts,
+                total: ProfileTotal {
+                    regressions,
+                    summary: total,
+                },
+            },
+            tool: wire.tool,
+        })
+    }
+}
+
+impl Serialize for ToolMetricSummary {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::None => serializer.serialize_map(Some(0))?.end(),
+            Self::Memcheck(summary) | Self::Helgrind(summary) | Self::DRD(summary) => {
+                summary.serialize(serializer)
+            }
+            Self::Dhat(summary) => summary.serialize(serializer),
+            Self::Callgrind(summary) => summary.serialize(serializer),
+            Self::Cachegrind(summary) => summary.serialize(serializer),
+            Self::Perf(summary) => summary.serialize(serializer),
+        }
+    }
+}
+
+fn deserialize_profiles<'de, D>(deserializer: D) -> Result<Profiles, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let mut profiles = Vec::new();
+
+    for value in Vec::<Value>::deserialize(deserializer)? {
+        let tool = value
+            .get("tool")
+            .ok_or_else(|| D::Error::custom("missing field `tool`"))?
+            .as_str()
+            .ok_or_else(|| D::Error::custom("field `tool` must be a string"))?;
+        if serde_json::from_value::<Tool>(Value::String(tool.to_owned())).is_err() {
+            continue;
+        }
+        profiles.push(serde_json::from_value(value).map_err(D::Error::custom)?);
+    }
+
+    Ok(Profiles(profiles))
+}
+
+#[cfg(feature = "schema")]
+fn metric_summary_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    let metric_diff = generator.subschema_for::<crate::metrics::model::MetricsDiff>();
+    let perf_metric_diff = generator
+        .subschema_for::<crate::metrics::model::MetricsDiff<AnnotatedMetric<PerfQualities>>>();
+
+    schemars::json_schema!({
+        "type": "object",
+        "additionalProperties": {
+            "oneOf": [metric_diff, perf_metric_diff]
+        }
+    })
+}
+
+fn parse_metrics<K, V>(
+    metrics: IndexMap<String, Value>,
+    wrap: impl FnOnce(MetricsSummary<K, V>) -> ToolMetricSummary,
+) -> Result<ToolMetricSummary, serde_json::Error>
+where
+    K: DeserializeOwned + Eq + Hash,
+    V: DeserializeOwned,
+{
+    let mut typed = IndexMap::new();
+    for (name, value) in metrics {
+        if let Ok(key) = serde_json::from_value(Value::String(name)) {
+            typed.insert(key, serde_json::from_value(value)?);
+        }
+    }
+
+    Ok(wrap(MetricsSummary(typed)))
+}
+
+fn parse_metrics_summary(
+    tool: Tool,
+    metrics: IndexMap<String, Value>,
+) -> Result<ToolMetricSummary, serde_json::Error> {
+    match tool {
+        Tool::Callgrind => parse_metrics(metrics, ToolMetricSummary::Callgrind),
+        Tool::Cachegrind => parse_metrics(metrics, ToolMetricSummary::Cachegrind),
+        Tool::DHAT => parse_metrics(metrics, ToolMetricSummary::Dhat),
+        Tool::Memcheck => parse_metrics(metrics, ToolMetricSummary::Memcheck),
+        Tool::Helgrind => parse_metrics(metrics, ToolMetricSummary::Helgrind),
+        Tool::DRD => parse_metrics(metrics, ToolMetricSummary::DRD),
+        Tool::Perf => parse_metrics(metrics, ToolMetricSummary::Perf),
+        Tool::Massif | Tool::BBV => Ok(ToolMetricSummary::None),
+    }
+}
+
+fn parse_typed_values<T>(values: Vec<Value>) -> Vec<T>
+where
+    T: DeserializeOwned,
+{
+    values
+        .into_iter()
+        .filter_map(|value| serde_json::from_value(value).ok())
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{Value, json};
+
+    use super::{BenchmarkSummary, Profile, ToolMetricSummary};
+
+    fn benchmark_summary(profiles: &[Value]) -> Value {
+        json!({
+            "baselines": [null, null],
+            "benchmark_exe": "benchmark",
+            "benchmark_file": "benches/benchmark.rs",
+            "details": null,
+            "function_name": "benchmark",
+            "group": "group",
+            "id": null,
+            "kind": "LibraryBenchmark",
+            "module_path": "benchmark::group::benchmark",
+            "output_dir": "target/gungraun",
+            "package_dir": ".",
+            "profiles": profiles,
+            "project_root": "/project",
+            "version": "7"
+        })
+    }
+
+    fn profile(tool: &str, metric: &str) -> Value {
+        json!({
+            "flamegraphs": [],
+            "summaries": {
+                "parts": [{
+                    "details": {
+                        "Left": {
+                            "command": "benchmark",
+                            "details": null,
+                            "parent_pid": null,
+                            "part": 0,
+                            "pid": 42,
+                            "thread": null
+                        }
+                    },
+                    "metrics_summary": {
+                        metric: {
+                            "diffs": null,
+                            "metrics": { "Left": { "Int": 100 } }
+                        }
+                    }
+                }],
+                "total": {
+                    "regressions": [],
+                    "summary": {}
+                }
+            },
+            "tool": tool
+        })
+    }
+
+    #[test]
+    fn test_malformed_profile_tool_is_rejected() {
+        let mut missing = profile("Callgrind", "Ir");
+        missing.as_object_mut().unwrap().remove("tool");
+        let mut non_string = profile("Callgrind", "Ir");
+        non_string["tool"] = json!(42);
+
+        for malformed in [missing, non_string] {
+            serde_json::from_value::<BenchmarkSummary>(benchmark_summary(&[malformed]))
+                .unwrap_err();
+        }
+    }
+
+    #[test]
+    fn test_none_metric_summary_serializes_as_empty_object() {
+        assert_eq!(
+            serde_json::to_value(ToolMetricSummary::None).unwrap(),
+            json!({})
+        );
+    }
+
+    #[test]
+    fn test_profile_round_trips_flat_known_metrics() {
+        let profile: Profile = serde_json::from_value(profile("Callgrind", "Ir")).unwrap();
+        let serialized = serde_json::to_value(profile).unwrap();
+
+        assert_eq!(
+            serialized["summaries"]["parts"][0]["metrics_summary"]["Ir"]["metrics"]["Left"]["Int"],
+            100
+        );
+        assert!(serialized["summaries"]["parts"][0]["metrics_summary"]["Callgrind"].is_null());
+    }
+
+    #[test]
+    fn test_regression_optional_fields_remain_absent() {
+        let mut input = profile("Callgrind", "Ir");
+        input["summaries"]["total"]["regressions"] = json!([{
+            "Soft": {
+                "metric": { "Callgrind": "Ir" },
+                "new": { "Int": 100 },
+                "old": { "Int": 90 },
+                "diff_pct": "11.11111111111111",
+                "limit": "10"
+            }
+        }]);
+
+        let profile: Profile = serde_json::from_value(input).unwrap();
+        let serialized = serde_json::to_value(profile).unwrap();
+        let regression = &serialized["summaries"]["total"]["regressions"][0]["Soft"];
+
+        assert!(regression.get("display").is_none());
+        assert!(regression.get("unit").is_none());
+        assert_eq!(regression["diff_pct"], "11.11111111111111");
+    }
+
+    #[test]
+    fn test_unknown_profile_data_is_dropped() {
+        let mut input = profile("Callgrind", "FutureMetric");
+        input["flamegraphs"] = json!([{ "event_kind": "FutureEvent" }]);
+        input["summaries"]["total"]["regressions"] = json!([{
+            "Soft": {
+                "metric": { "Callgrind": "FutureMetric" },
+                "new": { "Int": 100 },
+                "old": { "Int": 90 },
+                "diff_pct": "11.11111111111111",
+                "limit": "10"
+            }
+        }]);
+        input["summaries"]["total"]["summary"] =
+            input["summaries"]["parts"][0]["metrics_summary"].clone();
+
+        let profile: Profile = serde_json::from_value(input).unwrap();
+        let serialized = serde_json::to_value(profile).unwrap();
+
+        assert_eq!(serialized["flamegraphs"], json!([]));
+        assert_eq!(
+            serialized["summaries"]["parts"][0]["metrics_summary"],
+            json!({})
+        );
+        assert_eq!(serialized["summaries"]["total"]["regressions"], json!([]));
+        assert_eq!(serialized["summaries"]["total"]["summary"], json!({}));
+    }
+
+    #[test]
+    fn test_unknown_profiles_are_dropped() {
+        let input = benchmark_summary(&[
+            profile("FutureTool", "FutureMetric"),
+            profile("Callgrind", "Ir"),
+            profile("Cachegrind", "Ir"),
+        ]);
+
+        let summary: BenchmarkSummary = serde_json::from_value(input).unwrap();
+        let serialized = serde_json::to_value(summary).unwrap();
+        let tools = serialized["profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|profile| profile["tool"].as_str().unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(tools, ["Callgrind", "Cachegrind"]);
+    }
+}

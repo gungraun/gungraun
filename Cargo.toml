@@ -71,7 +71,7 @@ serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.127" }
 serde_test = { version = "1.0.177" }
 serde_yaml = { version = "0.9" }
-serial_test = { version = "3" }
+serial_test = { version = "4" }
 shlex = { version = "2.0" }
 signal-hook = { version = "0.4" }
 simplematch = "0.3"

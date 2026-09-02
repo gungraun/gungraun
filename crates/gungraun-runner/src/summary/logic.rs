@@ -487,10 +487,7 @@ impl ProfileData {
 
         Self {
             parts: summaries,
-            total: ProfileTotal {
-                summary: total,
-                regressions: vec![],
-            },
+            total: ProfileTotal::new(total),
         }
     }
 }
@@ -561,6 +558,14 @@ impl ProfilePart {
 }
 
 impl ProfileTotal {
+    /// Create a new `ProfileTotal` with a `total` [`ToolMetricSummary`]
+    pub fn new(total: ToolMetricSummary) -> Self {
+        Self {
+            regressions: Vec::default(),
+            summary: total,
+        }
+    }
+
     /// Returns `true` if there are any regressions.
     pub fn is_regressed(&self) -> bool {
         !self.regressions.is_empty()

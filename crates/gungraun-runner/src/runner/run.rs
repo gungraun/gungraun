@@ -319,6 +319,9 @@ pub fn run() -> Result<()> {
                 ..
             } = config.meta.args;
 
+            // Test mode produces no metrics, so skip the summary.
+            let nosummary = nosummary || config.meta.is_test_mode();
+
             if list {
                 return lib_bench::list(benchmark_groups, &config, format, ignored);
             }
@@ -350,6 +353,9 @@ pub fn run() -> Result<()> {
                 ignored,
                 ..
             } = config.meta.args;
+
+            // Test mode produces no metrics, so skip the summary.
+            let nosummary = nosummary || config.meta.is_test_mode();
 
             if list {
                 return bin_bench::list(benchmark_groups, &config, format, ignored);

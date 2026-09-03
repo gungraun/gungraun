@@ -141,9 +141,6 @@ pub struct CommandLineArgs {
     // running `cargo test -- --help`
     // `--bench` also shows up as last argument set by `cargo bench` even if not explicitly given
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    #[arg(action = ArgAction::SetTrue, hide = true, long = "bench", required = false)]
-    _bench: bool,
-
     #[arg(hide = true, long = "color", num_args = 0.., required = false)]
     _color: Vec<String>,
 
@@ -200,9 +197,6 @@ pub struct CommandLineArgs {
 
     #[arg(hide = true, long = "skip", num_args = 0.., required = false)]
     _skip: Vec<String>,
-
-    #[arg(action = ArgAction::SetTrue, hide = true, long = "test", required = false)]
-    _test: bool,
 
     #[arg(hide = true, long = "test-threads", num_args = 0.., required = false)]
     _test_threads: Vec<String>,
@@ -294,6 +288,12 @@ pub struct CommandLineArgs {
         verbatim_doc_comment,
     )]
     pub bbv_args: Option<RawToolArgs>,
+
+    /// Set by Cargo for benchmark targets run by `cargo bench`
+    ///
+    /// If this flag is absent, Gungraun selects test mode unless `--test` is set.
+    #[arg(action = ArgAction::SetTrue, hide = true, long = "bench", required = false)]
+    pub bench: bool,
 
     #[rustfmt::skip]
     /// The command-line arguments to pass through to Cachegrind
@@ -1432,6 +1432,26 @@ pub struct CommandLineArgs {
         verbatim_doc_comment,
     )]
     pub show_only_comparison: Option<bool>,
+
+    #[rustfmt::skip]
+    /// Run each benchmark once without measuring it with a tool
+    ///
+    /// In test mode, Gungraun runs the benchmark binary directly. It does not start Valgrind or
+    /// perf, collect metrics, write output files, or check for regressions.
+    ///
+    /// If this option is not set, Gungraun selects test mode when the benchmark binary is not
+    /// started by `cargo bench`. This allows `cargo test --benches` to run all benchmarks once. Use
+    /// `--test=false` to select measuring mode explicitly.
+    #[arg(
+        default_missing_value = "true",
+        display_order = 100,
+        env = "GUNGRAUN_TEST",
+        long = "test",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+    )]
+    pub test: Option<bool>,
 
     #[rustfmt::skip]
     /// Show changes only when they are above the `tolerance` level
@@ -2595,6 +2615,50 @@ mod tests {
             CommandLineArgs::parse_from([format!("--separate-targets={value}")])
         };
         assert_eq!(result.separate_targets, expected);
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_test_env() {
+        // SAFETY: This test is run serially
+        unsafe {
+            std::env::set_var("GUNGRAUN_TEST", "yes");
+        }
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+
+        // SAFETY: This test is run serially
+        unsafe {
+            std::env::remove_var("GUNGRAUN_TEST");
+        }
+
+        assert_eq!(result.test, Some(true));
+    }
+
+    #[rstest]
+    #[case::default("", Some(true))]
+    #[case::yes("yes", Some(true))]
+    #[case::no("no", Some(false))]
+    fn test_test_cli(#[case] value: &str, #[case] expected: Option<bool>) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--test".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--test={value}")])
+        };
+        assert_eq!(result.test, expected);
+    }
+
+    #[test]
+    fn test_test_is_none_when_not_given() {
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.test, None);
+    }
+
+    #[rstest]
+    #[case::cargo_bench(vec!["--bench"], true)]
+    #[case::cargo_test(vec![], false)]
+    fn test_bench_cli(#[case] args: Vec<&str>, #[case] expected: bool) {
+        let result = CommandLineArgs::parse_from(args);
+        assert_eq!(result.bench, expected);
     }
 
     #[test]

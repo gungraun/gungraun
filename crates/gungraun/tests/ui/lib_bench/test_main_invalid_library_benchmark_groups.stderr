@@ -137,50 +137,6 @@ help: consider importing this function instead
 535 +                         crate::test_when_library_benchmark_as_group::__run
     |
 
-error[E0603]: function import `__run_setup` is private
-   --> src/macros.rs
-    |
-    |                     $group::__run_setup(true);
-    |                             ^^^^^^^^^^^ private function import
-    |
-note: the function import `__run_setup` is defined here...
-   --> tests/ui/lib_bench/test_main_invalid_library_benchmark_groups.rs:3:5
-    |
-3   |     #[library_benchmark]
-    |     ^^^^^^^^^^^^^^^^^^^^
-note: ...and refers to the function `__run_setup` which is defined here
-   --> tests/ui/lib_bench/test_main_invalid_library_benchmark_groups.rs:6:5
-    |
-6   |     main!(library_benchmark_groups = some_func);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this function instead
-    |
-599 |                     crate::test_when_library_benchmark_as_group::__run_setup(true);
-    |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-error[E0603]: function import `__run_teardown` is private
-   --> src/macros.rs
-    |
-    |                     $group::__run_teardown(true);
-    |                             ^^^^^^^^^^^^^^ private function import
-    |
-note: the function import `__run_teardown` is defined here...
-   --> tests/ui/lib_bench/test_main_invalid_library_benchmark_groups.rs:3:5
-    |
-3   |     #[library_benchmark]
-    |     ^^^^^^^^^^^^^^^^^^^^
-note: ...and refers to the function `__run_teardown` which is defined here
-   --> tests/ui/lib_bench/test_main_invalid_library_benchmark_groups.rs:6:5
-    |
-6   |     main!(library_benchmark_groups = some_func);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this function instead
-    |
-614 |                     crate::test_when_library_benchmark_as_group::__run_teardown(true);
-    |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 error[E0308]: mismatched types
  --> tests/ui/lib_bench/test_main_invalid_library_benchmark_groups.rs:6:5
   |
@@ -207,19 +163,6 @@ note: method defined here
   |
   |     pub fn add_group(
   |            ^^^^^^^^^
-  = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0308]: mismatched types
- --> tests/ui/lib_bench/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |     |
-  |     expected `InternalMacroLibBench`, found `(_, _, _)`
-  |     this is an iterator with items of type `&InternalMacroLibBench`
-  |
-  = note: expected struct `InternalMacroLibBench`
-              found tuple `(_, _, _)`
   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied

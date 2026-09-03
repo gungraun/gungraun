@@ -136,6 +136,10 @@ pub struct Metadata {
     /// * `/home/my/workspace/my-project/target/gungraun/my-project` or
     /// * `/home/my/workspace/my-project/target/gungraun/x86_64-linux-unknown-gnu/my-project`
     pub target_dir: PathBuf,
+    /// Whether to run benchmarks in test mode instead of measuring them with a tool.
+    ///
+    /// See [`Metadata::is_test_mode`].
+    pub test_mode: bool,
     /// The shared, lazily initialized cache for the Valgrind execution mode.
     ///
     /// Use [`Metadata::valgrind_exec_mode`] to resolve and access the mode. The cache is shared by
@@ -216,14 +220,20 @@ impl Metadata {
         target: &str,
         supported_tools: SupportedTools,
     ) -> Result<Self> {
-        if !supported_tools.has_at_least_one() {
+        let args = CommandLineArgs::parse_validated_from(raw_command_line_args);
+
+        // Cargo sets `--bench` for `cargo bench`. Use test mode when it is absent unless `--test`
+        // overrides it.
+        let test_mode = args.test.unwrap_or(!args.bench);
+        debug!("Test mode: {test_mode}");
+
+        // Test mode does not launch a tool, so tool support is not required.
+        if !test_mode && !supported_tools.has_at_least_one() {
             bail!(
                 "No tool ({}) is supported for this target '{target}'",
                 SupportedTools::tools_list()
             );
         }
-
-        let args = CommandLineArgs::parse_validated_from(raw_command_line_args);
 
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {arch}");
@@ -279,8 +289,17 @@ impl Metadata {
             project_root,
             supported_tools,
             target_dir,
+            test_mode,
             valgrind_exec_mode: Arc::new(OnceLock::new()),
         })
+    }
+
+    /// Return whether the benchmarks run in test mode.
+    ///
+    /// Test mode runs each benchmark once without starting Valgrind or perf, collecting metrics, or
+    /// writing output files. If `--test` is not set, `--bench` selects the mode.
+    pub fn is_test_mode(&self) -> bool {
+        self.test_mode
     }
 
     /// Return the perf execution mode, resolving and caching it on first successful access.
@@ -355,6 +374,9 @@ impl Metadata {
     /// configuring environment variables, and arguments according to the tool configuration and
     /// run options.
     ///
+    /// In test mode ([`Metadata::is_test_mode`]), the command runs `executable` directly without a
+    /// tool invocation.
+    ///
     /// For custom runner invocation (`*Runner` variants):
     /// - Sets `GUNGRAUN_TR_DEST_DIR`, `GUNGRAUN_TR_HOME`, `GUNGRAUN_TR_WORKSPACE_ROOT`, and
     ///   `GUNGRAUN_ALLOW_ASLR` environment variables
@@ -365,7 +387,20 @@ impl Metadata {
         tool_config: &ToolConfig,
         output_path: &ToolOutputPath,
         run_options: &RunOptions,
+        executable: &Path,
     ) -> Result<Command> {
+        // In test mode the benchmark executable is the command.
+        if self.is_test_mode() {
+            let mut command = Command::new(executable);
+
+            if run_options.env_clear {
+                env_clear(tool_config.tool(), &mut command);
+            }
+
+            command.envs(&run_options.envs);
+            return Ok(command);
+        }
+
         let base_command = if tool_config.tool() == Tool::Perf {
             let exec_mode = self.perf_exec_mode()?;
             match exec_mode {
@@ -858,6 +893,41 @@ mod tests {
             .iter()
             .map(|(k, v)| (OsString::from(k), OsString::from(v)))
             .collect()
+    }
+
+    /// Create metadata without querying Cargo for the workspace layout
+    fn metadata_from(args: &[&str], supported_tools: SupportedTools) -> Result<Metadata> {
+        let mut raw = vec![
+            "--workspace-root=/workspace".to_owned(),
+            "--home=/workspace/target/gungraun".to_owned(),
+        ];
+        raw.extend(args.iter().map(|a| (*a).to_owned()));
+
+        Metadata::new(&raw, "x86_64-unknown-linux-gnu", supported_tools)
+    }
+
+    #[rstest]
+    #[case::cargo_bench(&["--bench"], false)]
+    #[case::cargo_test(&[], true)]
+    #[case::test_wins_over_bench(&["--bench", "--test"], true)]
+    #[case::no_test_wins_over_missing_bench(&["--test=false"], false)]
+    fn test_is_test_mode(#[case] args: &[&str], #[case] expected: bool) {
+        let supported_tools = SupportedTools {
+            perf: true,
+            valgrind: true,
+        };
+        let meta = metadata_from(args, supported_tools).unwrap();
+
+        assert_eq!(meta.is_test_mode(), expected);
+    }
+
+    #[rstest]
+    #[case::test_mode(&[], true)]
+    #[case::bench_mode(&["--bench"], false)]
+    fn test_new_without_supported_tools(#[case] args: &[&str], #[case] expected_ok: bool) {
+        let result = metadata_from(args, SupportedTools::default());
+
+        assert_eq!(result.is_ok(), expected_ok);
     }
 
     #[test]

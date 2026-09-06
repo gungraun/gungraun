@@ -63,7 +63,7 @@ proc-macro-error3 = "3.0.0"
 proc-macro2 = "1.0.91"
 quote = "1.0.35"
 regex = { version = "1.12" }
-rstest = { version = ">=0.17, <0.27", default-features = false }
+rstest = { version = ">=0.17, <0.28", default-features = false }
 rustc_version = { version = "0.4" }
 sanitize-filename = { version = "0.6" }
 schemars = { version = "1.0.4" }

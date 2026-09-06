@@ -2648,8 +2648,15 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_test_is_none_when_not_given() {
+        // SAFETY: This test is run serially
+        unsafe {
+            std::env::remove_var("GUNGRAUN_TEST");
+        }
+
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+
         assert_eq!(result.test, None);
     }
 

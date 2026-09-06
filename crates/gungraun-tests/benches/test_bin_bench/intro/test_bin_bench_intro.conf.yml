@@ -24,9 +24,15 @@
 #   - Output matches expected stdout format
 #   - Setup/teardown execute in correct order
 #   - Files created and cleaned up in sandbox
+#   - `--test` runs each benchmark once without writing output files
 
 groups:
   - runs:
+      - args: ["--test"]
+        expected:
+          exit_code: 0
+          no_files: true
+          no_stdout: true
       - args: ["--nocapture", "--truncate-description=false"]
         expected:
           stdout: expected_stdout

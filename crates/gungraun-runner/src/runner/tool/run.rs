@@ -53,6 +53,87 @@ pub struct RunOptions {
     pub teardown: Option<Assistant>,
 }
 
+/// Workspace path mapping for a tool runner.
+///
+/// Maps the workspace path to the path used by the tool runner, such as a path in a container.
+#[derive(Debug, Default, Clone)]
+pub struct Roots(Option<(PathBuf, PathBuf)>);
+
+impl Roots {
+    /// Create path mapping from metadata.
+    pub fn new(meta: &Metadata) -> Self {
+        Self(
+            meta.args
+                .tool_runner_root
+                .clone()
+                .map(|root| (meta.project_root.clone(), root)),
+        )
+    }
+
+    /// Create path mapping from one workspace root to another.
+    pub fn rebasing<T, U>(workspace_root: T, new_root: U) -> Self
+    where
+        T: Into<PathBuf>,
+        U: Into<PathBuf>,
+    {
+        Self(Some((workspace_root.into(), new_root.into())))
+    }
+
+    /// Resolve an executable path, applying path mapping when configured.
+    ///
+    /// If no mapping applies, resolve the path normally.
+    pub fn resolve_executable(&self, executable: &Path, current_dir: Option<&Path>) -> PathBuf {
+        if let Some(rebased) = self.try_rebase_arg(executable.as_os_str()) {
+            PathBuf::from(rebased)
+        } else {
+            resolve_binary_path(executable, current_dir)
+                .unwrap_or_else(|_| executable.to_path_buf())
+        }
+    }
+
+    /// Rebase a path argument when it is under the workspace root.
+    ///
+    /// Returns `None` when no mapping applies.
+    fn try_rebase_arg(&self, arg: &OsStr) -> Option<OsString> {
+        let (workspace_root, new_root) = self.0.as_ref()?;
+
+        if arg.starts_with("-") {
+            if let Some((key, value)) = arg.split_once("=") {
+                Self::try_rebase_path_arg(key, value, workspace_root, new_root, "=")
+            } else if let Some((key, value)) = arg.split_once(" ") {
+                Self::try_rebase_path_arg(key, value, workspace_root, new_root, " ")
+            } else {
+                None
+            }
+        } else {
+            Path::new(arg)
+                .strip_prefix(workspace_root)
+                .ok()
+                .map(|suffix| new_root.join(suffix).into_os_string())
+        }
+    }
+
+    /// Rebase the path value in a key-value argument.
+    ///
+    /// Returns `None` when the value is not under the workspace root.
+    fn try_rebase_path_arg(
+        key: &OsStr,
+        value: &OsStr,
+        workspace_root: &Path,
+        new_root: &Path,
+        separator: &str,
+    ) -> Option<OsString> {
+        let suffix = Path::new(value).strip_prefix(workspace_root).ok()?;
+
+        let new_path = new_root.join(suffix);
+        let mut new_arg = key.to_os_string();
+        new_arg.push(separator);
+        new_arg.push(new_path.into_os_string());
+
+        Some(new_arg)
+    }
+}
+
 /// A configured tool command ready to be executed.
 ///
 /// This struct encapsulates a valgrind tool invocation with its command, output capture
@@ -65,12 +146,12 @@ pub struct ToolCommand {
     pub executable: PathBuf,
     /// Configuration for whether to capture or pass through the subprocess output
     pub nocapture: NoCapture,
-    /// Optional path rebasing configuration for containerized runners
+    /// Path mapping for a containerized tool runner
+    pub roots: Roots,
+    /// Whether [`Self::command`] runs the benchmark directly without a tool
     ///
-    /// When using `--tool-runner-root`, this contains the tuple `(original_workspace_root,
-    /// replacement_path)` for rebasing paths to match the runner's perspective (e.g., inside a
-    /// container).
-    pub roots: Option<(PathBuf, PathBuf)>,
+    /// See [`Metadata::is_test_mode`].
+    pub test_mode: bool,
     /// The [`Tool`] to run
     pub tool: Tool,
 }
@@ -111,35 +192,20 @@ impl ToolCommand {
             NoCapture::False
         };
 
-        let command = meta.to_tool_command(tool_config, output_path, run_options)?;
-        let mut tool_command = Self {
+        let roots = Roots::new(meta);
+
+        // Resolve the executable before building the command because test mode runs it directly.
+        let executable = roots.resolve_executable(executable, sandbox_dir);
+        let command = meta.to_tool_command(tool_config, output_path, run_options, &executable)?;
+
+        Ok(Self {
             command,
-            executable: executable.to_path_buf(),
+            executable,
             nocapture,
+            test_mode: meta.is_test_mode(),
             tool: tool_config.tool(),
-            roots: meta
-                .args
-                .tool_runner_root
-                .clone()
-                .map(|r| (meta.project_root.clone(), r)),
-        };
-        tool_command.executable = tool_command.resolve_executable(executable, sandbox_dir);
-
-        Ok(tool_command)
-    }
-
-    /// Resolve an executable path, applying path rebasing if configured
-    ///
-    /// When `--tool-runner-root` is specified, this method attempts to rebase the executable
-    /// path from the original workspace root to the runner's perspective. If rebasing is not
-    /// possible or not configured, falls back to resolving the binary path normally.
-    pub fn resolve_executable(&self, executable: &Path, current_dir: Option<&Path>) -> PathBuf {
-        if let Some(rebased) = self.try_rebase_arg(executable.as_os_str()) {
-            PathBuf::from(rebased)
-        } else {
-            resolve_binary_path(executable, current_dir)
-                .unwrap_or_else(|_| executable.to_path_buf())
-        }
+            roots,
+        })
     }
 
     /// Add an argument to the command
@@ -163,7 +229,7 @@ impl ToolCommand {
     {
         let arg = arg.as_ref();
 
-        if let Some(rebased) = self.try_rebase_arg(arg) {
+        if let Some(rebased) = self.roots.try_rebase_arg(arg) {
             self.command.arg(rebased);
         } else {
             self.command.arg(arg);
@@ -207,6 +273,7 @@ impl ToolCommand {
             executable: self.executable.clone(),
             nocapture: self.nocapture,
             roots: self.roots.clone(),
+            test_mode: self.test_mode,
             tool: self.tool,
         }
     }
@@ -274,9 +341,14 @@ impl ToolCommand {
             }
         }
 
-        let executable_args = executable_args_fn(config, None);
+        // Test mode runs the benchmark with its default run mode.
+        let executable_args =
+            executable_args_fn(config, self.test_mode.then_some(BenchRunMode::Default));
 
-        let (mut perf_data, args) = if let ToolConfigOptions::Perf(options) = &config.options {
+        let (mut perf_data, args) = if self.test_mode {
+            // Test mode has no tool or perf state.
+            (None, vec![])
+        } else if let ToolConfigOptions::Perf(options) = &config.options {
             if let Some(time) = match options.run_mode {
                 PerfRunMode::DefaultCalibrate => Some(DEFAULT_PERF_CALIBRATION_TIME),
                 PerfRunMode::Calibrate(time) => Some(time),
@@ -344,7 +416,12 @@ impl ToolCommand {
             )?;
         }
 
-        self.append_tool_invocation(args, executable_args.as_ref());
+        if self.test_mode {
+            // The command already contains the executable in test mode.
+            self.args_rebase(executable_args.as_ref());
+        } else {
+            self.append_tool_invocation(args, executable_args.as_ref());
+        }
 
         self.nocapture.apply(&mut self.command, captured_output)?;
 
@@ -385,50 +462,6 @@ impl ToolCommand {
             .map_err(|error| {
                 Error::LaunchError(PathBuf::from(config.tool().id()), error.to_string()).into()
             })
-    }
-
-    /// Attempts to rebase a path argument if it starts with the workspace root.
-    ///
-    /// Returns `Some(rebased_arg)` if rebasing was successful, `None` if the argument
-    /// should be passed through unchanged.
-    fn try_rebase_arg(&self, arg: &OsStr) -> Option<OsString> {
-        let (workspace_root, new_root) = self.roots.as_ref()?;
-
-        if arg.starts_with("-") {
-            if let Some((key, value)) = arg.split_once("=") {
-                Self::try_rebase_path_arg(key, value, workspace_root, new_root, "=")
-            } else if let Some((key, value)) = arg.split_once(" ") {
-                Self::try_rebase_path_arg(key, value, workspace_root, new_root, " ")
-            } else {
-                None
-            }
-        } else {
-            Path::new(arg)
-                .strip_prefix(workspace_root)
-                .ok()
-                .map(|suffix| new_root.join(suffix).into_os_string())
-        }
-    }
-
-    /// Attempts to rebase a key-value argument where the value is a path.
-    ///
-    /// Returns `Some(rebased_arg)` if the value path was successfully rebased,
-    /// `None` if the value is not under the workspace root.
-    fn try_rebase_path_arg(
-        key: &OsStr,
-        value: &OsStr,
-        workspace_root: &Path,
-        new_root: &Path,
-        separator: &str,
-    ) -> Option<OsString> {
-        let suffix = Path::new(value).strip_prefix(workspace_root).ok()?;
-
-        let new_path = new_root.join(suffix);
-        let mut new_arg = key.to_os_string();
-        new_arg.push(separator);
-        new_arg.push(new_path.into_os_string());
-
-        Some(new_arg)
     }
 }
 
@@ -611,7 +644,27 @@ pub fn check_exit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixtures::{tool_config_f, tool_output_path_f};
+    use crate::fixtures::{metadata_f, tool_command_f, tool_config_f, tool_output_path_f};
+
+    #[test]
+    fn tool_command_runs_the_executable_itself_in_test_mode() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = tool_output_path_f().target_dir(temp_dir.path()).fx();
+        let meta = metadata_f().raw_command_line_args(["--test"]).fx();
+        let executable = temp_dir.path().join("bench");
+
+        assert!(meta.is_test_mode());
+
+        let tool_command = tool_command_f()
+            .executable(&executable)
+            .output_path(&output_path)
+            .metadata(meta)
+            .fx();
+
+        assert!(tool_command.test_mode);
+        assert_eq!(tool_command.command.get_program(), executable.as_os_str());
+        assert_eq!(tool_command.command.get_args().count(), 0);
+    }
 
     #[test]
     fn prepare_perf_command_uses_tool_runner_dest_for_output_arg() {
@@ -649,10 +702,8 @@ mod tests {
             command: Command::new("runner"),
             executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
             nocapture: NoCapture::False,
-            roots: Some((
-                PathBuf::from("/host/workspace"),
-                PathBuf::from("/container/workspace"),
-            )),
+            roots: Roots::rebasing("/host/workspace", "/container/workspace"),
+            test_mode: false,
             tool: Tool::Perf,
         };
         let tool_args = [
@@ -688,10 +739,8 @@ mod tests {
             command: Command::new("runner"),
             executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
             nocapture: NoCapture::False,
-            roots: Some((
-                PathBuf::from("/host/workspace"),
-                PathBuf::from("/container/workspace"),
-            )),
+            roots: Roots::rebasing("/host/workspace", "/container/workspace"),
+            test_mode: false,
             tool: Tool::Perf,
         };
 

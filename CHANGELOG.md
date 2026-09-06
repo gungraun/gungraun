@@ -36,6 +36,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+- Added test mode to run each benchmark once without Valgrind or perf. This
+  supports `cargo test --benches` and `cargo test --all-targets` on platforms
+  without these tools.
 - Rename ui_tests feature to `__ui_tests` to signal internal usage
 - Change serial execution to real serial execution without thread pool
 - Breaking: feature rename of `client_request_defs` -> `stubs` and

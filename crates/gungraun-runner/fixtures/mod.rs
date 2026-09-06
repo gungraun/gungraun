@@ -179,9 +179,10 @@ pub fn metadata_f(
     #[builder(default = vec![], with = FromIterator::from_iter)] raw_command_line_args: Vec<&str>,
     target: Option<&str>,
 ) -> Metadata {
-    let args = raw_command_line_args
-        .into_iter()
-        .map(ToOwned::to_owned)
+    // Cargo sets `--bench` for `cargo bench`; its absence selects test mode. Keep fixtures in
+    // benchmark mode by default. Pass `--test=true` in `raw_command_line_args` to select test mode.
+    let args = std::iter::once("--bench".to_owned())
+        .chain(raw_command_line_args.into_iter().map(ToOwned::to_owned))
         .collect::<Vec<String>>();
     let target = target.unwrap_or("x86_64-unknown-linux-gnu");
     let supported_tools = SupportedTools {

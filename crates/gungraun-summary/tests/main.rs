@@ -181,7 +181,7 @@ fn test_v7_metric_summaries_are_open_maps() {
             "summary"
         };
         let metric_summary = &schema["definitions"][definition]["properties"][field];
-        let variants = metric_summary["additionalProperties"]["oneOf"]
+        let variants = metric_summary["additionalProperties"]["anyOf"]
             .as_array()
             .expect("metric summaries should allow either supported metric-diff value shape");
 

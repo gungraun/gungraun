@@ -1,7 +1,7 @@
 //! Version 6 Gungraun summary types and parsing helpers.
 //!
 //! This module is a self-contained snapshot of the version 6 summary model: the version 6
-//! summary-model types live in the local [`model`] module (re-exported here), including the
+//! summary-model types live in the local `model` module (re-exported here), including the
 //! `ErrorTool` enum variants used by Memcheck, Helgrind and DRD. Unchanged shared types are
 //! re-exported from `gungraun-runner`. The parsing helpers assume the input already matches
 //! schema version 6.

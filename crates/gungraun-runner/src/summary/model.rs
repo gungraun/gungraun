@@ -491,7 +491,7 @@ fn metric_summary_schema(generator: &mut schemars::SchemaGenerator) -> schemars:
     schemars::json_schema!({
         "type": "object",
         "additionalProperties": {
-            "oneOf": [metric_diff, perf_metric_diff]
+            "anyOf": [metric_diff, perf_metric_diff]
         }
     })
 }

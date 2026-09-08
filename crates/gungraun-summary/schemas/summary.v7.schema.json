@@ -531,7 +531,7 @@
           "description": "The [`ToolMetricSummary`] containing the actual data",
           "type": "object",
           "additionalProperties": {
-            "oneOf": [
+            "anyOf": [
               {
                 "$ref": "#/definitions/MetricsDiff"
               },
@@ -559,7 +559,7 @@
           "description": "The [`ToolMetricSummary`] of the tool containing the collected metric data",
           "type": "object",
           "additionalProperties": {
-            "oneOf": [
+            "anyOf": [
               {
                 "$ref": "#/definitions/MetricsDiff"
               },

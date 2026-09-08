@@ -588,6 +588,7 @@ impl ExpectedFilesManifestEntry {
                     print_error(format!("{}: Validation error: {error}", summary.display()));
                 }
             }
+
             let (_, value) = value
                 .as_object()
                 .expect("The summary should be a json object")

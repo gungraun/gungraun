@@ -1417,30 +1417,6 @@ mod tests {
     };
 
     #[test]
-    fn test_mode_keeps_a_single_config_without_an_analyzer() {
-        let tool_specs = ToolSpecs(vec![
-            tool_spec_f().tool(Tool::Memcheck).fx(),
-            tool_spec_f().tool(Tool::Massif).fx(),
-        ]);
-
-        let tool_configs = tool_configs_f()
-            .raw_command_line_args(["--test"])
-            .tool_specs(tool_specs)
-            .fx();
-
-        assert_eq!(tool_configs.0.len(), 1);
-        assert!(tool_configs.0[0].is_default);
-        assert!(!tool_configs.0[0].has_analyzer);
-        let temp_dir = tempfile::tempdir().unwrap();
-        let output_path = tool_output_path_f().target_dir(temp_dir.path()).fx();
-        assert!(
-            tool_configs
-                .analyzers(temp_dir.path(), &output_path)
-                .is_empty()
-        );
-    }
-
-    #[test]
     fn test_absent_cli_perf_sampling_preserves_spec_sample_duration() {
         let spec = tool_spec_f()
             .tool(Tool::Perf)
@@ -1743,6 +1719,30 @@ mod tests {
 
         let error = result.expect_err("zero sampling duration must be rejected");
         assert!(error.to_string().contains("perf sample duration was zero"));
+    }
+
+    #[test]
+    fn test_mode_keeps_a_single_config_without_an_analyzer() {
+        let tool_specs = ToolSpecs(vec![
+            tool_spec_f().tool(Tool::Memcheck).fx(),
+            tool_spec_f().tool(Tool::Massif).fx(),
+        ]);
+
+        let tool_configs = tool_configs_f()
+            .raw_command_line_args(["--test"])
+            .tool_specs(tool_specs)
+            .fx();
+
+        assert_eq!(tool_configs.0.len(), 1);
+        assert!(tool_configs.0[0].is_default);
+        assert!(!tool_configs.0[0].has_analyzer);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = tool_output_path_f().target_dir(temp_dir.path()).fx();
+        assert!(
+            tool_configs
+                .analyzers(temp_dir.path(), &output_path)
+                .is_empty()
+        );
     }
 
     #[test]

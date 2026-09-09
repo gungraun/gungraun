@@ -26,9 +26,15 @@
 #   - Setup costs not attributed to benchmark metrics
 #   - Multiple tools produce separate output files
 #   - Example serves as documentation for Gungraun API usage
+#   - `--test` runs each benchmark once without writing output files
 
 groups:
   - runs:
+      - args: ["--test"]
+        expected:
+          exit_code: 0
+          no_files: true
+          no_stdout: true
       - args: []
         expected:
           zero_metrics: true

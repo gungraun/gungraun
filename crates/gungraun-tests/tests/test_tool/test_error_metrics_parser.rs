@@ -1,11 +1,10 @@
 use std::path::PathBuf;
 
 use gungraun_runner::api::{ErrorMetric, Tool};
-use gungraun_runner::metrics::model::Metrics;
+use gungraun_runner::metrics::model::{Metrics, ToolMetrics};
 use gungraun_runner::runner::tool::error_metric_parser::ErrorMetricLogfileParser;
 use gungraun_runner::runner::tool::parser::Parser;
 use gungraun_runner::runner::tool::path::ToolOutputPathKind;
-use gungraun_runner::summary::model::ToolMetrics;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 

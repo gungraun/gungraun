@@ -1,9 +1,8 @@
 use gungraun_runner::api::{DhatMetric, EntryPoint};
-use gungraun_runner::metrics::model::Metrics;
+use gungraun_runner::metrics::model::{Metrics, ToolMetrics};
 use gungraun_runner::runner::dhat::json_parser::parse;
 use gungraun_runner::runner::dhat::model::{DhatData, ProgramPoint};
 use gungraun_runner::runner::dhat::tree::{Data, DhatTree, Tree};
-use gungraun_runner::summary::model::ToolMetrics;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 

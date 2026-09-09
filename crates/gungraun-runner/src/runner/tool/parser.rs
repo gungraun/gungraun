@@ -11,11 +11,11 @@ use super::error_metric_parser::ErrorMetricLogfileParser;
 use super::generic_parser::GenericLogfileParser;
 use super::path::ToolOutputPath;
 use crate::api::EntryPoint;
+use crate::metrics::model::ToolMetrics;
 use crate::runner::dhat::json_parser::JsonParser;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::tool::config::ToolConfigOptions;
 use crate::runner::{cachegrind, callgrind, perf};
-use crate::summary::model::ToolMetrics;
 
 /// The combined header of output and log files
 #[derive(Debug, Clone, PartialEq, Eq)]

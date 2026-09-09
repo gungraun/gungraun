@@ -3,14 +3,13 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{PerfMetric, PerfRunMode, PerfSpec, RawToolArgs, Unit};
-use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
+use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities, ToolMetrics};
 use crate::runner::perf::json_parser::JsonParser;
 use crate::runner::perf::model::PerfStatRecord;
 use crate::runner::perf::records::PerfStatRecords;
 use crate::runner::perf::regression::PerfRegressionConfig;
 use crate::runner::tool::config::{DEFAULT_PERF_ALPHA, DEFAULT_PERF_MIN_PCNT_RUNNING, PerfConfig};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics;
 
 #[builder(finish_fn = "fx")]
 pub fn json_parser_f(

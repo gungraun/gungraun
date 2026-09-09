@@ -9,13 +9,12 @@ use anyhow::{Result, anyhow};
 use log::debug;
 
 use crate::api::PerfMetric;
-use crate::metrics::model::{AnnotatedMetric, Metrics, PerfQualities};
+use crate::metrics::model::{AnnotatedMetric, Metrics, PerfQualities, ToolMetrics};
 use crate::runner::perf::logfile_parser::parse_perf_log;
 use crate::runner::perf::records::PerfStatRecords;
 use crate::runner::perf::run::{PERF_CALIBRATION_FILE_MODIFIER, PERF_OVERHEAD_FILE_MODIFIER};
 use crate::runner::tool::parser::{Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics;
 
 /// Parser for `perf stat -j` JSON output.
 #[derive(Debug)]

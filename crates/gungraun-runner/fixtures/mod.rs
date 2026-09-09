@@ -25,7 +25,7 @@ use crate::api::{
     CachegrindMetric, DelayKind, DhatMetric, EntryPoint, ExitWith, PerfRunMode, RawToolArgs,
     SanitizeOutput, Tool, ToolOutputFormat, ToolSpec, ToolSpecOptions, ToolSpecs,
 };
-use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
+use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities, ToolMetrics};
 use crate::runner::bin_bench::Delay;
 use crate::runner::cachegrind::args::CachegrindArgs;
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
@@ -47,7 +47,6 @@ use crate::runner::tool::parser::{Header, ParserOutput};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
 use crate::runner::tool::run::{RunOptions, ToolCommand, ToolCommandChild};
-use crate::summary::model::ToolMetrics;
 use crate::units::Unit;
 
 pub const DEFAULT_TOOL: Tool = Tool::Callgrind;

@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use crate::api::{ErrorMetric, EventKind, Tool};
 use crate::error::Error;
-use crate::metrics::model::{Metric, MetricKind, Metrics, MetricsSummary};
+use crate::metrics::model::{Metric, MetricKind, Metrics, MetricsSummary, ToolMetrics};
 use crate::runner::args::NoCapture;
 use crate::runner::common::{
     Baselines, CapturedOutput, Config, ModulePath, PerfOutputConfig, PostProcessingConfig,
@@ -26,8 +26,7 @@ use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
 use crate::summary::model::{
     BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData, ProfileInfo,
-    ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricSummary, ToolMetrics,
-    ToolRegression,
+    ProfilePart, ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricSummary, ToolRegression,
 };
 use crate::summary::output::{SummaryFormat, SummaryOutput};
 use crate::util::{factor_diff, make_absolute, make_relative, percentage_diff};

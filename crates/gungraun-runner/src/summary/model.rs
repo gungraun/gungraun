@@ -22,9 +22,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool};
-use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, Metrics, MetricsSummary, PerfQualities,
-};
+use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
 use crate::units::Unit;
 
 /// The version string stored in version summary JSON files.
@@ -109,38 +107,6 @@ pub enum ToolMetricSummary {
     /// Unlike the valgrind-based tools, perf does not currently produce a synthetic aggregated
     /// `total` summary across parts in [`ProfileData::new`].
     Perf(MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>),
-}
-
-/// A per-tool collection of raw metric values.
-///
-/// This enum is used where the summary needs to store metrics keyed by the tool that produced them,
-/// without comparison metadata.
-///
-/// # Benchmark Summary
-///
-/// This struct is not part of the recent summary anymore.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub enum ToolMetrics {
-    /// If there are no metrics extracted from a tool (currently Massif, BBV)
-    #[default]
-    None,
-    /// The metrics of a dhat benchmark
-    Dhat(Metrics<DhatMetric>),
-    /// The error metrics from a Memcheck run.
-    Memcheck(Metrics<ErrorMetric>),
-    /// The error metrics from a Helgrind run.
-    Helgrind(Metrics<ErrorMetric>),
-    /// The error metrics from a DRD run.
-    DRD(Metrics<ErrorMetric>),
-    /// The metrics of a Callgrind benchmark
-    Callgrind(Metrics<EventKind>),
-    /// The metrics of a Cachegrind benchmark
-    Cachegrind(Metrics<CachegrindMetric>),
-    /// Perf metrics with attached runtime and variability metadata.
-    ///
-    /// These metrics are summarized per part, but no synthetic aggregate `total` is currently
-    /// constructed across parts.
-    Perf(Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>),
 }
 
 /// A regression detected while evaluating a [`BenchmarkSummary`].

@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use super::logfile_parser::{EMPTY_LINE_RE, STRIP_PREFIX_RE, parse_header};
 use super::parser::{Parser, ParserOutput};
 use super::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics;
+use crate::metrics::model::ToolMetrics;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum State {

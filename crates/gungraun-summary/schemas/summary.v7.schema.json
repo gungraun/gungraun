@@ -337,17 +337,6 @@
         }
       ]
     },
-    "FlamegraphSummary": {
-      "description": "A flamegraph associated with a specific [`EventKind`].",
-      "type": "object",
-      "properties": {
-        "event_kind": {
-          "description": "The `EventKind` of the flamegraph",
-          "type": "string"
-        }
-      },
-      "required": ["event_kind"]
-    },
     "Metric": {
       "description": "The value type used for metrics measured by a benchmark tool\n\nRaw metrics emitted by Valgrind tools are [`Metric::Int`] which is the default metric type.\nMetrics that have [`Metric::Float`] type are documented as such. Derived values, such as miss\nrates and hit rates, require floating-point representation. `Metric` preserves both forms in the\nparsed summary model.\n\n# Developer Notes\n\nFloat operations with a `Metric` that stores a `u64` introduce a precision loss and are to be\navoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the\n`u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result\nin an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision\nand the original type (instead of for example adding the two `u64` by converting both of them to\n`f64`).",
       "oneOf": [
@@ -434,13 +423,6 @@
       "description": "`Profile` data for one [`Tool`] recorded in a benchmark summary.",
       "type": "object",
       "properties": {
-        "flamegraphs": {
-          "description": "Details and information about the created flamegraphs if any",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/FlamegraphSummary"
-          }
-        },
         "summaries": {
           "description": "The data with the metrics and details about the tool run",
           "allOf": [
@@ -454,7 +436,7 @@
           "type": "string"
         }
       },
-      "required": ["flamegraphs", "summaries", "tool"]
+      "required": ["summaries", "tool"]
     },
     "ProfileData": {
       "description": "All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.\n\nThe [`ProfileTotal`] is always present and summarizes all [`ProfilePart`]s. If the tool produced\nonly one part, the total matches that part's metrics.",

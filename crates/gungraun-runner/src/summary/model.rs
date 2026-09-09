@@ -248,30 +248,10 @@ pub struct Diffs {
     pub factor: f64,
 }
 
-/// All flamegraph outputs recorded for a benchmark and their totals.
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FlamegraphSummaries {
-    /// The `FlamegraphSummary`s
-    pub summaries: Vec<FlamegraphSummary>,
-    /// The totals over the `FlamegraphSummary`s
-    pub totals: Vec<FlamegraphSummary>,
-}
-
-/// A flamegraph associated with a specific [`EventKind`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct FlamegraphSummary {
-    /// The `EventKind` of the flamegraph
-    #[cfg_attr(feature = "schema", schemars(with = "String"))]
-    pub event_kind: EventKind,
-}
-
 /// `Profile` data for one [`Tool`] recorded in a benchmark summary.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profile {
-    /// Details and information about the created flamegraphs if any
-    pub flamegraphs: Vec<FlamegraphSummary>,
     /// The data with the metrics and details about the tool run
     pub summaries: ProfileData,
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
@@ -355,7 +335,6 @@ struct ProfileTotalWire {
 
 #[derive(Deserialize)]
 struct ProfileWire {
-    flamegraphs: Vec<Value>,
     summaries: ProfileDataWire,
     tool: Tool,
 }
@@ -378,7 +357,6 @@ impl TryFrom<ProfileWire> for Profile {
     type Error = serde_json::Error;
 
     fn try_from(wire: ProfileWire) -> Result<Self, Self::Error> {
-        let flamegraphs = parse_typed_values(wire.flamegraphs);
         let parts = wire
             .summaries
             .parts
@@ -396,7 +374,6 @@ impl TryFrom<ProfileWire> for Profile {
         let regressions = parse_typed_values(wire.summaries.total.regressions);
 
         Ok(Self {
-            flamegraphs,
             summaries: ProfileData {
                 parts,
                 total: ProfileTotal {
@@ -636,7 +613,6 @@ mod tests {
         let profile: Profile = serde_json::from_value(input).unwrap();
         let serialized = serde_json::to_value(profile).unwrap();
 
-        assert_eq!(serialized["flamegraphs"], json!([]));
         assert_eq!(
             serialized["summaries"]["parts"][0]["metrics_summary"],
             json!({})

@@ -16,7 +16,6 @@ use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::{self, EventKind, FlamegraphKind};
 use crate::runner::common::{BaselineKind, BaselineName};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
-use crate::summary::model::{FlamegraphSummaries, FlamegraphSummary};
 
 const DEFAULT_DIRECTION: Direction = Direction::Inverted;
 const DEFAULT_EVENT_KIND: EventKind = EventKind::Ir;
@@ -79,6 +78,13 @@ pub struct Config {
 pub struct Flamegraph {
     /// The [`Config`]
     pub config: Config,
+}
+
+/// A flamegraph associated with a specific [`EventKind`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FlamegraphSummary {
+    /// The `EventKind` of the flamegraph
+    pub event_kind: EventKind,
 }
 
 /// The generator for flamegraphs when run with --load-baseline
@@ -155,7 +161,7 @@ impl FlamegraphGenerator for BaselineAndSaveFlamegraphGenerator {
             .as_ref()
             .and_then(total_flamegraph_map_from_parsed);
 
-        let mut flamegraph_summaries = FlamegraphSummaries::default();
+        let mut flamegraph_summaries = Vec::default();
         for event_kind in &flamegraph.config.event_kinds {
             let flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
@@ -183,10 +189,10 @@ impl FlamegraphGenerator for BaselineAndSaveFlamegraphGenerator {
                 )?;
             }
 
-            flamegraph_summaries.totals.push(flamegraph_summary);
+            flamegraph_summaries.push(flamegraph_summary);
         }
 
-        Ok(flamegraph_summaries.totals)
+        Ok(flamegraph_summaries)
     }
 }
 
@@ -217,7 +223,7 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
 
         let total = total_flamegraph_map_from_parsed(&maps).unwrap();
 
-        let mut flamegraph_summaries = FlamegraphSummaries::default();
+        let mut flamegraph_summaries = Vec::default();
         for event_kind in &flamegraph.config.event_kinds {
             let flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
@@ -246,10 +252,10 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
                 )?;
             }
 
-            flamegraph_summaries.totals.push(flamegraph_summary);
+            flamegraph_summaries.push(flamegraph_summary);
         }
 
-        Ok(flamegraph_summaries.totals)
+        Ok(flamegraph_summaries)
     }
 }
 
@@ -418,6 +424,13 @@ impl Flamegraph {
     }
 }
 
+impl FlamegraphSummary {
+    /// Creates a new `FlamegraphSummary`.
+    pub fn new(event_kind: EventKind) -> Self {
+        Self { event_kind }
+    }
+}
+
 impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
     fn create(
         &self,
@@ -444,7 +457,7 @@ impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
             .parse(tool_output_path, sentinel, project_root, false)
             .map(|(a, b)| (a, b.unwrap()))?;
 
-        let mut flamegraph_summaries = FlamegraphSummaries::default();
+        let mut flamegraph_summaries = Vec::default();
         if let Some(total) = total_flamegraph_map_from_parsed(&maps) {
             let base_total = total_flamegraph_map_from_parsed(&base_maps);
 
@@ -463,12 +476,12 @@ impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
                         *event_kind,
                         &total.to_stack_format(event_kind)?,
                     )?;
-                    flamegraph_summaries.totals.push(flamegraph_summary);
+                    flamegraph_summaries.push(flamegraph_summary);
                 }
             }
         }
 
-        Ok(flamegraph_summaries.totals)
+        Ok(flamegraph_summaries)
     }
 }
 
@@ -751,7 +764,7 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
         let (maps, _) = flamegraph.parse(tool_output_path, sentinel, project_root, true)?;
         let total_map = total_flamegraph_map_from_parsed(&maps).unwrap();
 
-        let mut flamegraph_summaries = FlamegraphSummaries::default();
+        let mut flamegraph_summaries = Vec::default();
         for event_kind in &flamegraph.config.event_kinds {
             let flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
@@ -764,10 +777,10 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
                     .iter()
                     .map(String::as_str),
             )?;
-            flamegraph_summaries.summaries.push(flamegraph_summary);
+            flamegraph_summaries.push(flamegraph_summary);
         }
 
-        Ok(flamegraph_summaries.totals)
+        Ok(flamegraph_summaries)
     }
 }
 

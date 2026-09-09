@@ -18,7 +18,6 @@ mempalace.yaml
 .omo/
 docs/book/**/
 docs/book/latest
-summary.schema.json
 
 # Swap
 [._]*.s[a-v][a-z]

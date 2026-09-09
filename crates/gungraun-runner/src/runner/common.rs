@@ -27,7 +27,8 @@ use crate::runner::args::NoCapture;
 use crate::runner::bin_bench::{self, BinBench};
 use crate::runner::callgrind::flamegraph::{
     BaselineAndSaveFlamegraphGenerator, BaselineFlamegraphGenerator, Flamegraph,
-    FlamegraphGenerator, LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
+    FlamegraphGenerator, FlamegraphSummary, LoadBaselineFlamegraphGenerator,
+    SaveBaselineFlamegraphGenerator,
 };
 use crate::runner::callgrind::parser::Sentinel;
 use crate::runner::format::{
@@ -41,7 +42,7 @@ use crate::runner::tool::config::{
 use crate::runner::tool::parser::{Parser, ParserOutput};
 use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use crate::runner::tool::regression::ToolRegressionConfig;
-use crate::summary::model::{BenchmarkSummary, FlamegraphSummary, Profile, ProfileData};
+use crate::summary::model::{BenchmarkSummary, Profile, ProfileData};
 use crate::summary::output::SummaryOutput;
 use crate::util::{copy_directory, make_absolute};
 
@@ -422,7 +423,6 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
             let mut profile = Profile {
                 tool,
                 summaries: data,
-                flamegraphs: vec![],
             };
 
             if tool == Tool::Perf {
@@ -437,13 +437,7 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
                     regression_config.check(&profile.summaries.total.summary);
             }
 
-            profile.flamegraphs = self.generate_flamegraphs(
-                config,
-                header,
-                output_path,
-                flamegraph_config,
-                entry_point,
-            )?;
+            self.generate_flamegraphs(config, header, output_path, flamegraph_config, entry_point)?;
 
             benchmark_summary.profiles.push(profile);
         }

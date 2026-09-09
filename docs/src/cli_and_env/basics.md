@@ -21,6 +21,18 @@ are:
 - **2**: Parsing command-line arguments failed
 - **3**: One or more regressions occurred
 
+## Test Mode
+
+Gungraun uses test mode when the benchmark binary was not started by
+`cargo bench`. It runs each benchmark once without collecting measurements. This
+lets `cargo test --benches` and `cargo test --all-targets` run benchmarks on
+platforms without Valgrind or perf.
+
+Use `--test` (`GUNGRAUN_TEST`) to select test mode explicitly.
+
+Test mode still requires `gungraun-runner` because the benchmark binary passes
+its work to the runner.
+
 ## The Command-Line Arguments
 
 For an up-to-date list for your Gungraun version run `gungraun-runner --help`:
@@ -185,6 +197,19 @@ Options:
 
           [env: GUNGRAUN_SEPARATE_TARGETS=]
           [default: false]
+          [possible values: true, false]
+
+      --test[=<TEST>]
+          Run each benchmark once without measuring it with a tool
+
+          In test mode, Gungraun runs the benchmark binary directly. It does not start Valgrind or
+          perf, collect metrics, write output files, or check for regressions.
+
+          If this option is not set, Gungraun selects test mode when the benchmark binary is not
+          started by `cargo bench`. This allows `cargo test --benches` to run all benchmarks once.
+          Use `--test=false` to select measuring mode explicitly.
+
+          [env: GUNGRAUN_TEST=]
           [possible values: true, false]
 
       --valgrind-bin <VALGRIND_BIN>

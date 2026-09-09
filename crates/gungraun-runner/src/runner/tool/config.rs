@@ -805,25 +805,30 @@ impl ToolConfigs {
             .as_ref()
             .is_none_or(|t| t.enable.unwrap_or(DEFAULT_TOOL_ENABLED));
 
-        let default_tool_configs =
-            if default_tool.is_supported(meta.supported_tools) && default_tool_is_enabled {
-                output_format.update(extracted_tool.as_ref());
-                ToolConfigBuilder::new(
-                    default_tool,
-                    extracted_tool,
-                    true,
-                    default_args,
-                    module_path,
-                    id,
-                    meta,
-                    valgrind_args,
-                    default_entry_point,
-                    perf_mode_override,
-                )?
-                .build()?
-            } else {
-                vec![]
-            };
+        // Test mode does not launch tools, so target support does not filter configurations.
+        let is_test_mode = meta.is_test_mode();
+
+        let default_tool_configs = if (is_test_mode
+            || default_tool.is_supported(meta.supported_tools))
+            && default_tool_is_enabled
+        {
+            output_format.update(extracted_tool.as_ref());
+            ToolConfigBuilder::new(
+                default_tool,
+                extracted_tool,
+                true,
+                default_args,
+                module_path,
+                id,
+                meta,
+                valgrind_args,
+                default_entry_point,
+                perf_mode_override,
+            )?
+            .build()?
+        } else {
+            vec![]
+        };
 
         // The tool selection from the command line or env args overwrites the tool selection from
         // the benchmark file. However, any tool configurations from the benchmark files are
@@ -848,7 +853,7 @@ impl ToolConfigs {
         let iter = meta_tool_specs
             .into_iter()
             .filter(|t| {
-                t.tool.is_supported(meta.supported_tools)
+                (is_test_mode || t.tool.is_supported(meta.supported_tools))
                     && t.enable.unwrap_or(DEFAULT_TOOL_ENABLED)
             })
             .map(|tool_spec| {
@@ -873,8 +878,27 @@ impl ToolConfigs {
             });
         tool_configs.extend(iter)?;
 
+        if is_test_mode {
+            tool_configs.reduce_to_test_config();
+        }
+
         output_format.update_from_meta(meta);
         Ok(tool_configs)
+    }
+
+    /// Keep the first configuration for test mode.
+    ///
+    /// Test mode runs benchmarks without tool output, so it needs no analyzer. The tool remains in
+    /// the configuration for environment and error handling.
+    fn reduce_to_test_config(&mut self) {
+        self.0.truncate(1);
+
+        if let Some(config) = self.0.first_mut() {
+            config.is_default = true;
+            config.has_analyzer = false;
+            config.part = None;
+            config.timeout = None;
+        }
     }
 
     /// Returns the common perf output configuration shared by all perf configs.
@@ -1080,7 +1104,8 @@ impl ToolConfigs {
                     process_handler.wait_or_shutdown(tool_config.timeout, &is_ready)
                 })?;
 
-            if let ToolConfigOptions::Perf(options) = &tool_config.options
+            if !config.meta.is_test_mode()
+                && let ToolConfigOptions::Perf(options) = &tool_config.options
                 && matches!(
                     options.run_mode,
                     PerfRunMode::DynamicBatch | PerfRunMode::FixedBatch(_)
@@ -1385,7 +1410,34 @@ mod tests {
     use crate::api::ToolSpecOptions;
     use crate::fixtures::api::dhat_spec_f;
     use crate::fixtures::perf::{perf_config_f, perf_spec_f};
-    use crate::fixtures::{metadata_f, tool_config_builder_f, tool_config_f, tool_spec_f};
+    use crate::fixtures::{
+        metadata_f, tool_config_builder_f, tool_config_f, tool_configs_f, tool_output_path_f,
+        tool_spec_f,
+    };
+
+    #[test]
+    fn test_mode_keeps_a_single_config_without_an_analyzer() {
+        let tool_specs = ToolSpecs(vec![
+            tool_spec_f().tool(Tool::Memcheck).fx(),
+            tool_spec_f().tool(Tool::Massif).fx(),
+        ]);
+
+        let tool_configs = tool_configs_f()
+            .raw_command_line_args(["--test"])
+            .tool_specs(tool_specs)
+            .fx();
+
+        assert_eq!(tool_configs.0.len(), 1);
+        assert!(tool_configs.0[0].is_default);
+        assert!(!tool_configs.0[0].has_analyzer);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = tool_output_path_f().target_dir(temp_dir.path()).fx();
+        assert!(
+            tool_configs
+                .analyzers(temp_dir.path(), &output_path)
+                .is_empty()
+        );
+    }
 
     #[rstest]
     #[case::default(None, DEFAULT_PERF_MIN_PCNT_RUNNING)]

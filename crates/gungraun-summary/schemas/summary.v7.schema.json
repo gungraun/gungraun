@@ -9,10 +9,16 @@
       "type": "array",
       "items": [
         {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       ],
       "maxItems": 2,
@@ -28,7 +34,10 @@
     },
     "details": {
       "description": "More details describing this benchmark run",
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "function_name": {
       "description": "The name of the function under test",
@@ -40,7 +49,10 @@
     },
     "id": {
       "description": "The optional id of this benchmark.\n\nTh id is provided by the `#[bench::id]` attribute macro. The `#[benches::id]` adds a\ncounter as suffix in the form `id_X` for example (`id_0`, `id_100`, ...)\n\nA gungraun benchmark can be uniquely identified by the `module_path`\n(`benchmark_file::group::function_name`) and this `id`. If the `id` is not present, then\nthe `module_path` is sufficient to identify a benchmark.",
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "kind": {
       "description": "Whether this summary describes a library or binary benchmark",
@@ -100,29 +112,44 @@
       "properties": {
         "event_runtime": {
           "description": "Runtime reported by perf for the event\n\nThis field is extracted directly from perf's JSON field with the same name.\n\nTogether with `pcnt_running`, this forms a coupled value during merges.",
-          "type": ["integer", "null"],
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0
         },
         "mean": {
           "description": "The mean value computed for this metric, if available.\n\nThis value is computed by Gungraun, if there were multiple perf records for a metric (for\nexample using sampling)",
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "format": "double"
         },
         "n": {
           "description": "The number of repetitions or samples perf used for this metric, if reported.\n\nThis value is computed by Gungraun, if there were multiple perf records for a metric (for\nexample using sampling)",
-          "type": ["integer", "null"],
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0
         },
         "pcnt_running": {
           "description": "Percentage of enabled time reported by perf during which the event was running.\n\nThis field is extracted directly from perf's JSON field with the same name.\n\nThis value is only meaningful together with `event_runtime`.",
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "format": "double"
         },
         "rse": {
           "description": "Gungraun's correct name for perf's relative standard error (\"variance\"), as a fraction.\n\nPerf's own JSON calls this field `\"variance\"`, but the value is not a statistical variance.\nIt corresponds to the percentage shown in perf text output as `( +-X.XX% )`, but Gungraun\nstores it as a fraction instead, so `5%` is stored as `0.05`.\n\nGungraun stores this value in summaries under the name `rse`. For a single parsed perf\nrecord the value is preserved from perf JSON. When duplicate records for the same event are\nmerged, it is recomputed by Gungraun from the aggregated samples.",
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "format": "double"
         },
         "unit": {
@@ -148,7 +175,9 @@
               "minimum": 0
             }
           },
-          "required": ["Int"]
+          "required": [
+            "Int"
+          ]
         },
         {
           "description": "A float `Metric`",
@@ -159,7 +188,9 @@
               "format": "double"
             }
           },
-          "required": ["Float"]
+          "required": [
+            "Float"
+          ]
         }
       ]
     },
@@ -191,7 +222,10 @@
           "type": "string"
         }
       },
-      "required": ["diff_pct", "factor"]
+      "required": [
+        "diff_pct",
+        "factor"
+      ]
     },
     "EitherOrBoth": {
       "description": "Represent values that have either a `Left` or `Right` value or `Both` values",
@@ -205,7 +239,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Left"]
+          "required": [
+            "Left"
+          ]
         },
         {
           "description": "Represents a value from both sides",
@@ -226,7 +262,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Both"]
+          "required": [
+            "Both"
+          ]
         },
         {
           "description": "Represents a value from the right side",
@@ -237,7 +275,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Right"]
+          "required": [
+            "Right"
+          ]
         }
       ]
     },
@@ -253,7 +293,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Left"]
+          "required": [
+            "Left"
+          ]
         },
         {
           "description": "Represents a value from both sides",
@@ -274,7 +316,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Both"]
+          "required": [
+            "Both"
+          ]
         },
         {
           "description": "Represents a value from the right side",
@@ -285,7 +329,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Right"]
+          "required": [
+            "Right"
+          ]
         }
       ]
     },
@@ -301,7 +347,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Left"]
+          "required": [
+            "Left"
+          ]
         },
         {
           "description": "Represents a value from both sides",
@@ -322,7 +370,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Both"]
+          "required": [
+            "Both"
+          ]
         },
         {
           "description": "Represents a value from the right side",
@@ -333,7 +383,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Right"]
+          "required": [
+            "Right"
+          ]
         }
       ]
     },
@@ -346,7 +398,9 @@
           "type": "string"
         }
       },
-      "required": ["event_kind"]
+      "required": [
+        "event_kind"
+      ]
     },
     "Metric": {
       "description": "The value type used for metrics measured by a benchmark tool\n\nRaw metrics emitted by Valgrind tools are [`Metric::Int`] which is the default metric type.\nMetrics that have [`Metric::Float`] type are documented as such. Derived values, such as miss\nrates and hit rates, require floating-point representation. `Metric` preserves both forms in the\nparsed summary model.\n\n# Developer Notes\n\nFloat operations with a `Metric` that stores a `u64` introduce a precision loss and are to be\navoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the\n`u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result\nin an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision\nand the original type (instead of for example adding the two `u64` by converting both of them to\n`f64`).",
@@ -362,7 +416,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Int"]
+          "required": [
+            "Int"
+          ]
         },
         {
           "description": "A float `Metric`",
@@ -374,7 +430,9 @@
             }
           },
           "additionalProperties": false,
-          "required": ["Float"]
+          "required": [
+            "Float"
+          ]
         }
       ]
     },
@@ -402,7 +460,9 @@
           ]
         }
       },
-      "required": ["metrics"]
+      "required": [
+        "metrics"
+      ]
     },
     "MetricsDiff2": {
       "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.\nOtherwise the summary only stores whichever side is available. Per convention, the left side or\n[`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]\nstores the old metric.",
@@ -428,7 +488,9 @@
           ]
         }
       },
-      "required": ["metrics"]
+      "required": [
+        "metrics"
+      ]
     },
     "Profile": {
       "description": "`Profile` data for one [`Tool`] recorded in a benchmark summary.",
@@ -454,7 +516,11 @@
           "type": "string"
         }
       },
-      "required": ["flamegraphs", "summaries", "tool"]
+      "required": [
+        "flamegraphs",
+        "summaries",
+        "tool"
+      ]
     },
     "ProfileData": {
       "description": "All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.\n\nThe [`ProfileTotal`] is always present and summarizes all [`ProfilePart`]s. If the tool produced\nonly one part, the total matches that part's metrics.",
@@ -476,7 +542,10 @@
           ]
         }
       },
-      "required": ["parts", "total"]
+      "required": [
+        "parts",
+        "total"
+      ]
     },
     "ProfileInfo": {
       "description": "Metadata describing a single [`ProfilePart`] of a benchmark",
@@ -488,16 +557,25 @@
         },
         "details": {
           "description": "More details for example from the logging output of the tool run",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "parent_pid": {
           "description": "The parent pid of this process if present",
-          "type": ["integer", "null"],
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "int32"
         },
         "part": {
           "description": "The part number of this tool run if present (only Callgrind and Perf)",
-          "type": ["integer", "null"],
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0
         },
@@ -508,12 +586,18 @@
         },
         "thread": {
           "description": "The thread number of this tool run if present (only Callgrind)",
-          "type": ["integer", "null"],
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint",
           "minimum": 0
         }
       },
-      "required": ["command", "pid"]
+      "required": [
+        "command",
+        "pid"
+      ]
     },
     "ProfilePart": {
       "description": "A single part of a tool run with the collected metric data\n\nA tool run can produce multiple parts, for example one per process when child tracing is\nenabled.",
@@ -542,7 +626,10 @@
           }
         }
       },
-      "required": ["details", "metrics_summary"]
+      "required": [
+        "details",
+        "metrics_summary"
+      ]
     },
     "ProfileTotal": {
       "description": "Aggregated metrics, differences and regressions over all parts of a tool run.",
@@ -570,7 +657,10 @@
           }
         }
       },
-      "required": ["regressions", "summary"]
+      "required": [
+        "regressions",
+        "summary"
+      ]
     },
     "Profiles": {
       "description": "Contains all [`Profile`]s with the data for each [`Tool`] run",
@@ -595,7 +685,10 @@
                 },
                 "display": {
                   "description": "An optional human-readable display label for the regression metric, used in formatted\noutput.",
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "limit": {
                   "description": "The value of the limit which was exceeded to cause a performance regression. Serialized\nas string to preserve infinity values and avoid null in json.",
@@ -633,11 +726,19 @@
                   ]
                 }
               },
-              "required": ["metric", "new", "old", "diff_pct", "limit"]
+              "required": [
+                "metric",
+                "new",
+                "old",
+                "diff_pct",
+                "limit"
+              ]
             }
           },
           "additionalProperties": false,
-          "required": ["Soft"]
+          "required": [
+            "Soft"
+          ]
         },
         {
           "description": "A performance regression triggered by a hard limit",
@@ -656,7 +757,10 @@
                 },
                 "display": {
                   "description": "An optional human-readable display label for the regression metric, used in formatted\noutput.",
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "limit": {
                   "description": "The limit as [`Metric`]",
@@ -690,11 +794,18 @@
                   ]
                 }
               },
-              "required": ["metric", "new", "diff", "limit"]
+              "required": [
+                "metric",
+                "new",
+                "diff",
+                "limit"
+              ]
             }
           },
           "additionalProperties": false,
-          "required": ["Hard"]
+          "required": [
+            "Hard"
+          ]
         }
       ]
     },

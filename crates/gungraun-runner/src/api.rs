@@ -130,6 +130,16 @@ pub use crate::units::Unit;
 #[cfg(feature = "runner")]
 use crate::util;
 
+/// The file descriptor the benchmark harness reads perf acknowledgements from.
+///
+/// The harness waits on this paired read end after sending each control message so `perf` can
+/// acknowledge the transition.
+pub const PERF_ACK_FD_READ: i32 = 103;
+/// The file descriptor perf writes control acknowledgements to.
+///
+/// The runner remaps the acknowledgement pipe's write end to this descriptor so `perf` can signal
+/// the harness after processing a control message.
+pub const PERF_ACK_FD_WRITE: i32 = 101;
 /// The file descriptor perf reads perf control messages from.
 ///
 /// The runner remaps the control pipe's read end to this descriptor before spawning `perf`, while
@@ -141,16 +151,6 @@ pub const PERF_CTL_FD_READ: i32 = 100;
 /// Messages sent here coordinate perf-managed benchmark runs such as repetition calibration and
 /// fixed-repeat execution.
 pub const PERF_CTL_FD_WRITE: i32 = 102;
-/// The file descriptor perf writes control acknowledgements to.
-///
-/// The runner remaps the acknowledgement pipe's write end to this descriptor so `perf` can signal
-/// the harness after processing a control message.
-pub const PERF_ACK_FD_WRITE: i32 = 101;
-/// The file descriptor the benchmark harness reads perf acknowledgements from.
-///
-/// The harness waits on this paired read end after sending each control message so `perf` can
-/// acknowledge the transition.
-pub const PERF_ACK_FD_READ: i32 = 103;
 /// The file descriptor reserved for the benchmark's perf coordination log.
 ///
 /// The runner duplicates the perf log file onto this descriptor before `exec` so the harness can
@@ -1242,6 +1242,38 @@ pub enum Stream {
     Stdout,
 }
 
+/// The profiling tools which can be run in a benchmark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum Tool {
+    /// Callgrind: a call-graph generating cache and branch prediction profiler
+    /// <https://valgrind.org/docs/manual/cl-manual.html>
+    Callgrind,
+    /// Cachegrind: a high-precision tracing profiler
+    /// <https://valgrind.org/docs/manual/cg-manual.html>
+    Cachegrind,
+    /// DHAT: a dynamic heap analysis tool
+    /// <https://valgrind.org/docs/manual/dh-manual.html>
+    DHAT,
+    /// Memcheck: a memory error detector
+    /// <https://valgrind.org/docs/manual/mc-manual.html>
+    Memcheck,
+    /// Helgrind: a thread error detector
+    /// <https://valgrind.org/docs/manual/hg-manual.html>
+    Helgrind,
+    /// DRD: a thread error detector
+    /// <https://valgrind.org/docs/manual/drd-manual.html>
+    DRD,
+    /// Massif: a heap profiler
+    /// <https://valgrind.org/docs/manual/ms-manual.html>
+    Massif,
+    /// BBV: an experimental basic block vector generation tool
+    /// <https://valgrind.org/docs/manual/bbv-manual.html>
+    BBV,
+    /// Linux `perf`-based benchmarking and profiling.
+    Perf,
+}
+
 /// The tool specific flamegraph configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolFlamegraphConfig {
@@ -1283,38 +1315,6 @@ pub enum ToolRegressionConfig {
     Perf(PerfRegressionConfig),
     /// The option for tools which don't perform regression checks
     None,
-}
-
-/// The profiling tools which can be run in a benchmark.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum Tool {
-    /// Callgrind: a call-graph generating cache and branch prediction profiler
-    /// <https://valgrind.org/docs/manual/cl-manual.html>
-    Callgrind,
-    /// Cachegrind: a high-precision tracing profiler
-    /// <https://valgrind.org/docs/manual/cg-manual.html>
-    Cachegrind,
-    /// DHAT: a dynamic heap analysis tool
-    /// <https://valgrind.org/docs/manual/dh-manual.html>
-    DHAT,
-    /// Memcheck: a memory error detector
-    /// <https://valgrind.org/docs/manual/mc-manual.html>
-    Memcheck,
-    /// Helgrind: a thread error detector
-    /// <https://valgrind.org/docs/manual/hg-manual.html>
-    Helgrind,
-    /// DRD: a thread error detector
-    /// <https://valgrind.org/docs/manual/drd-manual.html>
-    DRD,
-    /// Massif: a heap profiler
-    /// <https://valgrind.org/docs/manual/ms-manual.html>
-    Massif,
-    /// BBV: an experimental basic block vector generation tool
-    /// <https://valgrind.org/docs/manual/bbv-manual.html>
-    BBV,
-    /// Linux `perf`-based benchmarking and profiling.
-    Perf,
 }
 
 /// Tool-specific option payloads attached to a [`ToolSpec`].
@@ -1481,13 +1481,6 @@ pub struct Delay {
     pub timeout: Option<Duration>,
 }
 
-/// DHAT-specific options attached to a [`ToolSpecOptions::Dhat`] tool specification.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DhatSpec {
-    /// Wildcard patterns used to match functions in a DHAT program point's call stack.
-    pub frames: Option<Vec<String>>,
-}
-
 /// The model for the regression check configuration of DHAT
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DhatRegressionConfig {
@@ -1497,6 +1490,13 @@ pub struct DhatRegressionConfig {
     pub hard_limits: Vec<(DhatMetrics, Limit)>,
     /// The soft limits
     pub soft_limits: Vec<(DhatMetrics, f64)>,
+}
+
+/// DHAT-specific options attached to a [`ToolSpecOptions::Dhat`] tool specification.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DhatSpec {
+    /// Wildcard patterns used to match functions in a DHAT program point's call stack.
+    pub frames: Option<Vec<String>>,
 }
 
 /// The fixtures to copy into the [`Sandbox`]
@@ -2977,6 +2977,111 @@ impl Display for Stream {
     }
 }
 
+#[cfg(feature = "runner")]
+impl Tool {
+    /// Returns the id used by the tool invocation.
+    pub fn id(&self) -> String {
+        match self {
+            Self::DHAT => "dhat".to_owned(),
+            Self::Callgrind => "callgrind".to_owned(),
+            Self::Memcheck => "memcheck".to_owned(),
+            Self::Helgrind => "helgrind".to_owned(),
+            Self::DRD => "drd".to_owned(),
+            Self::Massif => "massif".to_owned(),
+            Self::BBV => "exp-bbv".to_owned(),
+            Self::Cachegrind => "cachegrind".to_owned(),
+            Self::Perf => "perf".to_owned(),
+        }
+    }
+
+    /// Returns the capitalized id
+    pub fn capitalized(&self) -> String {
+        match self {
+            Self::DHAT => "DHAT".to_owned(),
+            Self::Callgrind => "Callgrind".to_owned(),
+            Self::Memcheck => "Memcheck".to_owned(),
+            Self::Helgrind => "Helgrind".to_owned(),
+            Self::DRD => "DRD".to_owned(),
+            Self::Massif => "Massif".to_owned(),
+            Self::BBV => "BBV".to_owned(),
+            Self::Cachegrind => "Cachegrind".to_owned(),
+            Self::Perf => "Perf".to_owned(),
+        }
+    }
+
+    /// Returns `true` if this tool has output files in addition to log files.
+    pub fn has_output_file(&self) -> bool {
+        matches!(
+            self,
+            Self::Callgrind | Self::DHAT | Self::BBV | Self::Massif | Self::Cachegrind | Self::Perf
+        )
+    }
+
+    /// Returns `true` if this tool supports xtree memory files.
+    pub fn has_xtree_file(&self) -> bool {
+        matches!(self, Self::Memcheck | Self::Massif | Self::Helgrind)
+    }
+
+    /// Returns `true` if this tool supports xleak files.
+    pub fn has_xleak_file(&self) -> bool {
+        *self == Self::Memcheck
+    }
+
+    /// Returns whether this tool's family supports the benchmark compilation target.
+    ///
+    /// All Valgrind-based tools use the Valgrind support flag, while Perf uses the Perf support
+    /// flag. This does not check runtime availability of the corresponding executable.
+    pub fn is_supported(&self, supported_tools: SupportedTools) -> bool {
+        match self {
+            Self::Callgrind
+            | Self::Cachegrind
+            | Self::DHAT
+            | Self::Memcheck
+            | Self::Helgrind
+            | Self::DRD
+            | Self::Massif
+            | Self::BBV => supported_tools.valgrind,
+            Self::Perf => supported_tools.perf,
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl Display for Tool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.id())
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for Tool {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s.to_lowercase().as_str())
+    }
+}
+
+#[cfg(feature = "runner")]
+impl TryFrom<&str> for Tool {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value {
+            "callgrind" => Ok(Self::Callgrind),
+            "cachegrind" => Ok(Self::Cachegrind),
+            "dhat" => Ok(Self::DHAT),
+            "memcheck" => Ok(Self::Memcheck),
+            "helgrind" => Ok(Self::Helgrind),
+            "drd" => Ok(Self::DRD),
+            "massif" => Ok(Self::Massif),
+            "exp-bbv" => Ok(Self::BBV),
+            "perf" => Ok(Self::Perf),
+            v => Err(anyhow!("Unknown tool '{v}'")),
+        }
+    }
+}
+
 impl ToolSpec {
     /// Creates a new `ToolSpec` configuration.
     pub fn new<T>(tool: T) -> Self
@@ -3103,111 +3208,6 @@ impl ToolSpecs {
     }
 }
 
-#[cfg(feature = "runner")]
-impl Tool {
-    /// Returns the id used by the tool invocation.
-    pub fn id(&self) -> String {
-        match self {
-            Self::DHAT => "dhat".to_owned(),
-            Self::Callgrind => "callgrind".to_owned(),
-            Self::Memcheck => "memcheck".to_owned(),
-            Self::Helgrind => "helgrind".to_owned(),
-            Self::DRD => "drd".to_owned(),
-            Self::Massif => "massif".to_owned(),
-            Self::BBV => "exp-bbv".to_owned(),
-            Self::Cachegrind => "cachegrind".to_owned(),
-            Self::Perf => "perf".to_owned(),
-        }
-    }
-
-    /// Returns the capitalized id
-    pub fn capitalized(&self) -> String {
-        match self {
-            Self::DHAT => "DHAT".to_owned(),
-            Self::Callgrind => "Callgrind".to_owned(),
-            Self::Memcheck => "Memcheck".to_owned(),
-            Self::Helgrind => "Helgrind".to_owned(),
-            Self::DRD => "DRD".to_owned(),
-            Self::Massif => "Massif".to_owned(),
-            Self::BBV => "BBV".to_owned(),
-            Self::Cachegrind => "Cachegrind".to_owned(),
-            Self::Perf => "Perf".to_owned(),
-        }
-    }
-
-    /// Returns `true` if this tool has output files in addition to log files.
-    pub fn has_output_file(&self) -> bool {
-        matches!(
-            self,
-            Self::Callgrind | Self::DHAT | Self::BBV | Self::Massif | Self::Cachegrind | Self::Perf
-        )
-    }
-
-    /// Returns `true` if this tool supports xtree memory files.
-    pub fn has_xtree_file(&self) -> bool {
-        matches!(self, Self::Memcheck | Self::Massif | Self::Helgrind)
-    }
-
-    /// Returns `true` if this tool supports xleak files.
-    pub fn has_xleak_file(&self) -> bool {
-        *self == Self::Memcheck
-    }
-
-    /// Returns whether this tool's family supports the benchmark compilation target.
-    ///
-    /// All Valgrind-based tools use the Valgrind support flag, while Perf uses the Perf support
-    /// flag. This does not check runtime availability of the corresponding executable.
-    pub fn is_supported(&self, supported_tools: SupportedTools) -> bool {
-        match self {
-            Self::Callgrind
-            | Self::Cachegrind
-            | Self::DHAT
-            | Self::Memcheck
-            | Self::Helgrind
-            | Self::DRD
-            | Self::Massif
-            | Self::BBV => supported_tools.valgrind,
-            Self::Perf => supported_tools.perf,
-        }
-    }
-}
-
-#[cfg(feature = "runner")]
-impl Display for Tool {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.id())
-    }
-}
-
-#[cfg(feature = "runner")]
-impl FromStr for Tool {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_from(s.to_lowercase().as_str())
-    }
-}
-
-#[cfg(feature = "runner")]
-impl TryFrom<&str> for Tool {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
-        match value {
-            "callgrind" => Ok(Self::Callgrind),
-            "cachegrind" => Ok(Self::Cachegrind),
-            "dhat" => Ok(Self::DHAT),
-            "memcheck" => Ok(Self::Memcheck),
-            "helgrind" => Ok(Self::Helgrind),
-            "drd" => Ok(Self::DRD),
-            "massif" => Ok(Self::Massif),
-            "exp-bbv" => Ok(Self::BBV),
-            "perf" => Ok(Self::Perf),
-            v => Err(anyhow!("Unknown tool '{v}'")),
-        }
-    }
-}
-
 /// Updates the value of an [`Option`].
 pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
     other.clone().or_else(|| first.clone())
@@ -3224,50 +3224,6 @@ mod tests {
     use crate::fixtures::api::dhat_spec_f;
     use crate::fixtures::perf::perf_spec_f;
     use crate::fixtures::tool_spec_f;
-
-    #[cfg(feature = "runner")]
-    #[test]
-    fn test_perf_metric_display_normalizes_separators() {
-        assert_eq!(
-            PerfMetric::from("task-clock:").display().name(),
-            "task-clock"
-        );
-    }
-
-    #[rstest]
-    #[case::default("d:d:000000", Some(BenchRunMode::Default))]
-    #[case::perf_dynamic("p:p:000000", Some(BenchRunMode::PerfDynamic))]
-    #[case::no_number("p:p:", Some(BenchRunMode::PerfDynamic))]
-    #[case::perf_calibrate("p:c:000000", Some(BenchRunMode::PerfCalibrate))]
-    #[case::perf_overhead_zero("p:o:000000", Some(BenchRunMode::PerfOverhead(0)))]
-    #[case::perf_overhead_one("p:o:000001", Some(BenchRunMode::PerfOverhead(1)))]
-    #[case::perf_overhead_max("p:o:999999", Some(BenchRunMode::PerfOverhead(999_999)))]
-    #[case::perf_repeat_zero("p:r:000000", Some(BenchRunMode::PerfRepeat(0)))]
-    #[case::perf_repeat_one("p:r:000001", Some(BenchRunMode::PerfRepeat(1)))]
-    #[case::perf_repeat_max("p:r:999999", Some(BenchRunMode::PerfRepeat(999_999)))]
-    #[case::perf_once("p:s:000000", Some(BenchRunMode::PerfOnce))]
-    #[case::invalid_mode("p:x:000000", None)]
-    #[case::not_using_colons("pp000000", None)]
-    #[case::missing_first_colon("pp:", None)]
-    #[case::missing_last_colon("p:p", None)]
-    fn test_bench_run_mode_from_id(#[case] id: &str, #[case] expected: Option<BenchRunMode>) {
-        assert_eq!(BenchRunMode::from_id(id), expected);
-    }
-
-    #[rstest]
-    #[case::default(BenchRunMode::Default)]
-    #[case::perf_dynamic(BenchRunMode::PerfDynamic)]
-    #[case::perf_calibrate(BenchRunMode::PerfCalibrate)]
-    #[case::perf_overhead_zero(BenchRunMode::PerfOverhead(0))]
-    #[case::perf_overhead_one(BenchRunMode::PerfOverhead(1))]
-    #[case::perf_overhead_max(BenchRunMode::PerfOverhead(999_999))]
-    #[case::perf_repeat_zero(BenchRunMode::PerfRepeat(0))]
-    #[case::perf_repeat_one(BenchRunMode::PerfRepeat(1))]
-    #[case::perf_repeat_max(BenchRunMode::PerfRepeat(999_999))]
-    #[case::perf_once(BenchRunMode::PerfOnce)]
-    fn test_bench_run_mode_round_trip(#[case] mode: BenchRunMode) {
-        assert_eq!(BenchRunMode::from_id(&mode.id()), Some(mode));
-    }
 
     #[test]
     fn test_cachegrind_metric_from_str_ignore_case() {
@@ -3370,6 +3326,50 @@ mod tests {
         };
 
         assert_eq!(base.update_from_all([Some(&other)]), expected);
+    }
+
+    #[cfg(feature = "runner")]
+    #[test]
+    fn test_perf_metric_display_normalizes_separators() {
+        assert_eq!(
+            PerfMetric::from("task-clock:").display().name(),
+            "task-clock"
+        );
+    }
+
+    #[rstest]
+    #[case::default("d:d:000000", Some(BenchRunMode::Default))]
+    #[case::perf_dynamic("p:p:000000", Some(BenchRunMode::PerfDynamic))]
+    #[case::no_number("p:p:", Some(BenchRunMode::PerfDynamic))]
+    #[case::perf_calibrate("p:c:000000", Some(BenchRunMode::PerfCalibrate))]
+    #[case::perf_overhead_zero("p:o:000000", Some(BenchRunMode::PerfOverhead(0)))]
+    #[case::perf_overhead_one("p:o:000001", Some(BenchRunMode::PerfOverhead(1)))]
+    #[case::perf_overhead_max("p:o:999999", Some(BenchRunMode::PerfOverhead(999_999)))]
+    #[case::perf_repeat_zero("p:r:000000", Some(BenchRunMode::PerfRepeat(0)))]
+    #[case::perf_repeat_one("p:r:000001", Some(BenchRunMode::PerfRepeat(1)))]
+    #[case::perf_repeat_max("p:r:999999", Some(BenchRunMode::PerfRepeat(999_999)))]
+    #[case::perf_once("p:s:000000", Some(BenchRunMode::PerfOnce))]
+    #[case::invalid_mode("p:x:000000", None)]
+    #[case::not_using_colons("pp000000", None)]
+    #[case::missing_first_colon("pp:", None)]
+    #[case::missing_last_colon("p:p", None)]
+    fn test_bench_run_mode_from_id(#[case] id: &str, #[case] expected: Option<BenchRunMode>) {
+        assert_eq!(BenchRunMode::from_id(id), expected);
+    }
+
+    #[rstest]
+    #[case::default(BenchRunMode::Default)]
+    #[case::perf_dynamic(BenchRunMode::PerfDynamic)]
+    #[case::perf_calibrate(BenchRunMode::PerfCalibrate)]
+    #[case::perf_overhead_zero(BenchRunMode::PerfOverhead(0))]
+    #[case::perf_overhead_one(BenchRunMode::PerfOverhead(1))]
+    #[case::perf_overhead_max(BenchRunMode::PerfOverhead(999_999))]
+    #[case::perf_repeat_zero(BenchRunMode::PerfRepeat(0))]
+    #[case::perf_repeat_one(BenchRunMode::PerfRepeat(1))]
+    #[case::perf_repeat_max(BenchRunMode::PerfRepeat(999_999))]
+    #[case::perf_once(BenchRunMode::PerfOnce)]
+    fn test_bench_run_mode_round_trip(#[case] mode: BenchRunMode) {
+        assert_eq!(BenchRunMode::from_id(&mode.id()), Some(mode));
     }
 
     #[rstest]
@@ -3558,6 +3558,20 @@ mod tests {
     }
 
     #[test]
+    fn test_tool_update_when_tool_is_perf_then_extends_without_flag() {
+        let mut base = ToolSpec::new(Tool::Perf);
+        let other = tool_spec_f()
+            .tool(Tool::Perf)
+            // This should stay `some` instead of becoming `--some` as it is done for valgrind tools
+            .raw_tool_args(RawToolArgs::new_ignore_flag(["some"]))
+            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
+            .fx();
+        let expected = other.clone();
+        base.update(&other);
+        assert_eq!(base, expected);
+    }
+
+    #[test]
     fn test_tool_update_when_tools_match() {
         let mut base = ToolSpec::new(Tool::Callgrind);
         // do not use the tool spec builder to enforce the usage of the constructor fields
@@ -3573,20 +3587,6 @@ mod tests {
             sanitize_output: Some(SanitizeOutput::KeepOrig),
             options: ToolSpecOptions::None,
         };
-        let expected = other.clone();
-        base.update(&other);
-        assert_eq!(base, expected);
-    }
-
-    #[test]
-    fn test_tool_update_when_tool_is_perf_then_extends_without_flag() {
-        let mut base = ToolSpec::new(Tool::Perf);
-        let other = tool_spec_f()
-            .tool(Tool::Perf)
-            // This should stay `some` instead of becoming `--some` as it is done for valgrind tools
-            .raw_tool_args(RawToolArgs::new_ignore_flag(["some"]))
-            .options(ToolSpecOptions::Perf(perf_spec_f().fx()))
-            .fx();
         let expected = other.clone();
         base.update(&other);
         assert_eq!(base, expected);

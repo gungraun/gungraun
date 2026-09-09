@@ -20,26 +20,102 @@ use gungraun::{
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
 const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
 
-fn setup_no_argument() {
-    println!("SETUP: setup_no_argument function");
+fn create_dir(path: &str) -> &str {
+    #[expect(clippy::create_dir)]
+    std::fs::create_dir(path).unwrap();
+    path
 }
 
-fn teardown_no_argument() {
-    println!("TEARDOWN: teardown_no_argument function");
+fn setup_low_level_group(group: &mut BinaryBenchmarkGroup) {
+    group
+        .binary_benchmark(
+            BinaryBenchmark::new("bench_setup_last")
+                .bench(Bench::new("no_setup").command(gungraun::Command::new(ECHO).arg("3")))
+                .bench(
+                    Bench::new("with_setup")
+                        .setup(|| setup_one_argument(2))
+                        .command(gungraun::Command::new(ECHO).arg("6")),
+                ),
+        )
+        .binary_benchmark(
+            BinaryBenchmark::new("bench_only_setup")
+                .bench(
+                    Bench::new("setup_with_one_argument")
+                        .setup(|| setup_one_argument(1))
+                        .command(gungraun::Command::new(ECHO).arg("3")),
+                )
+                .bench(
+                    Bench::new("setup_in_module")
+                        .setup(|| setup::setup_in_module(2))
+                        .command(gungraun::Command::new(ECHO).arg("6")),
+                ),
+        )
+        .binary_benchmark(
+            BinaryBenchmark::new("bench_only_teardown")
+                .bench(
+                    Bench::new("teardown_with_one_argument")
+                        .teardown(|| teardown_one_argument(3))
+                        .command(gungraun::Command::new(ECHO).arg("10")),
+                )
+                .bench(
+                    Bench::new("teardown_in_module")
+                        .teardown(|| teardown::teardown_in_module(4))
+                        .command(gungraun::Command::new(ECHO).arg("40")),
+                ),
+        )
+        .binary_benchmark(
+            BinaryBenchmark::new("bench_setup_and_teardown")
+                .bench(
+                    Bench::new("setup_first_then_teardown")
+                        .setup(|| setup_one_argument(5))
+                        .teardown(|| teardown_one_argument(6))
+                        .command(gungraun::Command::new(ECHO).arg("2")),
+                )
+                .bench(
+                    Bench::new("teardown_first_then_setup")
+                        .teardown(|| teardown_one_argument(7))
+                        .setup(|| setup_one_argument(8))
+                        .command(gungraun::Command::new(ECHO).arg("3")),
+                ),
+        )
+        .binary_benchmark(
+            BinaryBenchmark::new("bench_global_setup_and_teardown")
+                .setup(setup_no_argument)
+                .teardown(teardown_no_argument)
+                .bench(Bench::new("no_overwrite").command(gungraun::Command::new(ECHO).arg("1")))
+                .bench(
+                    Bench::new("overwrite_teardown")
+                        .teardown(|| teardown_one_argument(1))
+                        .command(gungraun::Command::new(ECHO).arg("2")),
+                )
+                .bench(
+                    Bench::new("overwrite_setup")
+                        .setup(|| setup_one_argument(2))
+                        .command(gungraun::Command::new(ECHO).arg("3")),
+                )
+                .bench(
+                    Bench::new("overwrite_setup_and_teardown")
+                        .setup(|| setup_one_argument(3))
+                        .teardown(|| teardown_one_argument(4))
+                        .command(gungraun::Command::new(ECHO).arg("4")),
+                ),
+        );
+}
+
+fn setup_no_argument() {
+    println!("SETUP: setup_no_argument function");
 }
 
 fn setup_one_argument(arg: u64) {
     println!("SETUP: setup_one_argument function: {arg}");
 }
 
-fn teardown_one_argument(arg: u64) {
-    println!("TEARDOWN: teardown_one_argument function: {arg}");
+fn teardown_no_argument() {
+    println!("TEARDOWN: teardown_no_argument function");
 }
 
-fn create_dir(path: &str) -> &str {
-    #[expect(clippy::create_dir)]
-    std::fs::create_dir(path).unwrap();
-    path
+fn teardown_one_argument(arg: u64) {
+    println!("TEARDOWN: teardown_one_argument function: {arg}");
 }
 
 #[binary_benchmark(setup = setup_no_argument(), teardown = teardown_no_argument())]
@@ -162,82 +238,6 @@ binary_benchmark_group!(
         .sandbox(Sandbox::new(true)),
     benchmarks = perf
 );
-
-fn setup_low_level_group(group: &mut BinaryBenchmarkGroup) {
-    group
-        .binary_benchmark(
-            BinaryBenchmark::new("bench_setup_last")
-                .bench(Bench::new("no_setup").command(gungraun::Command::new(ECHO).arg("3")))
-                .bench(
-                    Bench::new("with_setup")
-                        .setup(|| setup_one_argument(2))
-                        .command(gungraun::Command::new(ECHO).arg("6")),
-                ),
-        )
-        .binary_benchmark(
-            BinaryBenchmark::new("bench_only_setup")
-                .bench(
-                    Bench::new("setup_with_one_argument")
-                        .setup(|| setup_one_argument(1))
-                        .command(gungraun::Command::new(ECHO).arg("3")),
-                )
-                .bench(
-                    Bench::new("setup_in_module")
-                        .setup(|| setup::setup_in_module(2))
-                        .command(gungraun::Command::new(ECHO).arg("6")),
-                ),
-        )
-        .binary_benchmark(
-            BinaryBenchmark::new("bench_only_teardown")
-                .bench(
-                    Bench::new("teardown_with_one_argument")
-                        .teardown(|| teardown_one_argument(3))
-                        .command(gungraun::Command::new(ECHO).arg("10")),
-                )
-                .bench(
-                    Bench::new("teardown_in_module")
-                        .teardown(|| teardown::teardown_in_module(4))
-                        .command(gungraun::Command::new(ECHO).arg("40")),
-                ),
-        )
-        .binary_benchmark(
-            BinaryBenchmark::new("bench_setup_and_teardown")
-                .bench(
-                    Bench::new("setup_first_then_teardown")
-                        .setup(|| setup_one_argument(5))
-                        .teardown(|| teardown_one_argument(6))
-                        .command(gungraun::Command::new(ECHO).arg("2")),
-                )
-                .bench(
-                    Bench::new("teardown_first_then_setup")
-                        .teardown(|| teardown_one_argument(7))
-                        .setup(|| setup_one_argument(8))
-                        .command(gungraun::Command::new(ECHO).arg("3")),
-                ),
-        )
-        .binary_benchmark(
-            BinaryBenchmark::new("bench_global_setup_and_teardown")
-                .setup(setup_no_argument)
-                .teardown(teardown_no_argument)
-                .bench(Bench::new("no_overwrite").command(gungraun::Command::new(ECHO).arg("1")))
-                .bench(
-                    Bench::new("overwrite_teardown")
-                        .teardown(|| teardown_one_argument(1))
-                        .command(gungraun::Command::new(ECHO).arg("2")),
-                )
-                .bench(
-                    Bench::new("overwrite_setup")
-                        .setup(|| setup_one_argument(2))
-                        .command(gungraun::Command::new(ECHO).arg("3")),
-                )
-                .bench(
-                    Bench::new("overwrite_setup_and_teardown")
-                        .setup(|| setup_one_argument(3))
-                        .teardown(|| teardown_one_argument(4))
-                        .command(gungraun::Command::new(ECHO).arg("4")),
-                ),
-        );
-}
 
 binary_benchmark_group!(
     name = low_level,

@@ -7,8 +7,8 @@ use std::time::Duration;
 use gungraun::prelude::*;
 use tempfile::Builder;
 
-const SUFFIX: &str = "test-file";
 const PREFIX: &str = module_path!();
+const SUFFIX: &str = "test-file";
 
 #[library_benchmark]
 fn exit_with_panic() {

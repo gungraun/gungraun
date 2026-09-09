@@ -15,6 +15,39 @@ use crate::error::Error;
 use crate::runner::perf::args::PerfArgs;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
+/// Default value for Callgrind and Cachegrind cache simulation.
+pub const DEFAULT_CACHE_SIM: bool = true;
+/// Default value for combining Callgrind dump files.
+pub const DEFAULT_COMBINE_DUMPS: bool = false;
+/// Default value for Callgrind position compression.
+pub const DEFAULT_COMPRESS_POS: bool = false;
+/// Default value for Callgrind string compression.
+pub const DEFAULT_COMPRESS_STRINGS: bool = false;
+/// Default Valgrind level-one data cache configuration.
+pub const DEFAULT_D1: &str = "32768,8,64";
+/// Default value for including instruction information in Callgrind dumps.
+pub const DEFAULT_DUMP_INSTR: bool = false;
+/// Default value for including source-line information in Callgrind dumps.
+pub const DEFAULT_DUMP_LINE: bool = true;
+/// Default error exit code for Valgrind tools that report errors.
+pub const DEFAULT_ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
+/// Default error exit code for Valgrind tools that do not report errors.
+pub const DEFAULT_ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
+/// Default Valgrind scheduler fairness mode.
+pub const DEFAULT_FAIR_SCHED: FairSched = FairSched::Try;
+/// Default Valgrind level-one instruction cache configuration.
+pub const DEFAULT_I1: &str = "32768,8,64";
+/// Default Valgrind last-level cache configuration.
+pub const DEFAULT_LL: &str = "8388608,16,64";
+/// Default value for producing separate Callgrind dumps per thread.
+pub const DEFAULT_SEPARATE_THREADS: bool = true;
+/// Default value for tracing child processes under Valgrind.
+pub const DEFAULT_TRACE_CHILDREN: bool = true;
+/// Default value for verbose Valgrind output.
+pub const DEFAULT_VERBOSE: bool = false;
+/// Default Valgrind debugger server mode.
+pub const DEFAULT_VGDB: Vgdb = Vgdb::No;
+
 /// The possible values of the --fair-sched cli arg
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FairSched {
@@ -25,42 +58,6 @@ pub enum FairSched {
     /// Corresponds to `try`
     Try,
 }
-
-/// Default Valgrind level-one instruction cache configuration.
-pub const DEFAULT_I1: &str = "32768,8,64";
-/// Default Valgrind level-one data cache configuration.
-pub const DEFAULT_D1: &str = "32768,8,64";
-/// Default Valgrind last-level cache configuration.
-pub const DEFAULT_LL: &str = "8388608,16,64";
-/// Default value for Callgrind and Cachegrind cache simulation.
-pub const DEFAULT_CACHE_SIM: bool = true;
-
-/// Default value for Callgrind position compression.
-pub const DEFAULT_COMPRESS_POS: bool = false;
-/// Default value for Callgrind string compression.
-pub const DEFAULT_COMPRESS_STRINGS: bool = false;
-/// Default value for combining Callgrind dump files.
-pub const DEFAULT_COMBINE_DUMPS: bool = false;
-/// Default value for including source-line information in Callgrind dumps.
-pub const DEFAULT_DUMP_LINE: bool = true;
-/// Default value for including instruction information in Callgrind dumps.
-pub const DEFAULT_DUMP_INSTR: bool = false;
-/// Default value for producing separate Callgrind dumps per thread.
-pub const DEFAULT_SEPARATE_THREADS: bool = true;
-
-/// Default error exit code for Valgrind tools that report errors.
-pub const DEFAULT_ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
-/// Default error exit code for Valgrind tools that do not report errors.
-pub const DEFAULT_ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
-
-/// Default value for tracing child processes under Valgrind.
-pub const DEFAULT_TRACE_CHILDREN: bool = true;
-/// Default Valgrind scheduler fairness mode.
-pub const DEFAULT_FAIR_SCHED: FairSched = FairSched::Try;
-/// Default value for verbose Valgrind output.
-pub const DEFAULT_VERBOSE: bool = false;
-/// Default Valgrind debugger server mode.
-pub const DEFAULT_VGDB: Vgdb = Vgdb::No;
 
 /// Normalizes per-tool command-line argument construction for Valgrind and perf.
 ///
@@ -276,54 +273,6 @@ impl ToolArgs {
         }
     }
 }
-impl ToolArgsLike for ValgrindArgs {
-    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
-        let valgrind_tool = ValgrindTool::try_from(tool).map_err(anyhow::Error::msg)?;
-        let mut tool_args = Self::new(valgrind_tool);
-
-        tool_args.try_update(raw_tool_args.iter().flat_map(|args| args.as_slice()))?;
-
-        Ok(tool_args)
-    }
-
-    fn try_update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
-        for arg in args {
-            let arg = arg.trim();
-            match arg.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
-                Some(("--error-exitcode", value)) => {
-                    value.clone_into(&mut self.error_exitcode);
-                }
-                Some((key @ "--trace-children", value)) => {
-                    self.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
-                    })?;
-                }
-                Some(("--fair-sched", value)) => {
-                    self.fair_sched = FairSched::from_str(value)?;
-                }
-                Some(("--vgdb", value)) => {
-                    self.vgdb = Vgdb::from_str(value)?;
-                }
-                Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
-                    "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                     Gungraun",
-                    self.tool.id()
-                ),
-                Some((arg, _)) if is_ignored_argument(arg) => {
-                    warn!("Ignoring {} argument '{arg}'", self.tool.id());
-                }
-                None if matches!(arg, "-v" | "--verbose") => self.verbose = true,
-                None if is_ignored_argument(arg) => {
-                    warn!("Ignoring {} argument '{arg}'", self.tool.id());
-                }
-                None | Some(_) => self.other.push(arg.to_owned()),
-            }
-        }
-
-        Ok(())
-    }
-}
-
 impl ValgrindArgs {
     /// Create a new `ValgrindArgs` with the defaults for this tool.
     pub fn new(tool: ValgrindTool) -> Self {
@@ -503,6 +452,54 @@ impl ValgrindArgs {
     }
 }
 
+impl ToolArgsLike for ValgrindArgs {
+    fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> Result<Self> {
+        let valgrind_tool = ValgrindTool::try_from(tool).map_err(anyhow::Error::msg)?;
+        let mut tool_args = Self::new(valgrind_tool);
+
+        tool_args.try_update(raw_tool_args.iter().flat_map(|args| args.as_slice()))?;
+
+        Ok(tool_args)
+    }
+
+    fn try_update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
+        for arg in args {
+            let arg = arg.trim();
+            match arg.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
+                Some(("--error-exitcode", value)) => {
+                    value.clone_into(&mut self.error_exitcode);
+                }
+                Some((key @ "--trace-children", value)) => {
+                    self.trace_children = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
+                    })?;
+                }
+                Some(("--fair-sched", value)) => {
+                    self.fair_sched = FairSched::from_str(value)?;
+                }
+                Some(("--vgdb", value)) => {
+                    self.vgdb = Vgdb::from_str(value)?;
+                }
+                Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
+                    "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
+                     Gungraun",
+                    self.tool.id()
+                ),
+                Some((arg, _)) if is_ignored_argument(arg) => {
+                    warn!("Ignoring {} argument '{arg}'", self.tool.id());
+                }
+                None if matches!(arg, "-v" | "--verbose") => self.verbose = true,
+                None if is_ignored_argument(arg) => {
+                    warn!("Ignoring {} argument '{arg}'", self.tool.id());
+                }
+                None | Some(_) => self.other.push(arg.to_owned()),
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl ValgrindTool {
     fn id(self) -> String {
         Tool::from(self).id()
@@ -557,6 +554,20 @@ impl FromStr for Vgdb {
     }
 }
 
+/// Returns `true` if this is a generic ignored argument.
+pub fn is_ignored_argument(arg: &str) -> bool {
+    matches!(
+        arg,
+        "-h" | "--help"
+            | "--help-dyn-options"
+            | "--help-debug"
+            | "--version"
+            | "-q"
+            | "--quiet"
+            | "--tool"
+    )
+}
+
 /// Returns `true` if this is an ignored argument related to output or logfiles.
 pub fn is_ignored_outfile_argument(arg: &str) -> bool {
     matches!(
@@ -580,28 +591,14 @@ pub fn is_ignored_outfile_argument(arg: &str) -> bool {
     )
 }
 
-/// Returns `true` if this is a generic ignored argument.
-pub fn is_ignored_argument(arg: &str) -> bool {
-    matches!(
-        arg,
-        "-h" | "--help"
-            | "--help-dyn-options"
-            | "--help-debug"
-            | "--version"
-            | "-q"
-            | "--quiet"
-            | "--tool"
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use std::ffi::OsString;
 
-    use bon::builder;
     use rstest::rstest;
 
     use super::*;
+    use crate::fixtures::valgrind_args_f;
 
     fn assert_contains_args<const N: usize>(actual: &[OsString], expected: [&str; N]) {
         for expected in expected {
@@ -614,39 +611,6 @@ mod tests {
 
     fn strings<const N: usize>(args: [&str; N]) -> Vec<String> {
         args.into_iter().map(str::to_owned).collect()
-    }
-
-    #[builder(finish_fn = "fx")]
-    pub fn valgrind_args_f(
-        tool: Option<ValgrindTool>,
-        error_exitcode: Option<&str>,
-        fair_sched: Option<FairSched>,
-        other: Option<Vec<String>>,
-        trace_children: Option<bool>,
-        verbose: Option<bool>,
-        vgdb: Option<Vgdb>,
-    ) -> ValgrindArgs {
-        let mut args = ValgrindArgs::new(tool.unwrap_or(ValgrindTool::Memcheck));
-        if let Some(value) = error_exitcode {
-            args.error_exitcode = value.to_owned();
-        }
-        if let Some(value) = fair_sched {
-            args.fair_sched = value;
-        }
-        if let Some(value) = other {
-            args.other.extend(value);
-        }
-        if let Some(value) = trace_children {
-            args.trace_children = value;
-        }
-        if let Some(value) = verbose {
-            args.verbose = value;
-        }
-        if let Some(value) = vgdb {
-            args.vgdb = value;
-        }
-
-        args
     }
 
     #[rstest]

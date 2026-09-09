@@ -3,22 +3,22 @@ use std::hint::black_box;
 use gungraun::prelude::*;
 use gungraun::{Perf, Tool};
 
-fn setup_to_stdout(value: u64) -> u64 {
-    println!("setup: stdout: {value}");
-    value + 10
-}
-
 fn setup_to_stderr(value: u64) -> u64 {
     eprintln!("setup: stderr: {value}");
     value + 20
 }
 
-fn teardown_to_stdout(value: u64) {
-    println!("teardown: stdout: {value}");
+fn setup_to_stdout(value: u64) -> u64 {
+    println!("setup: stdout: {value}");
+    value + 10
 }
 
 fn teardown_to_stderr(value: u64) {
     eprintln!("teardown: stderr: {value}");
+}
+
+fn teardown_to_stdout(value: u64) {
+    println!("teardown: stdout: {value}");
 }
 
 #[library_benchmark]

@@ -5,12 +5,6 @@
 
 use std::time::{Duration, Instant};
 
-/// The generalized logistic function
-#[inline]
-pub fn logistic(u: f64, l: f64, k: f64, t: f64, t0: f64, nu: f64) -> f64 {
-    ((u - l) / (1.0 + (-k * (t - t0)).exp()).powf(nu)) + l
-}
-
 /// Estimates the optimal number of repetitions a benchmark should execute per measurement
 ///
 /// The calibration loop uses a batched `setup -> work -> teardown` pipeline. For each sampled
@@ -99,6 +93,12 @@ where
     } else {
         1
     }
+}
+
+/// The generalized logistic function
+#[inline]
+pub fn logistic(u: f64, l: f64, k: f64, t: f64, t0: f64, nu: f64) -> f64 {
+    ((u - l) / (1.0 + (-k * (t - t0)).exp()).powf(nu)) + l
 }
 
 #[cfg(test)]

@@ -18,24 +18,6 @@ use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetri
 use crate::summary::model::Diffs;
 use crate::units::Unit;
 
-/// A metric value paired with additional metadata and an optional [`Unit`].
-///
-/// This type is used for metrics, such as perf results, that need to carry more than the raw
-/// numeric value when they are stored, merged, or compared.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct AnnotatedMetric<Q> {
-    /// The measured numeric value.
-    #[serde(flatten)]
-    pub metric: Metric,
-    /// Additional metadata associated with the metric value.
-    #[serde(flatten)]
-    pub qualities: Q,
-    /// The [`Unit`] of the metric value, if one is given or known.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub unit: Option<Unit>,
-}
-
 /// The value type used for metrics measured by a benchmark tool
 ///
 /// Raw metrics emitted by Valgrind tools are [`Metric::Int`] which is the default metric type.
@@ -83,6 +65,24 @@ pub enum MetricKind {
     DRD(ErrorMetric),
     /// The Perf metric kind: [`PerfMetric`]
     Perf(PerfMetric),
+}
+
+/// A metric value paired with additional metadata and an optional [`Unit`].
+///
+/// This type is used for metrics, such as perf results, that need to carry more than the raw
+/// numeric value when they are stored, merged, or compared.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct AnnotatedMetric<Q> {
+    /// The measured numeric value.
+    #[serde(flatten)]
+    pub metric: Metric,
+    /// Additional metadata associated with the metric value.
+    #[serde(flatten)]
+    pub qualities: Q,
+    /// The [`Unit`] of the metric value, if one is given or known.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unit: Option<Unit>,
 }
 
 /// An insertion-ordered mapping from metric identifier to [`Metric`].

@@ -440,6 +440,10 @@ Options:
           The summary file is saved as `summary.json` in the benchmark's output directory next to the
           other usual benchmark output.
 
+          In v7 summaries, `output_dir` identifies that directory. Paths below `project_root` are
+          relative to it; paths outside remain absolute. Paths to artifacts inside `output_dir` are
+          omitted because the directory itself contains them.
+
           Available formats: - `json`: Compact JSON without newlines (space-efficient) -
           `pretty-json`: Pretty-printed JSON with indentation (human-readable)
 

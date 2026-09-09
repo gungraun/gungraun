@@ -16,6 +16,12 @@ mod imp {
 
     use crate::BuildResult;
 
+    #[derive(Debug, PartialEq, Eq)]
+    enum Strategy {
+        Strict,
+        Fallback,
+    }
+
     #[derive(EnumIter, Debug, PartialEq, Eq)]
     enum Support {
         Arm,
@@ -38,12 +44,6 @@ mod imp {
         os: String,
         triple: String,
         vendor: String,
-    }
-
-    #[derive(Debug, PartialEq, Eq)]
-    enum Strategy {
-        Strict,
-        Fallback,
     }
 
     impl Strategy {
@@ -103,69 +103,6 @@ mod imp {
         }
     }
 
-    pub fn print_migration_warnings() {
-        for (old, new) in std::env::vars().filter_map(|(key, _)| {
-            if key.starts_with("IAI_CALLGRIND_") && key.ends_with("VALGRIND_INCLUDE") {
-                Some((
-                    key.clone(),
-                    key.replace("IAI_CALLGRIND_", "VALGRIND_REQUESTS_"),
-                ))
-            } else if key.starts_with("GUNGRAUN_") && key.ends_with("VALGRIND_INCLUDE") {
-                Some((key.clone(), key.replace("GUNGRAUN_", "VALGRIND_REQUESTS_")))
-            } else {
-                None
-            }
-        }) {
-            if std::env::var(&old).is_ok() && std::env::var(&new).is_err() {
-                println!(
-                    "cargo:warning=The name of the environment variable `{old}` has changed to \
-                     `{new}`."
-                );
-            }
-        }
-    }
-
-    fn print_client_requests_support(value: &Support) {
-        println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
-    }
-
-    fn include_dirs(target: &Target) -> impl Iterator<Item = String> + use<> {
-        let triple_env_key = target.triple_to_env_key();
-        [
-            Cow::Owned(format!(
-                "VALGRIND_REQUESTS_{triple_env_key}_VALGRIND_INCLUDE",
-            )),
-            Cow::Owned(format!("GUNGRAUN_{triple_env_key}_VALGRIND_INCLUDE")),
-            Cow::Owned(format!("IAI_CALLGRIND_{triple_env_key}_VALGRIND_INCLUDE")),
-            Cow::Borrowed("VALGRIND_REQUESTS_VALGRIND_INCLUDE"),
-            Cow::Borrowed("GUNGRAUN_VALGRIND_INCLUDE"),
-            Cow::Borrowed("IAI_CALLGRIND_VALGRIND_INCLUDE"),
-        ]
-        .into_iter()
-        .filter_map(|env| std::env::var(env.as_ref()).ok())
-    }
-
-    #[cfg(feature = "act")]
-    fn build_native(target: &Target) {
-        let mut builder = cc::Build::new();
-
-        for env in include_dirs(target) {
-            builder.flag(format!("-isystem{env}"));
-        }
-
-        builder.flag("-isystem/usr/local/include");
-        builder.flag("-isystem/usr/include");
-        builder.flag("-idiraftervalgrind/include");
-
-        builder
-            .debug(true)
-            .file("valgrind/native.c")
-            .compile("native");
-    }
-
-    #[cfg(not(feature = "act"))]
-    fn build_native(_target: &Target) {}
-
     fn build_bindings(target: &Target) -> Bindings {
         let mut builder = builder();
 
@@ -200,9 +137,46 @@ mod imp {
         bindings
     }
 
+    #[cfg(feature = "act")]
+    fn build_native(target: &Target) {
+        let mut builder = cc::Build::new();
+
+        for env in include_dirs(target) {
+            builder.flag(format!("-isystem{env}"));
+        }
+
+        builder.flag("-isystem/usr/local/include");
+        builder.flag("-isystem/usr/include");
+        builder.flag("-idiraftervalgrind/include");
+
+        builder
+            .debug(true)
+            .file("valgrind/native.c")
+            .compile("native");
+    }
+
+    #[cfg(not(feature = "act"))]
+    fn build_native(_target: &Target) {}
+
     // Return the rust version if running rustc was successful
     fn get_rust_version() -> Option<Version> {
         version().ok()
+    }
+
+    fn include_dirs(target: &Target) -> impl Iterator<Item = String> + use<> {
+        let triple_env_key = target.triple_to_env_key();
+        [
+            Cow::Owned(format!(
+                "VALGRIND_REQUESTS_{triple_env_key}_VALGRIND_INCLUDE",
+            )),
+            Cow::Owned(format!("GUNGRAUN_{triple_env_key}_VALGRIND_INCLUDE")),
+            Cow::Owned(format!("IAI_CALLGRIND_{triple_env_key}_VALGRIND_INCLUDE")),
+            Cow::Borrowed("VALGRIND_REQUESTS_VALGRIND_INCLUDE"),
+            Cow::Borrowed("GUNGRAUN_VALGRIND_INCLUDE"),
+            Cow::Borrowed("IAI_CALLGRIND_VALGRIND_INCLUDE"),
+        ]
+        .into_iter()
+        .filter_map(|env| std::env::var(env.as_ref()).ok())
     }
 
     pub fn main() -> BuildResult<()> {
@@ -313,6 +287,32 @@ mod imp {
         }
 
         Ok(())
+    }
+
+    fn print_client_requests_support(value: &Support) {
+        println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
+    }
+
+    pub fn print_migration_warnings() {
+        for (old, new) in std::env::vars().filter_map(|(key, _)| {
+            if key.starts_with("IAI_CALLGRIND_") && key.ends_with("VALGRIND_INCLUDE") {
+                Some((
+                    key.clone(),
+                    key.replace("IAI_CALLGRIND_", "VALGRIND_REQUESTS_"),
+                ))
+            } else if key.starts_with("GUNGRAUN_") && key.ends_with("VALGRIND_INCLUDE") {
+                Some((key.clone(), key.replace("GUNGRAUN_", "VALGRIND_REQUESTS_")))
+            } else {
+                None
+            }
+        }) {
+            if std::env::var(&old).is_ok() && std::env::var(&new).is_err() {
+                println!(
+                    "cargo:warning=The name of the environment variable `{old}` has changed to \
+                     `{new}`."
+                );
+            }
+        }
     }
 }
 

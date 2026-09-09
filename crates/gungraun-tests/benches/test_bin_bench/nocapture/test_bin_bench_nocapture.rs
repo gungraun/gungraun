@@ -4,8 +4,9 @@ use gungraun::{self, Dhat, Pipe, Sandbox, Stdin, Stdio};
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
 const PIPE: &str = env!("CARGO_BIN_EXE_pipe");
 
-fn setup() {
-    print!("Something");
+fn check_files(stdout: &str, stderr: &str) {
+    assert_eq!(std::fs::read_to_string(stdout).unwrap(), "1 2\n");
+    assert!(std::fs::read_to_string(stderr).unwrap().is_empty());
 }
 
 fn create_files(stdout: &str, stderr: &str) {
@@ -15,9 +16,8 @@ fn create_files(stdout: &str, stderr: &str) {
     std::fs::File::create(stderr).unwrap();
 }
 
-fn check_files(stdout: &str, stderr: &str) {
-    assert_eq!(std::fs::read_to_string(stdout).unwrap(), "1 2\n");
-    assert!(std::fs::read_to_string(stderr).unwrap().is_empty());
+fn setup() {
+    print!("Something");
 }
 
 #[binary_benchmark]

@@ -7,8 +7,8 @@ use std::time::Duration;
 use gungraun::prelude::*;
 use tempfile::Builder;
 
-const SUFFIX: &str = "test-file";
 const PREFIX: &str = module_path!();
+const SUFFIX: &str = "test-file";
 
 #[library_benchmark]
 fn print_parallel() {
@@ -41,6 +41,15 @@ fn timeout() {
     std::io::copy(&mut file, &mut std::io::stdout()).unwrap();
 }
 
+fn max_parallel() -> usize {
+    if let Ok(var) = std::env::var("__MAX_PARALLEL") {
+        var.parse::<usize>()
+            .expect("__MAX_PARALLEL should be a valid number")
+    } else {
+        panic!("__MAX_PARALLEL needs to be set with a valid value");
+    }
+}
+
 fn remove_test_files(panic_if_not_exists: bool) {
     let dir = std::env::temp_dir();
     let pattern = format!("{}/{PREFIX}*{SUFFIX}", dir.display());
@@ -63,15 +72,6 @@ library_benchmark_group!(
     teardown = remove_test_files(false),
     benchmarks = [print_parallel, timeout]
 );
-
-fn max_parallel() -> usize {
-    if let Ok(var) = std::env::var("__MAX_PARALLEL") {
-        var.parse::<usize>()
-            .expect("__MAX_PARALLEL should be a valid number")
-    } else {
-        panic!("__MAX_PARALLEL needs to be set with a valid value");
-    }
-}
 
 library_benchmark_group!(
     name = max_parallel_group,

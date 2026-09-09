@@ -38,20 +38,20 @@ pub struct PerfArgs {
     tool: PerfTool,
 }
 
-/// Arguments specific to `perf stat`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PerfStatArgs {
-    big_num: bool,
-    json: bool,
-    perf_args: PerfArgs,
-}
-
 /// Arguments specific to `perf record`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PerfRecordArgs {
     exclude_perf: bool,
     /// The filter arguments stored as `--filter=<filter>`
     filter: Vec<String>,
+    perf_args: PerfArgs,
+}
+
+/// Arguments specific to `perf stat`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PerfStatArgs {
+    big_num: bool,
+    json: bool,
     perf_args: PerfArgs,
 }
 
@@ -280,6 +280,16 @@ impl PerfRecordArgs {
     }
 }
 
+impl Default for PerfRecordArgs {
+    fn default() -> Self {
+        Self {
+            exclude_perf: false,
+            filter: vec![],
+            perf_args: PerfArgs::new(PerfTool::Record),
+        }
+    }
+}
+
 impl ToolArgsLike for PerfRecordArgs {
     fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> anyhow::Result<Self> {
         debug_assert_eq!(tool, Tool::Perf);
@@ -380,6 +390,16 @@ impl PerfStatArgs {
     }
 }
 
+impl Default for PerfStatArgs {
+    fn default() -> Self {
+        Self {
+            big_num: false,
+            json: true,
+            perf_args: PerfArgs::new(PerfTool::Stat),
+        }
+    }
+}
+
 impl ToolArgsLike for PerfStatArgs {
     fn try_from_raw_tool_args(tool: Tool, raw_tool_args: &[&RawToolArgs]) -> anyhow::Result<Self> {
         debug_assert_eq!(tool, Tool::Perf);
@@ -445,26 +465,6 @@ impl ToolArgsLike for PerfStatArgs {
     }
 }
 
-impl Default for PerfStatArgs {
-    fn default() -> Self {
-        Self {
-            big_num: false,
-            json: true,
-            perf_args: PerfArgs::new(PerfTool::Stat),
-        }
-    }
-}
-
-impl Default for PerfRecordArgs {
-    fn default() -> Self {
-        Self {
-            exclude_perf: false,
-            filter: vec![],
-            perf_args: PerfArgs::new(PerfTool::Record),
-        }
-    }
-}
-
 impl Display for PerfTool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -480,12 +480,12 @@ mod tests {
 
     use super::*;
 
-    fn perf_stat_args(args: &[&str]) -> anyhow::Result<PerfStatArgs> {
-        PerfStatArgs::try_from_raw_tool_args(Tool::Perf, &[&RawToolArgs::from_iter(args)])
-    }
-
     fn perf_record_args(args: &[&str]) -> anyhow::Result<PerfRecordArgs> {
         PerfRecordArgs::try_from_raw_tool_args(Tool::Perf, &[&RawToolArgs::from_iter(args)])
+    }
+
+    fn perf_stat_args(args: &[&str]) -> anyhow::Result<PerfStatArgs> {
+        PerfStatArgs::try_from_raw_tool_args(Tool::Perf, &[&RawToolArgs::from_iter(args)])
     }
 
     #[rstest]

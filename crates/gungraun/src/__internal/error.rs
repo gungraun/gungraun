@@ -8,6 +8,10 @@ pub struct Error {
     module_path: ModulePath,
 }
 
+/// An error aggregator to collect all errors first and then print them to stderr
+#[derive(Debug, Default)]
+pub struct Errors(pub Vec<Error>);
+
 impl Error {
     pub fn new(module_path: &ModulePath, message: &str) -> Self {
         Self {
@@ -25,10 +29,6 @@ impl Display for Error {
         ))
     }
 }
-
-/// An error aggregator to collect all errors first and then print them to stderr
-#[derive(Debug, Default)]
-pub struct Errors(pub Vec<Error>);
 
 impl Errors {
     pub fn add(&mut self, error: Error) {

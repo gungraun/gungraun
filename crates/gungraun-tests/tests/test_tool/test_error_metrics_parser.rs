@@ -24,7 +24,7 @@ fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4
         (ErrorMetric::SuppressedErrors, expected[2]),
         (ErrorMetric::SuppressedContexts, expected[3]),
     ]);
-    let expected_metrics = ToolMetrics::ErrorTool(metrics);
+    let expected_metrics = ToolMetrics::DRD(metrics);
 
     let drd_output_path =
         Fixtures::get_tool_output_path("drd", Tool::DRD, ToolOutputPathKind::Log, fixture);
@@ -32,6 +32,7 @@ fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4
     let parser = ErrorMetricLogfileParser {
         output_path: drd_output_path,
         root_dir: PathBuf::from("/does/not/matter"),
+        tool: Tool::DRD,
     };
 
     let logfiles = parser.parse().unwrap();
@@ -47,14 +48,14 @@ fn test_drd_error_metric_parser_when_multiple_pids() {
         (ErrorMetric::SuppressedErrors, 0),
         (ErrorMetric::SuppressedContexts, 0),
     ]);
-    let expected_first_metrics = ToolMetrics::ErrorTool(first_metrics);
+    let expected_first_metrics = ToolMetrics::DRD(first_metrics);
     let second_metrics = Metrics::with_metric_kinds([
         (ErrorMetric::Errors, 1),
         (ErrorMetric::Contexts, 23),
         (ErrorMetric::SuppressedErrors, 345),
         (ErrorMetric::SuppressedContexts, 4567),
     ]);
-    let expected_second_metrics = ToolMetrics::ErrorTool(second_metrics);
+    let expected_second_metrics = ToolMetrics::DRD(second_metrics);
 
     let drd_output_path =
         Fixtures::get_tool_output_path("drd", Tool::DRD, ToolOutputPathKind::Log, "multiple_pids");
@@ -62,6 +63,7 @@ fn test_drd_error_metric_parser_when_multiple_pids() {
     let parser = ErrorMetricLogfileParser {
         output_path: drd_output_path.to_log_output(),
         root_dir: PathBuf::from("/does/not/matter"),
+        tool: Tool::DRD,
     };
 
     let logfiles = parser.parse().unwrap();
@@ -84,7 +86,7 @@ fn test_memcheck_error_metric_parser(#[case] fixture: &str, #[case] expected: [u
         (ErrorMetric::SuppressedErrors, expected[2]),
         (ErrorMetric::SuppressedContexts, expected[3]),
     ]);
-    let expected_metrics = ToolMetrics::ErrorTool(metrics);
+    let expected_metrics = ToolMetrics::Memcheck(metrics);
 
     let memcheck_output_path = Fixtures::get_tool_output_path(
         "memcheck",
@@ -96,6 +98,7 @@ fn test_memcheck_error_metric_parser(#[case] fixture: &str, #[case] expected: [u
     let parser = ErrorMetricLogfileParser {
         output_path: memcheck_output_path,
         root_dir: PathBuf::from("/does/not/matter"),
+        tool: Tool::Memcheck,
     };
 
     let logfiles = parser.parse().unwrap();
@@ -111,14 +114,14 @@ fn test_memcheck_error_metric_parser_when_multiple_pids() {
         (ErrorMetric::SuppressedErrors, 0),
         (ErrorMetric::SuppressedContexts, 0),
     ]);
-    let expected_first_metrics = ToolMetrics::ErrorTool(first_metrics);
+    let expected_first_metrics = ToolMetrics::Memcheck(first_metrics);
     let second_metrics = Metrics::with_metric_kinds([
         (ErrorMetric::Errors, 11),
         (ErrorMetric::Contexts, 222),
         (ErrorMetric::SuppressedErrors, 3333),
         (ErrorMetric::SuppressedContexts, 44444),
     ]);
-    let expected_second_metrics = ToolMetrics::ErrorTool(second_metrics);
+    let expected_second_metrics = ToolMetrics::Memcheck(second_metrics);
 
     let memcheck_output_path = Fixtures::get_tool_output_path(
         "memcheck",
@@ -130,6 +133,7 @@ fn test_memcheck_error_metric_parser_when_multiple_pids() {
     let parser = ErrorMetricLogfileParser {
         output_path: memcheck_output_path,
         root_dir: PathBuf::from("/does/not/matter"),
+        tool: Tool::Memcheck,
     };
 
     let logfiles = parser.parse().unwrap();

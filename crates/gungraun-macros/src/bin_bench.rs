@@ -74,16 +74,16 @@ struct Setup(Option<Expr>);
 #[derive(Debug, Default, Clone)]
 struct Teardown(Option<Expr>);
 
-impl ToTokens for Args {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.deref().to_tokens(tokens);
-    }
-}
-
 impl Display for Args {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let tokens = self.to_tokens_without_black_box().to_string();
         write!(f, "{tokens}")
+    }
+}
+
+impl ToTokens for Args {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.deref().to_tokens(tokens);
     }
 }
 

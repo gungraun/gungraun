@@ -18,11 +18,6 @@ fn create_files(paths: &[&str]) {
     }
 }
 
-fn remove_file(path: &str) {
-    println!("Removing '{path}'");
-    std::fs::remove_file(path).unwrap();
-}
-
 fn print_files() {
     for entry in std::fs::read_dir(".")
         .unwrap()
@@ -39,6 +34,11 @@ fn print_files() {
     {
         println!("{}", entry.path().display());
     }
+}
+
+fn remove_file(path: &str) {
+    println!("Removing '{path}'");
+    std::fs::remove_file(path).unwrap();
 }
 
 #[binary_benchmark]

@@ -421,25 +421,6 @@ impl FromStr for Frame {
     }
 }
 
-impl ProgramPoint {
-    /// Returns `true` if all present metric fields are zero.
-    ///
-    /// Missing optional metric fields are treated as zero.
-    pub fn is_zero(&self) -> bool {
-        self.total_bytes == 0
-            && self.total_blocks == 0
-            && self.total_lifetimes.is_none_or(|value| value == 0)
-            && self.maximum_bytes.is_none_or(|value| value == 0)
-            && self.maximum_blocks.is_none_or(|value| value == 0)
-            && self.bytes_at_max.is_none_or(|value| value == 0)
-            && self.blocks_at_max.is_none_or(|value| value == 0)
-            && self.bytes_at_end.is_none_or(|value| value == 0)
-            && self.blocks_at_end.is_none_or(|value| value == 0)
-            && self.blocks_read.is_none_or(|value| value == 0)
-            && self.blocks_write.is_none_or(|value| value == 0)
-    }
-}
-
 impl Serialize for Frame {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -486,12 +467,49 @@ impl Serialize for Mode {
     }
 }
 
+impl ProgramPoint {
+    /// Returns `true` if all present metric fields are zero.
+    ///
+    /// Missing optional metric fields are treated as zero.
+    pub fn is_zero(&self) -> bool {
+        self.total_bytes == 0
+            && self.total_blocks == 0
+            && self.total_lifetimes.is_none_or(|value| value == 0)
+            && self.maximum_bytes.is_none_or(|value| value == 0)
+            && self.maximum_blocks.is_none_or(|value| value == 0)
+            && self.bytes_at_max.is_none_or(|value| value == 0)
+            && self.blocks_at_max.is_none_or(|value| value == 0)
+            && self.bytes_at_end.is_none_or(|value| value == 0)
+            && self.blocks_at_end.is_none_or(|value| value == 0)
+            && self.blocks_read.is_none_or(|value| value == 0)
+            && self.blocks_write.is_none_or(|value| value == 0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
     use serde_test::{Token, assert_tokens};
 
     use super::*;
+
+    fn dhat_data_filter_fixture() -> DhatData {
+        DhatData {
+            metadata: DhatMetadata::default(),
+            program_points: vec![
+                program_point_fixture(vec![1, 2]),
+                program_point_fixture(vec![3]),
+                program_point_fixture(vec![4]),
+            ],
+            frame_table: vec![
+                Frame::Root,
+                Frame::from(("0x1", DEFAULT_TOGGLE, "bench.rs:1")),
+                Frame::from(("0x2", "malloc", "alloc.c:1")),
+                Frame::from(("0x3", "custom_entry", "lib.rs:1")),
+                Frame::from(("0x4", "other", "lib.rs:2")),
+            ],
+        }
+    }
 
     fn program_point_fixture(frames: Vec<usize>) -> ProgramPoint {
         ProgramPoint {
@@ -529,48 +547,39 @@ mod tests {
         }
     }
 
-    fn dhat_data_filter_fixture() -> DhatData {
-        DhatData {
-            metadata: DhatMetadata::default(),
-            program_points: vec![
-                program_point_fixture(vec![1, 2]),
-                program_point_fixture(vec![3]),
-                program_point_fixture(vec![4]),
-            ],
-            frame_table: vec![
-                Frame::Root,
-                Frame::from(("0x1", DEFAULT_TOGGLE, "bench.rs:1")),
-                Frame::from(("0x2", "malloc", "alloc.c:1")),
-                Frame::from(("0x3", "custom_entry", "lib.rs:1")),
-                Frame::from(("0x4", "other", "lib.rs:2")),
-            ],
-        }
+    #[rstest]
+    #[case::empty(vec![], vec![])]
+    #[case::plain(vec![1, 2], vec![1, 2])]
+    #[case::repeated(vec![4, 4, 4], vec![-3, 4])]
+    #[case::mixed(vec![1, 3, 3, 4], vec![1, -2, 3, 4])]
+    fn test_accesses_compact(#[case] accesses: Vec<i64>, #[case] expected: Vec<i64>) {
+        assert_eq!(Accesses(accesses).compact(), Accesses(expected));
+    }
+
+    #[test]
+    #[should_panic(expected = "access count should be >= 0")]
+    fn test_accesses_compact_when_access_count_is_negative_then_panics() {
+        Accesses(vec![-4]).compact();
     }
 
     #[rstest]
-    #[case::short_addr(
-        "0x1234: malloc (in /usr/lib/some.so)", ("0x1234", "malloc", "in /usr/lib/some.so")
-    )]
-    #[case::no_in(
-        "0x12345678: malloc (/usr/lib/some.so)", ("0x12345678", "malloc", "/usr/lib/some.so")
-    )]
-    #[case::some(
-        "0x12345678: malloc (in /usr/lib/some.so)", ("0x12345678", "malloc", "in /usr/lib/some.so")
-    )]
-    #[case::long_with_multiple_parentheses(
-    "0x40440E3: call_once<(), (dyn core::ops::function::Fn<(), Output=i32> + core::marker::Sync + \
-    core::panic::unwind_safe::RefUnwindSafe)> (function.rs:284)",
-    (
-        "0x40440E3",
-        "call_once<(), (dyn core::ops::function::Fn<(), Output=i32> + \
-        core::marker::Sync + core::panic::unwind_safe::RefUnwindSafe)>",
-        "function.rs:284"
-    )
-)]
-    fn test_frame_from_str(#[case] haystack: &str, #[case] frame: (&str, &str, &str)) {
-        let expected = Frame::from(frame);
-        let actual = haystack.parse::<Frame>().unwrap();
-        assert_eq!(actual, expected);
+    #[case::plain(vec![1, 2], vec![1, 2])]
+    #[case::run_length_encoded(vec![-3, 4], vec![4, 4, 4])]
+    #[case::mixed(vec![1, -2, 3, 4], vec![1, 3, 3, 4])]
+    fn test_accesses_expand(#[case] accesses: Vec<i64>, #[case] expected: Vec<i64>) {
+        assert_eq!(Accesses(accesses).expand(), Accesses(expected));
+    }
+
+    #[test]
+    #[should_panic(expected = "run-length encoded accesses should have a value")]
+    fn test_accesses_expand_when_missing_repeated_value_then_panics() {
+        Accesses(vec![-3]).expand();
+    }
+
+    #[test]
+    #[should_panic(expected = "run-length encoded values should be >= 0")]
+    fn test_accesses_expand_when_repeated_value_is_negative_then_panics() {
+        Accesses(vec![-3, -4]).expand();
     }
 
     #[rstest]
@@ -620,19 +629,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_dhat_data_sanitize_when_frame_table_empty_then_creates_root_frame() {
-        let mut data = DhatData {
-            metadata: DhatMetadata::default(),
-            program_points: Vec::default(),
-            frame_table: Vec::default(),
-        };
-
-        data.sanitize(&[]);
-
-        assert_eq!(data.frame_table, vec![Frame::Root]);
-    }
-
     #[rstest]
     #[case::identity(
         vec![program_point_fixture(vec![1, 2]), program_point_fixture(vec![3])],
@@ -666,14 +662,17 @@ mod tests {
         );
     }
 
-    #[rstest]
-    #[case::all_options_none(None, true)]
-    #[case::all_options_some_zero(Some(0), true)]
-    #[case::all_options_some_one(Some(1), false)]
-    fn test_program_point_is_zero(#[case] value: Option<u64>, #[case] expected: bool) {
-        let program_point = program_point_with_options(value);
+    #[test]
+    fn test_dhat_data_sanitize_when_frame_table_empty_then_creates_root_frame() {
+        let mut data = DhatData {
+            metadata: DhatMetadata::default(),
+            program_points: Vec::default(),
+            frame_table: Vec::default(),
+        };
 
-        assert_eq!(program_point.is_zero(), expected);
+        data.sanitize(&[]);
+
+        assert_eq!(data.frame_table, vec![Frame::Root]);
     }
 
     #[test]
@@ -691,6 +690,32 @@ mod tests {
         assert_tokens(&frame, &[Token::Str("[root]")]);
     }
 
+    #[rstest]
+    #[case::short_addr(
+        "0x1234: malloc (in /usr/lib/some.so)", ("0x1234", "malloc", "in /usr/lib/some.so")
+    )]
+    #[case::no_in(
+        "0x12345678: malloc (/usr/lib/some.so)", ("0x12345678", "malloc", "/usr/lib/some.so")
+    )]
+    #[case::some(
+        "0x12345678: malloc (in /usr/lib/some.so)", ("0x12345678", "malloc", "in /usr/lib/some.so")
+    )]
+    #[case::long_with_multiple_parentheses(
+    "0x40440E3: call_once<(), (dyn core::ops::function::Fn<(), Output=i32> + core::marker::Sync + \
+    core::panic::unwind_safe::RefUnwindSafe)> (function.rs:284)",
+    (
+        "0x40440E3",
+        "call_once<(), (dyn core::ops::function::Fn<(), Output=i32> + \
+        core::marker::Sync + core::panic::unwind_safe::RefUnwindSafe)>",
+        "function.rs:284"
+    )
+)]
+    fn test_frame_from_str(#[case] haystack: &str, #[case] frame: (&str, &str, &str)) {
+        let expected = Frame::from(frame);
+        let actual = haystack.parse::<Frame>().unwrap();
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn test_frame_from_str_when_root() {
         let expected = Frame::Root;
@@ -699,37 +724,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case::plain(vec![1, 2], vec![1, 2])]
-    #[case::run_length_encoded(vec![-3, 4], vec![4, 4, 4])]
-    #[case::mixed(vec![1, -2, 3, 4], vec![1, 3, 3, 4])]
-    fn test_accesses_expand(#[case] accesses: Vec<i64>, #[case] expected: Vec<i64>) {
-        assert_eq!(Accesses(accesses).expand(), Accesses(expected));
-    }
+    #[case::all_options_none(None, true)]
+    #[case::all_options_some_zero(Some(0), true)]
+    #[case::all_options_some_one(Some(1), false)]
+    fn test_program_point_is_zero(#[case] value: Option<u64>, #[case] expected: bool) {
+        let program_point = program_point_with_options(value);
 
-    #[test]
-    #[should_panic(expected = "run-length encoded accesses should have a value")]
-    fn test_accesses_expand_when_missing_repeated_value_then_panics() {
-        Accesses(vec![-3]).expand();
-    }
-
-    #[test]
-    #[should_panic(expected = "run-length encoded values should be >= 0")]
-    fn test_accesses_expand_when_repeated_value_is_negative_then_panics() {
-        Accesses(vec![-3, -4]).expand();
-    }
-
-    #[rstest]
-    #[case::empty(vec![], vec![])]
-    #[case::plain(vec![1, 2], vec![1, 2])]
-    #[case::repeated(vec![4, 4, 4], vec![-3, 4])]
-    #[case::mixed(vec![1, 3, 3, 4], vec![1, -2, 3, 4])]
-    fn test_accesses_compact(#[case] accesses: Vec<i64>, #[case] expected: Vec<i64>) {
-        assert_eq!(Accesses(accesses).compact(), Accesses(expected));
-    }
-
-    #[test]
-    #[should_panic(expected = "access count should be >= 0")]
-    fn test_accesses_compact_when_access_count_is_negative_then_panics() {
-        Accesses(vec![-4]).compact();
+        assert_eq!(program_point.is_zero(), expected);
     }
 }

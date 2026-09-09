@@ -1,23 +1,5 @@
 /// Suppose this is your library
 pub mod my_lib {
-    /// Return true if `num` is a prime number
-    pub fn is_prime(num: u64) -> bool {
-        if num <= 1 {
-            return false;
-        }
-
-        #[expect(clippy::cast_possible_truncation)]
-        #[expect(clippy::cast_sign_loss)]
-        #[expect(clippy::cast_precision_loss)]
-        for i in 2..=(num as f64).sqrt() as u64 {
-            if num.is_multiple_of(i) {
-                return false;
-            }
-        }
-
-        true
-    }
-
     /// Find and return all prime numbers in the inclusive range `low` to `high`
     pub fn find_primes(low: u64, high: u64) -> Vec<u64> {
         (low..=high).filter(|n| is_prime(*n)).collect()
@@ -41,6 +23,24 @@ pub mod my_lib {
         }
 
         primes
+    }
+
+    /// Return true if `num` is a prime number
+    pub fn is_prime(num: u64) -> bool {
+        if num <= 1 {
+            return false;
+        }
+
+        #[expect(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_sign_loss)]
+        #[expect(clippy::cast_precision_loss)]
+        for i in 2..=(num as f64).sqrt() as u64 {
+            if num.is_multiple_of(i) {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

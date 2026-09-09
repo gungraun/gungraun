@@ -27,13 +27,13 @@ fn my_setup() {
     let mut lock = CURRENT.lock().unwrap();
     "my_setup".clone_into(&mut lock);
 }
-fn my_teardown() {
-    let mut lock = CURRENT.lock().unwrap();
-    "my_teardown".clone_into(&mut lock);
-}
 fn my_setup_overwrite() {
     let mut lock = CURRENT.lock().unwrap();
     "my_setup_overwrite".clone_into(&mut lock);
+}
+fn my_teardown() {
+    let mut lock = CURRENT.lock().unwrap();
+    "my_teardown".clone_into(&mut lock);
 }
 fn my_teardown_overwrite() {
     let mut lock = CURRENT.lock().unwrap();

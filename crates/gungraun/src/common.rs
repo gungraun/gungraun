@@ -2144,6 +2144,284 @@ impl Default for Memcheck {
     }
 }
 
+impl OutputFormat {
+    /// Adjust, enable or disable the truncation of the description in the gungraun output
+    ///
+    /// The default is to truncate the description to the size of 50 ascii characters. A `None`
+    /// value disables the truncation entirely and a `Some` value will truncate the description to
+    /// the given amount of characters excluding the ellipsis.
+    ///
+    /// To clearify which part of the output is meant by `DESCRIPTION`:
+    ///
+    /// ```text
+    /// benchmark_file::group_name::function_name id:DESCRIPTION
+    ///   Instructions:              352135|352135          (No change)
+    ///   L1 Hits:                   470117|470117          (No change)
+    ///   LL Hits:                      748|748             (No change)
+    ///   RAM Hits:                    4112|4112            (No change)
+    ///   Total read+write:          474977|474977          (No change)
+    ///   Estimated Cycles:          617777|617777          (No change)
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// For example, specifying this option with a `None` value in the `main!` macro disables the
+    /// truncation of the description for all benchmarks.
+    ///
+    /// ```rust
+    /// use gungraun::{LibraryBenchmarkConfig, OutputFormat, main};
+    /// # use gungraun::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(
+    /// #    name = some_group,
+    /// #    benchmarks = some_func
+    /// # );
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .output_format(OutputFormat::default().truncate_description(None)),
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
+        self.0.truncate_description = Some(value);
+        self
+    }
+
+    /// Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
+    ///
+    /// In Callgrind, threads are treated as separate units (similar to subprocesses) and the
+    /// metrics for them are dumped into an own file. Other Valgrind tools usually separate the
+    /// output files only by subprocesses. To also show the metrics of any intermediate fragments
+    /// and not just the total over all of them, set the value of this method to `true`.
+    ///
+    /// Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
+    /// multi-thread/multi-process benchmarks.
+    ///
+    /// # Examples
+    ///
+    /// As opposed to Valgrind/Callgrind, `--trace-children=yes`, `--separate-threads=yes` and
+    /// `--fair-sched=try` are the defaults in Gungraun, so in the following example it's not
+    /// necessary to specify `--separate-threads` to track the metrics of the spawned thread.
+    /// However, it is necessary to specify an additional toggle or else the metrics of the thread
+    /// are all zero. We also set the [`super::EntryPoint`] to `None` to disable the default entry
+    /// point (toggle) which is the benchmark function. So, with this setup we collect only the
+    /// metrics of the method `my_lib::heavy_calculation` in the spawned thread and nothing else.
+    ///
+    /// ```rust
+    /// use gungraun::{
+    ///     Callgrind, EntryPoint, LibraryBenchmarkConfig, OutputFormat, library_benchmark,
+    ///     library_benchmark_group, main,
+    /// };
+    /// # mod my_lib { pub fn heavy_calculation() -> u64 { 42 }}
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Callgrind::with_args(["--toggle-collect=my_lib::heavy_calculation"])
+    ///             .entry_point(EntryPoint::None)
+    ///         )
+    ///         .output_format(OutputFormat::default().show_intermediate(true))
+    /// )]
+    /// fn bench_thread() -> u64 {
+    ///     let handle = std::thread::spawn(|| my_lib::heavy_calculation());
+    ///     handle.join().unwrap()
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group, benchmarks = bench_thread);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    ///
+    /// Running the above benchmark the first time will print something like the below (The exact
+    /// metric counts are made up for demonstration purposes):
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_thread
+    ///   ## pid: 633247 part: 1 thread: 1   |N/A
+    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
+    ///   Instructions:                     0|N/A             (*********)
+    ///   L1 Hits:                          0|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                         0|N/A             (*********)
+    ///   Total read+write:                 0|N/A             (*********)
+    ///   Estimated Cycles:                 0|N/A             (*********)
+    ///   ## pid: 633247 part: 1 thread: 2   |N/A
+    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    ///   ## Total
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    /// ```
+    ///
+    /// With `show_intermediate` set to `false` (the default), only the total is shown:
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_thread
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    /// ```
+    pub fn show_intermediate(&mut self, value: bool) -> &mut Self {
+        self.0.show_intermediate = Some(value);
+        self
+    }
+
+    /// Show an ascii grid in the benchmark terminal output
+    ///
+    /// This option adds guiding lines which can help reading the benchmark output when running
+    /// multiple tools with multiple threads/subprocesses.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::OutputFormat;
+    ///
+    /// let output_format = OutputFormat::default().show_grid(true);
+    /// ```
+    ///
+    /// Below is the output of a Gungraun run with DHAT as additional tool benchmarking a
+    /// function that executes a subprocess which itself starts multiple threads. For the benchmark
+    /// run below [`OutputFormat::show_intermediate`] was also active to show the threads and
+    /// subprocesses.
+    ///
+    /// ```text
+    /// test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
+    /// |======== CALLGRIND ===================================================================
+    /// |-## pid: 3186352 part: 1 thread: 1       |pid: 2721318 part: 1 thread: 1
+    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
+    /// | Instructions:                       4697|4697                 (No change)
+    /// | L1 Hits:                            6420|6420                 (No change)
+    /// | LL Hits:                              17|17                   (No change)
+    /// | RAM Hits:                            202|202                  (No change)
+    /// | Total read+write:                   6639|6639                 (No change)
+    /// | Estimated Cycles:                  13575|13575                (No change)
+    /// |-## pid: 3186468 part: 1 thread: 1       |pid: 2721319 part: 1 thread: 1
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                      35452|35452                (No change)
+    /// | L1 Hits:                           77367|77367                (No change)
+    /// | LL Hits:                             610|610                  (No change)
+    /// | RAM Hits:                             784|784                  (No change)
+    /// | Total read+write:                  78761|78761                (No change)
+    /// | Estimated Cycles:                 107857|107857               (No change)
+    /// |-## pid: 3186468 part: 1 thread: 2       |pid: 2721319 part: 1 thread: 2
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    2460507|2460507              (No change)
+    /// | L1 Hits:                         2534939|2534939              (No change)
+    /// | LL Hits:                              17|17                   (No change)
+    /// | RAM Hits:                            186|186                  (No change)
+    /// | Total read+write:                2535142|2535142              (No change)
+    /// | Estimated Cycles:                2541534|2541534              (No change)
+    /// |-## pid: 3186468 part: 1 thread: 3       |pid: 2721319 part: 1 thread: 3
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    3650414|3650414              (No change)
+    /// | L1 Hits:                         3724275|3724275              (No change)
+    /// | LL Hits:                              21|21                   (No change)
+    /// | RAM Hits:                            130|130                  (No change)
+    /// | Total read+write:                3724426|3724426              (No change)
+    /// | Estimated Cycles:                3728930|3728930              (No change)
+    /// |-## pid: 3186468 part: 1 thread: 4       |pid: 2721319 part: 1 thread: 4
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    4349846|4349846              (No change)
+    /// | L1 Hits:                         4423438|4423438              (No change)
+    /// | LL Hits:                              24|24                   (No change)
+    /// | RAM Hits:                            125|125                  (No change)
+    /// | Total read+write:                4423587|4423587              (No change)
+    /// | Estimated Cycles:                4427933|4427933              (No change)
+    /// |-## Total
+    /// | Instructions:                   10500916|10500916             (No change)
+    /// | L1 Hits:                        10766439|10766439             (No change)
+    /// | LL Hits:                             689|689                  (No change)
+    /// | RAM Hits:                           1427|1427                 (No change)
+    /// | Total read+write:               10768555|10768555             (No change)
+    /// | Estimated Cycles:               10819829|10819829             (No change)
+    /// |======== DHAT ========================================================================
+    /// |-## pid: 3186472 ppid: 3185288           |pid: 2721323 ppid: 2720196
+    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
+    /// | Total bytes:                        2774|2774                 (No change)
+    /// | Total blocks:                         24|24                   (No change)
+    /// | At t-gmax bytes:                    1736|1736                 (No change)
+    /// | At t-gmax blocks:                      3|3                    (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                       21054|21054                (No change)
+    /// | Writes bytes:                      13165|13165                (No change)
+    /// |-## pid: 3186473 ppid: 3186472           |pid: 2721324 ppid: 2721323
+    /// | Command:            target/release/thread 3
+    /// | Total bytes:                      156158|156158               (No change)
+    /// | Total blocks:                         73|73                   (No change)
+    /// | At t-gmax bytes:                   52225|52225                (No change)
+    /// | At t-gmax blocks:                     19|19                   (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                      118403|118403               (No change)
+    /// | Writes bytes:                     135926|135926               (No change)
+    /// |-## Total
+    /// | Total bytes:                      158932|158932               (No change)
+    /// | Total blocks:                         97|97                   (No change)
+    /// | At t-gmax bytes:                   53961|53961                (No change)
+    /// | At t-gmax blocks:                     22|22                   (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                      139457|139457               (No change)
+    /// | Writes bytes:                     149091|149091               (No change)
+    /// |-Comparison with bench_find_primes_multi_thread three:3
+    /// | Instructions:                   10494117|10500916             (-0.06475%) [-1.00065x]
+    /// | L1 Hits:                        10757259|10766439             (-0.08526%) [-1.00085x]
+    /// | LL Hits:                             601|689                  (-12.7721%) [-1.14642x]
+    /// | RAM Hits:                           1189|1427                 (-16.6783%) [-1.20017x]
+    /// | Total read+write:               10759049|10768555             (-0.08828%) [-1.00088x]
+    /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]
+    /// ```
+    pub fn show_grid(&mut self, value: bool) -> &mut Self {
+        self.0.show_grid = Some(value);
+        self
+    }
+
+    /// Shows changes only when they are above the `tolerance` level
+    ///
+    /// Changes whose percentage is below the specified tolerance are not marked as changes.
+    /// Negative tolerance values are converted to their absolute value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gungraun::OutputFormat;
+    ///
+    /// let output_format = OutputFormat::default().tolerance(1.5);
+    /// ```
+    ///
+    /// Below is the output of an Gungraun run with the tolerance set.
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_with_tolerance_margin
+    ///   Instructions:                     9975976|9976136              (Tolerance)
+    ///   L1 Hits:                         10183337|10183517             (Tolerance)
+    ///   LL Hits:                              641|654                  (-1.98777%) [-1.02028x]
+    ///   RAM Hits:                            1211|1216                 (Tolerance)
+    ///   Total read+write:                10185189|10185387             (Tolerance)
+    ///   Estimated Cycles:                10228927|10229347             (Tolerance)
+    /// ```
+    pub fn tolerance(&mut self, value: f64) -> &mut Self {
+        self.0.tolerance = Some(value);
+        self
+    }
+}
+
 impl Perf {
     /// Creates a new `Perf` configuration with initial command-line arguments.
     ///
@@ -2702,283 +2980,6 @@ impl Perf {
 impl Default for Perf {
     fn default() -> Self {
         Self(__internal::InternalToolSpec::new(Tool::Perf))
-    }
-}
-
-impl OutputFormat {
-    /// Adjust, enable or disable the truncation of the description in the gungraun output
-    ///
-    /// The default is to truncate the description to the size of 50 ascii characters. A `None`
-    /// value disables the truncation entirely and a `Some` value will truncate the description to
-    /// the given amount of characters excluding the ellipsis.
-    ///
-    /// To clearify which part of the output is meant by `DESCRIPTION`:
-    ///
-    /// ```text
-    /// benchmark_file::group_name::function_name id:DESCRIPTION
-    ///   Instructions:              352135|352135          (No change)
-    ///   L1 Hits:                   470117|470117          (No change)
-    ///   LL Hits:                      748|748             (No change)
-    ///   RAM Hits:                    4112|4112            (No change)
-    ///   Total read+write:          474977|474977          (No change)
-    ///   Estimated Cycles:          617777|617777          (No change)
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// For example, specifying this option with a `None` value in the `main!` macro disables the
-    /// truncation of the description for all benchmarks.
-    ///
-    /// ```rust
-    /// use gungraun::{LibraryBenchmarkConfig, OutputFormat, main};
-    /// # use gungraun::{library_benchmark, library_benchmark_group};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(
-    /// #    name = some_group,
-    /// #    benchmarks = some_func
-    /// # );
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///         .output_format(OutputFormat::default().truncate_description(None)),
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
-        self.0.truncate_description = Some(value);
-        self
-    }
-
-    /// Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
-    ///
-    /// In Callgrind, threads are treated as separate units (similar to subprocesses) and the
-    /// metrics for them are dumped into an own file. Other Valgrind tools usually separate the
-    /// output files only by subprocesses. To also show the metrics of any intermediate fragments
-    /// and not just the total over all of them, set the value of this method to `true`.
-    ///
-    /// Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
-    /// multi-thread/multi-process benchmarks.
-    ///
-    /// # Examples
-    ///
-    /// As opposed to Valgrind/Callgrind, `--trace-children=yes`, `--separate-threads=yes` and
-    /// `--fair-sched=try` are the defaults in Gungraun, so in the following example it's not
-    /// necessary to specify `--separate-threads` to track the metrics of the spawned thread.
-    /// However, it is necessary to specify an additional toggle or else the metrics of the thread
-    /// are all zero. We also set the [`super::EntryPoint`] to `None` to disable the default entry
-    /// point (toggle) which is the benchmark function. So, with this setup we collect only the
-    /// metrics of the method `my_lib::heavy_calculation` in the spawned thread and nothing else.
-    ///
-    /// ```rust
-    /// use gungraun::{
-    ///     Callgrind, EntryPoint, LibraryBenchmarkConfig, OutputFormat, library_benchmark,
-    ///     library_benchmark_group, main,
-    /// };
-    /// # mod my_lib { pub fn heavy_calculation() -> u64 { 42 }}
-    ///
-    /// #[library_benchmark(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///         .tool(Callgrind::with_args(["--toggle-collect=my_lib::heavy_calculation"])
-    ///             .entry_point(EntryPoint::None)
-    ///         )
-    ///         .output_format(OutputFormat::default().show_intermediate(true))
-    /// )]
-    /// fn bench_thread() -> u64 {
-    ///     let handle = std::thread::spawn(|| my_lib::heavy_calculation());
-    ///     handle.join().unwrap()
-    /// }
-    ///
-    /// library_benchmark_group!(name = some_group, benchmarks = bench_thread);
-    /// # fn main() {
-    /// main!(library_benchmark_groups = some_group);
-    /// # }
-    /// ```
-    ///
-    /// Running the above benchmark the first time will print something like the below (The exact
-    /// metric counts are made up for demonstration purposes):
-    ///
-    /// ```text
-    /// my_benchmark::some_group::bench_thread
-    ///   ## pid: 633247 part: 1 thread: 1   |N/A
-    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
-    ///   Instructions:                     0|N/A             (*********)
-    ///   L1 Hits:                          0|N/A             (*********)
-    ///   LL Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                         0|N/A             (*********)
-    ///   Total read+write:                 0|N/A             (*********)
-    ///   Estimated Cycles:                 0|N/A             (*********)
-    ///   ## pid: 633247 part: 1 thread: 2   |N/A
-    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
-    ///   Instructions:                  3905|N/A             (*********)
-    ///   L1 Hits:                       4992|N/A             (*********)
-    ///   LL Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                       464|N/A             (*********)
-    ///   Total read+write:              5456|N/A             (*********)
-    ///   Estimated Cycles:             21232|N/A             (*********)
-    ///   ## Total
-    ///   Instructions:                  3905|N/A             (*********)
-    ///   L1 Hits:                       4992|N/A             (*********)
-    ///   LL Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                       464|N/A             (*********)
-    ///   Total read+write:              5456|N/A             (*********)
-    ///   Estimated Cycles:             21232|N/A             (*********)
-    /// ```
-    ///
-    /// With `show_intermediate` set to `false` (the default), only the total is shown:
-    ///
-    /// ```text
-    /// my_benchmark::some_group::bench_thread
-    ///   Instructions:                  3905|N/A             (*********)
-    ///   L1 Hits:                       4992|N/A             (*********)
-    ///   LL Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                       464|N/A             (*********)
-    ///   Total read+write:              5456|N/A             (*********)
-    ///   Estimated Cycles:             21232|N/A             (*********)
-    /// ```
-    pub fn show_intermediate(&mut self, value: bool) -> &mut Self {
-        self.0.show_intermediate = Some(value);
-        self
-    }
-
-    /// Show an ascii grid in the benchmark terminal output
-    ///
-    /// This option adds guiding lines which can help reading the benchmark output when running
-    /// multiple tools with multiple threads/subprocesses.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use gungraun::OutputFormat;
-    ///
-    /// let output_format = OutputFormat::default().show_grid(true);
-    /// ```
-    ///
-    /// Below is the output of a Gungraun run with DHAT as additional tool benchmarking a
-    /// function that executes a subprocess which itself starts multiple threads. For the benchmark
-    /// run below [`OutputFormat::show_intermediate`] was also active to show the threads and
-    /// subprocesses.
-    ///
-    /// ```text
-    /// test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
-    /// |======== CALLGRIND ===================================================================
-    /// |-## pid: 3186352 part: 1 thread: 1       |pid: 2721318 part: 1 thread: 1
-    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
-    /// | Instructions:                       4697|4697                 (No change)
-    /// | L1 Hits:                            6420|6420                 (No change)
-    /// | LL Hits:                              17|17                   (No change)
-    /// | RAM Hits:                            202|202                  (No change)
-    /// | Total read+write:                   6639|6639                 (No change)
-    /// | Estimated Cycles:                  13575|13575                (No change)
-    /// |-## pid: 3186468 part: 1 thread: 1       |pid: 2721319 part: 1 thread: 1
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                      35452|35452                (No change)
-    /// | L1 Hits:                           77367|77367                (No change)
-    /// | LL Hits:                             610|610                  (No change)
-    /// | RAM Hits:                            784|784                  (No change)
-    /// | Total read+write:                  78761|78761                (No change)
-    /// | Estimated Cycles:                 107857|107857               (No change)
-    /// |-## pid: 3186468 part: 1 thread: 2       |pid: 2721319 part: 1 thread: 2
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                    2460507|2460507              (No change)
-    /// | L1 Hits:                         2534939|2534939              (No change)
-    /// | LL Hits:                              17|17                   (No change)
-    /// | RAM Hits:                            186|186                  (No change)
-    /// | Total read+write:                2535142|2535142              (No change)
-    /// | Estimated Cycles:                2541534|2541534              (No change)
-    /// |-## pid: 3186468 part: 1 thread: 3       |pid: 2721319 part: 1 thread: 3
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                    3650414|3650414              (No change)
-    /// | L1 Hits:                         3724275|3724275              (No change)
-    /// | LL Hits:                              21|21                   (No change)
-    /// | RAM Hits:                            130|130                  (No change)
-    /// | Total read+write:                3724426|3724426              (No change)
-    /// | Estimated Cycles:                3728930|3728930              (No change)
-    /// |-## pid: 3186468 part: 1 thread: 4       |pid: 2721319 part: 1 thread: 4
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                    4349846|4349846              (No change)
-    /// | L1 Hits:                         4423438|4423438              (No change)
-    /// | LL Hits:                              24|24                   (No change)
-    /// | RAM Hits:                            125|125                  (No change)
-    /// | Total read+write:                4423587|4423587              (No change)
-    /// | Estimated Cycles:                4427933|4427933              (No change)
-    /// |-## Total
-    /// | Instructions:                   10500916|10500916             (No change)
-    /// | L1 Hits:                        10766439|10766439             (No change)
-    /// | LL Hits:                             689|689                  (No change)
-    /// | RAM Hits:                           1427|1427                 (No change)
-    /// | Total read+write:               10768555|10768555             (No change)
-    /// | Estimated Cycles:               10819829|10819829             (No change)
-    /// |======== DHAT ========================================================================
-    /// |-## pid: 3186472 ppid: 3185288           |pid: 2721323 ppid: 2720196
-    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
-    /// | Total bytes:                        2774|2774                 (No change)
-    /// | Total blocks:                         24|24                   (No change)
-    /// | At t-gmax bytes:                    1736|1736                 (No change)
-    /// | At t-gmax blocks:                      3|3                    (No change)
-    /// | At t-end bytes:                        0|0                    (No change)
-    /// | At t-end blocks:                       0|0                    (No change)
-    /// | Reads bytes:                       21054|21054                (No change)
-    /// | Writes bytes:                      13165|13165                (No change)
-    /// |-## pid: 3186473 ppid: 3186472           |pid: 2721324 ppid: 2721323
-    /// | Command:            target/release/thread 3
-    /// | Total bytes:                      156158|156158               (No change)
-    /// | Total blocks:                         73|73                   (No change)
-    /// | At t-gmax bytes:                   52225|52225                (No change)
-    /// | At t-gmax blocks:                     19|19                   (No change)
-    /// | At t-end bytes:                        0|0                    (No change)
-    /// | At t-end blocks:                       0|0                    (No change)
-    /// | Reads bytes:                      118403|118403               (No change)
-    /// | Writes bytes:                     135926|135926               (No change)
-    /// |-## Total
-    /// | Total bytes:                      158932|158932               (No change)
-    /// | Total blocks:                         97|97                   (No change)
-    /// | At t-gmax bytes:                   53961|53961                (No change)
-    /// | At t-gmax blocks:                     22|22                   (No change)
-    /// | At t-end bytes:                        0|0                    (No change)
-    /// | At t-end blocks:                       0|0                    (No change)
-    /// | Reads bytes:                      139457|139457               (No change)
-    /// | Writes bytes:                     149091|149091               (No change)
-    /// |-Comparison with bench_find_primes_multi_thread three:3
-    /// | Instructions:                   10494117|10500916             (-0.06475%) [-1.00065x]
-    /// | L1 Hits:                        10757259|10766439             (-0.08526%) [-1.00085x]
-    /// | LL Hits:                             601|689                  (-12.7721%) [-1.14642x]
-    /// | RAM Hits:                           1189|1427                 (-16.6783%) [-1.20017x]
-    /// | Total read+write:               10759049|10768555             (-0.08828%) [-1.00088x]
-    /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]
-    pub fn show_grid(&mut self, value: bool) -> &mut Self {
-        self.0.show_grid = Some(value);
-        self
-    }
-
-    /// Shows changes only when they are above the `tolerance` level
-    ///
-    /// Changes whose percentage is below the specified tolerance are not marked as changes.
-    /// Negative tolerance values are converted to their absolute value.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use gungraun::OutputFormat;
-    ///
-    /// let output_format = OutputFormat::default().tolerance(1.5);
-    /// ```
-    ///
-    /// Below is the output of an Gungraun run with the tolerance set.
-    ///
-    /// ```text
-    /// my_benchmark::some_group::bench_with_tolerance_margin
-    ///   Instructions:                     9975976|9976136              (Tolerance)
-    ///   L1 Hits:                         10183337|10183517             (Tolerance)
-    ///   LL Hits:                              641|654                  (-1.98777%) [-1.02028x]
-    ///   RAM Hits:                            1211|1216                 (Tolerance)
-    ///   Total read+write:                10185189|10185387             (Tolerance)
-    ///   Estimated Cycles:                10228927|10229347             (Tolerance)
-    /// ```
-    pub fn tolerance(&mut self, value: f64) -> &mut Self {
-        self.0.tolerance = Some(value);
-        self
     }
 }
 

@@ -17,13 +17,13 @@ use gungraun::{Pipe, Sandbox, Stdin, Stdio};
 // and prints all arguments to stdout as the original `echo` would do. In case of multiple arguments
 // the output string separates each argument by a space. `echo foo bar` => `foo bar\n`
 const ECHO_EXE: &str = env!("CARGO_BIN_EXE_echo");
+/// The last of our crate's binaries which reads its input from `Stdin`. Then it echoes back to
+/// `Stdout` what it has read.
+const PIPE_EXE: &str = env!("CARGO_BIN_EXE_pipe");
 // Another binary of our crate. The read-file binary reads the content of a file with the path to it
 // as its first argument. Then it compares the content of the file with its second argument exiting
 // with an error if they don't match.
 const READ_FILE_EXE: &str = env!("CARGO_BIN_EXE_read-file");
-/// The last of our crate's binaries which reads its input from `Stdin`. Then it echoes back to
-/// `Stdout` what it has read.
-const PIPE_EXE: &str = env!("CARGO_BIN_EXE_pipe");
 
 // The most simple usage of the `#[binary_benchmark]` macro. No `#[bench]` or `#[benches]` required.
 // In contrast to library benchmarks, all functions annotated with `#[binary_benchmark]` need to
@@ -57,8 +57,9 @@ binary_benchmark_group!(
     benchmarks = [simple_bench, bench_with_bench]
 );
 
-fn setup_foo() {
-    std::fs::write("foo.txt", "some content").unwrap();
+fn check_output(expected: &str) {
+    let content = std::fs::read_to_string("output").unwrap();
+    assert!(content.ends_with(&format!("{expected}\n")));
 }
 
 fn create_file_with_content(path: &str, content: &str) {
@@ -123,6 +124,17 @@ fn read_dir(path: &str) -> Vec<String> {
     lines
 }
 
+#[expect(clippy::needless_pass_by_value)]
+fn setup_file(line: String) {
+    let (path, content) = split_line(&line);
+    // Let's reuse the setup function `create_file_with_content`.
+    create_file_with_content(path, content);
+}
+
+fn setup_foo() {
+    std::fs::write("foo.txt", "some content").unwrap();
+}
+
 // Again, we use a `Sandbox` for the benches in this `binary_benchmark`.
 #[binary_benchmark(config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true)))]
 // The `iter` parameter. However, that's not very different from the `args` parameter.
@@ -135,18 +147,18 @@ fn benches_from_iter(line: String) -> gungraun::Command {
     gungraun::Command::new(ECHO_EXE).arg(line).build()
 }
 
+fn setup_pipe(additional_content: &str) {
+    println!(
+        "The output of this function to `Stdout` is the input for the `Stdin` of the `Command`"
+    );
+    println!("{additional_content}");
+}
+
 // A small helper function because we need to do the same in the benchmark function
 // `benches_from_file` and the setup function `setup_file` and the moment the input file format
 // changes we only need to change the code in this function.
 fn split_line(line: &str) -> (&str, &str) {
     line.split_once(';').unwrap()
-}
-
-#[expect(clippy::needless_pass_by_value)]
-fn setup_file(line: String) {
-    let (path, content) = split_line(&line);
-    // Let's reuse the setup function `create_file_with_content`.
-    create_file_with_content(path, content);
 }
 
 #[binary_benchmark(config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true)))]
@@ -179,18 +191,6 @@ binary_benchmark_group!(
     name = read_file_group,
     benchmarks = [bench_with_setup, benches_from_file, benches_from_iter]
 );
-
-fn setup_pipe(additional_content: &str) {
-    println!(
-        "The output of this function to `Stdout` is the input for the `Stdin` of the `Command`"
-    );
-    println!("{additional_content}");
-}
-
-fn check_output(expected: &str) {
-    let content = std::fs::read_to_string("output").unwrap();
-    assert!(content.ends_with(&format!("{expected}\n")));
-}
 
 // Finally, we're using the output of the `setup` as input for the `Command`. We also specify a
 // global setup function which is applied to all benches in this `#[binary_benchmark]`. We could

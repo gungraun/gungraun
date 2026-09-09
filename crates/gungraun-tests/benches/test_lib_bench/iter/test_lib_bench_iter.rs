@@ -5,6 +5,11 @@ use gungraun::{Dhat, DhatMetric, OutputFormat};
 use gungraun_tests::{bubble_sort, fibonacci, setup_worst_case_array};
 
 #[inline(never)]
+fn allocate_in_setup(inputs: fn() -> Vec<i32>) -> Vec<i32> {
+    black_box(inputs())
+}
+
+#[inline(never)]
 fn setup_with_alloc(num: i32) -> Vec<i32> {
     setup_worst_case_array(num)
 }
@@ -13,11 +18,6 @@ fn setup_with_alloc(num: i32) -> Vec<i32> {
 fn setup_with_print_and_alloc(num: i32) -> Vec<i32> {
     println!("{num}");
     setup_worst_case_array(num)
-}
-
-#[inline(never)]
-fn allocate_in_setup(inputs: fn() -> Vec<i32>) -> Vec<i32> {
-    black_box(inputs())
 }
 
 fn teardown(num: u64) -> Result<u64, String> {

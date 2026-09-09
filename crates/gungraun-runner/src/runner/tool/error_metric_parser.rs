@@ -12,7 +12,7 @@ use regex::Regex;
 use super::logfile_parser::{EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE, parse_header};
 use super::parser::{Parser, ParserOutput};
 use super::path::ToolOutputPath;
-use crate::api::ErrorMetric;
+use crate::api::{ErrorMetric, Tool};
 use crate::metrics::model::Metrics;
 use crate::summary::model::ToolMetrics;
 
@@ -37,6 +37,8 @@ pub struct ErrorMetricLogfileParser {
     pub output_path: ToolOutputPath,
     /// The path to the root/project directory used to make paths relative
     pub root_dir: PathBuf,
+    /// The error-reporting tool that produced the logfile.
+    pub tool: Tool,
 }
 
 impl Parser for ErrorMetricLogfileParser {
@@ -122,9 +124,12 @@ impl Parser for ErrorMetricLogfileParser {
         Ok(ParserOutput {
             header,
             path,
-            metrics: ToolMetrics::ErrorTool(metrics.context(
-                "Failed collecting error metrics: An error summary line should be present",
-            )?),
+            metrics: ToolMetrics::from_error_metric(
+                self.tool,
+                metrics.context(
+                    "Failed collecting error metrics: An error summary line should be present",
+                )?,
+            ),
             details,
         })
     }

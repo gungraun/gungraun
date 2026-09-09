@@ -6,6 +6,10 @@ All output files of Gungraun are usually stored using the following scheme:
 
 This directory structure can partly be changed with the following options.
 
+Machine-readable v7 summaries include this per-benchmark directory as
+`output_dir`. It is relative to `project_root` when possible and otherwise
+absolute; files inside the directory are not listed individually in the summary.
+
 ## Callgrind Home
 
 By default, all benchmark output files are stored under the

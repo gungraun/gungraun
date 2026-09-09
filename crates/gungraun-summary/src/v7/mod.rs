@@ -1,32 +1,35 @@
-//! Version 6 Gungraun summary types and parsing helpers.
+//! Version 7 Gungraun summary types and parsing helpers.
 //!
-//! This module re-exports the version 6 summary model and provides parsing helpers that assume the
-//! input already matches schema version 6.
+//! This module re-exports the version 7 summary model and provides parsing helpers that assume the
+//! input already matches schema version 7.
 
 use std::fs;
 use std::path::Path;
 
-pub use gungraun_runner::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, Tool};
-pub use gungraun_runner::metrics::model::{Metric, MetricKind, MetricsDiff, MetricsSummary};
+pub use gungraun_runner::api::{
+    CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool,
+};
+pub use gungraun_runner::metrics::model::{
+    AnnotatedMetric, Metric, MetricKind, MetricsDiff, MetricsSummary, PerfQualities,
+};
 pub use gungraun_runner::summary::model::{
     BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Profile, ProfileData, ProfileInfo,
-    ProfilePart, ProfileTotal, Profiles, SummaryFormat, SummaryOutput, ToolMetricSummary,
-    ToolRegression,
+    ProfilePart, ProfileTotal, Profiles, ToolMetricSummary, ToolRegression,
 };
 
 use crate::error::{Error, Result};
 
-/// The version string stored in version summary JSON files.
-pub const SCHEMA_VERSION: &str = "6";
+/// The version string stored in version 7 summary JSON files.
+pub const SCHEMA_VERSION: &str = "7";
 
-/// Parse a version 6 summary JSON file.
+/// Parse a version 7 summary JSON file.
 ///
 /// # Examples
 ///
 /// ```no_run
 /// use std::path::Path;
 ///
-/// let summary = gungraun_summary::v6::parse(Path::new("target/summary.json")).unwrap();
+/// let summary = gungraun_summary::v7::parse(Path::new("target/summary.json")).unwrap();
 /// println!("{}", summary.function_name);
 /// ```
 ///
@@ -40,7 +43,7 @@ pub fn parse(path: &Path) -> Result<BenchmarkSummary> {
         .and_then(|buffer| parse_slice(&buffer))
 }
 
-/// Parse a version 6 summary JSON buffer.
+/// Parse a version 7 summary JSON buffer.
 ///
 /// # Errors
 ///

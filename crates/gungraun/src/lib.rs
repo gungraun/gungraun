@@ -416,6 +416,31 @@
 #![doc(test(attr(allow(unused_extern_crates))))]
 #![warn(missing_docs)]
 
+#[cfg(not(feature = "perf_stubs"))]
+compile_error!("gungraun requires either the `perf` or `perf_stubs` feature");
+
+#[cfg(feature = "default")]
+#[doc(hidden)]
+pub mod __internal;
+#[cfg(all(not(feature = "default"), feature = "perf_stubs"))]
+#[doc(hidden)]
+pub mod __internal {
+    pub use gungraun_runner::api::{
+        PERF_ACK_FD_READ, PERF_ACK_FD_WRITE, PERF_CTL_FD_READ, PERF_CTL_FD_WRITE, PERF_LOG_FD,
+    };
+}
+
+#[cfg(feature = "default")]
+mod bin_bench;
+#[cfg(feature = "default")]
+mod common;
+#[cfg(feature = "default")]
+mod lib_bench;
+#[cfg(feature = "default")]
+mod macros;
+#[cfg(feature = "perf_stubs")]
+pub mod perf;
+
 /// Import the basic macros and configuration structs for benchmarking
 ///
 /// The prelude is kept small and is focused on the most commonly used items for setting up
@@ -502,30 +527,6 @@ pub mod prelude {
         binary_benchmark_group, library_benchmark, library_benchmark_group, main,
     };
 }
-
-#[cfg(not(feature = "perf_stubs"))]
-compile_error!("gungraun requires either the `perf` or `perf_stubs` feature");
-
-#[cfg(feature = "default")]
-#[doc(hidden)]
-pub mod __internal;
-#[cfg(all(not(feature = "default"), feature = "perf_stubs"))]
-#[doc(hidden)]
-pub mod __internal {
-    pub use gungraun_runner::api::{
-        PERF_ACK_FD_READ, PERF_ACK_FD_WRITE, PERF_CTL_FD_READ, PERF_CTL_FD_WRITE, PERF_LOG_FD,
-    };
-}
-#[cfg(feature = "default")]
-mod bin_bench;
-#[cfg(feature = "default")]
-mod common;
-#[cfg(feature = "default")]
-mod lib_bench;
-#[cfg(feature = "default")]
-mod macros;
-#[cfg(feature = "perf_stubs")]
-pub mod perf;
 
 #[cfg(feature = "default")]
 pub use bin_bench::{

@@ -24,6 +24,12 @@ pub enum BenchMode {
     Args(Args),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PerfRepetition {
+    Dynamic,
+    Fixed(Ident),
+}
+
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone)]
 pub struct Args(Option<(Span, Vec<Expr>)>);
@@ -66,12 +72,6 @@ pub struct File(pub Option<LitStr>);
 /// The `iter` parameter of the `#[benches]` attribute
 #[derive(Debug, Clone, Default)]
 pub struct Iter(pub Option<Expr>);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PerfRepetition {
-    Dynamic,
-    Fixed(Ident),
-}
 
 /// The `setup` parameter
 #[derive(Debug, Default, Clone)]
@@ -901,19 +901,6 @@ pub fn format_indexed_ident(ident: &Ident, index: usize) -> Ident {
     format_ident!("{ident}_{index}")
 }
 
-/// Truncate a utf-8 [`std::str`] to a given `len`
-pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
-    if let Some((pos, c)) = string
-        .char_indices()
-        .take_while(|(i, c)| i + c.len_utf8() <= len)
-        .last()
-    {
-        &string[..pos + c.len_utf8()]
-    } else {
-        &string[..0]
-    }
-}
-
 pub fn pattern_to_single_function_ident(
     pat: &Pat,
     elem_ident: &Ident,
@@ -975,5 +962,18 @@ pub fn pattern_to_single_function_ident(
         })),
         Pat::Path(_) => Some(pat.clone()),
         _ => None,
+    }
+}
+
+/// Truncate a utf-8 [`std::str`] to a given `len`
+pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
+    if let Some((pos, c)) = string
+        .char_indices()
+        .take_while(|(i, c)| i + c.len_utf8() <= len)
+        .last()
+    {
+        &string[..pos + c.len_utf8()]
+    } else {
+        &string[..0]
     }
 }

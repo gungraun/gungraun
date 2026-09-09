@@ -19,12 +19,12 @@ use crate::runner::tool::path::ToolOutputPath;
 use crate::summary::model::ToolMetrics;
 
 // The different regex have to consider --time-stamp=yes
+static FIXUP_NUMBERS_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("([0-9]),([0-9])").expect("Regex should compile"));
 static METRICS_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^\s*(?<bytes>[0-9]+)\s*(?<unit>bytes|units)(?:\s*in\s*(?<blocks>[0-9]+))?.*$")
         .expect("Regex should compile")
 });
-static FIXUP_NUMBERS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("([0-9]),([0-9])").expect("Regex should compile"));
 
 #[derive(Debug, PartialEq, Eq)]
 enum State {

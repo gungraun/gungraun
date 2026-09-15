@@ -18,12 +18,48 @@ sudo apt-mark hold libc6
 libc_version="$(dpkg-query -W -f='${Version}' libc6)"
 sudo apt-get update
 
-# Use a snapshot if the github runner libc version falls behind the latest
-# ubuntu libc
-if apt list --upgradable | grep libc6; then
-  sudo apt-get install --update --assume-yes --no-install-recommends --no-upgrade --snapshot 20260302T000000Z libc6-dbg="${libc_version}"
+install_libc6_dbg() {
+  sudo apt-get install --update --assume-yes --no-install-recommends \
+    --no-upgrade "$@" "libc6-dbg=${libc_version}"
+}
+
+# Install the libc6-dbg package matching the installed (held) libc6 version.
+# If that exact version has been superseded in and removed from the live
+# archive, fall back to snapshot.ubuntu.com. Candidate snapshot dates are
+# derived from the runner image build date ($ImageVersion, format
+# 20260907.300.1): the runner image ships the libc6 version that was current
+# in the archive at image build time, so the same-day snapshot usually has
+# the matching version, while the next-day snapshot covers versions
+# published after midnight of the build day. A pinned date stays as the last
+# candidate for runners without a valid ImageVersion; it may need a manual
+# bump for such environments (update policy: bump it when a no-ImageVersion
+# environment fails to resolve libc6-dbg).
+snapshot_dates=("20260908T000000Z")
+if [[ "${ImageVersion:-}" =~ ^[0-9]{8}\. ]]; then
+  image_date="${ImageVersion%%.*}"
+  image_date_iso="${image_date:0:4}-${image_date:4:2}-${image_date:6:2}"
+  next_date="$(date --utc --date "${image_date_iso} + 1 day" +%Y%m%d)"
+  snapshot_dates=("${image_date}T000000Z" "${next_date}T000000Z" "${snapshot_dates[0]}")
+elif [[ -n "${ImageVersion:-}" ]]; then
+  echo "WARN: unexpected ImageVersion '${ImageVersion}', using pinned snapshot date only" >&2
+fi
+
+libc6_dbg_installed=false
+if install_libc6_dbg; then
+  libc6_dbg_installed=true
 else
-  sudo apt-get install --update --assume-yes --no-install-recommends --no-upgrade libc6-dbg="${libc_version}"
+  for snapshot_date in "${snapshot_dates[@]}"; do
+    if install_libc6_dbg --snapshot "${snapshot_date}"; then
+      libc6_dbg_installed=true
+      break
+    fi
+    echo "WARN: libc6-dbg=${libc_version} not found in snapshot ${snapshot_date}, trying next candidate" >&2
+  done
+fi
+
+if [[ "${libc6_dbg_installed}" == false ]]; then
+  echo "ERROR: unable to install libc6-dbg=${libc_version} from the live archive or snapshots: ${snapshot_dates[*]}" >&2
+  exit 1
 fi
 
 base_url="https://github.com/gungraun/valgrind-builder/releases/latest/download"

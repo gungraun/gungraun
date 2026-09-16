@@ -367,6 +367,17 @@
         }
       ]
     },
+    "MetricKind": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
     "MetricsDiff": {
       "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.\nOtherwise the summary only stores whichever side is available. Per convention, the left side or\n[`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]\nstores the old metric.",
       "type": "object",
@@ -585,7 +596,11 @@
                 },
                 "metric": {
                   "description": "The [`MetricKind`] per tool",
-                  "type": "string"
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/MetricKind"
+                    }
+                  ]
                 },
                 "new": {
                   "description": "The [`Metric`] value of the new benchmark run",
@@ -650,7 +665,11 @@
                 },
                 "metric": {
                   "description": "The [`MetricKind`] per tool",
-                  "type": "string"
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/MetricKind"
+                    }
+                  ]
                 },
                 "new": {
                   "description": "The [`Metric`] value of the benchmark run",

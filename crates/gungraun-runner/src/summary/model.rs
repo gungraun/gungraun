@@ -119,7 +119,6 @@ pub enum ToolRegression {
     /// A performance regression triggered by a soft limit
     Soft {
         /// The [`MetricKind`] per tool
-        #[cfg_attr(feature = "schema", schemars(with = "String"))]
         metric: MetricKind,
         /// An optional human-readable display label for the regression metric, used in formatted
         /// output.
@@ -146,7 +145,6 @@ pub enum ToolRegression {
     /// A performance regression triggered by a hard limit
     Hard {
         /// The [`MetricKind`] per tool
-        #[cfg_attr(feature = "schema", schemars(with = "String"))]
         metric: MetricKind,
         /// An optional human-readable display label for the regression metric, used in formatted
         /// output.

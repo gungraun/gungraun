@@ -47,7 +47,6 @@ pub enum Metric {
 /// This enum appears in places where a summary needs to describe a metric without separately
 /// carrying the tool family that owns it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MetricKind {
     /// The `None` kind if there are no metrics for a tool (i.e. BBV and Massif)
     None,
@@ -195,5 +194,42 @@ impl PartialEq for Metric {
             (Self::Float(a), Self::Int(b)) => a.total_cmp(&(*b as f64)) == Ordering::Equal,
             (Self::Float(a), Self::Float(b)) => a.total_cmp(b) == Ordering::Equal,
         }
+    }
+}
+
+#[cfg(feature = "schema")]
+impl JsonSchema for MetricKind {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "MetricKind".into()
+    }
+
+    fn json_schema(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "anyOf": [
+                { "type": "string" },
+                { "type": "object", "additionalProperties": true }
+            ]
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    #[cfg(feature = "schema")]
+    fn test_metric_kind_schema_is_open_for_string_and_object_kinds() {
+        let schema = serde_json::to_value(schemars::schema_for!(MetricKind)).unwrap();
+
+        assert_eq!(
+            schema["anyOf"],
+            json!([
+                { "type": "string" },
+                { "type": "object", "additionalProperties": true }
+            ])
+        );
     }
 }

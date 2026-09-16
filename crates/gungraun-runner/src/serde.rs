@@ -40,6 +40,7 @@ pub mod float_64 {
         deserializer.deserialize_any(FieldVisitor)
     }
 
+    /// FIX: serialize always with at least one decimal ("25.0")
     /// Serializes `f64` into a `String`.
     pub fn serialize<S>(input: &f64, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -62,11 +62,11 @@ fn main() {
         Err(error) => {
             if let Some(Error::RegressionError(is_fatal)) = error.downcast_ref::<Error>() {
                 if *is_fatal {
-                    error!("{error}");
+                    error!("{error:?}");
                 }
                 std::process::exit(3)
             } else {
-                error!("{error}");
+                error!("{error:?}");
                 std::process::exit(1)
             }
         }

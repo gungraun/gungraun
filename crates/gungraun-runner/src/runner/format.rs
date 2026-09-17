@@ -1224,7 +1224,7 @@ impl VerticalFormatter {
     {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
-            self.write_metric(&description, &diff.metrics.as_ref(), diff.diffs);
+            self.write_metric(&description, &diff.values.as_ref(), diff.diffs);
         }
     }
 
@@ -1237,7 +1237,7 @@ impl VerticalFormatter {
     {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
-            self.write_perf_metric(&description, diff.metrics.as_ref(), diff.diffs, perf_config);
+            self.write_perf_metric(&description, diff.values.as_ref(), diff.diffs, perf_config);
         }
     }
 
@@ -1376,7 +1376,7 @@ impl VerticalFormatter {
         // We only check for `new` errors
         if let Some(info) = info
             && summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
-                e.metrics
+                e.values
                     .as_ref()
                     .left()
                     .is_some_and(|l| *l > Metric::Int(0))

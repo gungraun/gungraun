@@ -94,7 +94,7 @@ impl PerfRegressionConfig {
                         metric.name()
                     );
 
-                    let EitherOrBoth::Both(new, old) = metrics_diff.metrics.as_ref() else {
+                    let EitherOrBoth::Both(new, old) = metrics_diff.values.as_ref() else {
                         return None;
                     };
 
@@ -152,7 +152,7 @@ impl PerfRegressionConfig {
                             metric.name()
                         );
 
-                        metrics_diff.metrics.as_ref().left().and_then(|m| {
+                        metrics_diff.values.as_ref().left().and_then(|m| {
                             let (metric_value, result_unit) =
                                 if let Some(limit_unit) = unit.as_ref() {
                                     let metric_value = normalize_metric_to_limit(
@@ -193,8 +193,8 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
                         metric.clone(),
                         Some(display),
                         unit.cloned(),
-                        new.metric,
-                        old.metric,
+                        new.value,
+                        old.value,
                         pct,
                         limit,
                     ));
@@ -204,8 +204,8 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
                     metric.clone(),
                     Some(display),
                     unit.cloned(),
-                    new.metric,
-                    old.metric,
+                    new.value,
+                    old.value,
                     pct,
                     limit,
                 ));
@@ -217,13 +217,13 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
         for (metric, display, new_cost, limit, result_unit) in
             self.hard_limit_matches(metrics_summary)
         {
-            if new_cost.metric > *limit {
+            if new_cost.value > *limit {
                 regressions.push(RegressionMetrics::Hard(
                     metric.clone(),
                     Some(display),
                     result_unit.clone(),
-                    new_cost.metric,
-                    new_cost.metric - *limit,
+                    new_cost.value,
+                    new_cost.value - *limit,
                     *limit,
                 ));
             }
@@ -292,31 +292,31 @@ fn format_metric_display(metric: &PerfMetric, pattern: &PerfMetric) -> String {
 }
 
 fn normalize_metric_to_limit(
-    kind: &str,
+    limit_kind: &str,
     pattern: &PerfMetric,
-    metric: &PerfMetric,
-    value: &AnnotatedMetric<PerfQualities>,
+    metric_kind: &PerfMetric,
+    metric: &AnnotatedMetric<PerfQualities>,
     limit_unit: &Unit,
 ) -> Option<AnnotatedMetric<PerfQualities>> {
-    let Some(metric_unit) = value.unit.as_ref() else {
+    let Some(metric_unit) = metric.unit.as_ref() else {
         warn!(
-            "Skipping regression check for perf {kind} limit {}: This metric has no unit while \
-             configured limit has '{}'",
-            format_metric_display(metric, pattern),
+            "Skipping regression check for perf {limit_kind} limit {}: This metric has no unit \
+             while configured limit has '{}'",
+            format_metric_display(metric_kind, pattern),
             limit_unit,
         );
         return None;
     };
 
     if metric_unit == limit_unit {
-        return Some(value.clone());
+        return Some(metric.clone());
     }
 
     let Some(factor) = metric_unit.scale_factor_metric(limit_unit) else {
         warn!(
-            "Skipping regression check for perf {kind} limit {}: This metric unit '{}' cannot be \
-             compared to the limit unit '{}'",
-            format_metric_display(metric, pattern),
+            "Skipping regression check for perf {limit_kind} limit {}: This metric unit '{}' \
+             cannot be compared to the limit unit '{}'",
+            format_metric_display(metric_kind, pattern),
             metric_unit,
             limit_unit,
         );
@@ -324,8 +324,8 @@ fn normalize_metric_to_limit(
     };
 
     Some(AnnotatedMetric::new(
-        value.metric * factor,
-        value.qualities.scale_by_metric(factor),
+        metric.value * factor,
+        metric.qualities.scale_by_metric(factor),
         limit_unit.clone(),
     ))
 }

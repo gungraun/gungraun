@@ -12,9 +12,8 @@ use std::fs;
 use std::path::Path;
 
 pub use gungraun_runner::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
-pub use gungraun_runner::metrics::model::Metric;
 pub use model::{
-    BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, MetricKind, MetricsDiff,
+    BenchmarkKind, BenchmarkSummary, Diffs, FlamegraphSummary, Metric, MetricKind, MetricsDiff,
     MetricsSummary, Profile, ProfileData, ProfileInfo, ProfilePart, ProfileTotal, Profiles,
     SCHEMA_VERSION, SummaryFormat, SummaryOutput, ToolMetricSummary, ToolRegression, ValgrindTool,
 };

@@ -28,7 +28,7 @@ fn assert_default() {
         let new_ir = metrics_summary
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
-            .metrics
+            .values
             .unwrap_left();
         new_ir < Metric::Int(3000)
     };
@@ -72,7 +72,7 @@ fn assert_nested() {
         let new_ir = metrics_summary
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
-            .metrics
+            .values
             .unwrap_left();
         new_ir < Metric::Int(3000)
     };
@@ -119,7 +119,7 @@ fn assert_none() {
             let new_ir = metrics_summary
                 .diff_by_kind(&EventKind::Ir)
                 .unwrap()
-                .metrics
+                .values
                 .unwrap_left();
             new_ir > Metric::Int(400_000)
         })

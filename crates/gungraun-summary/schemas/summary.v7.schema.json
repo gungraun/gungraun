@@ -135,33 +135,17 @@
               "type": "null"
             }
           ]
+        },
+        "value": {
+          "description": "The measured numeric value.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Metric"
+            }
+          ]
         }
       },
-      "oneOf": [
-        {
-          "description": "An integer `Metric`",
-          "type": "object",
-          "properties": {
-            "Int": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            }
-          },
-          "required": ["Int"]
-        },
-        {
-          "description": "A float `Metric`",
-          "type": "object",
-          "properties": {
-            "Float": {
-              "type": "number",
-              "format": "double"
-            }
-          },
-          "required": ["Float"]
-        }
-      ]
+      "required": ["value"]
     },
     "BenchmarkKind": {
       "description": "Identifies whether a summary describes a library or binary benchmark.",
@@ -339,31 +323,17 @@
     },
     "Metric": {
       "description": "The value type used for metrics measured by a benchmark tool\n\nRaw metrics emitted by Valgrind tools are [`Metric::Int`] which is the default metric type.\nMetrics that have [`Metric::Float`] type are documented as such. Derived values, such as miss\nrates and hit rates, require floating-point representation. `Metric` preserves both forms in the\nparsed summary model.\n\n# Developer Notes\n\nFloat operations with a `Metric` that stores a `u64` introduce a precision loss and are to be\navoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the\n`u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result\nin an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision\nand the original type (instead of for example adding the two `u64` by converting both of them to\n`f64`).",
-      "oneOf": [
+      "anyOf": [
         {
           "description": "An integer `Metric`",
-          "type": "object",
-          "properties": {
-            "Int": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Int"]
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
         },
         {
           "description": "A float `Metric`",
-          "type": "object",
-          "properties": {
-            "Float": {
-              "type": "number",
-              "format": "double"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Float"]
+          "type": "number",
+          "format": "double"
         }
       ]
     },
@@ -393,8 +363,8 @@
             }
           ]
         },
-        "metrics": {
-          "description": "Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both metrics",
+        "values": {
+          "description": "Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both values",
           "allOf": [
             {
               "$ref": "#/definitions/EitherOrBoth2"
@@ -402,7 +372,7 @@
           ]
         }
       },
-      "required": ["metrics"]
+      "required": ["values"]
     },
     "MetricsDiff2": {
       "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.\nOtherwise the summary only stores whichever side is available. Per convention, the left side or\n[`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]\nstores the old metric.",
@@ -419,8 +389,8 @@
             }
           ]
         },
-        "metrics": {
-          "description": "Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both metrics",
+        "values": {
+          "description": "Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both values",
           "allOf": [
             {
               "$ref": "#/definitions/EitherOrBoth3"
@@ -428,7 +398,7 @@
           ]
         }
       },
-      "required": ["metrics"]
+      "required": ["values"]
     },
     "Profile": {
       "description": "`Profile` data for one [`Tool`] recorded in a benchmark summary.",

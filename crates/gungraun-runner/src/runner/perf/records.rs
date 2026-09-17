@@ -318,7 +318,7 @@ impl MetricsParser {
             #[expect(clippy::cast_precision_loss)]
             #[expect(clippy::cast_possible_truncation)]
             #[expect(clippy::cast_sign_loss)]
-            let (new_int, new_float) = match metric.metric {
+            let (new_int, new_float) = match metric.value {
                 Metric::Int(int_metric) => (
                     int.saturating_sub(int_metric),
                     (float - int_metric as f64).max(0.0),
@@ -401,7 +401,7 @@ impl MetricsParser {
             .validate_record(
                 non_zero_metrics,
                 event,
-                new_metric.metric.to_float(),
+                new_metric.value.to_float(),
                 variance,
                 pcnt_running,
             )

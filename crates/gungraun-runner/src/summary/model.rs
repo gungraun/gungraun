@@ -71,7 +71,7 @@ pub enum BenchmarkKind {
 ///             diff_pct: -50.0,
 ///             factor: -2.0,
 ///         }),
-///         metrics: EitherOrBoth::Both(Metric::Int(1), Metric::Int(2)),
+///         values: EitherOrBoth::Both(Metric::Int(1), Metric::Int(2)),
 ///     },
 /// )])));
 ///
@@ -524,7 +524,7 @@ mod tests {
                     "metrics_summary": {
                         metric: {
                             "diffs": null,
-                            "metrics": { "Left": { "Int": 100 } }
+                            "values": { "Left": 100 }
                         }
                     }
                 }],
@@ -564,7 +564,7 @@ mod tests {
         let serialized = serde_json::to_value(profile).unwrap();
 
         assert_eq!(
-            serialized["summaries"]["parts"][0]["metrics_summary"]["Ir"]["metrics"]["Left"]["Int"],
+            serialized["summaries"]["parts"][0]["metrics_summary"]["Ir"]["values"]["Left"],
             100
         );
         assert!(serialized["summaries"]["parts"][0]["metrics_summary"]["Callgrind"].is_null());
@@ -576,8 +576,8 @@ mod tests {
         input["summaries"]["total"]["regressions"] = json!([{
             "Soft": {
                 "metric": { "Callgrind": "Ir" },
-                "new": { "Int": 100 },
-                "old": { "Int": 90 },
+                "new": 100,
+                "old": 90,
                 "diff_pct": "11.11111111111111",
                 "limit": "10"
             }
@@ -599,8 +599,8 @@ mod tests {
         input["summaries"]["total"]["regressions"] = json!([{
             "Soft": {
                 "metric": { "Callgrind": "FutureMetric" },
-                "new": { "Int": 100 },
-                "old": { "Int": 90 },
+                "new": 100,
+                "old": 90,
                 "diff_pct": "11.11111111111111",
                 "limit": "10"
             }

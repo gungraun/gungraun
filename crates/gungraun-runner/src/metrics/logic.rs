@@ -79,13 +79,13 @@ pub trait TypeChecker {
 
 impl<Q> AnnotatedMetric<Q> {
     /// Creates an `AnnotatedMetric` from a numeric value, metadata, and an optional [`Unit`].
-    pub fn new<M, U>(metric: M, qualities: Q, unit: U) -> Self
+    pub fn new<M, U>(value: M, qualities: Q, unit: U) -> Self
     where
         M: Into<Metric>,
         U: Into<Option<Unit>>,
     {
         Self {
-            metric: metric.into(),
+            value: value.into(),
             qualities,
             unit: unit.into(),
         }
@@ -94,12 +94,12 @@ impl<Q> AnnotatedMetric<Q> {
 
 impl AnnotatedMetric<PerfQualities> {
     /// Creates a perf metric with default [`PerfQualities`] and an optional [`Unit`].
-    pub fn with_default_qualities<M, U>(metric: M, unit: U) -> Self
+    pub fn with_default_qualities<M, U>(value: M, unit: U) -> Self
     where
         M: Into<Metric>,
         U: Into<Option<Unit>>,
     {
-        Self::new(metric, PerfQualities::default(), unit)
+        Self::new(value, PerfQualities::default(), unit)
     }
 
     /// Returns this metric value converted into the canonical base scale of its [`Unit`].
@@ -120,7 +120,7 @@ impl AnnotatedMetric<PerfQualities> {
     /// ```
     #[expect(clippy::cast_precision_loss)]
     pub fn base_value(&self) -> f64 {
-        match self.metric {
+        match self.value {
             Metric::Int(value) => self
                 .unit
                 .as_ref()
@@ -150,20 +150,20 @@ impl AnnotatedMetric<PerfQualities> {
     #[expect(clippy::cast_possible_truncation)]
     #[expect(clippy::cast_sign_loss)]
     pub fn into_mean(self, canonical_mean: f64) -> Self {
-        match self.metric {
+        match self.value {
             Metric::Int(_) => {
                 let new_value = self.rebase(canonical_mean);
                 match self.unit {
                     Some(unit) => {
                         let (rescaled, unit) = unit.rescale(new_value);
                         Self {
-                            metric: Metric::Int(rescaled.round() as u64),
+                            value: Metric::Int(rescaled.round() as u64),
                             unit: Some(unit),
                             qualities: self.qualities,
                         }
                     }
                     None => Self {
-                        metric: Metric::Int(new_value.round() as u64),
+                        value: Metric::Int(new_value.round() as u64),
                         unit: None,
                         qualities: self.qualities,
                     },
@@ -173,13 +173,13 @@ impl AnnotatedMetric<PerfQualities> {
                 let new_value = self.rebase(canonical_mean);
                 match self.unit {
                     Some(unit) => Self {
-                        metric: Metric::Float(new_value),
+                        value: Metric::Float(new_value),
                         unit: Some(unit),
                         qualities: self.qualities,
                     }
                     .normalize(),
                     None => Self {
-                        metric: Metric::Float(new_value),
+                        value: Metric::Float(new_value),
                         unit: None,
                         qualities: self.qualities,
                     },
@@ -192,16 +192,16 @@ impl AnnotatedMetric<PerfQualities> {
 impl<Q> Display for AnnotatedMetric<Q> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.unit {
-            Some(unit) => write!(f, "{} {unit}", self.metric),
-            None => self.metric.fmt(f),
+            Some(unit) => write!(f, "{} {unit}", self.value),
+            None => self.value.fmt(f),
         }
     }
 }
 
 impl From<Metric> for AnnotatedMetric<PerfQualities> {
-    fn from(metric: Metric) -> Self {
+    fn from(value: Metric) -> Self {
         Self {
-            metric,
+            value,
             unit: None,
             qualities: PerfQualities::default(),
         }
@@ -210,7 +210,7 @@ impl From<Metric> for AnnotatedMetric<PerfQualities> {
 
 impl MetricValue for AnnotatedMetric<PerfQualities> {
     fn metric(&self) -> Metric {
-        self.metric
+        self.value
     }
 
     /// Adds another perf metric to this one returning the normalized result.
@@ -232,10 +232,10 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
         let (this_normalized, other_normalized) = self
             .normalize_with(other)
             .expect("Only compatible units should be summed up");
-        let metric = this_normalized.metric + other_normalized.metric;
+        let metric = this_normalized.value + other_normalized.value;
 
         Self {
-            metric,
+            value: metric,
             unit: this_normalized.unit,
             qualities: this_normalized.qualities.add(&other_normalized.qualities),
         }
@@ -262,11 +262,11 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
             .expect("Only compatible units should be subtracted");
 
         let metric = this_normalized
-            .metric
-            .saturating_sub(&other_normalized.metric);
+            .value
+            .saturating_sub(&other_normalized.value);
 
         Self {
-            metric,
+            value: metric,
             unit: this_normalized.unit,
             qualities: PerfQualities::default(),
         }
@@ -274,7 +274,7 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     }
 
     fn to_string_without_unit(&self) -> String {
-        self.metric.to_string()
+        self.value.to_string()
     }
 
     fn unit(&self) -> Option<&Unit> {
@@ -309,7 +309,7 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     ///
     /// let normalized = metric.normalize();
     ///
-    /// assert_eq!(normalized.metric, Metric::Float(1.5));
+    /// assert_eq!(normalized.value, Metric::Float(1.5));
     /// assert_eq!(normalized.unit, Some(Unit::Seconds));
     /// assert_eq!(normalized.qualities.mean, Some(0.123));
     /// ```
@@ -323,12 +323,12 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     /// assert_eq!(metric.normalize(), metric);
     /// ```
     fn normalize(&self) -> Self {
-        match (self.metric, self.unit.as_ref()) {
+        match (self.value, self.unit.as_ref()) {
             (Metric::Float(float), Some(unit)) if float.is_finite() && float != 0.0 => {
                 let (new_value, new_unit) = unit.rescale(float);
                 let factor = new_value / float;
                 Self {
-                    metric: Metric::Float(new_value),
+                    value: Metric::Float(new_value),
                     unit: Some(new_unit),
                     qualities: self.qualities.scale_by_metric(Metric::Float(factor)),
                 }
@@ -363,8 +363,8 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     ///
     /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
     ///
-    /// assert_eq!(lhs.metric, Metric::Float(1.0));
-    /// assert_eq!(rhs.metric, Metric::Float(1.5));
+    /// assert_eq!(lhs.value, Metric::Float(1.0));
+    /// assert_eq!(rhs.value, Metric::Float(1.5));
     /// assert_eq!(lhs.unit, Some(Unit::Seconds));
     /// assert_eq!(rhs.unit, Some(Unit::Seconds));
     /// ```
@@ -381,8 +381,8 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     ///
     /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
     ///
-    /// assert_eq!(lhs.metric, Metric::Int(1_000));
-    /// assert_eq!(rhs.metric, Metric::Int(1_500));
+    /// assert_eq!(lhs.value, Metric::Int(1_000));
+    /// assert_eq!(rhs.value, Metric::Int(1_500));
     /// assert_eq!(lhs.unit, Some(Unit::Milliseconds));
     /// assert_eq!(rhs.unit, Some(Unit::Milliseconds));
     /// ```
@@ -414,7 +414,7 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                 // have to scale both metrics with the same factor, or else it could happen that one
                 // unit `0.5 ms` -> `500 us` while the other `1000 ms` -> `1 s`
                 let (this_metric_value, other_metric_value) =
-                    match (self.metric * this_factor, other.metric * other_factor) {
+                    match (self.value * this_factor, other.value * other_factor) {
                         (Metric::Float(this_value), Metric::Float(other_value)) => {
                             let rescale_value = this_value.abs().min(other_value.abs());
                             let rescale_value = if rescale_value == 0.0 {
@@ -428,14 +428,14 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                             match target_unit.scale_factor_metric(&mutual_unit) {
                                 Some(mutual_factor) => (
                                     Self {
-                                        metric: Metric::Float(this_value) * mutual_factor,
+                                        value: Metric::Float(this_value) * mutual_factor,
                                         unit: Some(mutual_unit.clone()),
                                         qualities: self
                                             .qualities
                                             .scale_by_metric(mutual_factor * this_factor),
                                     },
                                     Self {
-                                        metric: Metric::Float(other_value) * mutual_factor,
+                                        value: Metric::Float(other_value) * mutual_factor,
                                         unit: Some(mutual_unit),
                                         qualities: other
                                             .qualities
@@ -444,12 +444,12 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                                 ),
                                 None => (
                                     Self {
-                                        metric: Metric::Float(this_value),
+                                        value: Metric::Float(this_value),
                                         unit: Some(target_unit.clone()),
                                         qualities: self.qualities.scale_by_metric(this_factor),
                                     },
                                     Self {
-                                        metric: Metric::Float(other_value),
+                                        value: Metric::Float(other_value),
                                         unit: Some(target_unit),
                                         qualities: other.qualities.scale_by_metric(other_factor),
                                     },
@@ -458,12 +458,12 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                         }
                         (this_metric, other_metric) => (
                             Self {
-                                metric: this_metric,
+                                value: this_metric,
                                 unit: Some(target_unit.clone()),
                                 qualities: self.qualities.scale_by_metric(this_factor),
                             },
                             Self {
-                                metric: other_metric,
+                                value: other_metric,
                                 unit: Some(target_unit),
                                 qualities: other.qualities.scale_by_metric(other_factor),
                             },
@@ -1007,24 +1007,24 @@ where
     V: MetricValue,
 {
     /// Creates a new `MetricsDiff` from an [`EitherOrBoth`] of metric values.
-    pub fn new(metrics: EitherOrBoth<V>) -> Self {
-        if let EitherOrBoth::Both(new, old) = &metrics {
+    pub fn new(values: EitherOrBoth<V>) -> Self {
+        if let EitherOrBoth::Both(new, old) = &values {
             if let Some((normalized_new, normalized_old)) = new.normalize_with(old) {
                 let diffs = Diffs::new(normalized_new.metric(), normalized_old.metric());
                 Self {
                     diffs: Some(diffs),
-                    metrics: EitherOrBoth::Both(normalized_new, normalized_old),
+                    values: EitherOrBoth::Both(normalized_new, normalized_old),
                 }
             } else {
                 // Can't create diffs for metrics with different units or scales
                 Self {
                     diffs: None,
-                    metrics: metrics.map(|m| m.normalize()),
+                    values: values.map(|m| m.normalize()),
                 }
             }
         } else {
             Self {
-                metrics: metrics.map(|m| m.normalize()),
+                values: values.map(|m| m.normalize()),
                 diffs: None,
             }
         }
@@ -1033,7 +1033,7 @@ where
     /// Sum this metrics diff with another [`MetricsDiff`]
     #[must_use]
     pub fn add(&self, other: &Self) -> Self {
-        match (&self.metrics, &other.metrics) {
+        match (&self.values, &other.values) {
             (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
                 Self::new(EitherOrBoth::Left(new.add(other_new)))
             }
@@ -1121,7 +1121,7 @@ where
         self.0
             .iter()
             .map(|(metric_kind, diff)| {
-                diff.metrics
+                diff.values
                     .clone()
                     .map(|metric| (metric_kind.clone(), metric))
             })
@@ -1303,7 +1303,7 @@ mod tests {
         D: Into<Option<(f64, f64)>>,
     {
         MetricsDiff {
-            metrics,
+            values: metrics,
             diffs: diffs
                 .into()
                 .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
@@ -1821,7 +1821,7 @@ mod tests {
                 diff_pct: 0.0,
                 factor: 1.0,
             }),
-            metrics: EitherOrBoth::Both(
+            values: EitherOrBoth::Both(
                 AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
                 AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
             ),
@@ -2382,8 +2382,8 @@ mod tests {
 
         assert_eq!(metrics, expected);
 
-        assert!(metrics.0.first().unwrap().1.metric.is_int());
-        assert!(metrics.0.get_index(1).unwrap().1.metric.is_float());
+        assert!(metrics.0.first().unwrap().1.value.is_int());
+        assert!(metrics.0.get_index(1).unwrap().1.value.is_float());
     }
 
     #[test]
@@ -2400,7 +2400,7 @@ mod tests {
 
         assert_eq!(
             expected_value,
-            value.get("task-clock:u").unwrap()["metrics"]["Left"]["unit"],
+            value.get("task-clock:u").unwrap()["values"]["Left"]["unit"],
         );
     }
 

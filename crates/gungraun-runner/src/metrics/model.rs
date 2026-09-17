@@ -35,6 +35,7 @@ use crate::units::Unit;
 /// `f64`).
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(untagged)]
 pub enum Metric {
     /// An integer `Metric`
     Int(u64),
@@ -101,15 +102,14 @@ pub enum ToolMetrics {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct AnnotatedMetric<Q> {
-    /// The measured numeric value.
-    #[serde(flatten)]
-    pub metric: Metric,
     /// Additional metadata associated with the metric value.
     #[serde(flatten)]
     pub qualities: Q,
     /// The [`Unit`] of the metric value, if one is given or known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit: Option<Unit>,
+    /// The measured numeric value.
+    pub value: Metric,
 }
 
 /// An insertion-ordered mapping from metric identifier to [`Metric`].
@@ -131,8 +131,8 @@ pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
 pub struct MetricsDiff<V = Metric> {
     /// If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present
     pub diffs: Option<Diffs>,
-    /// Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both metrics
-    pub metrics: EitherOrBoth<V>,
+    /// Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both values
+    pub values: EitherOrBoth<V>,
 }
 
 /// An insertion-ordered mapping from metric identifier to [`MetricsDiff`].
@@ -215,9 +215,41 @@ impl JsonSchema for MetricKind {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use serde_json::json;
 
     use super::*;
+
+    #[test]
+    fn test_annotated_metric_deserializes_value_field() {
+        let deserialized: AnnotatedMetric<PerfQualities> =
+            serde_json::from_value(json!({ "value": 5 })).unwrap();
+
+        assert_eq!(deserialized.value, Metric::Int(5));
+        assert_eq!(deserialized.qualities, PerfQualities::default());
+        assert_eq!(deserialized.unit, None);
+    }
+
+    #[test]
+    fn test_annotated_metric_serializes_named_value_field() {
+        let annotated = AnnotatedMetric {
+            qualities: PerfQualities {
+                mean: Some(2.0),
+                ..PerfQualities::default()
+            },
+            unit: None,
+            value: Metric::Float(1.5),
+        };
+
+        assert_eq!(
+            serde_json::to_value(&annotated).unwrap(),
+            json!({ "mean": 2.0, "value": 1.5 })
+        );
+
+        let roundtrip: AnnotatedMetric<PerfQualities> =
+            serde_json::from_value(serde_json::to_value(&annotated).unwrap()).unwrap();
+        assert_eq!(roundtrip, annotated);
+    }
 
     #[test]
     #[cfg(feature = "schema")]
@@ -231,5 +263,33 @@ mod tests {
                 { "type": "object", "additionalProperties": true }
             ])
         );
+    }
+
+    // Untagged JSON numbers cannot express non-finite floats. This is the accepted trade-off of
+    // serializing `Metric::Float` as plain JSON numbers instead of strings: `serde_json` maps
+    // `NaN` and infinities to `null`, which cannot round-trip back into `Metric`.
+    #[rstest]
+    #[case::nan(f64::NAN)]
+    #[case::infinity(f64::INFINITY)]
+    #[case::neg_infinity(f64::NEG_INFINITY)]
+    fn test_metric_serde_non_finite_floats_map_to_null(#[case] float: f64) {
+        assert_eq!(
+            serde_json::to_string(&Metric::Float(float)).unwrap(),
+            "null"
+        );
+    }
+
+    #[rstest]
+    #[case::int_zero(Metric::Int(0))]
+    #[case::int(Metric::Int(42))]
+    #[case::int_max(Metric::Int(u64::MAX))]
+    #[case::float_zero(Metric::Float(0.0))]
+    #[case::float_negative(Metric::Float(-2.5))]
+    #[case::float(Metric::Float(42.0))]
+    #[case::float_max(Metric::Float(f64::MAX))]
+    fn test_metric_serde_roundtrip(#[case] metric: Metric) {
+        let deserialized: Metric =
+            serde_json::from_value(serde_json::to_value(metric).unwrap()).unwrap();
+        assert_eq!(deserialized, metric);
     }
 }

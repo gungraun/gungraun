@@ -10,7 +10,6 @@ use std::path::PathBuf;
 
 use either_or_both::EitherOrBoth;
 use gungraun_runner::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
-use gungraun_runner::metrics::model::Metric;
 use indexmap::IndexMap;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -29,6 +28,30 @@ pub enum BenchmarkKind {
     LibraryBenchmark,
     /// A binary benchmark
     BinaryBenchmark,
+}
+
+/// The value type used for metrics measured by a benchmark tool
+///
+/// Raw metrics emitted by Valgrind tools are [`Metric::Int`] which is the default metric type.
+/// Metrics that have [`Metric::Float`] type are documented as such. Derived values, such as miss
+/// rates and hit rates, require floating-point representation. `Metric` preserves both forms in the
+/// parsed summary model.
+///
+/// # Developer Notes
+///
+/// Float operations with a `Metric` that stores a `u64` introduce a precision loss and are to be
+/// avoided. Especially comparison between a `u64` metric and a `f64` metric are not exact because
+/// the `u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would
+/// result in an overflow the metric saturates at `u64::MAX`. This choice was made to preserve
+/// precision and the original type (instead of for example adding the two `u64` by converting both
+/// of them to `f64`).
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum Metric {
+    /// An integer `Metric`
+    Int(u64),
+    /// A float `Metric`
+    Float(f64),
 }
 
 /// Identifies a metric kind by tool

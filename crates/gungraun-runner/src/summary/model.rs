@@ -186,6 +186,7 @@ pub struct BenchmarkSummary {
     /// The path to the file containing this benchmark
     pub benchmark_file: PathBuf,
     /// More details describing this benchmark run
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<String>,
     /// The name of the function under test
     pub function_name: String,
@@ -199,6 +200,7 @@ pub struct BenchmarkSummary {
     /// A gungraun benchmark can be uniquely identified by the `module_path`
     /// (`benchmark_file::group::function_name`) and this `id`. If the `id` is not present, then
     /// the `module_path` is sufficient to identify a benchmark.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     /// Whether this summary describes a library or binary benchmark
     pub kind: BenchmarkKind,
@@ -283,14 +285,18 @@ pub struct ProfileInfo {
     /// The executed command
     pub command: String,
     /// More details for example from the logging output of the tool run
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<String>,
     /// The parent pid of this process if present
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_pid: Option<i32>,
     /// The part number of this tool run if present (only Callgrind and Perf)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub part: Option<u64>,
     /// The pid of the benchmark process
     pub pid: i32,
     /// The thread number of this tool run if present (only Callgrind)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub thread: Option<usize>,
 }
 

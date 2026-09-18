@@ -71,6 +71,8 @@ gungraun/
 - Public items exposed by feature-gated `api`, `summary`, or `schema` modules
   are semver-sensitive. Most other `gungraun-runner` visibility is
   workspace-internal.
+- Summary JSON omits `Option::None` fields; the fixed two-element `baselines`
+  tuple is the sole exception and uses `null` for absent positions.
 - Use typed library errors. Runner user-facing errors flow through
   `crates/gungraun-runner/src/error.rs`; reserve `JobError(anyhow::Error)` for
   internal jobs.

@@ -131,6 +131,7 @@ pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
 #[serde(bound(serialize = "V: Serialize", deserialize = "V: Deserialize<'de>"))]
 pub struct MetricsDiff<V = Metric> {
     /// If both values are present there is also a `diffs` present
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub diffs: Option<Diffs>,
     /// Either the `new`, `old` or both values
     #[serde(with = "crate::serde::either_or_both")]
@@ -281,7 +282,6 @@ mod tests {
         assert_eq!(
             serde_json::to_value(metrics_diff).unwrap(),
             json!({
-                "diffs": null,
                 "values": { "new": 2, "old": 1 }
             })
         );

@@ -10,7 +10,7 @@ on:
 
 jobs:
   changes:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
       force: ${{ steps.tag-check.outputs.force }}
@@ -34,7 +34,7 @@ jobs:
   deploy:
     needs: changes
     if: ${{ needs.changes.outputs.force == 'true' || needs.changes.outputs.docs == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     concurrency:

@@ -302,6 +302,11 @@ pub struct ProfileInfo {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfilePart {
     /// [`ProfileInfo`] like command, pid, ppid, thread number etc.
+    #[serde(with = "crate::serde::either_or_both")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "crate::serde::either_or_both::NewOldOrBoth<ProfileInfo, ProfileInfo>")
+    )]
     pub details: EitherOrBoth<ProfileInfo>,
     /// The [`ToolMetricSummary`] containing the actual data
     #[cfg_attr(feature = "schema", schemars(schema_with = "metric_summary_schema"))]
@@ -310,6 +315,7 @@ pub struct ProfilePart {
 
 #[derive(Deserialize)]
 struct ProfilePartWire {
+    #[serde(with = "crate::serde::either_or_both")]
     details: EitherOrBoth<ProfileInfo>,
     metrics_summary: IndexMap<String, Value>,
 }
@@ -512,7 +518,7 @@ mod tests {
             "summaries": {
                 "parts": [{
                     "details": {
-                        "Left": {
+                        "new": {
                             "command": "benchmark",
                             "details": null,
                             "parent_pid": null,
@@ -524,7 +530,7 @@ mod tests {
                     "metrics_summary": {
                         metric: {
                             "diffs": null,
-                            "values": { "Left": 100 }
+                            "values": { "new": 100 }
                         }
                     }
                 }],
@@ -564,7 +570,7 @@ mod tests {
         let serialized = serde_json::to_value(profile).unwrap();
 
         assert_eq!(
-            serialized["summaries"]["parts"][0]["metrics_summary"]["Ir"]["values"]["Left"],
+            serialized["summaries"]["parts"][0]["metrics_summary"]["Ir"]["values"]["new"],
             100
         );
         assert!(serialized["summaries"]["parts"][0]["metrics_summary"]["Callgrind"].is_null());

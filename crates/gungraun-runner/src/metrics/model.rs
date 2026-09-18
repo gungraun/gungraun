@@ -128,10 +128,16 @@ pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
 /// stores the old metric.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(bound(serialize = "V: Serialize", deserialize = "V: Deserialize<'de>"))]
 pub struct MetricsDiff<V = Metric> {
-    /// If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present
+    /// If both values are present there is also a `diffs` present
     pub diffs: Option<Diffs>,
-    /// Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both values
+    /// Either the `new`, `old` or both values
+    #[serde(with = "crate::serde::either_or_both")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "crate::serde::either_or_both::NewOldOrBoth<V, V>")
+    )]
     pub values: EitherOrBoth<V>,
 }
 
@@ -262,6 +268,22 @@ mod tests {
                 { "type": "string" },
                 { "type": "object", "additionalProperties": true }
             ])
+        );
+    }
+
+    #[test]
+    fn test_metrics_diff_serializes_values_as_new_and_old() {
+        let metrics_diff = MetricsDiff {
+            diffs: None,
+            values: EitherOrBoth::Both(Metric::Int(2), Metric::Int(1)),
+        };
+
+        assert_eq!(
+            serde_json::to_value(metrics_diff).unwrap(),
+            json!({
+                "diffs": null,
+                "values": { "new": 2, "old": 1 }
+            })
         );
     }
 

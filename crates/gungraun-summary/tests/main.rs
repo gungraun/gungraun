@@ -170,6 +170,37 @@ fn test_v6_snapshot_rejects_memcheck_tag() {
 
 #[test]
 #[cfg(feature = "schema")]
+fn test_v7_either_or_both_fields_use_new_and_old_objects() {
+    let schema: Value = serde_json::from_str(include_str!("../schemas/summary.v7.schema.json"))
+        .expect("The loaded schema should be valid json");
+
+    for (definition, field) in [("MetricsDiff", "values"), ("ProfilePart", "details")] {
+        let proxy = schema["definitions"][definition]["properties"][field]["allOf"][0]["$ref"]
+            .as_str()
+            .expect("the field should reference its semantic EitherOrBoth schema")
+            .trim_start_matches("#/definitions/");
+        let variants = schema["definitions"][proxy]["anyOf"]
+            .as_array()
+            .expect("the semantic EitherOrBoth schema should use anyOf");
+        let required = variants
+            .iter()
+            .map(|variant| variant["required"].clone())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            required,
+            [json!(["new", "old"]), json!(["new"]), json!(["old"])]
+        );
+        assert!(
+            variants
+                .iter()
+                .all(|variant| variant["additionalProperties"] == false)
+        );
+    }
+}
+
+#[test]
+#[cfg(feature = "schema")]
 fn test_v7_metric_summaries_are_open_maps() {
     let schema: Value = serde_json::from_str(include_str!("../schemas/summary.v7.schema.json"))
         .expect("The loaded schema should be valid json");

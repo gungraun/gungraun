@@ -177,150 +177,6 @@
       },
       "required": ["diff_pct", "factor"]
     },
-    "EitherOrBoth": {
-      "description": "Represent values that have either a `Left` or `Right` value or `Both` values",
-      "oneOf": [
-        {
-          "description": "Represents a value from the left side",
-          "type": "object",
-          "properties": {
-            "Left": {
-              "$ref": "#/definitions/ProfileInfo"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Left"]
-        },
-        {
-          "description": "Represents a value from both sides",
-          "type": "object",
-          "properties": {
-            "Both": {
-              "type": "array",
-              "items": [
-                {
-                  "$ref": "#/definitions/ProfileInfo"
-                },
-                {
-                  "$ref": "#/definitions/ProfileInfo"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Both"]
-        },
-        {
-          "description": "Represents a value from the right side",
-          "type": "object",
-          "properties": {
-            "Right": {
-              "$ref": "#/definitions/ProfileInfo"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Right"]
-        }
-      ]
-    },
-    "EitherOrBoth2": {
-      "description": "Represent values that have either a `Left` or `Right` value or `Both` values",
-      "oneOf": [
-        {
-          "description": "Represents a value from the left side",
-          "type": "object",
-          "properties": {
-            "Left": {
-              "$ref": "#/definitions/Metric"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Left"]
-        },
-        {
-          "description": "Represents a value from both sides",
-          "type": "object",
-          "properties": {
-            "Both": {
-              "type": "array",
-              "items": [
-                {
-                  "$ref": "#/definitions/Metric"
-                },
-                {
-                  "$ref": "#/definitions/Metric"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Both"]
-        },
-        {
-          "description": "Represents a value from the right side",
-          "type": "object",
-          "properties": {
-            "Right": {
-              "$ref": "#/definitions/Metric"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Right"]
-        }
-      ]
-    },
-    "EitherOrBoth3": {
-      "description": "Represent values that have either a `Left` or `Right` value or `Both` values",
-      "oneOf": [
-        {
-          "description": "Represents a value from the left side",
-          "type": "object",
-          "properties": {
-            "Left": {
-              "$ref": "#/definitions/AnnotatedMetric"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Left"]
-        },
-        {
-          "description": "Represents a value from both sides",
-          "type": "object",
-          "properties": {
-            "Both": {
-              "type": "array",
-              "items": [
-                {
-                  "$ref": "#/definitions/AnnotatedMetric"
-                },
-                {
-                  "$ref": "#/definitions/AnnotatedMetric"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Both"]
-        },
-        {
-          "description": "Represents a value from the right side",
-          "type": "object",
-          "properties": {
-            "Right": {
-              "$ref": "#/definitions/AnnotatedMetric"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Right"]
-        }
-      ]
-    },
     "Metric": {
       "description": "The value type used for metrics measured by a benchmark tool\n\nRaw metrics emitted by Valgrind tools are [`Metric::Int`] which is the default metric type.\nMetrics that have [`Metric::Float`] type are documented as such. Derived values, such as miss\nrates and hit rates, require floating-point representation. `Metric` preserves both forms in the\nparsed summary model.\n\n# Developer Notes\n\nFloat operations with a `Metric` that stores a `u64` introduce a precision loss and are to be\navoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the\n`u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result\nin an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision\nand the original type (instead of for example adding the two `u64` by converting both of them to\n`f64`).",
       "anyOf": [
@@ -353,7 +209,7 @@
       "type": "object",
       "properties": {
         "diffs": {
-          "description": "If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present",
+          "description": "If both values are present there is also a `diffs` present",
           "anyOf": [
             {
               "$ref": "#/definitions/Diffs"
@@ -364,10 +220,10 @@
           ]
         },
         "values": {
-          "description": "Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both values",
+          "description": "Either the `new`, `old` or both values",
           "allOf": [
             {
-              "$ref": "#/definitions/EitherOrBoth2"
+              "$ref": "#/definitions/NewOldOrBoth2"
             }
           ]
         }
@@ -379,7 +235,7 @@
       "type": "object",
       "properties": {
         "diffs": {
-          "description": "If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present",
+          "description": "If both values are present there is also a `diffs` present",
           "anyOf": [
             {
               "$ref": "#/definitions/Diffs"
@@ -390,15 +246,138 @@
           ]
         },
         "values": {
-          "description": "Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both values",
+          "description": "Either the `new`, `old` or both values",
           "allOf": [
             {
-              "$ref": "#/definitions/EitherOrBoth3"
+              "$ref": "#/definitions/NewOldOrBoth3"
             }
           ]
         }
       },
       "required": ["values"]
+    },
+    "NewOldOrBoth": {
+      "description": "Either the new, old or both values are present",
+      "anyOf": [
+        {
+          "description": "Both the new and old values are present.",
+          "type": "object",
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/ProfileInfo"
+            },
+            "old": {
+              "$ref": "#/definitions/ProfileInfo"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["new", "old"]
+        },
+        {
+          "description": "Only the new value is present.",
+          "type": "object",
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/ProfileInfo"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["new"]
+        },
+        {
+          "description": "Only the old value is present.",
+          "type": "object",
+          "properties": {
+            "old": {
+              "$ref": "#/definitions/ProfileInfo"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["old"]
+        }
+      ]
+    },
+    "NewOldOrBoth2": {
+      "description": "Either the new, old or both values are present",
+      "anyOf": [
+        {
+          "description": "Both the new and old values are present.",
+          "type": "object",
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/Metric"
+            },
+            "old": {
+              "$ref": "#/definitions/Metric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["new", "old"]
+        },
+        {
+          "description": "Only the new value is present.",
+          "type": "object",
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/Metric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["new"]
+        },
+        {
+          "description": "Only the old value is present.",
+          "type": "object",
+          "properties": {
+            "old": {
+              "$ref": "#/definitions/Metric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["old"]
+        }
+      ]
+    },
+    "NewOldOrBoth3": {
+      "description": "Either the new, old or both values are present",
+      "anyOf": [
+        {
+          "description": "Both the new and old values are present.",
+          "type": "object",
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/AnnotatedMetric"
+            },
+            "old": {
+              "$ref": "#/definitions/AnnotatedMetric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["new", "old"]
+        },
+        {
+          "description": "Only the new value is present.",
+          "type": "object",
+          "properties": {
+            "new": {
+              "$ref": "#/definitions/AnnotatedMetric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["new"]
+        },
+        {
+          "description": "Only the old value is present.",
+          "type": "object",
+          "properties": {
+            "old": {
+              "$ref": "#/definitions/AnnotatedMetric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["old"]
+        }
+      ]
     },
     "Profile": {
       "description": "`Profile` data for one [`Tool`] recorded in a benchmark summary.",
@@ -486,7 +465,7 @@
           "description": "[`ProfileInfo`] like command, pid, ppid, thread number etc.",
           "allOf": [
             {
-              "$ref": "#/definitions/EitherOrBoth"
+              "$ref": "#/definitions/NewOldOrBoth"
             }
           ]
         },

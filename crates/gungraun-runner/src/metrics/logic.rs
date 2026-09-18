@@ -2400,7 +2400,7 @@ mod tests {
 
         assert_eq!(
             expected_value,
-            value.get("task-clock:u").unwrap()["values"]["Left"]["unit"],
+            value.get("task-clock:u").unwrap()["values"]["new"]["unit"],
         );
     }
 

@@ -185,9 +185,14 @@ pub struct BenchmarkSummary {
     pub benchmark_exe: PathBuf,
     /// The path to the file containing this benchmark
     pub benchmark_file: PathBuf,
-    /// More details describing this benchmark run
+    /// Details describing this benchmark run
+    ///
+    /// The format of the `description` is unstable and is not considered part of the api. As a
+    /// consequence, changes to the format of `description` don't require a schema version change.
+    /// Do not use the `description` as part of the identifier for a benchmark run. See the docs of
+    /// `id` for a better way to construct an unique identifier for a benchmark run.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<String>,
+    pub description: Option<String>,
     /// The name of the function under test
     pub function_name: String,
     /// The name of the `benchmark_group`
@@ -227,8 +232,9 @@ pub struct BenchmarkSummary {
     /// The version string of this format.
     ///
     /// This is not semver and only major version numbers are used. There might be text occurrences
-    /// of `v6` within this library documentation but v6 is stored as raw number `6` without the
-    /// `v` prefix. Only backwards incompatible changes cause an increase of the version
+    /// of `v6`, `v7`, ... within this library documentation but vX is stored as raw number (`6`,
+    /// `7`, ...) without the `v` prefix. Only backwards incompatible changes cause an increase of
+    /// the version.
     pub version: String,
 }
 
@@ -289,7 +295,7 @@ struct ProfileDataWire {
 pub struct ProfilePart {
     /// The [`ToolMetricResults`] containing the actual data
     #[cfg_attr(feature = "schema", schemars(schema_with = "metric_results_schema"))]
-    pub metrics_summary: ToolMetricResults,
+    pub metrics: ToolMetricResults,
     /// [`ToolRun`] with command, pid, ppid, thread number etc.
     #[serde(with = "crate::serde::either_or_both")]
     #[cfg_attr(
@@ -301,7 +307,7 @@ pub struct ProfilePart {
 
 #[derive(Deserialize)]
 struct ProfilePartWire {
-    metrics_summary: IndexMap<String, Value>,
+    metrics: IndexMap<String, Value>,
     #[serde(with = "crate::serde::either_or_both")]
     tool_run: EitherOrBoth<ToolRun>,
 }
@@ -310,17 +316,17 @@ struct ProfilePartWire {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileTotal {
-    /// The detected regressions if any
-    pub regressions: Vec<ToolRegression>,
     /// The [`ToolMetricResults`] of the tool containing the collected metric data
     #[cfg_attr(feature = "schema", schemars(schema_with = "metric_results_schema"))]
-    pub summary: ToolMetricResults,
+    pub metrics: ToolMetricResults,
+    /// The detected regressions if any
+    pub regressions: Vec<ToolRegression>,
 }
 
 #[derive(Deserialize)]
 struct ProfileTotalWire {
+    metrics: IndexMap<String, Value>,
     regressions: Vec<Value>,
-    summary: IndexMap<String, Value>,
 }
 
 #[derive(Deserialize)]
@@ -340,9 +346,9 @@ pub struct Profiles(pub Vec<Profile>);
 pub struct ToolRun {
     /// The executed command
     pub command: String,
-    /// More details for example from the logging output of the tool run
+    /// Logging or other terminal output of the tool run if present
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<String>,
+    pub output: Option<String>,
     /// The parent pid of this process if present
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_pid: Option<i32>,
@@ -374,15 +380,15 @@ impl TryFrom<ProfileWire> for Profile {
             .parts
             .into_iter()
             .map(|part| {
-                let metric_results = parse_metric_results(wire.tool, part.metrics_summary)?;
+                let metric_results = parse_metric_results(wire.tool, part.metrics)?;
                 Ok(ProfilePart {
                     tool_run: part.tool_run,
-                    metrics_summary: metric_results,
+                    metrics: metric_results,
                 })
             })
             .collect::<Result<Vec<_>, serde_json::Error>>()?;
 
-        let total = parse_metric_results(wire.tool, wire.data.total.summary)?;
+        let total = parse_metric_results(wire.tool, wire.data.total.metrics)?;
         let regressions = parse_typed_values(wire.data.total.regressions);
 
         Ok(Self {
@@ -390,7 +396,7 @@ impl TryFrom<ProfileWire> for Profile {
                 parts,
                 total: ProfileTotal {
                     regressions,
-                    summary: total,
+                    metrics: total,
                 },
             },
             tool: wire.tool,
@@ -506,7 +512,7 @@ mod tests {
             "baselines": [null, null],
             "benchmark_exe": "benchmark",
             "benchmark_file": "benches/benchmark.rs",
-            "details": null,
+            "description": null,
             "function_name": "benchmark",
             "group": "group",
             "id": null,
@@ -528,14 +534,14 @@ mod tests {
                     "tool_run": {
                         "new": {
                             "command": "benchmark",
-                            "details": null,
+                            "output": null,
                             "parent_pid": null,
                             "part": 0,
                             "pid": 42,
                             "thread": null
                         }
                     },
-                    "metrics_summary": {
+                    "metrics": {
                         metric: {
                             "change": null,
                             "values": { "new": 100 }
@@ -544,7 +550,7 @@ mod tests {
                 }],
                 "total": {
                     "regressions": [],
-                    "summary": {}
+                    "metrics": {}
                 }
             },
             "tool": tool
@@ -578,10 +584,10 @@ mod tests {
         let serialized = serde_json::to_value(profile).unwrap();
 
         assert_eq!(
-            serialized["data"]["parts"][0]["metrics_summary"]["Ir"]["values"]["new"],
+            serialized["data"]["parts"][0]["metrics"]["Ir"]["values"]["new"],
             100
         );
-        assert!(serialized["data"]["parts"][0]["metrics_summary"]["Callgrind"].is_null());
+        assert!(serialized["data"]["parts"][0]["metrics"]["Callgrind"].is_null());
     }
 
     #[test]
@@ -619,14 +625,14 @@ mod tests {
                 "limit": "10"
             }
         }]);
-        input["data"]["total"]["summary"] = input["data"]["parts"][0]["metrics_summary"].clone();
+        input["data"]["total"]["metrics"] = input["data"]["parts"][0]["metrics"].clone();
 
         let profile: Profile = serde_json::from_value(input).unwrap();
         let serialized = serde_json::to_value(profile).unwrap();
 
-        assert_eq!(serialized["data"]["parts"][0]["metrics_summary"], json!({}));
+        assert_eq!(serialized["data"]["parts"][0]["metrics"], json!({}));
         assert_eq!(serialized["data"]["total"]["regressions"], json!([]));
-        assert_eq!(serialized["data"]["total"]["summary"], json!({}));
+        assert_eq!(serialized["data"]["total"]["metrics"], json!({}));
     }
 
     #[test]

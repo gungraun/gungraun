@@ -427,11 +427,11 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
                     .data
                     .parts
                     .iter()
-                    .flat_map(|p| regression_config.check(&p.metrics_summary))
+                    .flat_map(|p| regression_config.check(&p.metrics))
                     .collect();
             } else {
                 profile.data.total.regressions =
-                    regression_config.check(&profile.data.total.summary);
+                    regression_config.check(&profile.data.total.metrics);
             }
 
             self.generate_flamegraphs(config, header, output_path, flamegraph_config, entry_point)?;

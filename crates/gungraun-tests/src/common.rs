@@ -32,8 +32,8 @@ impl Summary {
                 .data
                 .parts
                 .iter()
-                .map(|s| &s.metrics_summary)
-                .chain(std::iter::once(&profile.data.total.summary))
+                .map(|s| &s.metrics)
+                .chain(std::iter::once(&profile.data.total.metrics))
             {
                 match summary {
                     ToolMetricResults::Dhat(metric_results) => {

@@ -26,8 +26,8 @@
       "description": "The path to the file containing this benchmark",
       "type": "string"
     },
-    "details": {
-      "description": "More details describing this benchmark run",
+    "description": {
+      "description": "Details describing this benchmark run\n\nThe format of the `description` is unstable and is not considered part of the api. As a\nconsequence, changes to the format of `description` don't require a schema version change.\nDo not use the `description` as part of the identifier for a benchmark run. See the docs of\n`id` for a better way to construct an unique identifier for a benchmark run.",
       "type": ["string", "null"]
     },
     "function_name": {
@@ -75,7 +75,7 @@
       "type": "string"
     },
     "version": {
-      "description": "The version string of this format.\n\nThis is not semver and only major version numbers are used. There might be text occurrences\nof `v6` within this library documentation but v6 is stored as raw number `6` without the\n`v` prefix. Only backwards incompatible changes cause an increase of the version",
+      "description": "The version string of this format.\n\nThis is not semver and only major version numbers are used. There might be text occurrences\nof `v6`, `v7`, ... within this library documentation but vX is stored as raw number (`6`,\n`7`, ...) without the `v` prefix. Only backwards incompatible changes cause an increase of\nthe version.",
       "type": "string"
     }
   },
@@ -424,7 +424,7 @@
       "description": "A single part of a tool run with the collected metric data\n\nA tool run can produce multiple parts, for example one per process when child tracing is\nenabled.",
       "type": "object",
       "properties": {
-        "metrics_summary": {
+        "metrics": {
           "description": "The [`ToolMetricResults`] containing the actual data",
           "type": "object",
           "additionalProperties": {
@@ -447,20 +447,13 @@
           ]
         }
       },
-      "required": ["metrics_summary", "tool_run"]
+      "required": ["metrics", "tool_run"]
     },
     "ProfileTotal": {
       "description": "Aggregated metrics, differences and regressions over all parts of a tool run.",
       "type": "object",
       "properties": {
-        "regressions": {
-          "description": "The detected regressions if any",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ToolRegression"
-          }
-        },
-        "summary": {
+        "metrics": {
           "description": "The [`ToolMetricResults`] of the tool containing the collected metric data",
           "type": "object",
           "additionalProperties": {
@@ -473,9 +466,16 @@
               }
             ]
           }
+        },
+        "regressions": {
+          "description": "The detected regressions if any",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ToolRegression"
+          }
         }
       },
-      "required": ["regressions", "summary"]
+      "required": ["metrics", "regressions"]
     },
     "Profiles": {
       "description": "Contains all [`Profile`]s with the data for each [`Tool`] run",
@@ -619,8 +619,8 @@
           "description": "The executed command",
           "type": "string"
         },
-        "details": {
-          "description": "More details for example from the logging output of the tool run",
+        "output": {
+          "description": "Logging or other terminal output of the tool run if present",
           "type": ["string", "null"]
         },
         "parent_pid": {

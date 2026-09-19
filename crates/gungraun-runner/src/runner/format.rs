@@ -105,8 +105,8 @@ pub struct BinaryBenchmarkHeader(Header);
 /// The header of the comparison between two different benchmarks
 #[derive(Debug)]
 pub struct ComparisonHeader {
-    /// The details to print in addition or instead of the metrics
-    pub details: Option<String>,
+    /// The description to print in addition or instead of the metrics
+    pub description: Option<String>,
     /// The function name of the other benchmark
     pub function_name: String,
     /// The id of the other benchmark.
@@ -234,7 +234,7 @@ pub trait Formatter {
         &mut self,
         function_name: &str,
         id: &str,
-        details: Option<&str>,
+        description: Option<&str>,
         tool_metric_results: Vec<(Tool, ToolMetricResults)>,
         perf_config: Option<&PerfOutputConfig>,
     );
@@ -305,7 +305,7 @@ impl ComparisonHeader {
     pub fn new<T, U, V>(
         function_name: T,
         id: U,
-        details: Option<V>,
+        description: Option<V>,
         output_format: &OutputFormat,
     ) -> Self
     where
@@ -316,7 +316,7 @@ impl ComparisonHeader {
         Self {
             function_name: function_name.into(),
             id: id.into(),
-            details: details.map(Into::into),
+            description: description.map(Into::into),
             indent: if output_format.show_grid {
                 "|-".bright_black().to_string()
             } else {
@@ -342,8 +342,8 @@ impl Display for ComparisonHeader {
             self.id.cyan()
         )?;
 
-        if let Some(details) = &self.details {
-            write!(f, ":{}", details.blue().bold())?;
+        if let Some(description) = &self.description {
+            write!(f, ":{}", description.blue().bold())?;
         }
 
         Ok(())
@@ -1208,12 +1208,12 @@ impl VerticalFormatter {
         }
     }
 
-    fn format_details(&mut self, details: &str) {
-        let mut details = details.lines();
-        if let Some(head_line) = details.next() {
+    fn format_output(&mut self, output: &str) {
+        let mut lines = output.lines();
+        if let Some(head_line) = lines.next() {
             self.write_indent(&IndentKind::Normal);
             writeln!(self, "{:<FIELD_WIDTH$}{}", "Details:", head_line).unwrap();
-            for body_line in details {
+            for body_line in lines {
                 if body_line.is_empty() {
                     self.write_empty_line();
                 } else {
@@ -1252,18 +1252,18 @@ impl VerticalFormatter {
         writeln!(self, "{} {}", "##".yellow(), "Total".bold()).unwrap();
     }
 
-    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<ToolRun>) {
-        fn fields(detail: &ToolRun) -> String {
+    fn format_multiple_segment_header(&mut self, tool_run: &EitherOrBoth<ToolRun>) {
+        fn fields(tool_run: &ToolRun) -> String {
             let mut result = String::new();
-            write!(result, "pid: {}", detail.pid).unwrap();
+            write!(result, "pid: {}", tool_run.pid).unwrap();
 
-            if let Some(ppid) = detail.parent_pid {
+            if let Some(ppid) = tool_run.parent_pid {
                 write!(result, " ppid: {ppid}").unwrap();
             }
-            if let Some(thread) = detail.thread {
+            if let Some(thread) = tool_run.thread {
                 write!(result, " thread: {thread}").unwrap();
             }
-            if let Some(part) = detail.part {
+            if let Some(part) = tool_run.part {
                 write!(result, " part: {part}").unwrap();
             }
 
@@ -1274,7 +1274,7 @@ impl VerticalFormatter {
         write!(self, "{} ", "##".yellow()).unwrap();
 
         let max_left = LEFT_WIDTH - 3;
-        match details.as_ref().bimap(
+        match tool_run.as_ref().bimap(
             |new| {
                 let left = fields(new);
                 let len = left.len();
@@ -1390,9 +1390,9 @@ impl VerticalFormatter {
                         .is_some_and(|l| *l > Metric::Int(0))
                 })
             && let Some(new) = tool_run.as_ref().left()
-            && let Some(details) = new.details.as_ref()
+            && let Some(output) = new.output.as_ref()
         {
-            self.format_details(details);
+            self.format_output(output);
         }
     }
 }
@@ -1426,9 +1426,9 @@ impl Formatter for VerticalFormatter {
             ToolMetricResults::None => {
                 if let Some(tool_run) = tool_run
                     && let Some(new) = tool_run.as_ref().left()
-                    && let Some(details) = &new.details
+                    && let Some(output) = &new.output
                 {
-                    self.format_details(details);
+                    self.format_output(output);
                 }
             }
             ToolMetricResults::Memcheck(results) => {
@@ -1509,7 +1509,7 @@ impl Formatter for VerticalFormatter {
                     self.format_single(
                         baselines,
                         Some(&part.tool_run),
-                        &part.metrics_summary,
+                        &part.metrics,
                         is_default_tool,
                         perf_config,
                     );
@@ -1518,7 +1518,7 @@ impl Formatter for VerticalFormatter {
                     self.format_single(
                         &(None, None),
                         Some(&part.tool_run),
-                        &part.metrics_summary,
+                        &part.metrics,
                         is_default_tool,
                         perf_config,
                     );
@@ -1530,7 +1530,7 @@ impl Formatter for VerticalFormatter {
                 self.format_single(
                     &(None, None),
                     None,
-                    &data.total.summary,
+                    &data.total.metrics,
                     is_default_tool,
                     perf_config,
                 );
@@ -1539,7 +1539,7 @@ impl Formatter for VerticalFormatter {
             self.format_single(
                 baselines,
                 None,
-                &data.total.summary,
+                &data.total.metrics,
                 is_default_tool,
                 perf_config,
             );
@@ -1547,7 +1547,7 @@ impl Formatter for VerticalFormatter {
             self.format_single(
                 baselines,
                 None,
-                &data.parts[0].metrics_summary,
+                &data.parts[0].metrics,
                 is_default_tool,
                 perf_config,
             );
@@ -1559,9 +1559,9 @@ impl Formatter for VerticalFormatter {
                 self.format_command(config, &part.tool_run.as_ref().map(|i| &i.command));
 
                 if let Some(new) = part.tool_run.as_ref().left()
-                    && let Some(details) = &new.details
+                    && let Some(output) = &new.output
                 {
-                    self.format_details(details);
+                    self.format_output(output);
                 }
             }
         } else {
@@ -1573,12 +1573,12 @@ impl Formatter for VerticalFormatter {
         &mut self,
         function_name: &str,
         id: &str,
-        details: Option<&str>,
+        description: Option<&str>,
         tool_metric_results: Vec<(Tool, ToolMetricResults)>,
         perf_config: Option<&PerfOutputConfig>,
     ) {
         if self.output_format.is_default() {
-            ComparisonHeader::new(function_name, id, details, &self.output_format).print();
+            ComparisonHeader::new(function_name, id, description, &self.output_format).print();
 
             let is_multiple = tool_metric_results.len() > 1;
             for (tool, results) in tool_metric_results

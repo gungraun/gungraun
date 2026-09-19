@@ -20,8 +20,7 @@ fn assert_default() {
             .iter()
             .find(|p| p.tool == Tool::Callgrind)
             .unwrap();
-        let ToolMetricResults::Callgrind(metric_results) =
-            &callgrind_profile.data.parts[0].metrics_summary
+        let ToolMetricResults::Callgrind(metric_results) = &callgrind_profile.data.parts[0].metrics
         else {
             panic!();
         };
@@ -64,8 +63,7 @@ fn assert_nested() {
             .iter()
             .find(|p| p.tool == Tool::Callgrind)
             .unwrap();
-        let ToolMetricResults::Callgrind(metric_results) =
-            &callgrind_profile.data.parts[0].metrics_summary
+        let ToolMetricResults::Callgrind(metric_results) = &callgrind_profile.data.parts[0].metrics
         else {
             panic!();
         };
@@ -112,7 +110,7 @@ fn assert_none() {
                 .find(|p| p.tool == Tool::Callgrind)
                 .unwrap();
             let ToolMetricResults::Callgrind(metric_results) =
-                &callgrind_profile.data.parts[0].metrics_summary
+                &callgrind_profile.data.parts[0].metrics
             else {
                 panic!();
             };

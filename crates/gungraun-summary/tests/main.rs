@@ -174,7 +174,7 @@ fn test_v7_either_or_both_fields_use_new_and_old_objects() {
     let schema: Value = serde_json::from_str(include_str!("../schemas/summary.v7.schema.json"))
         .expect("The loaded schema should be valid json");
 
-    for (definition, field) in [("MetricResult", "values"), ("ProfilePart", "details")] {
+    for (definition, field) in [("MetricResult", "values"), ("ProfilePart", "tool_run")] {
         let proxy = schema["definitions"][definition]["properties"][field]["allOf"][0]["$ref"]
             .as_str()
             .expect("the field should reference its semantic EitherOrBoth schema")
@@ -206,12 +206,7 @@ fn test_v7_metric_summaries_are_open_maps() {
         .expect("The loaded schema should be valid json");
 
     for definition in ["ProfilePart", "ProfileTotal"] {
-        let field = if definition == "ProfilePart" {
-            "metrics_summary"
-        } else {
-            "summary"
-        };
-        let metric_summary = &schema["definitions"][definition]["properties"][field];
+        let metric_summary = &schema["definitions"][definition]["properties"]["metrics"];
         let variants = metric_summary["additionalProperties"]["anyOf"]
             .as_array()
             .expect("metric summaries should allow either supported metric-diff value shape");

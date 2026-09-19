@@ -1,6 +1,6 @@
 //! Metric value and comparison types
 //!
-//! These types describe metric values, per-metric diffs, and grouped metric summaries.
+//! These types describe metric values, per-metric changes, and grouped metric summaries.
 //!
 //! The model contains the non-derive implementations of [`PartialEq`], [`Eq`] for [`Metric`] and
 //! not the [`metrics::logic`][super::logic].
@@ -15,7 +15,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric};
-use crate::summary::model::Diffs;
+use crate::summary::model::MetricChange;
 use crate::units::Unit;
 
 /// The value type used for metrics measured by a benchmark tool
@@ -122,17 +122,17 @@ pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
 
 /// Comparison data for one metric in a parsed summary.
 ///
-/// If both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.
-/// Otherwise the summary only stores whichever side is available. Per convention, the left side or
-/// [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]
-/// stores the old metric.
+/// If both, old and new values, are present, [`MetricChange`] stores the derived percentage and
+/// factor. Otherwise the summary only stores whichever side is available. Per convention, the left
+/// side or [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or
+/// [`EitherOrBoth::Right`] stores the old metric.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(bound(serialize = "V: Serialize", deserialize = "V: Deserialize<'de>"))]
 pub struct MetricsDiff<V = Metric> {
-    /// If both values are present there is also a `diffs` present
+    /// If both values are present there is also a `change` present
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub diffs: Option<Diffs>,
+    pub change: Option<MetricChange>,
     /// Either the `new`, `old` or both values
     #[serde(with = "crate::serde::either_or_both")]
     #[cfg_attr(
@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn test_metrics_diff_serializes_values_as_new_and_old() {
         let metrics_diff = MetricsDiff {
-            diffs: None,
+            change: None,
             values: EitherOrBoth::Both(Metric::Int(2), Metric::Int(1)),
         };
 

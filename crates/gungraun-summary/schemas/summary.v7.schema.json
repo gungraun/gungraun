@@ -162,21 +162,6 @@
         }
       ]
     },
-    "Diffs": {
-      "description": "Percentage and factor differences derived from two compared metric values.",
-      "type": "object",
-      "properties": {
-        "diff_pct": {
-          "description": "The percentage of the difference between two `Metrics` serialized as string to preserve\ninfinity values and avoid `null` in json",
-          "type": "string"
-        },
-        "factor": {
-          "description": "The factor of the difference between two `Metrics` serialized as string to preserve\ninfinity values and avoid `null` in json",
-          "type": "string"
-        }
-      },
-      "required": ["diff_pct", "factor"]
-    },
     "Metric": {
       "description": "The value type used for metrics measured by a benchmark tool\n\nRaw metrics emitted by Valgrind tools are [`Metric::Int`] which is the default metric type.\nMetrics that have [`Metric::Float`] type are documented as such. Derived values, such as miss\nrates and hit rates, require floating-point representation. `Metric` preserves both forms in the\nparsed summary model.\n\n# Developer Notes\n\nFloat operations with a `Metric` that stores a `u64` introduce a precision loss and are to be\navoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the\n`u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result\nin an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision\nand the original type (instead of for example adding the two `u64` by converting both of them to\n`f64`).",
       "anyOf": [
@@ -193,6 +178,21 @@
         }
       ]
     },
+    "MetricChange": {
+      "description": "Percentage and factor differences derived from two compared metric values.",
+      "type": "object",
+      "properties": {
+        "diff_pct": {
+          "description": "The percentage of the difference between two `Metrics` serialized as string to preserve\ninfinity values and avoid `null` in json",
+          "type": "string"
+        },
+        "factor": {
+          "description": "The factor of the difference between two `Metrics` serialized as string to preserve\ninfinity values and avoid `null` in json",
+          "type": "string"
+        }
+      },
+      "required": ["diff_pct", "factor"]
+    },
     "MetricKind": {
       "anyOf": [
         {
@@ -205,14 +205,14 @@
       ]
     },
     "MetricsDiff": {
-      "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.\nOtherwise the summary only stores whichever side is available. Per convention, the left side or\n[`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]\nstores the old metric.",
+      "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`MetricChange`] stores the derived percentage and\nfactor. Otherwise the summary only stores whichever side is available. Per convention, the left\nside or [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or\n[`EitherOrBoth::Right`] stores the old metric.",
       "type": "object",
       "properties": {
-        "diffs": {
-          "description": "If both values are present there is also a `diffs` present",
+        "change": {
+          "description": "If both values are present there is also a `change` present",
           "anyOf": [
             {
-              "$ref": "#/definitions/Diffs"
+              "$ref": "#/definitions/MetricChange"
             },
             {
               "type": "null"
@@ -231,14 +231,14 @@
       "required": ["values"]
     },
     "MetricsDiff2": {
-      "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.\nOtherwise the summary only stores whichever side is available. Per convention, the left side or\n[`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]\nstores the old metric.",
+      "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`MetricChange`] stores the derived percentage and\nfactor. Otherwise the summary only stores whichever side is available. Per convention, the left\nside or [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or\n[`EitherOrBoth::Right`] stores the old metric.",
       "type": "object",
       "properties": {
-        "diffs": {
-          "description": "If both values are present there is also a `diffs` present",
+        "change": {
+          "description": "If both values are present there is also a `change` present",
           "anyOf": [
             {
-              "$ref": "#/definitions/Diffs"
+              "$ref": "#/definitions/MetricChange"
             },
             {
               "type": "null"

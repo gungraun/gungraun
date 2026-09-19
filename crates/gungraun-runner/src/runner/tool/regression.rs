@@ -69,9 +69,9 @@ where
             self.get_soft_limits().iter().filter_map(|(kind, limit)| {
                 metrics_summary.diff_by_kind(kind).and_then(|d| {
                     if let EitherOrBoth::Both(new, old) = d.values.as_ref() {
-                        // This unwrap is safe since the diffs are calculated if both costs are
+                        // This unwrap is safe since the `change` is calculated if both costs are
                         // present
-                        Some((kind, new, old, d.diffs.unwrap().diff_pct, limit))
+                        Some((kind, new, old, d.change.unwrap().diff_pct, limit))
                     } else {
                         None
                     }

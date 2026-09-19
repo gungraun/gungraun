@@ -107,8 +107,8 @@ impl PerfRegressionConfig {
                     // new and old have the same unit, so it doesn't matter which one we pick
                     let result_unit = new.unit.as_ref();
                     let pct = metrics_diff
-                        .diffs
-                        .expect("diffs should exist when both metrics are present")
+                        .change
+                        .expect("a change should exist when both metrics are present")
                         .diff_pct;
 
                     Some((

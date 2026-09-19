@@ -1,6 +1,6 @@
 //! Custom `serde` serializer and deserializer implementations
 
-/// Serializes and deserializes [`either_or_both::EitherOrBoth`] as an object whose keys describe
+/// Serializes and deserializes [`::either_or_both::EitherOrBoth`] as an object whose keys describe
 /// whether a value is new, old, or both.
 pub mod either_or_both {
     use std::fmt;

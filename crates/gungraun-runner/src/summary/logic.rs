@@ -25,7 +25,7 @@ use crate::runner::format::{
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
 use crate::summary::model::{
-    BenchmarkKind, BenchmarkSummary, Diffs, Profile, ProfileData, ProfileInfo, ProfilePart,
+    BenchmarkKind, BenchmarkSummary, MetricChange, Profile, ProfileData, ProfileInfo, ProfilePart,
     ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricSummary, ToolRegression,
 };
 use crate::summary::output::{SummaryFormat, SummaryOutput};
@@ -253,9 +253,9 @@ impl BenchmarkSummary {
     }
 }
 
-impl Diffs {
-    /// Creates a new `Diffs` calculating the percentage and factor from the `new` and `old`
-    /// metrics.
+impl MetricChange {
+    /// Creates a new `MetricChange` calculating the percentage and factor from the `new` and `old`
+    /// [`Metric`].
     pub fn new(new: Metric, old: Metric) -> Self {
         Self {
             diff_pct: percentage_diff(new, old),
@@ -616,7 +616,7 @@ impl IntoIterator for Profiles {
 }
 
 impl ToolMetricSummary {
-    /// Returns `true` if this summary is a typed variant with no metric diffs present.
+    /// Returns `true` if this summary is a typed variant with no metric change present.
     ///
     /// `ToolMetricSummary::None` is not considered empty and returns `false`.
     pub fn is_empty(&self) -> bool {

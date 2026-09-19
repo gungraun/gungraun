@@ -13,7 +13,7 @@ pub use gungraun_runner::metrics::model::{
     AnnotatedMetric, Metric, MetricKind, MetricsDiff, MetricsSummary, PerfQualities,
 };
 pub use gungraun_runner::summary::model::{
-    BenchmarkKind, BenchmarkSummary, Diffs, Profile, ProfileData, ProfileInfo, ProfilePart,
+    BenchmarkKind, BenchmarkSummary, MetricChange, Profile, ProfileData, ProfileInfo, ProfilePart,
     ProfileTotal, Profiles, ToolMetricSummary, ToolRegression,
 };
 

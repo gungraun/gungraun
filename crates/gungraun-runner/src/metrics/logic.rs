@@ -17,7 +17,7 @@ use crate::api::{Limit, PerfMetric};
 use crate::metrics::model::{
     AnnotatedMetric, Metric, MetricKind, Metrics, MetricsDiff, MetricsSummary, PerfQualities,
 };
-use crate::summary::model::Diffs;
+use crate::summary::model::MetricChange;
 use crate::units::Unit;
 use crate::util::{Union, to_string_unsigned_short};
 
@@ -26,7 +26,7 @@ pub trait MetricValue: Clone {
     /// Adds two metric values.
     #[must_use]
     fn add(&self, other: &Self) -> Self;
-    /// Returns the numeric metric used for ordering and diffs.
+    /// Returns the numeric metric used for ordering and changes.
     #[must_use]
     fn metric(&self) -> Metric;
     /// Returns this value normalized into its canonical representation.
@@ -1010,22 +1010,22 @@ where
     pub fn new(values: EitherOrBoth<V>) -> Self {
         if let EitherOrBoth::Both(new, old) = &values {
             if let Some((normalized_new, normalized_old)) = new.normalize_with(old) {
-                let diffs = Diffs::new(normalized_new.metric(), normalized_old.metric());
+                let change = MetricChange::new(normalized_new.metric(), normalized_old.metric());
                 Self {
-                    diffs: Some(diffs),
+                    change: Some(change),
                     values: EitherOrBoth::Both(normalized_new, normalized_old),
                 }
             } else {
-                // Can't create diffs for metrics with different units or scales
+                // Can't create change for metrics with different units or scales
                 Self {
-                    diffs: None,
+                    change: None,
                     values: values.map(|m| m.normalize()),
                 }
             }
         } else {
             Self {
                 values: values.map(|m| m.normalize()),
-                diffs: None,
+                change: None,
             }
         }
     }
@@ -1298,15 +1298,15 @@ mod tests {
         )
     }
 
-    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, diffs: D) -> MetricsDiff
+    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, change: D) -> MetricsDiff
     where
         D: Into<Option<(f64, f64)>>,
     {
         MetricsDiff {
             values: metrics,
-            diffs: diffs
+            change: change
                 .into()
-                .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
+                .map(|(diff_pct, factor)| MetricChange { diff_pct, factor }),
         }
     }
 
@@ -1817,7 +1817,7 @@ mod tests {
         ));
 
         let expected = MetricsDiff {
-            diffs: Some(Diffs {
+            change: Some(MetricChange {
                 diff_pct: 0.0,
                 factor: 1.0,
             }),

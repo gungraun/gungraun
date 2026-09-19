@@ -26,7 +26,9 @@ use crate::metrics::model::{
     AnnotatedMetric, Metric, MetricKind, MetricsDiff, MetricsSummary, PerfQualities,
 };
 use crate::stats::runner::DiffStats;
-use crate::summary::model::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
+use crate::summary::model::{
+    MetricChange, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression,
+};
 use crate::units::Unit;
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
@@ -908,8 +910,12 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_metric<V>(&mut self, field: &str, metrics: &EitherOrBoth<&V>, diffs: Option<Diffs>)
-    where
+    fn write_metric<V>(
+        &mut self,
+        field: &str,
+        metrics: &EitherOrBoth<&V>,
+        change: Option<MetricChange>,
+    ) where
         V: MetricValue + PartialEq,
     {
         match metrics {
@@ -956,8 +962,8 @@ impl VerticalFormatter {
             }
             EitherOrBoth::Both(new, old)
                 if self.output_format.tolerance.is_some_and(|tolerance| {
-                    diffs
-                        .map(|diffs| diffs.diff_pct)
+                    change
+                        .map(|change| change.diff_pct)
                         .expect("A difference should be present")
                         .abs()
                         <= tolerance.abs()
@@ -976,7 +982,7 @@ impl VerticalFormatter {
                     merge_units(new.unit(), old.unit()).as_deref(),
                 );
             }
-            EitherOrBoth::Both(new, old) if diffs.is_none() => {
+            EitherOrBoth::Both(new, old) if change.is_none() => {
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
                     old.to_string_without_unit(),
@@ -991,9 +997,9 @@ impl VerticalFormatter {
                 );
             }
             EitherOrBoth::Both(new, old) => {
-                let diffs = diffs.expect("checked that diffs are present");
-                let pct_string = format_float(diffs.diff_pct, '%');
-                let factor_string = format_float(diffs.factor, 'x');
+                let change = change.expect("a change should be present");
+                let pct_string = format_float(change.diff_pct, '%');
+                let factor_string = format_float(change.factor, 'x');
 
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({pct_string:^DIFF_WIDTH$}) [{factor_string:^DIFF_WIDTH$}]",
@@ -1014,10 +1020,10 @@ impl VerticalFormatter {
         &mut self,
         field: &str,
         metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
-        diffs: Option<Diffs>,
+        change: Option<MetricChange>,
         perf_config: &PerfOutputConfig,
     ) {
-        self.write_metric(field, &metrics, diffs);
+        self.write_metric(field, &metrics, change);
         // The second line is only printed if at least one rse is present
         self.write_perf_significance_line(metrics, perf_config);
         // The third line is only printed if at least one samples count is present
@@ -1141,12 +1147,12 @@ impl VerticalFormatter {
                 );
             }
             EitherOrBoth::Both(Some(new_n), Some(old_n)) => {
-                let diffs = Diffs::new(new_n.into(), old_n.into());
+                let change = MetricChange::new(new_n.into(), old_n.into());
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$}) [{:^DIFF_WIDTH$}]",
                     old_n.to_string().bright_black(),
-                    format!("{}%", to_string_signed_short(diffs.diff_pct)).bright_black(),
-                    format!("{}x", to_string_signed_short(diffs.factor)).bright_black()
+                    format!("{}%", to_string_signed_short(change.diff_pct)).bright_black(),
+                    format!("{}x", to_string_signed_short(change.factor)).bright_black()
                 );
 
                 self.write_field(
@@ -1224,7 +1230,7 @@ impl VerticalFormatter {
     {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
-            self.write_metric(&description, &diff.values.as_ref(), diff.diffs);
+            self.write_metric(&description, &diff.values.as_ref(), diff.change);
         }
     }
 
@@ -1237,7 +1243,7 @@ impl VerticalFormatter {
     {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
-            self.write_perf_metric(&description, diff.values.as_ref(), diff.diffs, perf_config);
+            self.write_perf_metric(&description, diff.values.as_ref(), diff.change, perf_config);
         }
     }
 

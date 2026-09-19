@@ -52,8 +52,8 @@ pub enum BenchmarkKind {
 /// # Examples
 ///
 /// This is the summary of a Callgrind run which had only [`EventKind::Ir`] (instruction counts)
-/// measurement activated. Since there is a [`Diffs`] present, there was an old run and a new run
-/// which were compared with each other. Per convention the new run is on the left side of an
+/// measurement activated. Since there is a [`MetricChange`] present, there was an old run and a new
+/// run which were compared with each other. Per convention the new run is on the left side of an
 /// [`EitherOrBoth::Both`] or [`EitherOrBoth::Left`] and the old run on the right side or a
 /// [`EitherOrBoth::Right`].
 ///
@@ -61,13 +61,13 @@ pub enum BenchmarkKind {
 /// use either_or_both::EitherOrBoth;
 /// use gungraun_runner::api::EventKind;
 /// use gungraun_runner::metrics::model::{Metric, MetricsDiff, MetricsSummary};
-/// use gungraun_runner::summary::model::{Diffs, ToolMetricSummary};
+/// use gungraun_runner::summary::model::{MetricChange, ToolMetricSummary};
 /// use indexmap::IndexMap;
 ///
 /// let callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(
 ///     EventKind::Ir,
 ///     MetricsDiff {
-///         diffs: Some(Diffs {
+///         change: Some(MetricChange {
 ///             diff_pct: -50.0,
 ///             factor: -2.0,
 ///         }),
@@ -235,7 +235,7 @@ pub struct BenchmarkSummary {
 /// Percentage and factor differences derived from two compared metric values.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct Diffs {
+pub struct MetricChange {
     /// The percentage of the difference between two `Metrics` serialized as string to preserve
     /// infinity values and avoid `null` in json
     #[serde(with = "crate::serde::float_64")]
@@ -535,7 +535,7 @@ mod tests {
                     },
                     "metrics_summary": {
                         metric: {
-                            "diffs": null,
+                            "change": null,
                             "values": { "new": 100 }
                         }
                     }

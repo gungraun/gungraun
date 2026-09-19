@@ -13,8 +13,8 @@ pub use gungraun_runner::metrics::model::{
     AnnotatedMetric, Metric, MetricKind, MetricResult, MetricResults, PerfQualities,
 };
 pub use gungraun_runner::summary::model::{
-    BenchmarkKind, BenchmarkSummary, MetricChange, Profile, ProfileData, ProfileInfo, ProfilePart,
-    ProfileTotal, Profiles, ToolMetricResults, ToolRegression,
+    BenchmarkKind, BenchmarkSummary, MetricChange, Profile, ProfileData, ProfilePart, ProfileTotal,
+    Profiles, ToolMetricResults, ToolRegression, ToolRun,
 };
 
 use crate::error::{Error, Result};

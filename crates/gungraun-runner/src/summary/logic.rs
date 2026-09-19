@@ -25,8 +25,8 @@ use crate::runner::format::{
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::regression::RegressionMetrics;
 use crate::summary::model::{
-    BenchmarkKind, BenchmarkSummary, MetricChange, Profile, ProfileData, ProfileInfo, ProfilePart,
-    ProfileTotal, Profiles, SCHEMA_VERSION, ToolMetricResults, ToolRegression,
+    BenchmarkKind, BenchmarkSummary, MetricChange, Profile, ProfileData, ProfilePart, ProfileTotal,
+    Profiles, SCHEMA_VERSION, ToolMetricResults, ToolRegression, ToolRun,
 };
 use crate::summary::output::{SummaryFormat, SummaryOutput};
 use crate::util::{factor_diff, make_absolute, make_relative, percentage_diff};
@@ -478,19 +478,6 @@ impl ProfileData {
     }
 }
 
-impl From<ParserOutput> for ProfileInfo {
-    fn from(value: ParserOutput) -> Self {
-        Self {
-            command: value.header.command,
-            pid: value.header.pid,
-            parent_pid: value.header.parent_pid,
-            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            part: value.header.part,
-            thread: value.header.thread,
-        }
-    }
-}
-
 impl ProfilePart {
     /// Returns `true` if an error checking valgrind tool (like `Memcheck`) has errors detected.
     pub fn new_has_errors(&self) -> bool {
@@ -512,7 +499,7 @@ impl ProfilePart {
     pub fn from_new(new: ParserOutput) -> Self {
         let metric_results = ToolMetricResults::from_new_metrics(&new.metrics);
         Self {
-            details: EitherOrBoth::Left(new.into()),
+            tool_run: EitherOrBoth::Left(new.into()),
             metrics_summary: metric_results,
         }
     }
@@ -521,7 +508,7 @@ impl ProfilePart {
     pub fn from_old(old: ParserOutput) -> Self {
         let metric_results = ToolMetricResults::from_old_metrics(&old.metrics);
         Self {
-            details: EitherOrBoth::Right(old.into()),
+            tool_run: EitherOrBoth::Right(old.into()),
             metrics_summary: metric_results,
         }
     }
@@ -537,7 +524,7 @@ impl ProfilePart {
             ToolMetricResults::try_from_new_and_old_metrics(&new.metrics, &old.metrics)
                 .expect("New and old metrics should have a matching kind");
         Self {
-            details: EitherOrBoth::Both(new.into(), old.into()),
+            tool_run: EitherOrBoth::Both(new.into(), old.into()),
             metrics_summary,
         }
     }
@@ -919,6 +906,19 @@ impl ToolRegression {
                 diff,
                 limit,
             },
+        }
+    }
+}
+
+impl From<ParserOutput> for ToolRun {
+    fn from(value: ParserOutput) -> Self {
+        Self {
+            command: value.header.command,
+            pid: value.header.pid,
+            parent_pid: value.header.parent_pid,
+            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
+            part: value.header.part,
+            thread: value.header.thread,
         }
     }
 }

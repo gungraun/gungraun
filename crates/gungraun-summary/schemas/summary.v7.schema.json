@@ -223,7 +223,7 @@
           "description": "Either the `new`, `old` or both values",
           "allOf": [
             {
-              "$ref": "#/definitions/NewOldOrBoth2"
+              "$ref": "#/definitions/NewOldOrBoth"
             }
           ]
         }
@@ -249,7 +249,7 @@
           "description": "Either the `new`, `old` or both values",
           "allOf": [
             {
-              "$ref": "#/definitions/NewOldOrBoth3"
+              "$ref": "#/definitions/NewOldOrBoth2"
             }
           ]
         }
@@ -264,10 +264,10 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/ProfileInfo"
+              "$ref": "#/definitions/Metric"
             },
             "old": {
-              "$ref": "#/definitions/ProfileInfo"
+              "$ref": "#/definitions/Metric"
             }
           },
           "additionalProperties": false,
@@ -278,7 +278,7 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/ProfileInfo"
+              "$ref": "#/definitions/Metric"
             }
           },
           "additionalProperties": false,
@@ -289,7 +289,7 @@
           "type": "object",
           "properties": {
             "old": {
-              "$ref": "#/definitions/ProfileInfo"
+              "$ref": "#/definitions/Metric"
             }
           },
           "additionalProperties": false,
@@ -305,10 +305,10 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/Metric"
+              "$ref": "#/definitions/AnnotatedMetric"
             },
             "old": {
-              "$ref": "#/definitions/Metric"
+              "$ref": "#/definitions/AnnotatedMetric"
             }
           },
           "additionalProperties": false,
@@ -319,7 +319,7 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/Metric"
+              "$ref": "#/definitions/AnnotatedMetric"
             }
           },
           "additionalProperties": false,
@@ -330,7 +330,7 @@
           "type": "object",
           "properties": {
             "old": {
-              "$ref": "#/definitions/Metric"
+              "$ref": "#/definitions/AnnotatedMetric"
             }
           },
           "additionalProperties": false,
@@ -346,10 +346,10 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/ToolRun"
             },
             "old": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/ToolRun"
             }
           },
           "additionalProperties": false,
@@ -360,7 +360,7 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/ToolRun"
             }
           },
           "additionalProperties": false,
@@ -371,7 +371,7 @@
           "type": "object",
           "properties": {
             "old": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/ToolRun"
             }
           },
           "additionalProperties": false,
@@ -420,55 +420,10 @@
       },
       "required": ["parts", "total"]
     },
-    "ProfileInfo": {
-      "description": "Metadata describing a single [`ProfilePart`] of a benchmark",
-      "type": "object",
-      "properties": {
-        "command": {
-          "description": "The executed command",
-          "type": "string"
-        },
-        "details": {
-          "description": "More details for example from the logging output of the tool run",
-          "type": ["string", "null"]
-        },
-        "parent_pid": {
-          "description": "The parent pid of this process if present",
-          "type": ["integer", "null"],
-          "format": "int32"
-        },
-        "part": {
-          "description": "The part number of this tool run if present (only Callgrind and Perf)",
-          "type": ["integer", "null"],
-          "format": "uint64",
-          "minimum": 0
-        },
-        "pid": {
-          "description": "The pid of the benchmark process",
-          "type": "integer",
-          "format": "int32"
-        },
-        "thread": {
-          "description": "The thread number of this tool run if present (only Callgrind)",
-          "type": ["integer", "null"],
-          "format": "uint",
-          "minimum": 0
-        }
-      },
-      "required": ["command", "pid"]
-    },
     "ProfilePart": {
       "description": "A single part of a tool run with the collected metric data\n\nA tool run can produce multiple parts, for example one per process when child tracing is\nenabled.",
       "type": "object",
       "properties": {
-        "details": {
-          "description": "[`ProfileInfo`] like command, pid, ppid, thread number etc.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/NewOldOrBoth"
-            }
-          ]
-        },
         "metrics_summary": {
           "description": "The [`ToolMetricResults`] containing the actual data",
           "type": "object",
@@ -482,9 +437,17 @@
               }
             ]
           }
+        },
+        "tool_run": {
+          "description": "[`ToolRun`] with command, pid, ppid, thread number etc.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NewOldOrBoth3"
+            }
+          ]
         }
       },
-      "required": ["details", "metrics_summary"]
+      "required": ["metrics_summary", "tool_run"]
     },
     "ProfileTotal": {
       "description": "Aggregated metrics, differences and regressions over all parts of a tool run.",
@@ -647,6 +610,43 @@
           "required": ["Hard"]
         }
       ]
+    },
+    "ToolRun": {
+      "description": "Metadata describing a single [`ProfilePart`] of a benchmark",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The executed command",
+          "type": "string"
+        },
+        "details": {
+          "description": "More details for example from the logging output of the tool run",
+          "type": ["string", "null"]
+        },
+        "parent_pid": {
+          "description": "The parent pid of this process if present",
+          "type": ["integer", "null"],
+          "format": "int32"
+        },
+        "part": {
+          "description": "The part number of this tool run if present (only Callgrind and Perf)",
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "pid": {
+          "description": "The pid of the benchmark process",
+          "type": "integer",
+          "format": "int32"
+        },
+        "thread": {
+          "description": "The thread number of this tool run if present (only Callgrind)",
+          "type": ["integer", "null"],
+          "format": "uint",
+          "minimum": 0
+        }
+      },
+      "required": ["command", "pid"]
     },
     "Unit": {
       "description": "A unit of measurement for benchmark metrics.\n\nSupports time, data size, frequency, and hardware-specific units. Can represent compound\n[`Self::Rate`]s and [`Self::Unknown`] units parsed from raw strings.",

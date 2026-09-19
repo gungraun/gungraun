@@ -27,7 +27,7 @@ use crate::metrics::model::{
 };
 use crate::stats::runner::DiffStats;
 use crate::summary::model::{
-    MetricChange, ProfileData, ProfileInfo, ToolMetricResults, ToolRegression,
+    MetricChange, ProfileData, ToolMetricResults, ToolRegression, ToolRun,
 };
 use crate::units::Unit;
 use crate::util::{
@@ -204,7 +204,7 @@ pub trait Formatter {
     fn format_single(
         &mut self,
         baselines: &Baselines,
-        info: Option<&EitherOrBoth<ProfileInfo>>,
+        tool_run: Option<&EitherOrBoth<ToolRun>>,
         metric_results: &ToolMetricResults,
         is_default_tool: bool,
         perf_config: Option<&PerfOutputConfig>,
@@ -1252,8 +1252,8 @@ impl VerticalFormatter {
         writeln!(self, "{} {}", "##".yellow(), "Total".bold()).unwrap();
     }
 
-    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<ProfileInfo>) {
-        fn fields(detail: &ProfileInfo) -> String {
+    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<ToolRun>) {
+        fn fields(detail: &ToolRun) -> String {
             let mut result = String::new();
             write!(result, "pid: {}", detail.pid).unwrap();
 
@@ -1370,7 +1370,7 @@ impl VerticalFormatter {
         &mut self,
         results: &MetricResults<ErrorMetric>,
         output_format: &IndexSet<ErrorMetric>,
-        info: Option<&EitherOrBoth<ProfileInfo>>,
+        tool_run: Option<&EitherOrBoth<ToolRun>>,
     ) {
         self.format_metrics(
             output_format
@@ -1380,7 +1380,7 @@ impl VerticalFormatter {
         );
 
         // We only check for `new` errors
-        if let Some(info) = info
+        if let Some(tool_run) = tool_run
             && results
                 .result_by_kind(&ErrorMetric::Errors)
                 .is_some_and(|e| {
@@ -1389,7 +1389,7 @@ impl VerticalFormatter {
                         .left()
                         .is_some_and(|l| *l > Metric::Int(0))
                 })
-            && let Some(new) = info.as_ref().left()
+            && let Some(new) = tool_run.as_ref().left()
             && let Some(details) = new.details.as_ref()
         {
             self.format_details(details);
@@ -1407,7 +1407,7 @@ impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
         baselines: &Baselines,
-        info: Option<&EitherOrBoth<ProfileInfo>>,
+        tool_run: Option<&EitherOrBoth<ToolRun>>,
         metric_results: &ToolMetricResults,
         is_default_tool: bool,
         perf_config: Option<&PerfOutputConfig>,
@@ -1424,8 +1424,8 @@ impl Formatter for VerticalFormatter {
 
         match metric_results {
             ToolMetricResults::None => {
-                if let Some(info) = info
-                    && let Some(new) = info.as_ref().left()
+                if let Some(tool_run) = tool_run
+                    && let Some(new) = tool_run.as_ref().left()
                     && let Some(details) = &new.details
                 {
                     self.format_details(details);
@@ -1433,15 +1433,15 @@ impl Formatter for VerticalFormatter {
             }
             ToolMetricResults::Memcheck(results) => {
                 let format = self.output_format.memcheck.clone();
-                self.format_single_error_metric(results, &format, info);
+                self.format_single_error_metric(results, &format, tool_run);
             }
             ToolMetricResults::Helgrind(results) => {
                 let format = self.output_format.helgrind.clone();
-                self.format_single_error_metric(results, &format, info);
+                self.format_single_error_metric(results, &format, tool_run);
             }
             ToolMetricResults::DRD(results) => {
                 let format = self.output_format.drd.clone();
-                self.format_single_error_metric(results, &format, info);
+                self.format_single_error_metric(results, &format, tool_run);
             }
             ToolMetricResults::Dhat(results) => self.format_metrics(
                 self.output_format
@@ -1500,15 +1500,15 @@ impl Formatter for VerticalFormatter {
         {
             let mut first = true;
             for part in &data.parts {
-                self.format_multiple_segment_header(&part.details);
+                self.format_multiple_segment_header(&part.tool_run);
                 if tool != Tool::Perf {
-                    self.format_command(config, &part.details.as_ref().map(|i| &i.command));
+                    self.format_command(config, &part.tool_run.as_ref().map(|i| &i.command));
                 }
 
                 if first {
                     self.format_single(
                         baselines,
-                        Some(&part.details),
+                        Some(&part.tool_run),
                         &part.metrics_summary,
                         is_default_tool,
                         perf_config,
@@ -1517,7 +1517,7 @@ impl Formatter for VerticalFormatter {
                 } else {
                     self.format_single(
                         &(None, None),
-                        Some(&part.details),
+                        Some(&part.tool_run),
                         &part.metrics_summary,
                         is_default_tool,
                         perf_config,
@@ -1556,9 +1556,9 @@ impl Formatter for VerticalFormatter {
             // bit more aggregated form without the multiple files headlines. This affects currently
             // the output of `Massif`, `BBV` and `perf`.
             for part in &data.parts {
-                self.format_command(config, &part.details.as_ref().map(|i| &i.command));
+                self.format_command(config, &part.tool_run.as_ref().map(|i| &i.command));
 
-                if let Some(new) = part.details.as_ref().left()
+                if let Some(new) = part.tool_run.as_ref().left()
                     && let Some(details) = &new.details
                 {
                     self.format_details(details);

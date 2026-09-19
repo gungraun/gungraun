@@ -278,28 +278,6 @@ struct ProfileDataWire {
     total: ProfileTotalWire,
 }
 
-/// Metadata describing a single [`ProfilePart`] of a benchmark
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct ProfileInfo {
-    /// The executed command
-    pub command: String,
-    /// More details for example from the logging output of the tool run
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<String>,
-    /// The parent pid of this process if present
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_pid: Option<i32>,
-    /// The part number of this tool run if present (only Callgrind and Perf)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub part: Option<u64>,
-    /// The pid of the benchmark process
-    pub pid: i32,
-    /// The thread number of this tool run if present (only Callgrind)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub thread: Option<usize>,
-}
-
 /// A single part of a tool run with the collected metric data
 ///
 /// A tool run can produce multiple parts, for example one per process when child tracing is
@@ -307,23 +285,23 @@ pub struct ProfileInfo {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfilePart {
-    /// [`ProfileInfo`] like command, pid, ppid, thread number etc.
-    #[serde(with = "crate::serde::either_or_both")]
-    #[cfg_attr(
-        feature = "schema",
-        schemars(with = "crate::serde::either_or_both::NewOldOrBoth<ProfileInfo, ProfileInfo>")
-    )]
-    pub details: EitherOrBoth<ProfileInfo>,
     /// The [`ToolMetricResults`] containing the actual data
     #[cfg_attr(feature = "schema", schemars(schema_with = "metric_results_schema"))]
     pub metrics_summary: ToolMetricResults,
+    /// [`ToolRun`] with command, pid, ppid, thread number etc.
+    #[serde(with = "crate::serde::either_or_both")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "crate::serde::either_or_both::NewOldOrBoth<ToolRun, ToolRun>")
+    )]
+    pub tool_run: EitherOrBoth<ToolRun>,
 }
 
 #[derive(Deserialize)]
 struct ProfilePartWire {
-    #[serde(with = "crate::serde::either_or_both")]
-    details: EitherOrBoth<ProfileInfo>,
     metrics_summary: IndexMap<String, Value>,
+    #[serde(with = "crate::serde::either_or_both")]
+    tool_run: EitherOrBoth<ToolRun>,
 }
 
 /// Aggregated metrics, differences and regressions over all parts of a tool run.
@@ -354,6 +332,28 @@ struct ProfileWire {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profiles(pub Vec<Profile>);
 
+/// Metadata describing a single [`ProfilePart`] of a benchmark
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ToolRun {
+    /// The executed command
+    pub command: String,
+    /// More details for example from the logging output of the tool run
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    /// The parent pid of this process if present
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_pid: Option<i32>,
+    /// The part number of this tool run if present (only Callgrind and Perf)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub part: Option<u64>,
+    /// The pid of the benchmark process
+    pub pid: i32,
+    /// The thread number of this tool run if present (only Callgrind)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread: Option<usize>,
+}
+
 impl<'de> Deserialize<'de> for Profile {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -374,7 +374,7 @@ impl TryFrom<ProfileWire> for Profile {
             .map(|part| {
                 let metric_results = parse_metric_results(wire.tool, part.metrics_summary)?;
                 Ok(ProfilePart {
-                    details: part.details,
+                    tool_run: part.tool_run,
                     metrics_summary: metric_results,
                 })
             })
@@ -523,7 +523,7 @@ mod tests {
             "flamegraphs": [],
             "summaries": {
                 "parts": [{
-                    "details": {
+                    "tool_run": {
                         "new": {
                             "command": "benchmark",
                             "details": null,

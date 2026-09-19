@@ -383,7 +383,7 @@
       "description": "`Profile` data for one [`Tool`] recorded in a benchmark summary.",
       "type": "object",
       "properties": {
-        "summaries": {
+        "data": {
           "description": "The data with the metrics and details about the tool run",
           "allOf": [
             {
@@ -396,10 +396,10 @@
           "type": "string"
         }
       },
-      "required": ["summaries", "tool"]
+      "required": ["data", "tool"]
     },
     "ProfileData": {
-      "description": "All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.\n\nThe [`ProfileTotal`] is always present and summarizes all [`ProfilePart`]s. If the tool produced\nonly one part, the total matches that part's metrics.",
+      "description": "All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.\n\nFor Valgrind profiles, the [`ProfileTotal`] is always present and summarizes all\n[`ProfilePart`]s. If the tool produced only one part, the total matches that part's metrics.\n\nFor Perf profiles, the `total` only contains the [`ToolRegression`]s but no metrics.",
       "type": "object",
       "properties": {
         "parts": {

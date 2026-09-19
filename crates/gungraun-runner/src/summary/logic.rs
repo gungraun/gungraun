@@ -120,11 +120,11 @@ impl BenchmarkSummary {
                 profile.tool,
                 config,
                 baselines,
-                &profile.summaries,
+                &profile.data,
                 is_default,
                 post_processing_config.perf_config.as_ref(),
             );
-            print_regressions(&profile.summaries.total.regressions);
+            print_regressions(&profile.data.total.regressions);
         }
 
         Ok(())
@@ -231,8 +231,8 @@ impl BenchmarkSummary {
         for profile in self.profiles.iter() {
             if let Some(other_profile) = other.profiles.iter().find(|s| s.tool == profile.tool)
                 && let Some(metric_results) = ToolMetricResults::from_self_and_other(
-                    &profile.summaries.total.summary,
-                    &other_profile.summaries.total.summary,
+                    &profile.data.total.summary,
+                    &other_profile.data.total.summary,
                 )
             {
                 tool_results.push((profile.tool, metric_results));
@@ -267,7 +267,7 @@ impl MetricChange {
 impl Profile {
     /// Returns `true` if one of the summaries has regressed.
     pub fn is_regressed(&self) -> bool {
-        self.summaries.is_regressed()
+        self.data.is_regressed()
     }
 }
 

@@ -253,7 +253,7 @@ pub struct MetricChange {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profile {
     /// The data with the metrics and details about the tool run
-    pub summaries: ProfileData,
+    pub data: ProfileData,
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
     #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub tool: Tool,
@@ -261,8 +261,10 @@ pub struct Profile {
 
 /// All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.
 ///
-/// The [`ProfileTotal`] is always present and summarizes all [`ProfilePart`]s. If the tool produced
-/// only one part, the total matches that part's metrics.
+/// For Valgrind profiles, the [`ProfileTotal`] is always present and summarizes all
+/// [`ProfilePart`]s. If the tool produced only one part, the total matches that part's metrics.
+///
+/// For Perf profiles, the `total` only contains the [`ToolRegression`]s but no metrics.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileData {
@@ -323,7 +325,7 @@ struct ProfileTotalWire {
 
 #[derive(Deserialize)]
 struct ProfileWire {
-    summaries: ProfileDataWire,
+    data: ProfileDataWire,
     tool: Tool,
 }
 
@@ -368,7 +370,7 @@ impl TryFrom<ProfileWire> for Profile {
 
     fn try_from(wire: ProfileWire) -> Result<Self, Self::Error> {
         let parts = wire
-            .summaries
+            .data
             .parts
             .into_iter()
             .map(|part| {
@@ -380,11 +382,11 @@ impl TryFrom<ProfileWire> for Profile {
             })
             .collect::<Result<Vec<_>, serde_json::Error>>()?;
 
-        let total = parse_metric_results(wire.tool, wire.summaries.total.summary)?;
-        let regressions = parse_typed_values(wire.summaries.total.regressions);
+        let total = parse_metric_results(wire.tool, wire.data.total.summary)?;
+        let regressions = parse_typed_values(wire.data.total.regressions);
 
         Ok(Self {
-            summaries: ProfileData {
+            data: ProfileData {
                 parts,
                 total: ProfileTotal {
                     regressions,
@@ -521,7 +523,7 @@ mod tests {
     fn profile(tool: &str, metric: &str) -> Value {
         json!({
             "flamegraphs": [],
-            "summaries": {
+            "data": {
                 "parts": [{
                     "tool_run": {
                         "new": {
@@ -576,16 +578,16 @@ mod tests {
         let serialized = serde_json::to_value(profile).unwrap();
 
         assert_eq!(
-            serialized["summaries"]["parts"][0]["metrics_summary"]["Ir"]["values"]["new"],
+            serialized["data"]["parts"][0]["metrics_summary"]["Ir"]["values"]["new"],
             100
         );
-        assert!(serialized["summaries"]["parts"][0]["metrics_summary"]["Callgrind"].is_null());
+        assert!(serialized["data"]["parts"][0]["metrics_summary"]["Callgrind"].is_null());
     }
 
     #[test]
     fn test_regression_optional_fields_remain_absent() {
         let mut input = profile("Callgrind", "Ir");
-        input["summaries"]["total"]["regressions"] = json!([{
+        input["data"]["total"]["regressions"] = json!([{
             "Soft": {
                 "metric": { "Callgrind": "Ir" },
                 "new": 100,
@@ -597,7 +599,7 @@ mod tests {
 
         let profile: Profile = serde_json::from_value(input).unwrap();
         let serialized = serde_json::to_value(profile).unwrap();
-        let regression = &serialized["summaries"]["total"]["regressions"][0]["Soft"];
+        let regression = &serialized["data"]["total"]["regressions"][0]["Soft"];
 
         assert!(regression.get("display").is_none());
         assert!(regression.get("unit").is_none());
@@ -608,7 +610,7 @@ mod tests {
     fn test_unknown_profile_data_is_dropped() {
         let mut input = profile("Callgrind", "FutureMetric");
         input["flamegraphs"] = json!([{ "event_kind": "FutureEvent" }]);
-        input["summaries"]["total"]["regressions"] = json!([{
+        input["data"]["total"]["regressions"] = json!([{
             "Soft": {
                 "metric": { "Callgrind": "FutureMetric" },
                 "new": 100,
@@ -617,18 +619,14 @@ mod tests {
                 "limit": "10"
             }
         }]);
-        input["summaries"]["total"]["summary"] =
-            input["summaries"]["parts"][0]["metrics_summary"].clone();
+        input["data"]["total"]["summary"] = input["data"]["parts"][0]["metrics_summary"].clone();
 
         let profile: Profile = serde_json::from_value(input).unwrap();
         let serialized = serde_json::to_value(profile).unwrap();
 
-        assert_eq!(
-            serialized["summaries"]["parts"][0]["metrics_summary"],
-            json!({})
-        );
-        assert_eq!(serialized["summaries"]["total"]["regressions"], json!([]));
-        assert_eq!(serialized["summaries"]["total"]["summary"], json!({}));
+        assert_eq!(serialized["data"]["parts"][0]["metrics_summary"], json!({}));
+        assert_eq!(serialized["data"]["total"]["regressions"], json!([]));
+        assert_eq!(serialized["data"]["total"]["summary"], json!({}));
     }
 
     #[test]

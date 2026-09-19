@@ -651,7 +651,7 @@ impl SummaryFormatter {
                     for (tool, regression) in summary
                         .profiles
                         .iter()
-                        .flat_map(|t| t.summaries.total.regressions.iter().map(|r| (t.tool, r)))
+                        .flat_map(|t| t.data.total.regressions.iter().map(|r| (t.tool, r)))
                     {
                         match regression {
                             ToolRegression::Soft {

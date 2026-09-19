@@ -29,11 +29,11 @@ impl Summary {
     pub fn assert_costs_not_all_zero(&self) {
         for profile in self.0.profiles.iter() {
             for summary in profile
-                .summaries
+                .data
                 .parts
                 .iter()
                 .map(|s| &s.metrics_summary)
-                .chain(std::iter::once(&profile.summaries.total.summary))
+                .chain(std::iter::once(&profile.data.total.summary))
             {
                 match summary {
                     ToolMetricResults::Dhat(metric_results) => {

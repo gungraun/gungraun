@@ -420,21 +420,18 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
 
             let data = ProfileData::new(parsed_new, (!parsed_old.is_empty()).then_some(parsed_old));
 
-            let mut profile = Profile {
-                tool,
-                summaries: data,
-            };
+            let mut profile = Profile { data, tool };
 
             if tool == Tool::Perf {
-                profile.summaries.total.regressions = profile
-                    .summaries
+                profile.data.total.regressions = profile
+                    .data
                     .parts
                     .iter()
                     .flat_map(|p| regression_config.check(&p.metrics_summary))
                     .collect();
             } else {
-                profile.summaries.total.regressions =
-                    regression_config.check(&profile.summaries.total.summary);
+                profile.data.total.regressions =
+                    regression_config.check(&profile.data.total.summary);
             }
 
             self.generate_flamegraphs(config, header, output_path, flamegraph_config, entry_point)?;

@@ -6,12 +6,12 @@ use either_or_both::EitherOrBoth;
 
 use crate::api;
 use crate::metrics::logic::{MetricValue, Summarize};
-use crate::metrics::model::{Metric, MetricsSummary};
+use crate::metrics::model::{Metric, MetricResults};
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
 use crate::runner::callgrind::regression::CallgrindRegressionConfig;
 use crate::runner::dhat::regression::DhatRegressionConfig;
 use crate::runner::perf::regression::PerfRegressionConfig;
-use crate::summary::model::{ToolMetricSummary, ToolRegression};
+use crate::summary::model::{ToolMetricResults, ToolRegression};
 use crate::units::Unit;
 
 /// The default value for regression fail fast
@@ -54,20 +54,17 @@ where
     T: Hash + Eq + Summarize<V> + Display + Clone,
     V: MetricValue + Clone,
 {
-    /// Check the `MetricsSummary` for regressions.
+    /// Check the [`MetricResults`] for regressions.
     ///
-    /// The limits for event kinds which are not present in the `MetricsSummary` are ignored.
-    fn check(&self, metrics_summary: &MetricsSummary<T, V>) -> Vec<ToolRegression>;
+    /// The limits for event kinds which are not present in the `MetricResults` are ignored.
+    fn check(&self, metric_results: &MetricResults<T, V>) -> Vec<ToolRegression>;
 
     /// Check for regressions and return the [`RegressionMetrics`]
-    fn check_regressions(
-        &self,
-        metrics_summary: &MetricsSummary<T, V>,
-    ) -> Vec<RegressionMetrics<T>> {
+    fn check_regressions(&self, metric_results: &MetricResults<T, V>) -> Vec<RegressionMetrics<T>> {
         let mut regressions = vec![];
         for (metric, new_cost, old_cost, pct, limit) in
             self.get_soft_limits().iter().filter_map(|(kind, limit)| {
-                metrics_summary.result_by_kind(kind).and_then(|d| {
+                metric_results.result_by_kind(kind).and_then(|d| {
                     if let EitherOrBoth::Both(new, old) = d.values.as_ref() {
                         // This unwrap is safe since the `change` is calculated if both costs are
                         // present
@@ -107,7 +104,7 @@ where
 
         for (metric, new_cost, limit) in
             self.get_hard_limits().iter().filter_map(|(kind, limit)| {
-                metrics_summary
+                metric_results
                     .result_by_kind(kind)
                     .and_then(|d| d.values.as_ref().left().map(|metric| (kind, metric, limit)))
             })
@@ -147,26 +144,27 @@ impl ToolRegressionConfig {
 
     /// Checks the tool summary against this regression configuration.
     ///
-    /// The provided `tool_total` must contain metrics of the same tool family as this config.
+    /// The provided [`ToolMetricResults`] must contain metrics of the same tool family as this
+    /// config.
     ///
     /// # Panics
     ///
-    /// Panics if the metric summary type does not match the active regression configuration.
-    pub fn check(&self, metrics_summary: &ToolMetricSummary) -> Vec<ToolRegression> {
-        match (&self, &metrics_summary) {
+    /// Panics if the [`ToolMetricResults`] tool does not match the active regression configuration.
+    pub fn check(&self, tool_metric_results: &ToolMetricResults) -> Vec<ToolRegression> {
+        match (&self, &tool_metric_results) {
             (
                 Self::Callgrind(callgrind_regression_config),
-                ToolMetricSummary::Callgrind(metrics_summary),
-            ) => callgrind_regression_config.check(metrics_summary),
+                ToolMetricResults::Callgrind(metric_results),
+            ) => callgrind_regression_config.check(metric_results),
             (
                 Self::Cachegrind(cachegrind_regression_config),
-                ToolMetricSummary::Cachegrind(metrics_summary),
-            ) => cachegrind_regression_config.check(metrics_summary),
-            (Self::Dhat(dhat_regression_config), ToolMetricSummary::Dhat(metrics_summary)) => {
-                dhat_regression_config.check(metrics_summary)
+                ToolMetricResults::Cachegrind(metric_results),
+            ) => cachegrind_regression_config.check(metric_results),
+            (Self::Dhat(dhat_regression_config), ToolMetricResults::Dhat(metric_results)) => {
+                dhat_regression_config.check(metric_results)
             }
-            (Self::Perf(perf_regression_config), ToolMetricSummary::Perf(metrics_summary)) => {
-                perf_regression_config.check(metrics_summary)
+            (Self::Perf(perf_regression_config), ToolMetricResults::Perf(metric_results)) => {
+                perf_regression_config.check(metric_results)
             }
             (Self::None, _) => vec![],
             _ => {

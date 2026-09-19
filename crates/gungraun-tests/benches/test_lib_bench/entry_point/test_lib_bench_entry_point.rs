@@ -4,7 +4,7 @@ use gungraun::prelude::*;
 use gungraun::{Callgrind, EntryPoint, EventKind, FlamegraphConfig, Tool};
 use gungraun_runner::metrics::model::Metric;
 use gungraun_runner::runner::callgrind::hashmap_parser::SourcePath;
-use gungraun_runner::summary::model::{BenchmarkSummary, ToolMetricSummary};
+use gungraun_runner::summary::model::{BenchmarkSummary, ToolMetricResults};
 use gungraun_tests::assert::Assert;
 
 fn assert_benchmarks() {
@@ -15,17 +15,17 @@ fn assert_benchmarks() {
 
 fn assert_default() {
     let check_summary = |b: BenchmarkSummary| {
-        let callgrind_summary = b
+        let callgrind_profile = b
             .profiles
             .iter()
             .find(|p| p.tool == Tool::Callgrind)
             .unwrap();
-        let ToolMetricSummary::Callgrind(metrics_summary) =
-            &callgrind_summary.summaries.parts[0].metrics_summary
+        let ToolMetricResults::Callgrind(metric_results) =
+            &callgrind_profile.summaries.parts[0].metrics_summary
         else {
             panic!();
         };
-        let new_ir = metrics_summary
+        let new_ir = metric_results
             .result_by_kind(&EventKind::Ir)
             .unwrap()
             .values
@@ -59,17 +59,17 @@ fn assert_default() {
 
 fn assert_nested() {
     let check_summary = |b: BenchmarkSummary| {
-        let callgrind_summary = b
+        let callgrind_profile = b
             .profiles
             .iter()
             .find(|p| p.tool == Tool::Callgrind)
             .unwrap();
-        let ToolMetricSummary::Callgrind(metrics_summary) =
-            &callgrind_summary.summaries.parts[0].metrics_summary
+        let ToolMetricResults::Callgrind(metric_results) =
+            &callgrind_profile.summaries.parts[0].metrics_summary
         else {
             panic!();
         };
-        let new_ir = metrics_summary
+        let new_ir = metric_results
             .result_by_kind(&EventKind::Ir)
             .unwrap()
             .values
@@ -106,17 +106,17 @@ fn assert_none() {
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "none").unwrap();
     assert
         .summary(|b| {
-            let callgrind_summary = b
+            let callgrind_profile = b
                 .profiles
                 .iter()
                 .find(|p| p.tool == Tool::Callgrind)
                 .unwrap();
-            let ToolMetricSummary::Callgrind(metrics_summary) =
-                &callgrind_summary.summaries.parts[0].metrics_summary
+            let ToolMetricResults::Callgrind(metric_results) =
+                &callgrind_profile.summaries.parts[0].metrics_summary
             else {
                 panic!();
             };
-            let new_ir = metrics_summary
+            let new_ir = metric_results
                 .result_by_kind(&EventKind::Ir)
                 .unwrap()
                 .values

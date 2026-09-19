@@ -26,8 +26,8 @@ mod helpers {
     }
 
     /// Build a minimal version 6 summary with a single Memcheck profile carrying the given tool
-    /// metric summary object in the part and in the total.
-    pub fn v6_summary(metrics_summary: &serde_json::Value) -> Vec<u8> {
+    /// metric results object in the part and in the total.
+    pub fn v6_summary(metric_results: &serde_json::Value) -> Vec<u8> {
         let summary = json!({
             "baselines": [null, null],
             "benchmark_exe": "/project/target/deps/bench",
@@ -55,11 +55,11 @@ mod helpers {
                                 "thread": null
                             }
                         },
-                        "metrics_summary": metrics_summary.clone()
+                        "metrics_summary": metric_results.clone()
                     }],
                     "total": {
                         "regressions": [],
-                        "summary": metrics_summary
+                        "summary": metric_results
                     }
                 },
                 "tool": "Memcheck"

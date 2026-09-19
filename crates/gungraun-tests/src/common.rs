@@ -4,7 +4,7 @@ use std::path::Path;
 use anyhow::{Result, anyhow};
 use either_or_both::EitherOrBoth;
 use gungraun_runner::metrics::model::Metric;
-use gungraun_runner::summary::model::{BenchmarkSummary, ToolMetricSummary};
+use gungraun_runner::summary::model::{BenchmarkSummary, ToolMetricResults};
 
 #[derive(Debug)]
 pub struct Summary(pub BenchmarkSummary);
@@ -36,8 +36,8 @@ impl Summary {
                 .chain(std::iter::once(&profile.summaries.total.summary))
             {
                 match summary {
-                    ToolMetricSummary::Dhat(metrics_summary) => {
-                        match metrics_summary.extract_costs() {
+                    ToolMetricResults::Dhat(metric_results) => {
+                        match metric_results.extract_costs() {
                             EitherOrBoth::Left(new_costs) => {
                                 assert!(
                                     !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
@@ -66,8 +66,8 @@ impl Summary {
                             }
                         }
                     }
-                    ToolMetricSummary::Callgrind(metrics_summary) => {
-                        match metrics_summary.extract_costs() {
+                    ToolMetricResults::Callgrind(metric_results) => {
+                        match metric_results.extract_costs() {
                             EitherOrBoth::Left(new_costs) => {
                                 assert!(
                                     !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
@@ -96,8 +96,8 @@ impl Summary {
                             }
                         }
                     }
-                    ToolMetricSummary::Cachegrind(metrics_summary) => {
-                        match metrics_summary.extract_costs() {
+                    ToolMetricResults::Cachegrind(metric_results) => {
+                        match metric_results.extract_costs() {
                             EitherOrBoth::Left(new_costs) => {
                                 assert!(
                                     !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),

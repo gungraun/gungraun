@@ -2,7 +2,7 @@
 use indexmap::{IndexMap, IndexSet};
 
 use crate::api::{self, DhatMetric};
-use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
+use crate::metrics::model::{Metric, MetricKind, MetricResults};
 use crate::runner::tool::regression::{DEFAULT_REGRESSION_FAIL_FAST, RegressionConfig};
 use crate::summary::model::ToolRegression;
 
@@ -34,8 +34,8 @@ impl Default for DhatRegressionConfig {
 }
 
 impl RegressionConfig<DhatMetric> for DhatRegressionConfig {
-    fn check(&self, metrics_summary: &MetricsSummary<DhatMetric>) -> Vec<ToolRegression> {
-        self.check_regressions(metrics_summary)
+    fn check(&self, metric_results: &MetricResults<DhatMetric>) -> Vec<ToolRegression> {
+        self.check_regressions(metric_results)
             .into_iter()
             .map(|regressions| ToolRegression::with(MetricKind::Dhat, regressions))
             .collect()
@@ -176,7 +176,7 @@ mod tests {
 
         let new_costs = costs_fixture(new);
 
-        let summary = MetricsSummary::new(EitherOrBoth::Left(new_costs));
+        let summary = MetricResults::new(EitherOrBoth::Left(new_costs));
         let expected = expected
             .iter()
             .map(|(e, n, d, l)| ToolRegression::Hard {
@@ -203,7 +203,7 @@ mod tests {
         let new_costs = costs_fixture([3, 4]);
         let old_costs = costs_fixture([1, 2]);
 
-        let summary = MetricsSummary::new(EitherOrBoth::Both(new_costs, old_costs));
+        let summary = MetricResults::new(EitherOrBoth::Both(new_costs, old_costs));
         let expected = vec![
             ToolRegression::with(
                 MetricKind::Dhat,

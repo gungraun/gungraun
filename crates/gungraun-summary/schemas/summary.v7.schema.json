@@ -470,7 +470,7 @@
           ]
         },
         "metrics_summary": {
-          "description": "The [`ToolMetricSummary`] containing the actual data",
+          "description": "The [`ToolMetricResults`] containing the actual data",
           "type": "object",
           "additionalProperties": {
             "anyOf": [
@@ -498,7 +498,7 @@
           }
         },
         "summary": {
-          "description": "The [`ToolMetricSummary`] of the tool containing the collected metric data",
+          "description": "The [`ToolMetricResults`] of the tool containing the collected metric data",
           "type": "object",
           "additionalProperties": {
             "anyOf": [

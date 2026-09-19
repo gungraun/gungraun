@@ -37,7 +37,7 @@ use indexmap::IndexMap;
 use log::{info, warn};
 
 use crate::api::{self, PerfMetric};
-use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
+use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricResults, PerfQualities};
 use crate::runner::perf::pattern;
 use crate::runner::tool::config::resolve_perf_alpha;
 use crate::runner::tool::regression::{
@@ -66,7 +66,7 @@ pub struct PerfRegressionConfig {
 impl PerfRegressionConfig {
     fn soft_limit_matches<'a>(
         &self,
-        metrics_summary: &'a MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &'a MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>>,
     ) -> impl Iterator<
         Item = (
             &'a PerfMetric,
@@ -81,7 +81,7 @@ impl PerfRegressionConfig {
         let alpha = self.alpha;
 
         self.soft_limits.iter().flat_map(move |(pattern, limit)| {
-            metrics_summary
+            metric_results
                 .all_results()
                 .filter_map(move |(metric, result)| {
                     if !pattern::matches(pattern.name(), metric.name()) {
@@ -126,7 +126,7 @@ impl PerfRegressionConfig {
 
     fn hard_limit_matches<'a>(
         &'a self,
-        metrics_summary: &'a MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &'a MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>>,
     ) -> impl Iterator<
         Item = (
             &'a PerfMetric,
@@ -139,7 +139,7 @@ impl PerfRegressionConfig {
         self.hard_limits
             .iter()
             .flat_map(move |(pattern, unit, limit)| {
-                metrics_summary
+                metric_results
                     .all_results()
                     .filter_map(move |(metric, result)| {
                         if !pattern::matches(pattern.name(), metric.name()) {
@@ -180,12 +180,11 @@ impl PerfRegressionConfig {
 impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegressionConfig {
     fn check_regressions(
         &self,
-        metrics_summary: &MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>>,
     ) -> Vec<RegressionMetrics<PerfMetric>> {
         let mut regressions = vec![];
 
-        for (metric, display, new, old, pct, limit, unit) in
-            self.soft_limit_matches(metrics_summary)
+        for (metric, display, new, old, pct, limit, unit) in self.soft_limit_matches(metric_results)
         {
             if limit.is_sign_positive() {
                 if pct > limit {
@@ -215,7 +214,7 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
         }
 
         for (metric, display, new_cost, limit, result_unit) in
-            self.hard_limit_matches(metrics_summary)
+            self.hard_limit_matches(metric_results)
         {
             if new_cost.value > *limit {
                 regressions.push(RegressionMetrics::Hard(
@@ -233,9 +232,9 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
 
     fn check(
         &self,
-        metrics_summary: &MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>>,
     ) -> Vec<ToolRegression> {
-        self.check_regressions(metrics_summary)
+        self.check_regressions(metric_results)
             .into_iter()
             .map(|regressions| ToolRegression::with(MetricKind::Perf, regressions))
             .collect()
@@ -341,7 +340,7 @@ mod tests {
     use crate::fixtures::api::perf_regression_config_f as api_perf_regression_config_f;
     use crate::fixtures::perf::perf_regression_config_f;
     use crate::metrics::model::{
-        AnnotatedMetric, Metric, MetricKind, Metrics, MetricsSummary, PerfQualities,
+        AnnotatedMetric, Metric, MetricKind, MetricResults, Metrics, PerfQualities,
     };
     use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
     use crate::runner::tool::regression::{RegressionConfig, RegressionMetrics};
@@ -352,8 +351,8 @@ mod tests {
         name: &str,
         new: AnnotatedMetric<PerfQualities>,
         old: AnnotatedMetric<PerfQualities>,
-    ) -> MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>> {
-        MetricsSummary::new(EitherOrBoth::Both(
+    ) -> MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>> {
+        MetricResults::new(EitherOrBoth::Both(
             Metrics(indexmap! { PerfMetric(name.to_owned()) => new }),
             Metrics(indexmap! { PerfMetric(name.to_owned()) => old }),
         ))
@@ -362,8 +361,8 @@ mod tests {
     fn perf_summary_new_only(
         name: &str,
         new: AnnotatedMetric<PerfQualities>,
-    ) -> MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>> {
-        MetricsSummary::new(EitherOrBoth::Left(Metrics(indexmap! {
+    ) -> MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>> {
+        MetricResults::new(EitherOrBoth::Left(Metrics(indexmap! {
             PerfMetric(name.to_owned()) => new
         })))
     }

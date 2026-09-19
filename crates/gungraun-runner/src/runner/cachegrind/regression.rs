@@ -2,7 +2,7 @@
 use indexmap::{IndexMap, IndexSet};
 
 use crate::api::{self, CachegrindMetric};
-use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
+use crate::metrics::model::{Metric, MetricKind, MetricResults};
 use crate::runner::tool::regression::{DEFAULT_REGRESSION_FAIL_FAST, RegressionConfig};
 use crate::summary::model::ToolRegression;
 
@@ -34,8 +34,8 @@ impl Default for CachegrindRegressionConfig {
 }
 
 impl RegressionConfig<CachegrindMetric> for CachegrindRegressionConfig {
-    fn check(&self, metrics_summary: &MetricsSummary<CachegrindMetric>) -> Vec<ToolRegression> {
-        self.check_regressions(metrics_summary)
+    fn check(&self, metric_results: &MetricResults<CachegrindMetric>) -> Vec<ToolRegression> {
+        self.check_regressions(metric_results)
             .into_iter()
             .map(|regressions| ToolRegression::with(MetricKind::Cachegrind, regressions))
             .collect()

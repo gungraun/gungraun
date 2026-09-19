@@ -134,6 +134,11 @@ pub struct MetricResult<V = Metric> {
     pub values: EitherOrBoth<V>,
 }
 
+/// An insertion-ordered mapping from metric identifier to [`MetricResult`].
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct MetricResults<K: Hash + Eq = EventKind, V = Metric>(pub IndexMap<K, MetricResult<V>>);
+
 /// An insertion-ordered mapping from metric identifier to [`Metric`].
 ///
 /// # Benchmark Summary
@@ -141,11 +146,6 @@ pub struct MetricResult<V = Metric> {
 /// This struct is not part of the recent summary anymore.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
-
-/// An insertion-ordered mapping from metric identifier to [`MetricResult`].
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct MetricsSummary<K: Hash + Eq = EventKind, V = Metric>(pub IndexMap<K, MetricResult<V>>);
 
 /// Perf-specific metadata attached to a metric value.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

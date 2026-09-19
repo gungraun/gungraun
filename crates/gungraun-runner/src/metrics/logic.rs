@@ -15,7 +15,7 @@ use indexmap::IndexMap;
 
 use crate::api::{Limit, PerfMetric};
 use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, MetricResult, Metrics, MetricsSummary, PerfQualities,
+    AnnotatedMetric, Metric, MetricKind, MetricResult, MetricResults, Metrics, PerfQualities,
 };
 use crate::summary::model::MetricChange;
 use crate::units::Unit;
@@ -794,6 +794,101 @@ where
     }
 }
 
+impl<K, V> MetricResults<K, V>
+where
+    K: Hash + Eq + Summarize<V> + Display + Clone,
+    V: MetricValue,
+{
+    /// Creates a new `MetricResults` calculating the differences between new and old (if any).
+    /// [`Metrics`]
+    pub fn new(metrics: EitherOrBoth<Metrics<K, V>>) -> Self {
+        let summarized = metrics.map(|metrics| {
+            let mut summarized = Cow::Owned(metrics);
+            K::summarize(&mut summarized);
+            summarized
+        });
+
+        let results = match summarized {
+            EitherOrBoth::Left(new) => new
+                .into_owned()
+                .into_iter()
+                .map(|(metric_kind, metric)| {
+                    (metric_kind, MetricResult::new(EitherOrBoth::Left(metric)))
+                })
+                .collect(),
+            EitherOrBoth::Right(old) => old
+                .into_owned()
+                .into_iter()
+                .map(|(metric_kind, metric)| {
+                    (metric_kind, MetricResult::new(EitherOrBoth::Right(metric)))
+                })
+                .collect(),
+            EitherOrBoth::Both(new, old) => new
+                .into_owned()
+                .union(old.into_owned())
+                .into_iter()
+                .map(|(metric_kind, metric)| (metric_kind, MetricResult::new(metric)))
+                .collect(),
+        };
+
+        Self(results)
+    }
+
+    /// Try to return a [`MetricResult`] for the specified `MetricKind`
+    pub fn result_by_kind(&self, metric_kind: &K) -> Option<&MetricResult<V>> {
+        self.0.get(metric_kind)
+    }
+
+    /// Return an iterator over all [`MetricResult`]s
+    pub fn all_results(&self) -> impl Iterator<Item = (&K, &MetricResult<V>)> {
+        self.0.iter()
+    }
+
+    /// Returns `true` if there are no metric results present.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Extract the [`Metrics`] from this summary
+    ///
+    /// This is the exact reverse operation to [`MetricResults::new`]
+    pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K, V>> {
+        self.0
+            .iter()
+            .map(|(metric_kind, result)| {
+                result
+                    .values
+                    .clone()
+                    .map(|metric| (metric_kind.clone(), metric))
+            })
+            .collect::<EitherOrBoth<IndexMap<_, _>>>()
+            .map(Metrics)
+    }
+
+    /// Sum up another `MetricResults` with this one
+    ///
+    /// If a [`MetricResult`] is not present in this summary but in the other, it is added to this
+    /// summary.
+    pub fn add(&mut self, other: &Self) {
+        for (other_key, other_value) in &other.0 {
+            if let Some(value) = self.0.get_mut(other_key) {
+                *value = value.add(other_value);
+            } else {
+                self.0.insert(other_key.clone(), other_value.clone());
+            }
+        }
+    }
+}
+
+impl<K, V> Default for MetricResults<K, V>
+where
+    K: Hash + Eq,
+{
+    fn default() -> Self {
+        Self(IndexMap::default())
+    }
+}
+
 impl<K, V> Metrics<K, V>
 where
     K: Hash + Eq + Display + Clone,
@@ -1059,101 +1154,6 @@ where
     }
 }
 
-impl<K, V> MetricsSummary<K, V>
-where
-    K: Hash + Eq + Summarize<V> + Display + Clone,
-    V: MetricValue,
-{
-    /// Creates a new `MetricsSummary` calculating the differences between new and old (if any).
-    /// [`Metrics`]
-    pub fn new(metrics: EitherOrBoth<Metrics<K, V>>) -> Self {
-        let summarized = metrics.map(|metrics| {
-            let mut summarized = Cow::Owned(metrics);
-            K::summarize(&mut summarized);
-            summarized
-        });
-
-        let results = match summarized {
-            EitherOrBoth::Left(new) => new
-                .into_owned()
-                .into_iter()
-                .map(|(metric_kind, metric)| {
-                    (metric_kind, MetricResult::new(EitherOrBoth::Left(metric)))
-                })
-                .collect(),
-            EitherOrBoth::Right(old) => old
-                .into_owned()
-                .into_iter()
-                .map(|(metric_kind, metric)| {
-                    (metric_kind, MetricResult::new(EitherOrBoth::Right(metric)))
-                })
-                .collect(),
-            EitherOrBoth::Both(new, old) => new
-                .into_owned()
-                .union(old.into_owned())
-                .into_iter()
-                .map(|(metric_kind, metric)| (metric_kind, MetricResult::new(metric)))
-                .collect(),
-        };
-
-        Self(results)
-    }
-
-    /// Try to return a [`MetricResult`] for the specified `MetricKind`
-    pub fn result_by_kind(&self, metric_kind: &K) -> Option<&MetricResult<V>> {
-        self.0.get(metric_kind)
-    }
-
-    /// Return an iterator over all [`MetricResult`]s
-    pub fn all_results(&self) -> impl Iterator<Item = (&K, &MetricResult<V>)> {
-        self.0.iter()
-    }
-
-    /// Returns `true` if there are no metric results present.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    /// Extract the [`Metrics`] from this summary
-    ///
-    /// This is the exact reverse operation to [`MetricsSummary::new`]
-    pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K, V>> {
-        self.0
-            .iter()
-            .map(|(metric_kind, result)| {
-                result
-                    .values
-                    .clone()
-                    .map(|metric| (metric_kind.clone(), metric))
-            })
-            .collect::<EitherOrBoth<IndexMap<_, _>>>()
-            .map(Metrics)
-    }
-
-    /// Sum up another `MetricsSummary` with this one
-    ///
-    /// If a [`MetricResult`] is not present in this summary but in the other, it is added to this
-    /// summary.
-    pub fn add(&mut self, other: &Self) {
-        for (other_key, other_value) in &other.0 {
-            if let Some(value) = self.0.get_mut(other_key) {
-                *value = value.add(other_value);
-            } else {
-                self.0.insert(other_key.clone(), other_value.clone());
-            }
-        }
-    }
-}
-
-impl<K, V> Default for MetricsSummary<K, V>
-where
-    K: Hash + Eq,
-{
-    fn default() -> Self {
-        Self(IndexMap::default())
-    }
-}
-
 impl PerfQualities {
     /// Creates perf quality metadata from the optional values parsed or derived for one metric.
     ///
@@ -1311,42 +1311,7 @@ mod tests {
         }
     }
 
-    fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let event_kinds = [
-            Ir,
-            Dr,
-            Dw,
-            I1mr,
-            D1mr,
-            D1mw,
-            ILmr,
-            DLmr,
-            DLmw,
-            L1hits,
-            LLhits,
-            RamHits,
-            TotalRW,
-            EstimatedCycles,
-            I1MissRate,
-            D1MissRate,
-            LLiMissRate,
-            LLdMissRate,
-            LLMissRate,
-            L1HitRate,
-            LLHitRate,
-            RamHitRate,
-        ];
-
-        Metrics::with_metric_kinds(
-            event_kinds
-                .iter()
-                .zip(metrics.iter())
-                .map(|(e, v)| (*e, *v)),
-        )
-    }
-
-    fn metrics_summary_fixture<T, U>(kinds: U) -> MetricsSummary<EventKind>
+    fn metric_results_fixture<T, U>(kinds: U) -> MetricResults<EventKind>
     where
         T: Into<Option<(f64, f64)>> + Clone,
         U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
@@ -1383,7 +1348,42 @@ mod tests {
             .map(|(e, (m, d))| (*e, expected_metrics_result(m, d)))
             .collect();
 
-        MetricsSummary(map)
+        MetricResults(map)
+    }
+
+    fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
+        ];
+
+        Metrics::with_metric_kinds(
+            event_kinds
+                .iter()
+                .zip(metrics.iter())
+                .map(|(e, v)| (*e, *v)),
+        )
     }
 
     #[rstest]
@@ -1802,9 +1802,9 @@ mod tests {
     }
 
     #[test]
-    fn test_metrics_summary_normalizes_compatible_units() {
+    fn test_metric_results_normalizes_compatible_units() {
         let metric_kind = PerfMetric("task-clock:u".to_owned());
-        let summary = MetricsSummary::new(EitherOrBoth::Both(
+        let results = MetricResults::new(EitherOrBoth::Both(
             Metrics(indexmap! {
              metric_kind.clone() => AnnotatedMetric::with_default_qualities(
                  Metric::Float(1.0),
@@ -1828,9 +1828,9 @@ mod tests {
             ),
         };
 
-        let diff = summary.result_by_kind(&metric_kind).unwrap();
+        let actual = results.result_by_kind(&metric_kind).unwrap();
 
-        assert_eq!(*diff, expected);
+        assert_eq!(*actual, expected);
     }
 
     #[rstest]
@@ -2263,7 +2263,7 @@ mod tests {
             ),
         ]
     )]
-    fn test_metrics_summary_new<V>(
+    fn test_metric_results_new<V>(
         #[case] new_metrics: &[u64],
         #[case] old_metrics: &[u64],
         #[case] expected: &[(EitherOrBoth<Metric>, V)],
@@ -2272,22 +2272,22 @@ mod tests {
     {
         use either_or_both::EitherOrBoth;
 
-        let expected_metrics_summary =
-            metrics_summary_fixture(expected.iter().map(|(e, v)| (*e, v.clone())));
+        let expected_metric_results =
+            metric_results_fixture(expected.iter().map(|(e, v)| (*e, v.clone())));
         let actual = match (
             (!new_metrics.is_empty()).then_some(new_metrics),
             (!old_metrics.is_empty()).then_some(old_metrics),
         ) {
             (None, None) => unreachable!(),
-            (Some(new), None) => MetricsSummary::new(EitherOrBoth::Left(metrics_fixture(new))),
-            (None, Some(old)) => MetricsSummary::new(EitherOrBoth::Right(metrics_fixture(old))),
-            (Some(new), Some(old)) => MetricsSummary::new(EitherOrBoth::Both(
+            (Some(new), None) => MetricResults::new(EitherOrBoth::Left(metrics_fixture(new))),
+            (None, Some(old)) => MetricResults::new(EitherOrBoth::Right(metrics_fixture(old))),
+            (Some(new), Some(old)) => MetricResults::new(EitherOrBoth::Both(
                 metrics_fixture(new),
                 metrics_fixture(old),
             )),
         };
 
-        assert_eq!(actual, expected_metrics_summary);
+        assert_eq!(actual, expected_metric_results);
     }
 
     #[test]
@@ -2388,20 +2388,20 @@ mod tests {
     }
 
     #[test]
-    fn test_perf_metric_summary_serializes_with_string_keys() {
-        let summary = MetricsSummary::new(EitherOrBoth::Left(Metrics(indexmap! {
+    fn test_perf_metric_result_serializes_with_string_keys() {
+        let results = MetricResults::new(EitherOrBoth::Left(Metrics(indexmap! {
             PerfMetric("task-clock:u".to_owned()) => AnnotatedMetric::with_default_qualities(
                 Metric::Float(1.0),
                 Unit::Milliseconds
            )
         })));
 
-        let value = serde_json::to_value(summary).unwrap();
-        let expected_value = serde_json::to_value("ms").unwrap();
+        let actual = serde_json::to_value(results).unwrap();
+        let expected = serde_json::to_value("ms").unwrap();
 
         assert_eq!(
-            expected_value,
-            value.get("task-clock:u").unwrap()["values"]["new"]["unit"],
+            actual.get("task-clock:u").unwrap()["values"]["new"]["unit"],
+            expected,
         );
     }
 

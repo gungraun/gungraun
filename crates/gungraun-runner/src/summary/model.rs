@@ -22,7 +22,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool};
-use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
+use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricResults, PerfQualities};
 use crate::units::Unit;
 
 /// The version string stored in version summary JSON files.
@@ -42,12 +42,12 @@ pub enum BenchmarkKind {
 ///
 /// Each variant contains all metric data including the differences to the old or a
 /// [`BenchmarkSummary::baselines`] run for a single [`Tool`]. The contained
-/// [`MetricsSummary`] is keyed by the metric enum used by that tool.
+/// [`MetricResults`] is keyed by the metric enum used by that tool.
 ///
-/// The [`ToolMetricSummary::Memcheck`], [`ToolMetricSummary::Helgrind`], and
-/// [`ToolMetricSummary::DRD`] variants contain the corresponding error metrics. Massif and BBV are
+/// The [`ToolMetricResults::Memcheck`], [`ToolMetricResults::Helgrind`], and
+/// [`ToolMetricResults::DRD`] variants contain the corresponding error metrics. Massif and BBV are
 /// special cases because they do not have a metrics summary and therefore use the
-/// [`ToolMetricSummary::None`] variant.
+/// [`ToolMetricResults::None`] variant.
 ///
 /// # Examples
 ///
@@ -60,11 +60,11 @@ pub enum BenchmarkKind {
 /// ```rust
 /// use either_or_both::EitherOrBoth;
 /// use gungraun_runner::api::EventKind;
-/// use gungraun_runner::metrics::model::{Metric, MetricResult, MetricsSummary};
-/// use gungraun_runner::summary::model::{MetricChange, ToolMetricSummary};
+/// use gungraun_runner::metrics::model::{Metric, MetricResult, MetricResults};
+/// use gungraun_runner::summary::model::{MetricChange, ToolMetricResults};
 /// use indexmap::IndexMap;
 ///
-/// let callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(
+/// let callgrind_results = ToolMetricResults::Callgrind(MetricResults(IndexMap::from([(
 ///     EventKind::Ir,
 ///     MetricResult {
 ///         change: Some(MetricChange {
@@ -75,8 +75,8 @@ pub enum BenchmarkKind {
 ///     },
 /// )])));
 ///
-/// match callgrind_summary {
-///     ToolMetricSummary::Callgrind(metrics) => {
+/// match callgrind_results {
+///     ToolMetricResults::Callgrind(metrics) => {
 ///         assert!(metrics.0.contains_key(&EventKind::Ir));
 ///     }
 ///     _ => {}
@@ -86,27 +86,27 @@ pub enum BenchmarkKind {
 /// [`Tool`]: crate::api::Tool
 #[derive(Debug, Clone, Default, PartialEq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ToolMetricSummary {
+pub enum ToolMetricResults {
     /// If there are no metrics extracted (currently Massif, BBV)
     #[default]
     None,
     /// The [`ErrorMetric`] summary for Memcheck.
-    Memcheck(MetricsSummary<ErrorMetric>),
+    Memcheck(MetricResults<ErrorMetric>),
     /// The [`ErrorMetric`] summary for Helgrind.
-    Helgrind(MetricsSummary<ErrorMetric>),
+    Helgrind(MetricResults<ErrorMetric>),
     /// The [`ErrorMetric`] summary for DRD.
-    DRD(MetricsSummary<ErrorMetric>),
+    DRD(MetricResults<ErrorMetric>),
     /// The metric summary of [`DhatMetric`]s
-    Dhat(MetricsSummary<DhatMetric>),
+    Dhat(MetricResults<DhatMetric>),
     /// The Callgrind summary of [`EventKind`]
-    Callgrind(MetricsSummary<EventKind>),
+    Callgrind(MetricResults<EventKind>),
     /// The summary of [`CachegrindMetric`]s
-    Cachegrind(MetricsSummary<CachegrindMetric>),
+    Cachegrind(MetricResults<CachegrindMetric>),
     /// Perf summaries for a single parsed part or direct new/old comparison.
     ///
     /// Unlike the valgrind-based tools, perf does not currently produce a synthetic aggregated
     /// `total` summary across parts in [`ProfileData::new`].
-    Perf(MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>),
+    Perf(MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>>),
 }
 
 /// A regression detected while evaluating a [`BenchmarkSummary`].
@@ -314,9 +314,9 @@ pub struct ProfilePart {
         schemars(with = "crate::serde::either_or_both::NewOldOrBoth<ProfileInfo, ProfileInfo>")
     )]
     pub details: EitherOrBoth<ProfileInfo>,
-    /// The [`ToolMetricSummary`] containing the actual data
-    #[cfg_attr(feature = "schema", schemars(schema_with = "metric_summary_schema"))]
-    pub metrics_summary: ToolMetricSummary,
+    /// The [`ToolMetricResults`] containing the actual data
+    #[cfg_attr(feature = "schema", schemars(schema_with = "metric_results_schema"))]
+    pub metrics_summary: ToolMetricResults,
 }
 
 #[derive(Deserialize)]
@@ -332,9 +332,9 @@ struct ProfilePartWire {
 pub struct ProfileTotal {
     /// The detected regressions if any
     pub regressions: Vec<ToolRegression>,
-    /// The [`ToolMetricSummary`] of the tool containing the collected metric data
-    #[cfg_attr(feature = "schema", schemars(schema_with = "metric_summary_schema"))]
-    pub summary: ToolMetricSummary,
+    /// The [`ToolMetricResults`] of the tool containing the collected metric data
+    #[cfg_attr(feature = "schema", schemars(schema_with = "metric_results_schema"))]
+    pub summary: ToolMetricResults,
 }
 
 #[derive(Deserialize)]
@@ -372,15 +372,15 @@ impl TryFrom<ProfileWire> for Profile {
             .parts
             .into_iter()
             .map(|part| {
-                let metrics_summary = parse_metrics_summary(wire.tool, part.metrics_summary)?;
+                let metric_results = parse_metric_results(wire.tool, part.metrics_summary)?;
                 Ok(ProfilePart {
                     details: part.details,
-                    metrics_summary,
+                    metrics_summary: metric_results,
                 })
             })
             .collect::<Result<Vec<_>, serde_json::Error>>()?;
 
-        let total = parse_metrics_summary(wire.tool, wire.summaries.total.summary)?;
+        let total = parse_metric_results(wire.tool, wire.summaries.total.summary)?;
         let regressions = parse_typed_values(wire.summaries.total.regressions);
 
         Ok(Self {
@@ -396,20 +396,20 @@ impl TryFrom<ProfileWire> for Profile {
     }
 }
 
-impl Serialize for ToolMetricSummary {
+impl Serialize for ToolMetricResults {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self {
             Self::None => serializer.serialize_map(Some(0))?.end(),
-            Self::Memcheck(summary) | Self::Helgrind(summary) | Self::DRD(summary) => {
-                summary.serialize(serializer)
+            Self::Memcheck(results) | Self::Helgrind(results) | Self::DRD(results) => {
+                results.serialize(serializer)
             }
-            Self::Dhat(summary) => summary.serialize(serializer),
-            Self::Callgrind(summary) => summary.serialize(serializer),
-            Self::Cachegrind(summary) => summary.serialize(serializer),
-            Self::Perf(summary) => summary.serialize(serializer),
+            Self::Dhat(results) => results.serialize(serializer),
+            Self::Callgrind(results) => results.serialize(serializer),
+            Self::Cachegrind(results) => results.serialize(serializer),
+            Self::Perf(results) => results.serialize(serializer),
         }
     }
 }
@@ -436,7 +436,7 @@ where
 }
 
 #[cfg(feature = "schema")]
-fn metric_summary_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+fn metric_results_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     let metric_result = generator.subschema_for::<crate::metrics::model::MetricResult>();
     let perf_metric_result = generator
         .subschema_for::<crate::metrics::model::MetricResult<AnnotatedMetric<PerfQualities>>>();
@@ -449,10 +449,26 @@ fn metric_summary_schema(generator: &mut schemars::SchemaGenerator) -> schemars:
     })
 }
 
+fn parse_metric_results(
+    tool: Tool,
+    metrics: IndexMap<String, Value>,
+) -> Result<ToolMetricResults, serde_json::Error> {
+    match tool {
+        Tool::Callgrind => parse_metrics(metrics, ToolMetricResults::Callgrind),
+        Tool::Cachegrind => parse_metrics(metrics, ToolMetricResults::Cachegrind),
+        Tool::DHAT => parse_metrics(metrics, ToolMetricResults::Dhat),
+        Tool::Memcheck => parse_metrics(metrics, ToolMetricResults::Memcheck),
+        Tool::Helgrind => parse_metrics(metrics, ToolMetricResults::Helgrind),
+        Tool::DRD => parse_metrics(metrics, ToolMetricResults::DRD),
+        Tool::Perf => parse_metrics(metrics, ToolMetricResults::Perf),
+        Tool::Massif | Tool::BBV => Ok(ToolMetricResults::None),
+    }
+}
+
 fn parse_metrics<K, V>(
     metrics: IndexMap<String, Value>,
-    wrap: impl FnOnce(MetricsSummary<K, V>) -> ToolMetricSummary,
-) -> Result<ToolMetricSummary, serde_json::Error>
+    wrap: impl FnOnce(MetricResults<K, V>) -> ToolMetricResults,
+) -> Result<ToolMetricResults, serde_json::Error>
 where
     K: DeserializeOwned + Eq + Hash,
     V: DeserializeOwned,
@@ -464,23 +480,7 @@ where
         }
     }
 
-    Ok(wrap(MetricsSummary(typed)))
-}
-
-fn parse_metrics_summary(
-    tool: Tool,
-    metrics: IndexMap<String, Value>,
-) -> Result<ToolMetricSummary, serde_json::Error> {
-    match tool {
-        Tool::Callgrind => parse_metrics(metrics, ToolMetricSummary::Callgrind),
-        Tool::Cachegrind => parse_metrics(metrics, ToolMetricSummary::Cachegrind),
-        Tool::DHAT => parse_metrics(metrics, ToolMetricSummary::Dhat),
-        Tool::Memcheck => parse_metrics(metrics, ToolMetricSummary::Memcheck),
-        Tool::Helgrind => parse_metrics(metrics, ToolMetricSummary::Helgrind),
-        Tool::DRD => parse_metrics(metrics, ToolMetricSummary::DRD),
-        Tool::Perf => parse_metrics(metrics, ToolMetricSummary::Perf),
-        Tool::Massif | Tool::BBV => Ok(ToolMetricSummary::None),
-    }
+    Ok(wrap(MetricResults(typed)))
 }
 
 fn parse_typed_values<T>(values: Vec<Value>) -> Vec<T>
@@ -497,7 +497,7 @@ where
 mod tests {
     use serde_json::{Value, json};
 
-    use super::{BenchmarkSummary, Profile, ToolMetricSummary};
+    use super::{BenchmarkSummary, Profile, ToolMetricResults};
 
     fn benchmark_summary(profiles: &[Value]) -> Value {
         json!({
@@ -563,9 +563,9 @@ mod tests {
     }
 
     #[test]
-    fn test_none_metric_summary_serializes_as_empty_object() {
+    fn test_none_tool_metric_results_serializes_as_empty_object() {
         assert_eq!(
-            serde_json::to_value(ToolMetricSummary::None).unwrap(),
+            serde_json::to_value(ToolMetricResults::None).unwrap(),
             json!({})
         );
     }

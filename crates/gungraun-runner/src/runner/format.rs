@@ -22,14 +22,23 @@ use crate::api::{
     ErrorMetric, EventKind, Tool, ToolOutputFormat, ToolSpec,
 };
 use crate::metrics::logic::MetricValue;
-use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsDiff, PerfQualities};
+use crate::metrics::model::{
+    AnnotatedMetric, Metric, MetricKind, MetricResult, MetricResults, PerfQualities,
+};
 use crate::stats::runner::DiffStats;
-use crate::summary::model::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
+use crate::summary::model::{
+    MetricChange, ProfileData, ToolMetricResults, ToolRegression, ToolRun,
+};
 use crate::units::Unit;
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
 };
 
+const DEFAULT_FILTER_OUTPUT: bool = false;
+const DEFAULT_SHOW_GRID: bool = false;
+const DEFAULT_SHOW_INTERMEDIATE: bool = false;
+const DEFAULT_SHOW_ONLY_COMPARISON: bool = false;
+const DEFAULT_TRUNCATE_DESCRIPTION: Option<usize> = Some(50);
 /// The width in bytes of the difference (and factor)
 pub const DIFF_WIDTH: usize = 9;
 /// The width in bytes of the FIELD as in `  FIELD: METRIC | METRIC (DIFF_PCT) [FACTOR]`
@@ -54,29 +63,11 @@ pub const UNKNOWN: &str = "*********";
 /// The string used to signal that the difference is in the tolerance margin
 pub const WITHIN_TOLERANCE: &str = "Tolerance";
 
-const DEFAULT_FILTER_OUTPUT: bool = false;
-const DEFAULT_SHOW_GRID: bool = false;
-const DEFAULT_SHOW_INTERMEDIATE: bool = false;
-const DEFAULT_SHOW_ONLY_COMPARISON: bool = false;
-const DEFAULT_TRUNCATE_DESCRIPTION: Option<usize> = Some(50);
-
 #[derive(Debug)]
 enum IndentKind {
     Normal,
     ToolHeadline,
     ToolSubHeadline,
-}
-
-/// The kind of the output format can be either json or the default terminal output
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum OutputFormatKind {
-    /// The default terminal output
-    #[default]
-    Default,
-    /// Json terminal output
-    Json,
-    /// Pretty json terminal output
-    PrettyJson,
 }
 
 /// The libtest-compatible list format selected via `--format` together with `--list`
@@ -93,6 +84,18 @@ pub enum ListFormat {
     Terse,
 }
 
+/// The kind of the output format can be either json or the default terminal output
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum OutputFormatKind {
+    /// The default terminal output
+    #[default]
+    Default,
+    /// Json terminal output
+    Json,
+    /// Pretty json terminal output
+    PrettyJson,
+}
+
 /// The first line and header of a binary benchmark run
 ///
 /// For example `module::path id: some args`
@@ -102,8 +105,8 @@ pub struct BinaryBenchmarkHeader(Header);
 /// The header of the comparison between two different benchmarks
 #[derive(Debug)]
 pub struct ComparisonHeader {
-    /// The details to print in addition or instead of the metrics
-    pub details: Option<String>,
+    /// The description to print in addition or instead of the metrics
+    pub description: Option<String>,
     /// The function name of the other benchmark
     pub function_name: String,
     /// The id of the other benchmark.
@@ -197,13 +200,12 @@ pub trait Formatter {
     /// Format a line in free form as is
     fn format_line(&mut self, line: &str);
 
-    /// Format the output of a single [`ToolMetricSummary`] of a tool
+    /// Format the output of a single [`ToolMetricResults`] of a tool
     fn format_single(
         &mut self,
-        tool: Tool,
         baselines: &Baselines,
-        info: Option<&EitherOrBoth<ProfileInfo>>,
-        metrics_summary: &ToolMetricSummary,
+        tool_run: Option<&EitherOrBoth<ToolRun>>,
+        metric_results: &ToolMetricResults,
         is_default_tool: bool,
         perf_config: Option<&PerfOutputConfig>,
     );
@@ -232,8 +234,8 @@ pub trait Formatter {
         &mut self,
         function_name: &str,
         id: &str,
-        details: Option<&str>,
-        summaries: Vec<(Tool, ToolMetricSummary)>,
+        description: Option<&str>,
+        tool_metric_results: Vec<(Tool, ToolMetricResults)>,
         perf_config: Option<&PerfOutputConfig>,
     );
 }
@@ -303,7 +305,7 @@ impl ComparisonHeader {
     pub fn new<T, U, V>(
         function_name: T,
         id: U,
-        details: Option<V>,
+        description: Option<V>,
         output_format: &OutputFormat,
     ) -> Self
     where
@@ -314,7 +316,7 @@ impl ComparisonHeader {
         Self {
             function_name: function_name.into(),
             id: id.into(),
-            details: details.map(Into::into),
+            description: description.map(Into::into),
             indent: if output_format.show_grid {
                 "|-".bright_black().to_string()
             } else {
@@ -340,8 +342,8 @@ impl Display for ComparisonHeader {
             self.id.cyan()
         )?;
 
-        if let Some(details) = &self.details {
-            write!(f, ":{}", details.blue().bold())?;
+        if let Some(description) = &self.description {
+            write!(f, ":{}", description.blue().bold())?;
         }
 
         Ok(())
@@ -649,7 +651,7 @@ impl SummaryFormatter {
                     for (tool, regression) in summary
                         .profiles
                         .iter()
-                        .flat_map(|t| t.summaries.total.regressions.iter().map(|r| (t.tool, r)))
+                        .flat_map(|t| t.data.total.regressions.iter().map(|r| (t.tool, r)))
                     {
                         match regression {
                             ToolRegression::Soft {
@@ -908,8 +910,12 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_metric<V>(&mut self, field: &str, metrics: &EitherOrBoth<&V>, diffs: Option<Diffs>)
-    where
+    fn write_metric<V>(
+        &mut self,
+        field: &str,
+        metrics: &EitherOrBoth<&V>,
+        change: Option<MetricChange>,
+    ) where
         V: MetricValue + PartialEq,
     {
         match metrics {
@@ -956,8 +962,8 @@ impl VerticalFormatter {
             }
             EitherOrBoth::Both(new, old)
                 if self.output_format.tolerance.is_some_and(|tolerance| {
-                    diffs
-                        .map(|diffs| diffs.diff_pct)
+                    change
+                        .map(|change| change.diff_pct)
                         .expect("A difference should be present")
                         .abs()
                         <= tolerance.abs()
@@ -976,7 +982,7 @@ impl VerticalFormatter {
                     merge_units(new.unit(), old.unit()).as_deref(),
                 );
             }
-            EitherOrBoth::Both(new, old) if diffs.is_none() => {
+            EitherOrBoth::Both(new, old) if change.is_none() => {
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
                     old.to_string_without_unit(),
@@ -991,9 +997,9 @@ impl VerticalFormatter {
                 );
             }
             EitherOrBoth::Both(new, old) => {
-                let diffs = diffs.expect("checked that diffs are present");
-                let pct_string = format_float(diffs.diff_pct, '%');
-                let factor_string = format_float(diffs.factor, 'x');
+                let change = change.expect("a change should be present");
+                let pct_string = format_float(change.diff_pct, '%');
+                let factor_string = format_float(change.factor, 'x');
 
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({pct_string:^DIFF_WIDTH$}) [{factor_string:^DIFF_WIDTH$}]",
@@ -1014,10 +1020,10 @@ impl VerticalFormatter {
         &mut self,
         field: &str,
         metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
-        diffs: Option<Diffs>,
+        change: Option<MetricChange>,
         perf_config: &PerfOutputConfig,
     ) {
-        self.write_metric(field, &metrics, diffs);
+        self.write_metric(field, &metrics, change);
         // The second line is only printed if at least one rse is present
         self.write_perf_significance_line(metrics, perf_config);
         // The third line is only printed if at least one samples count is present
@@ -1141,12 +1147,12 @@ impl VerticalFormatter {
                 );
             }
             EitherOrBoth::Both(Some(new_n), Some(old_n)) => {
-                let diffs = Diffs::new(new_n.into(), old_n.into());
+                let change = MetricChange::new(new_n.into(), old_n.into());
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$}) [{:^DIFF_WIDTH$}]",
                     old_n.to_string().bright_black(),
-                    format!("{}%", to_string_signed_short(diffs.diff_pct)).bright_black(),
-                    format!("{}x", to_string_signed_short(diffs.factor)).bright_black()
+                    format!("{}%", to_string_signed_short(change.diff_pct)).bright_black(),
+                    format!("{}x", to_string_signed_short(change.factor)).bright_black()
                 );
 
                 self.write_field(
@@ -1202,12 +1208,12 @@ impl VerticalFormatter {
         }
     }
 
-    fn format_details(&mut self, details: &str) {
-        let mut details = details.lines();
-        if let Some(head_line) = details.next() {
+    fn format_output(&mut self, output: &str) {
+        let mut lines = output.lines();
+        if let Some(head_line) = lines.next() {
             self.write_indent(&IndentKind::Normal);
             writeln!(self, "{:<FIELD_WIDTH$}{}", "Details:", head_line).unwrap();
-            for body_line in details {
+            for body_line in lines {
                 if body_line.is_empty() {
                     self.write_empty_line();
                 } else {
@@ -1217,27 +1223,27 @@ impl VerticalFormatter {
         }
     }
 
-    fn format_metrics<'a, K, V>(&mut self, metrics: impl Iterator<Item = (K, &'a MetricsDiff<V>)>)
+    fn format_metrics<'a, K, V>(&mut self, metrics: impl Iterator<Item = (K, &'a MetricResult<V>)>)
     where
         K: Display,
         V: MetricValue + PartialEq + 'a,
     {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
-            self.write_metric(&description, &diff.metrics.as_ref(), diff.diffs);
+            self.write_metric(&description, &diff.values.as_ref(), diff.change);
         }
     }
 
     fn format_perf_metrics<'a, K>(
         &mut self,
         perf_config: &PerfOutputConfig,
-        metrics: impl Iterator<Item = (K, &'a MetricsDiff<AnnotatedMetric<PerfQualities>>)>,
+        metrics: impl Iterator<Item = (K, &'a MetricResult<AnnotatedMetric<PerfQualities>>)>,
     ) where
         K: Display,
     {
         for (metric_kind, diff) in metrics {
             let description = format!("{metric_kind}:");
-            self.write_perf_metric(&description, diff.metrics.as_ref(), diff.diffs, perf_config);
+            self.write_perf_metric(&description, diff.values.as_ref(), diff.change, perf_config);
         }
     }
 
@@ -1246,18 +1252,18 @@ impl VerticalFormatter {
         writeln!(self, "{} {}", "##".yellow(), "Total".bold()).unwrap();
     }
 
-    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<ProfileInfo>) {
-        fn fields(detail: &ProfileInfo) -> String {
+    fn format_multiple_segment_header(&mut self, tool_run: &EitherOrBoth<ToolRun>) {
+        fn fields(tool_run: &ToolRun) -> String {
             let mut result = String::new();
-            write!(result, "pid: {}", detail.pid).unwrap();
+            write!(result, "pid: {}", tool_run.pid).unwrap();
 
-            if let Some(ppid) = detail.parent_pid {
+            if let Some(ppid) = tool_run.parent_pid {
                 write!(result, " ppid: {ppid}").unwrap();
             }
-            if let Some(thread) = detail.thread {
+            if let Some(thread) = tool_run.thread {
                 write!(result, " thread: {thread}").unwrap();
             }
-            if let Some(part) = detail.part {
+            if let Some(part) = tool_run.part {
                 write!(result, " part: {part}").unwrap();
             }
 
@@ -1268,7 +1274,7 @@ impl VerticalFormatter {
         write!(self, "{} ", "##".yellow()).unwrap();
 
         let max_left = LEFT_WIDTH - 3;
-        match details.as_ref().bimap(
+        match tool_run.as_ref().bimap(
             |new| {
                 let left = fields(new);
                 let len = left.len();
@@ -1359,6 +1365,36 @@ impl VerticalFormatter {
 
         writeln!(self, "{}", values.bright_black()).unwrap();
     }
+
+    fn format_single_error_metric(
+        &mut self,
+        results: &MetricResults<ErrorMetric>,
+        output_format: &IndexSet<ErrorMetric>,
+        tool_run: Option<&EitherOrBoth<ToolRun>>,
+    ) {
+        self.format_metrics(
+            output_format
+                .clone()
+                .iter()
+                .filter_map(|e| results.result_by_kind(e).map(|d| (e, d))),
+        );
+
+        // We only check for `new` errors
+        if let Some(tool_run) = tool_run
+            && results
+                .result_by_kind(&ErrorMetric::Errors)
+                .is_some_and(|e| {
+                    e.values
+                        .as_ref()
+                        .left()
+                        .is_some_and(|l| *l > Metric::Int(0))
+                })
+            && let Some(new) = tool_run.as_ref().left()
+            && let Some(output) = new.output.as_ref()
+        {
+            self.format_output(output);
+        }
+    }
 }
 
 impl Display for VerticalFormatter {
@@ -1370,10 +1406,9 @@ impl Display for VerticalFormatter {
 impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
-        tool: Tool,
         baselines: &Baselines,
-        info: Option<&EitherOrBoth<ProfileInfo>>,
-        metrics_summary: &ToolMetricSummary,
+        tool_run: Option<&EitherOrBoth<ToolRun>>,
+        metric_results: &ToolMetricResults,
         is_default_tool: bool,
         perf_config: Option<&PerfOutputConfig>,
     ) {
@@ -1381,83 +1416,64 @@ impl Formatter for VerticalFormatter {
             self.format_baseline(baselines);
         }
 
-        if metrics_summary.is_empty() {
+        if metric_results.is_empty() {
             self.write_indent(&IndentKind::Normal);
             writeln!(self, "{}", "Empty data".bright_black()).unwrap();
             return;
         }
 
-        match metrics_summary {
-            ToolMetricSummary::None => {
-                if let Some(info) = info
-                    && let Some(new) = info.as_ref().left()
-                    && let Some(details) = &new.details
+        match metric_results {
+            ToolMetricResults::None => {
+                if let Some(tool_run) = tool_run
+                    && let Some(new) = tool_run.as_ref().left()
+                    && let Some(output) = &new.output
                 {
-                    self.format_details(details);
+                    self.format_output(output);
                 }
             }
-            ToolMetricSummary::ErrorTool(summary) => {
-                let format = match tool {
-                    Tool::Memcheck => &self.output_format.memcheck,
-                    Tool::Helgrind => &self.output_format.helgrind,
-                    Tool::DRD => &self.output_format.drd,
-                    _ => {
-                        unreachable!("{tool} should be an error metric tool");
-                    }
-                };
-
-                self.format_metrics(
-                    format
-                        .clone()
-                        .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-                );
-
-                // We only check for `new` errors
-                if let Some(info) = info
-                    && summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
-                        e.metrics
-                            .as_ref()
-                            .left()
-                            .is_some_and(|l| *l > Metric::Int(0))
-                    })
-                    && let Some(new) = info.as_ref().left()
-                    && let Some(details) = new.details.as_ref()
-                {
-                    self.format_details(details);
-                }
+            ToolMetricResults::Memcheck(results) => {
+                let format = self.output_format.memcheck.clone();
+                self.format_single_error_metric(results, &format, tool_run);
             }
-            ToolMetricSummary::Dhat(summary) => self.format_metrics(
+            ToolMetricResults::Helgrind(results) => {
+                let format = self.output_format.helgrind.clone();
+                self.format_single_error_metric(results, &format, tool_run);
+            }
+            ToolMetricResults::DRD(results) => {
+                let format = self.output_format.drd.clone();
+                self.format_single_error_metric(results, &format, tool_run);
+            }
+            ToolMetricResults::Dhat(results) => self.format_metrics(
                 self.output_format
                     .dhat
                     .clone()
                     .iter()
-                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                    .filter_map(|e| results.result_by_kind(e).map(|d| (e, d))),
             ),
-            ToolMetricSummary::Callgrind(summary) => {
+            ToolMetricResults::Callgrind(results) => {
                 self.format_metrics(
                     self.output_format
                         .callgrind
                         .clone()
                         .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                        .filter_map(|e| results.result_by_kind(e).map(|d| (e, d))),
                 );
             }
-            ToolMetricSummary::Cachegrind(summary) => {
+            ToolMetricResults::Cachegrind(results) => {
                 self.format_metrics(
                     self.output_format
                         .cachegrind
                         .clone()
                         .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                        .filter_map(|e| results.result_by_kind(e).map(|d| (e, d))),
                 );
             }
-            ToolMetricSummary::Perf(summary) => {
+            ToolMetricResults::Perf(results) => {
                 let default_perf_config = PerfOutputConfig::default();
                 self.format_perf_metrics(
                     perf_config.unwrap_or(&default_perf_config),
-                    summary
-                        .all_diffs()
+                    results
+                        .all_results()
                         .map(|(perf_metric, diff)| (perf_metric.display(), diff)),
                 );
             }
@@ -1484,27 +1500,25 @@ impl Formatter for VerticalFormatter {
         {
             let mut first = true;
             for part in &data.parts {
-                self.format_multiple_segment_header(&part.details);
+                self.format_multiple_segment_header(&part.tool_run);
                 if tool != Tool::Perf {
-                    self.format_command(config, &part.details.as_ref().map(|i| &i.command));
+                    self.format_command(config, &part.tool_run.as_ref().map(|i| &i.command));
                 }
 
                 if first {
                     self.format_single(
-                        tool,
                         baselines,
-                        Some(&part.details),
-                        &part.metrics_summary,
+                        Some(&part.tool_run),
+                        &part.metrics,
                         is_default_tool,
                         perf_config,
                     );
                     first = false;
                 } else {
                     self.format_single(
-                        tool,
                         &(None, None),
-                        Some(&part.details),
-                        &part.metrics_summary,
+                        Some(&part.tool_run),
+                        &part.metrics,
                         is_default_tool,
                         perf_config,
                     );
@@ -1514,29 +1528,26 @@ impl Formatter for VerticalFormatter {
             if data.total.is_some() {
                 self.format_tool_total_header();
                 self.format_single(
-                    tool,
                     &(None, None),
                     None,
-                    &data.total.summary,
+                    &data.total.metrics,
                     is_default_tool,
                     perf_config,
                 );
             }
         } else if data.total.is_some() {
             self.format_single(
-                tool,
                 baselines,
                 None,
-                &data.total.summary,
+                &data.total.metrics,
                 is_default_tool,
                 perf_config,
             );
         } else if !data.is_empty() && tool == Tool::Perf {
             self.format_single(
-                tool,
                 baselines,
                 None,
-                &data.parts[0].metrics_summary,
+                &data.parts[0].metrics,
                 is_default_tool,
                 perf_config,
             );
@@ -1545,12 +1556,12 @@ impl Formatter for VerticalFormatter {
             // bit more aggregated form without the multiple files headlines. This affects currently
             // the output of `Massif`, `BBV` and `perf`.
             for part in &data.parts {
-                self.format_command(config, &part.details.as_ref().map(|i| &i.command));
+                self.format_command(config, &part.tool_run.as_ref().map(|i| &i.command));
 
-                if let Some(new) = part.details.as_ref().left()
-                    && let Some(details) = &new.details
+                if let Some(new) = part.tool_run.as_ref().left()
+                    && let Some(output) = &new.output
                 {
-                    self.format_details(details);
+                    self.format_output(output);
                 }
             }
         } else {
@@ -1562,17 +1573,17 @@ impl Formatter for VerticalFormatter {
         &mut self,
         function_name: &str,
         id: &str,
-        details: Option<&str>,
-        summaries: Vec<(Tool, ToolMetricSummary)>,
+        description: Option<&str>,
+        tool_metric_results: Vec<(Tool, ToolMetricResults)>,
         perf_config: Option<&PerfOutputConfig>,
     ) {
         if self.output_format.is_default() {
-            ComparisonHeader::new(function_name, id, details, &self.output_format).print();
+            ComparisonHeader::new(function_name, id, description, &self.output_format).print();
 
-            let is_multiple = summaries.len() > 1;
-            for (tool, summary) in summaries
+            let is_multiple = tool_metric_results.len() > 1;
+            for (tool, results) in tool_metric_results
                 .iter()
-                .filter(|(_, s)| *s != ToolMetricSummary::None)
+                .filter(|(_, s)| *s != ToolMetricResults::None)
             {
                 if is_multiple || *tool != Tool::Callgrind {
                     self.format_line(&format!(
@@ -1582,7 +1593,7 @@ impl Formatter for VerticalFormatter {
                         tool.to_string().to_uppercase()
                     ));
                 }
-                self.format_single(*tool, &(None, None), None, summary, false, perf_config);
+                self.format_single(&(None, None), None, results, false, perf_config);
             }
             self.print_buffer();
         }
@@ -1623,6 +1634,14 @@ pub fn format_float(float: f64, unit: char) -> ColoredString {
         format!("{signed_short:>+FLOAT_WIDTH$}{unit}")
             .bright_green()
             .bold()
+    }
+}
+
+fn format_metric_with_unit(metric: &Metric, unit: Option<&Unit>) -> String {
+    if let Some(unit) = unit {
+        format!("{metric} [{unit}]")
+    } else {
+        metric.to_string()
     }
 }
 
@@ -1801,14 +1820,6 @@ fn regression_display_name<'a>(metric: &MetricKind, display: Option<&'a str>) ->
     )
 }
 
-fn format_metric_with_unit(metric: &Metric, unit: Option<&Unit>) -> String {
-    if let Some(unit) = unit {
-        format!("{metric} [{unit}]")
-    } else {
-        metric.to_string()
-    }
-}
-
 fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
     if let Some(num) = truncate_description {
         let new_description = truncate_str_utf8(description, num);
@@ -1829,17 +1840,17 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::metrics::model::{Metrics, MetricsSummary};
+    use crate::metrics::model::{MetricResults, Metrics};
 
-    const TWENTY_DIGITS: &str = "12345678901234567890";
-    const TWENTY_ONE_DIGITS: &str = "123456789012345678901";
-    const FIELD_SOME_5: &str = "Some:";
-    const FIELD_35: &str = "Some Field1234567890Some Field1234:";
     const FIELD_34: &str = "Some Field1234567890Some Field123:";
+    const FIELD_35: &str = "Some Field1234567890Some Field1234:";
     const FIELD_50: &str = "Some Field1234567890Some Field1234567890123456789:";
     const FIELD_53: &str = "Some Field1234567890Some Field1234567890Some Field12:";
     const FIELD_54: &str = "Some Field1234567890Some Field1234567890Some Field123:";
     const FIELD_55: &str = "Some Field1234567890Some Field1234567890Some Field1234:";
+    const FIELD_SOME_5: &str = "Some:";
+    const TWENTY_DIGITS: &str = "12345678901234567890";
+    const TWENTY_ONE_DIGITS: &str = "123456789012345678901";
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
@@ -2054,9 +2065,9 @@ mod tests {
             ),
             None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => Metric::Int(new)})),
         };
-        let metrics_summary = MetricsSummary::new(costs);
+        let metric_results = MetricResults::new(costs);
         let mut formatter = VerticalFormatter::new(OutputFormat::default());
-        formatter.format_metrics(metrics_summary.all_diffs());
+        formatter.format_metrics(metric_results.all_results());
 
         let expected = format!(
             "  {:<36}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
@@ -2121,9 +2132,9 @@ mod tests {
             ),
             None => EitherOrBoth::Left(Metrics(indexmap! {EventKind::Ir => Metric::Int(new)})),
         };
-        let metrics_summary = MetricsSummary::new(costs);
+        let metric_results = MetricResults::new(costs);
         let mut formatter = VerticalFormatter::new(output_format);
-        formatter.format_metrics(metrics_summary.all_diffs());
+        formatter.format_metrics(metric_results.all_results());
 
         assert_eq!(formatter.buffer, expected);
     }

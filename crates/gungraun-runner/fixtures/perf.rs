@@ -3,14 +3,13 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{PerfMetric, PerfRunMode, PerfSpec, RawToolArgs, Unit};
-use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
+use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities, ToolMetrics};
 use crate::runner::perf::json_parser::JsonParser;
 use crate::runner::perf::model::PerfStatRecord;
 use crate::runner::perf::records::PerfStatRecords;
 use crate::runner::perf::regression::PerfRegressionConfig;
 use crate::runner::tool::config::{DEFAULT_PERF_ALPHA, DEFAULT_PERF_MIN_PCNT_RUNNING, PerfConfig};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics;
 
 #[builder(finish_fn = "fx")]
 pub fn json_parser_f(
@@ -46,10 +45,68 @@ pub fn metric_perf_f(
 }
 
 #[builder(finish_fn = "fx")]
-pub fn perf_stat_records_f(
-    #[builder(default = vec![], with = FromIterator::from_iter)] records: Vec<PerfStatRecord>,
-) -> PerfStatRecords {
-    PerfStatRecords(records)
+pub fn perf_config_f(
+    alpha: f64,
+    #[builder(into)] events: String,
+    min_pcnt_running: f64,
+    #[builder(with = FromIterator::from_iter)] non_zero_metrics: Vec<&str>,
+    run_mode: PerfRunMode,
+    use_sampling: bool,
+) -> PerfConfig {
+    PerfConfig {
+        alpha,
+        events,
+        min_pcnt_running,
+        non_zero_metrics: non_zero_metrics
+            .into_iter()
+            .map(ToOwned::to_owned)
+            .collect(),
+        run_mode,
+        use_sampling,
+    }
+}
+
+#[builder(finish_fn = "fx")]
+pub fn perf_regression_config_f(
+    soft_limits: Option<Vec<(PerfMetric, f64)>>,
+    hard_limits: Option<Vec<(PerfMetric, Option<Unit>, Metric)>>,
+    fail_fast: Option<bool>,
+    alpha: Option<f64>,
+) -> PerfRegressionConfig {
+    PerfRegressionConfig {
+        alpha: alpha.unwrap_or(DEFAULT_PERF_ALPHA),
+        soft_limits: soft_limits.unwrap_or_default(),
+        hard_limits: hard_limits.unwrap_or_default(),
+        fail_fast: fail_fast.unwrap_or(false),
+    }
+}
+
+#[builder(finish_fn = "fx")]
+pub fn perf_spec_f(
+    alpha: Option<f64>,
+    #[builder(default = vec![], with = FromIterator::from_iter)] events: Vec<&str>,
+    min_pcnt_running: Option<f64>,
+    #[builder(default = vec![], with = FromIterator::from_iter)] non_zero_metrics: Vec<&str>,
+    record: Option<bool>,
+    record_args: Option<RawToolArgs>,
+    run_mode: Option<PerfRunMode>,
+    sample_duration: Option<Duration>,
+) -> PerfSpec {
+    PerfSpec {
+        alpha,
+        events: (!events.is_empty()).then(|| events.into_iter().map(ToOwned::to_owned).collect()),
+        min_pcnt_running,
+        non_zero_metrics: (!non_zero_metrics.is_empty()).then(|| {
+            non_zero_metrics
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect()
+        }),
+        record,
+        record_args: record_args.unwrap_or_default(),
+        run_mode,
+        sample_duration,
+    }
 }
 
 #[builder(finish_fn = "fx")]
@@ -145,68 +202,10 @@ pub fn perf_stat_record_f(
 }
 
 #[builder(finish_fn = "fx")]
-pub fn perf_regression_config_f(
-    soft_limits: Option<Vec<(PerfMetric, f64)>>,
-    hard_limits: Option<Vec<(PerfMetric, Option<Unit>, Metric)>>,
-    fail_fast: Option<bool>,
-    alpha: Option<f64>,
-) -> PerfRegressionConfig {
-    PerfRegressionConfig {
-        alpha: alpha.unwrap_or(DEFAULT_PERF_ALPHA),
-        soft_limits: soft_limits.unwrap_or_default(),
-        hard_limits: hard_limits.unwrap_or_default(),
-        fail_fast: fail_fast.unwrap_or(false),
-    }
-}
-
-#[builder(finish_fn = "fx")]
-pub fn perf_config_f(
-    alpha: f64,
-    #[builder(into)] events: String,
-    min_pcnt_running: f64,
-    #[builder(with = FromIterator::from_iter)] non_zero_metrics: Vec<&str>,
-    run_mode: PerfRunMode,
-    use_sampling: bool,
-) -> PerfConfig {
-    PerfConfig {
-        alpha,
-        events,
-        min_pcnt_running,
-        non_zero_metrics: non_zero_metrics
-            .into_iter()
-            .map(ToOwned::to_owned)
-            .collect(),
-        run_mode,
-        use_sampling,
-    }
-}
-
-#[builder(finish_fn = "fx")]
-pub fn perf_spec_f(
-    alpha: Option<f64>,
-    #[builder(default = vec![], with = FromIterator::from_iter)] events: Vec<&str>,
-    min_pcnt_running: Option<f64>,
-    #[builder(default = vec![], with = FromIterator::from_iter)] non_zero_metrics: Vec<&str>,
-    record: Option<bool>,
-    record_args: Option<RawToolArgs>,
-    run_mode: Option<PerfRunMode>,
-    sample_duration: Option<Duration>,
-) -> PerfSpec {
-    PerfSpec {
-        alpha,
-        events: (!events.is_empty()).then(|| events.into_iter().map(ToOwned::to_owned).collect()),
-        min_pcnt_running,
-        non_zero_metrics: (!non_zero_metrics.is_empty()).then(|| {
-            non_zero_metrics
-                .into_iter()
-                .map(ToOwned::to_owned)
-                .collect()
-        }),
-        record,
-        record_args: record_args.unwrap_or_default(),
-        run_mode,
-        sample_duration,
-    }
+pub fn perf_stat_records_f(
+    #[builder(default = vec![], with = FromIterator::from_iter)] records: Vec<PerfStatRecord>,
+) -> PerfStatRecords {
+    PerfStatRecords(records)
 }
 
 #[builder(finish_fn = "fx")]

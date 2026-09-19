@@ -44,9 +44,9 @@ crates/gungraun-runner/src/
 | Tool command lifecycle | `runner/tool/run.rs`                         | Builds `std::process::Command`, spawns, captures output, validates exit status                     |
 | Tool configuration     | `runner/tool/config.rs`                      | `ToolConfig` maps user config to concrete tool arguments                                           |
 | Output path management | `runner/tool/path.rs`                        | `ToolOutputPath` handles baseline naming and directory layout                                      |
-| Metric model           | `metrics/model.rs`                           | `Metric`, `MetricsSummary`, `AnnotatedMetric` — pure data                                          |
+| Metric model           | `metrics/model.rs`                           | `Metric`, `MetricResults`, `AnnotatedMetric` — pure data                                           |
 | Metric processing      | `metrics/logic.rs`                           | Diff calculation, aggregation, regression threshold checks                                         |
-| Summary model          | `summary/model.rs`                           | `BenchmarkSummary`, `ToolMetricSummary` — serializable schema                                      |
+| Summary model          | `summary/model.rs`                           | `BenchmarkSummary`, `ToolMetricResults` — serializable schema                                      |
 | Summary processing     | `summary/logic.rs`                           | Building summaries from parsed tool output                                                         |
 | Error handling         | `error.rs`                                   | `Error` enum for user-facing messages; `JobError(anyhow::Error)` for internal thread-pool failures |
 | Integration tests      | `../gungraun-tests/tests/`                   | Runner behavior tested via fixture benchmarks and `.conf.yml` expectations                         |

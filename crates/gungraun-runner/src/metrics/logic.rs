@@ -15,9 +15,9 @@ use indexmap::IndexMap;
 
 use crate::api::{Limit, PerfMetric};
 use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, Metrics, MetricsDiff, MetricsSummary, PerfQualities,
+    AnnotatedMetric, Metric, MetricKind, MetricResult, MetricResults, Metrics, PerfQualities,
 };
-use crate::summary::model::Diffs;
+use crate::summary::model::MetricChange;
 use crate::units::Unit;
 use crate::util::{Union, to_string_unsigned_short};
 
@@ -26,7 +26,7 @@ pub trait MetricValue: Clone {
     /// Adds two metric values.
     #[must_use]
     fn add(&self, other: &Self) -> Self;
-    /// Returns the numeric metric used for ordering and diffs.
+    /// Returns the numeric metric used for ordering and changes.
     #[must_use]
     fn metric(&self) -> Metric;
     /// Returns this value normalized into its canonical representation.
@@ -79,13 +79,13 @@ pub trait TypeChecker {
 
 impl<Q> AnnotatedMetric<Q> {
     /// Creates an `AnnotatedMetric` from a numeric value, metadata, and an optional [`Unit`].
-    pub fn new<M, U>(metric: M, qualities: Q, unit: U) -> Self
+    pub fn new<M, U>(value: M, qualities: Q, unit: U) -> Self
     where
         M: Into<Metric>,
         U: Into<Option<Unit>>,
     {
         Self {
-            metric: metric.into(),
+            value: value.into(),
             qualities,
             unit: unit.into(),
         }
@@ -94,12 +94,12 @@ impl<Q> AnnotatedMetric<Q> {
 
 impl AnnotatedMetric<PerfQualities> {
     /// Creates a perf metric with default [`PerfQualities`] and an optional [`Unit`].
-    pub fn with_default_qualities<M, U>(metric: M, unit: U) -> Self
+    pub fn with_default_qualities<M, U>(value: M, unit: U) -> Self
     where
         M: Into<Metric>,
         U: Into<Option<Unit>>,
     {
-        Self::new(metric, PerfQualities::default(), unit)
+        Self::new(value, PerfQualities::default(), unit)
     }
 
     /// Returns this metric value converted into the canonical base scale of its [`Unit`].
@@ -120,7 +120,7 @@ impl AnnotatedMetric<PerfQualities> {
     /// ```
     #[expect(clippy::cast_precision_loss)]
     pub fn base_value(&self) -> f64 {
-        match self.metric {
+        match self.value {
             Metric::Int(value) => self
                 .unit
                 .as_ref()
@@ -150,20 +150,20 @@ impl AnnotatedMetric<PerfQualities> {
     #[expect(clippy::cast_possible_truncation)]
     #[expect(clippy::cast_sign_loss)]
     pub fn into_mean(self, canonical_mean: f64) -> Self {
-        match self.metric {
+        match self.value {
             Metric::Int(_) => {
                 let new_value = self.rebase(canonical_mean);
                 match self.unit {
                     Some(unit) => {
                         let (rescaled, unit) = unit.rescale(new_value);
                         Self {
-                            metric: Metric::Int(rescaled.round() as u64),
+                            value: Metric::Int(rescaled.round() as u64),
                             unit: Some(unit),
                             qualities: self.qualities,
                         }
                     }
                     None => Self {
-                        metric: Metric::Int(new_value.round() as u64),
+                        value: Metric::Int(new_value.round() as u64),
                         unit: None,
                         qualities: self.qualities,
                     },
@@ -173,13 +173,13 @@ impl AnnotatedMetric<PerfQualities> {
                 let new_value = self.rebase(canonical_mean);
                 match self.unit {
                     Some(unit) => Self {
-                        metric: Metric::Float(new_value),
+                        value: Metric::Float(new_value),
                         unit: Some(unit),
                         qualities: self.qualities,
                     }
                     .normalize(),
                     None => Self {
-                        metric: Metric::Float(new_value),
+                        value: Metric::Float(new_value),
                         unit: None,
                         qualities: self.qualities,
                     },
@@ -192,16 +192,16 @@ impl AnnotatedMetric<PerfQualities> {
 impl<Q> Display for AnnotatedMetric<Q> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.unit {
-            Some(unit) => write!(f, "{} {unit}", self.metric),
-            None => self.metric.fmt(f),
+            Some(unit) => write!(f, "{} {unit}", self.value),
+            None => self.value.fmt(f),
         }
     }
 }
 
 impl From<Metric> for AnnotatedMetric<PerfQualities> {
-    fn from(metric: Metric) -> Self {
+    fn from(value: Metric) -> Self {
         Self {
-            metric,
+            value,
             unit: None,
             qualities: PerfQualities::default(),
         }
@@ -210,7 +210,7 @@ impl From<Metric> for AnnotatedMetric<PerfQualities> {
 
 impl MetricValue for AnnotatedMetric<PerfQualities> {
     fn metric(&self) -> Metric {
-        self.metric
+        self.value
     }
 
     /// Adds another perf metric to this one returning the normalized result.
@@ -232,10 +232,10 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
         let (this_normalized, other_normalized) = self
             .normalize_with(other)
             .expect("Only compatible units should be summed up");
-        let metric = this_normalized.metric + other_normalized.metric;
+        let metric = this_normalized.value + other_normalized.value;
 
         Self {
-            metric,
+            value: metric,
             unit: this_normalized.unit,
             qualities: this_normalized.qualities.add(&other_normalized.qualities),
         }
@@ -262,11 +262,11 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
             .expect("Only compatible units should be subtracted");
 
         let metric = this_normalized
-            .metric
-            .saturating_sub(&other_normalized.metric);
+            .value
+            .saturating_sub(&other_normalized.value);
 
         Self {
-            metric,
+            value: metric,
             unit: this_normalized.unit,
             qualities: PerfQualities::default(),
         }
@@ -274,7 +274,7 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     }
 
     fn to_string_without_unit(&self) -> String {
-        self.metric.to_string()
+        self.value.to_string()
     }
 
     fn unit(&self) -> Option<&Unit> {
@@ -309,7 +309,7 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     ///
     /// let normalized = metric.normalize();
     ///
-    /// assert_eq!(normalized.metric, Metric::Float(1.5));
+    /// assert_eq!(normalized.value, Metric::Float(1.5));
     /// assert_eq!(normalized.unit, Some(Unit::Seconds));
     /// assert_eq!(normalized.qualities.mean, Some(0.123));
     /// ```
@@ -323,12 +323,12 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     /// assert_eq!(metric.normalize(), metric);
     /// ```
     fn normalize(&self) -> Self {
-        match (self.metric, self.unit.as_ref()) {
+        match (self.value, self.unit.as_ref()) {
             (Metric::Float(float), Some(unit)) if float.is_finite() && float != 0.0 => {
                 let (new_value, new_unit) = unit.rescale(float);
                 let factor = new_value / float;
                 Self {
-                    metric: Metric::Float(new_value),
+                    value: Metric::Float(new_value),
                     unit: Some(new_unit),
                     qualities: self.qualities.scale_by_metric(Metric::Float(factor)),
                 }
@@ -363,8 +363,8 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     ///
     /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
     ///
-    /// assert_eq!(lhs.metric, Metric::Float(1.0));
-    /// assert_eq!(rhs.metric, Metric::Float(1.5));
+    /// assert_eq!(lhs.value, Metric::Float(1.0));
+    /// assert_eq!(rhs.value, Metric::Float(1.5));
     /// assert_eq!(lhs.unit, Some(Unit::Seconds));
     /// assert_eq!(rhs.unit, Some(Unit::Seconds));
     /// ```
@@ -381,8 +381,8 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
     ///
     /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
     ///
-    /// assert_eq!(lhs.metric, Metric::Int(1_000));
-    /// assert_eq!(rhs.metric, Metric::Int(1_500));
+    /// assert_eq!(lhs.value, Metric::Int(1_000));
+    /// assert_eq!(rhs.value, Metric::Int(1_500));
     /// assert_eq!(lhs.unit, Some(Unit::Milliseconds));
     /// assert_eq!(rhs.unit, Some(Unit::Milliseconds));
     /// ```
@@ -414,7 +414,7 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                 // have to scale both metrics with the same factor, or else it could happen that one
                 // unit `0.5 ms` -> `500 us` while the other `1000 ms` -> `1 s`
                 let (this_metric_value, other_metric_value) =
-                    match (self.metric * this_factor, other.metric * other_factor) {
+                    match (self.value * this_factor, other.value * other_factor) {
                         (Metric::Float(this_value), Metric::Float(other_value)) => {
                             let rescale_value = this_value.abs().min(other_value.abs());
                             let rescale_value = if rescale_value == 0.0 {
@@ -428,14 +428,14 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                             match target_unit.scale_factor_metric(&mutual_unit) {
                                 Some(mutual_factor) => (
                                     Self {
-                                        metric: Metric::Float(this_value) * mutual_factor,
+                                        value: Metric::Float(this_value) * mutual_factor,
                                         unit: Some(mutual_unit.clone()),
                                         qualities: self
                                             .qualities
                                             .scale_by_metric(mutual_factor * this_factor),
                                     },
                                     Self {
-                                        metric: Metric::Float(other_value) * mutual_factor,
+                                        value: Metric::Float(other_value) * mutual_factor,
                                         unit: Some(mutual_unit),
                                         qualities: other
                                             .qualities
@@ -444,12 +444,12 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                                 ),
                                 None => (
                                     Self {
-                                        metric: Metric::Float(this_value),
+                                        value: Metric::Float(this_value),
                                         unit: Some(target_unit.clone()),
                                         qualities: self.qualities.scale_by_metric(this_factor),
                                     },
                                     Self {
-                                        metric: Metric::Float(other_value),
+                                        value: Metric::Float(other_value),
                                         unit: Some(target_unit),
                                         qualities: other.qualities.scale_by_metric(other_factor),
                                     },
@@ -458,12 +458,12 @@ impl MetricValue for AnnotatedMetric<PerfQualities> {
                         }
                         (this_metric, other_metric) => (
                             Self {
-                                metric: this_metric,
+                                value: this_metric,
                                 unit: Some(target_unit.clone()),
                                 qualities: self.qualities.scale_by_metric(this_factor),
                             },
                             Self {
-                                metric: other_metric,
+                                value: other_metric,
                                 unit: Some(target_unit),
                                 qualities: other.qualities.scale_by_metric(other_factor),
                             },
@@ -536,59 +536,6 @@ impl Metric {
             Self::Int(int) => *int as f64,
             Self::Float(float) => *float,
         }
-    }
-}
-
-impl MetricValue for Metric {
-    fn metric(&self) -> Metric {
-        *self
-    }
-
-    fn add(&self, other: &Self) -> Self {
-        *self + *other
-    }
-
-    fn saturating_sub(&self, other: &Self) -> Self {
-        let result = self.sub(*other);
-        if result.is_float() && result.is_sign_negative() {
-            Self::Float(0.0)
-        } else {
-            result
-        }
-    }
-
-    fn to_string_without_unit(&self) -> String {
-        self.to_string()
-    }
-
-    fn unit(&self) -> Option<&Unit> {
-        None
-    }
-
-    fn normalize(&self) -> Self {
-        *self
-    }
-
-    fn normalize_with(&self, other: &Self) -> Option<(Self, Self)> {
-        Some((*self, *other))
-    }
-}
-
-impl Ord for Metric {
-    #[expect(clippy::cast_precision_loss)]
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (Self::Int(a), Self::Int(b)) => a.cmp(b),
-            (Self::Int(a), Self::Float(b)) => (*a as f64).total_cmp(b),
-            (Self::Float(a), Self::Int(b)) => a.total_cmp(&(*b as f64)),
-            (Self::Float(a), Self::Float(b)) => a.total_cmp(b),
-        }
-    }
-}
-
-impl PartialOrd for Metric {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -668,16 +615,6 @@ impl From<Limit> for Metric {
     }
 }
 
-impl From<Metric> for f64 {
-    #[expect(clippy::cast_precision_loss)]
-    fn from(value: Metric) -> Self {
-        match value {
-            Metric::Int(a) => a as Self,
-            Metric::Float(a) => a,
-        }
-    }
-}
-
 impl FromStr for Metric {
     type Err = anyhow::Error;
 
@@ -689,6 +626,41 @@ impl FromStr for Metric {
                 Err(error) => Err(anyhow!("Invalid metric: {error}")),
             },
         }
+    }
+}
+
+impl MetricValue for Metric {
+    fn metric(&self) -> Metric {
+        *self
+    }
+
+    fn add(&self, other: &Self) -> Self {
+        *self + *other
+    }
+
+    fn saturating_sub(&self, other: &Self) -> Self {
+        let result = self.sub(*other);
+        if result.is_float() && result.is_sign_negative() {
+            Self::Float(0.0)
+        } else {
+            result
+        }
+    }
+
+    fn to_string_without_unit(&self) -> String {
+        self.to_string()
+    }
+
+    fn unit(&self) -> Option<&Unit> {
+        None
+    }
+
+    fn normalize(&self) -> Self {
+        *self
+    }
+
+    fn normalize_with(&self, other: &Self) -> Option<(Self, Self)> {
+        Some((*self, *other))
     }
 }
 
@@ -718,15 +690,21 @@ impl Mul for Metric {
     }
 }
 
-impl Mul<Metric> for u64 {
-    type Output = Metric;
-
+impl Ord for Metric {
     #[expect(clippy::cast_precision_loss)]
-    fn mul(self, rhs: Metric) -> Self::Output {
-        match rhs {
-            Metric::Int(b) => Metric::Int(self.saturating_mul(b)),
-            Metric::Float(b) => Metric::Float((self as f64) * b),
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => a.cmp(b),
+            (Self::Int(a), Self::Float(b)) => (*a as f64).total_cmp(b),
+            (Self::Float(a), Self::Int(b)) => a.total_cmp(&(*b as f64)),
+            (Self::Float(a), Self::Float(b)) => a.total_cmp(b),
         }
+    }
+}
+
+impl PartialOrd for Metric {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -756,6 +734,158 @@ impl Display for MetricKind {
             Self::DRD(metric) => f.write_fmt(format_args!("DRD: {metric}")),
             Self::Perf(metric) => f.write_fmt(format_args!("Perf: {metric}")),
         }
+    }
+}
+
+impl<V> MetricResult<V>
+where
+    V: MetricValue,
+{
+    /// Creates a new `MetricResult` from an [`EitherOrBoth`] of metric values.
+    pub fn new(values: EitherOrBoth<V>) -> Self {
+        if let EitherOrBoth::Both(new, old) = &values {
+            if let Some((normalized_new, normalized_old)) = new.normalize_with(old) {
+                let change = MetricChange::new(normalized_new.metric(), normalized_old.metric());
+                Self {
+                    change: Some(change),
+                    values: EitherOrBoth::Both(normalized_new, normalized_old),
+                }
+            } else {
+                // Can't create change for metrics with different units or scales
+                Self {
+                    change: None,
+                    values: values.map(|m| m.normalize()),
+                }
+            }
+        } else {
+            Self {
+                values: values.map(|m| m.normalize()),
+                change: None,
+            }
+        }
+    }
+
+    /// Sum this `MetricResult` with another `MetricResult`
+    #[must_use]
+    pub fn add(&self, other: &Self) -> Self {
+        match (&self.values, &other.values) {
+            (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
+                Self::new(EitherOrBoth::Left(new.add(other_new)))
+            }
+            (EitherOrBoth::Right(old), EitherOrBoth::Left(new))
+            | (EitherOrBoth::Left(new), EitherOrBoth::Right(old)) => {
+                Self::new(EitherOrBoth::Both(new.clone(), old.clone()))
+            }
+            (EitherOrBoth::Right(old), EitherOrBoth::Right(other_old)) => {
+                Self::new(EitherOrBoth::Right(old.add(other_old)))
+            }
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Left(other_new))
+            | (EitherOrBoth::Left(new), EitherOrBoth::Both(other_new, old)) => {
+                Self::new(EitherOrBoth::Both(new.add(other_new), old.clone()))
+            }
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Right(other_old))
+            | (EitherOrBoth::Right(old), EitherOrBoth::Both(new, other_old)) => {
+                Self::new(EitherOrBoth::Both(new.clone(), old.add(other_old)))
+            }
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Both(other_new, other_old)) => {
+                Self::new(EitherOrBoth::Both(new.add(other_new), old.add(other_old)))
+            }
+        }
+    }
+}
+
+impl<K, V> MetricResults<K, V>
+where
+    K: Hash + Eq + Summarize<V> + Display + Clone,
+    V: MetricValue,
+{
+    /// Creates a new `MetricResults` calculating the differences between new and old (if any).
+    /// [`Metrics`]
+    pub fn new(metrics: EitherOrBoth<Metrics<K, V>>) -> Self {
+        let summarized = metrics.map(|metrics| {
+            let mut summarized = Cow::Owned(metrics);
+            K::summarize(&mut summarized);
+            summarized
+        });
+
+        let results = match summarized {
+            EitherOrBoth::Left(new) => new
+                .into_owned()
+                .into_iter()
+                .map(|(metric_kind, metric)| {
+                    (metric_kind, MetricResult::new(EitherOrBoth::Left(metric)))
+                })
+                .collect(),
+            EitherOrBoth::Right(old) => old
+                .into_owned()
+                .into_iter()
+                .map(|(metric_kind, metric)| {
+                    (metric_kind, MetricResult::new(EitherOrBoth::Right(metric)))
+                })
+                .collect(),
+            EitherOrBoth::Both(new, old) => new
+                .into_owned()
+                .union(old.into_owned())
+                .into_iter()
+                .map(|(metric_kind, metric)| (metric_kind, MetricResult::new(metric)))
+                .collect(),
+        };
+
+        Self(results)
+    }
+
+    /// Try to return a [`MetricResult`] for the specified `MetricKind`
+    pub fn result_by_kind(&self, metric_kind: &K) -> Option<&MetricResult<V>> {
+        self.0.get(metric_kind)
+    }
+
+    /// Return an iterator over all [`MetricResult`]s
+    pub fn all_results(&self) -> impl Iterator<Item = (&K, &MetricResult<V>)> {
+        self.0.iter()
+    }
+
+    /// Returns `true` if there are no metric results present.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Extract the [`Metrics`] from this summary
+    ///
+    /// This is the exact reverse operation to [`MetricResults::new`]
+    pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K, V>> {
+        self.0
+            .iter()
+            .map(|(metric_kind, result)| {
+                result
+                    .values
+                    .clone()
+                    .map(|metric| (metric_kind.clone(), metric))
+            })
+            .collect::<EitherOrBoth<IndexMap<_, _>>>()
+            .map(Metrics)
+    }
+
+    /// Sum up another `MetricResults` with this one
+    ///
+    /// If a [`MetricResult`] is not present in this summary but in the other, it is added to this
+    /// summary.
+    pub fn add(&mut self, other: &Self) {
+        for (other_key, other_value) in &other.0 {
+            if let Some(value) = self.0.get_mut(other_key) {
+                *value = value.add(other_value);
+            } else {
+                self.0.insert(other_key.clone(), other_value.clone());
+            }
+        }
+    }
+}
+
+impl<K, V> Default for MetricResults<K, V>
+where
+    K: Hash + Eq,
+{
+    fn default() -> Self {
+        Self(IndexMap::default())
     }
 }
 
@@ -972,6 +1102,22 @@ impl Metrics<PerfMetric, AnnotatedMetric<PerfQualities>> {
     }
 }
 
+impl<I, K> FromIterator<I> for Metrics<K>
+where
+    K: Hash + Eq + From<I>,
+{
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = I>,
+    {
+        Self(
+            iter.into_iter()
+                .map(|s| (K::from(s), Metric::Int(0)))
+                .collect::<IndexMap<_, _>>(),
+        )
+    }
+}
+
 impl<K, V> IntoIterator for Metrics<K, V>
 where
     K: Hash + Eq,
@@ -1005,173 +1151,6 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()
-    }
-}
-
-impl<I, K> FromIterator<I> for Metrics<K>
-where
-    K: Hash + Eq + From<I>,
-{
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = I>,
-    {
-        Self(
-            iter.into_iter()
-                .map(|s| (K::from(s), Metric::Int(0)))
-                .collect::<IndexMap<_, _>>(),
-        )
-    }
-}
-
-impl<V> MetricsDiff<V>
-where
-    V: MetricValue,
-{
-    /// Creates a new `MetricsDiff` from an [`EitherOrBoth`] of metric values.
-    pub fn new(metrics: EitherOrBoth<V>) -> Self {
-        if let EitherOrBoth::Both(new, old) = &metrics {
-            if let Some((normalized_new, normalized_old)) = new.normalize_with(old) {
-                let diffs = Diffs::new(normalized_new.metric(), normalized_old.metric());
-                Self {
-                    diffs: Some(diffs),
-                    metrics: EitherOrBoth::Both(normalized_new, normalized_old),
-                }
-            } else {
-                // Can't create diffs for metrics with different units or scales
-                Self {
-                    diffs: None,
-                    metrics: metrics.map(|m| m.normalize()),
-                }
-            }
-        } else {
-            Self {
-                metrics: metrics.map(|m| m.normalize()),
-                diffs: None,
-            }
-        }
-    }
-
-    /// Sum this metrics diff with another [`MetricsDiff`]
-    #[must_use]
-    pub fn add(&self, other: &Self) -> Self {
-        match (&self.metrics, &other.metrics) {
-            (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
-                Self::new(EitherOrBoth::Left(new.add(other_new)))
-            }
-            (EitherOrBoth::Right(old), EitherOrBoth::Left(new))
-            | (EitherOrBoth::Left(new), EitherOrBoth::Right(old)) => {
-                Self::new(EitherOrBoth::Both(new.clone(), old.clone()))
-            }
-            (EitherOrBoth::Right(old), EitherOrBoth::Right(other_old)) => {
-                Self::new(EitherOrBoth::Right(old.add(other_old)))
-            }
-            (EitherOrBoth::Both(new, old), EitherOrBoth::Left(other_new))
-            | (EitherOrBoth::Left(new), EitherOrBoth::Both(other_new, old)) => {
-                Self::new(EitherOrBoth::Both(new.add(other_new), old.clone()))
-            }
-            (EitherOrBoth::Both(new, old), EitherOrBoth::Right(other_old))
-            | (EitherOrBoth::Right(old), EitherOrBoth::Both(new, other_old)) => {
-                Self::new(EitherOrBoth::Both(new.clone(), old.add(other_old)))
-            }
-            (EitherOrBoth::Both(new, old), EitherOrBoth::Both(other_new, other_old)) => {
-                Self::new(EitherOrBoth::Both(new.add(other_new), old.add(other_old)))
-            }
-        }
-    }
-}
-
-impl<K, V> MetricsSummary<K, V>
-where
-    K: Hash + Eq + Summarize<V> + Display + Clone,
-    V: MetricValue,
-{
-    /// Creates a new `MetricsSummary` calculating the differences between new and old (if any).
-    /// [`Metrics`]
-    pub fn new(metrics: EitherOrBoth<Metrics<K, V>>) -> Self {
-        let summarized = metrics.map(|metrics| {
-            let mut summarized = Cow::Owned(metrics);
-            K::summarize(&mut summarized);
-            summarized
-        });
-
-        let diffs = match summarized {
-            EitherOrBoth::Left(new) => new
-                .into_owned()
-                .into_iter()
-                .map(|(metric_kind, metric)| {
-                    (metric_kind, MetricsDiff::new(EitherOrBoth::Left(metric)))
-                })
-                .collect(),
-            EitherOrBoth::Right(old) => old
-                .into_owned()
-                .into_iter()
-                .map(|(metric_kind, metric)| {
-                    (metric_kind, MetricsDiff::new(EitherOrBoth::Right(metric)))
-                })
-                .collect(),
-            EitherOrBoth::Both(new, old) => new
-                .into_owned()
-                .union(old.into_owned())
-                .into_iter()
-                .map(|(metric_kind, metric)| (metric_kind, MetricsDiff::new(metric)))
-                .collect(),
-        };
-
-        Self(diffs)
-    }
-
-    /// Try to return a [`MetricsDiff`] for the specified `MetricKind`
-    pub fn diff_by_kind(&self, metric_kind: &K) -> Option<&MetricsDiff<V>> {
-        self.0.get(metric_kind)
-    }
-
-    /// Return an iterator over all [`MetricsDiff`]s
-    pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff<V>)> {
-        self.0.iter()
-    }
-
-    /// Returns `true` if there are no metric diffs present.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    /// Extract the [`Metrics`] from this summary
-    ///
-    /// This is the exact reverse operation to [`MetricsSummary::new`]
-    pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K, V>> {
-        self.0
-            .iter()
-            .map(|(metric_kind, diff)| {
-                diff.metrics
-                    .clone()
-                    .map(|metric| (metric_kind.clone(), metric))
-            })
-            .collect::<EitherOrBoth<IndexMap<_, _>>>()
-            .map(Metrics)
-    }
-
-    /// Sum up another `MetricsSummary` with this one
-    ///
-    /// If a [`MetricsDiff`] is not present in this summary but in the other, it is added to this
-    /// summary.
-    pub fn add(&mut self, other: &Self) {
-        for (other_key, other_value) in &other.0 {
-            if let Some(value) = self.0.get_mut(other_key) {
-                *value = value.add(other_value);
-            } else {
-                self.0.insert(other_key.clone(), other_value.clone());
-            }
-        }
-    }
-}
-
-impl<K, V> Default for MetricsSummary<K, V>
-where
-    K: Hash + Eq,
-{
-    fn default() -> Self {
-        Self(IndexMap::default())
     }
 }
 
@@ -1271,6 +1250,28 @@ impl PerfQualities {
     }
 }
 
+impl From<Metric> for f64 {
+    #[expect(clippy::cast_precision_loss)]
+    fn from(value: Metric) -> Self {
+        match value {
+            Metric::Int(a) => a as Self,
+            Metric::Float(a) => a,
+        }
+    }
+}
+
+impl Mul<Metric> for u64 {
+    type Output = Metric;
+
+    #[expect(clippy::cast_precision_loss)]
+    fn mul(self, rhs: Metric) -> Self::Output {
+        match rhs {
+            Metric::Int(b) => Metric::Int(self.saturating_mul(b)),
+            Metric::Float(b) => Metric::Float((self as f64) * b),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
@@ -1298,16 +1299,56 @@ mod tests {
         )
     }
 
-    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, diffs: D) -> MetricsDiff
+    fn expected_metrics_result<D>(values: EitherOrBoth<Metric>, change: D) -> MetricResult
     where
         D: Into<Option<(f64, f64)>>,
     {
-        MetricsDiff {
-            metrics,
-            diffs: diffs
+        MetricResult {
+            values,
+            change: change
                 .into()
-                .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
+                .map(|(diff_pct, factor)| MetricChange { diff_pct, factor }),
         }
+    }
+
+    fn metric_results_fixture<T, U>(kinds: U) -> MetricResults<EventKind>
+    where
+        T: Into<Option<(f64, f64)>> + Clone,
+        U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
+    {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
+        ];
+
+        let map: IndexMap<EventKind, MetricResult> = event_kinds
+            .iter()
+            .zip(kinds)
+            .map(|(e, (m, d))| (*e, expected_metrics_result(m, d)))
+            .collect();
+
+        MetricResults(map)
     }
 
     fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
@@ -1343,46 +1384,6 @@ mod tests {
                 .zip(metrics.iter())
                 .map(|(e, v)| (*e, *v)),
         )
-    }
-
-    fn metrics_summary_fixture<T, U>(kinds: U) -> MetricsSummary<EventKind>
-    where
-        T: Into<Option<(f64, f64)>> + Clone,
-        U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
-    {
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let event_kinds = [
-            Ir,
-            Dr,
-            Dw,
-            I1mr,
-            D1mr,
-            D1mw,
-            ILmr,
-            DLmr,
-            DLmw,
-            L1hits,
-            LLhits,
-            RamHits,
-            TotalRW,
-            EstimatedCycles,
-            I1MissRate,
-            D1MissRate,
-            LLiMissRate,
-            LLdMissRate,
-            LLMissRate,
-            L1HitRate,
-            LLHitRate,
-            RamHitRate,
-        ];
-
-        let map: IndexMap<EventKind, MetricsDiff> = event_kinds
-            .iter()
-            .zip(kinds)
-            .map(|(e, (m, d))| (*e, expected_metrics_diff(m, d)))
-            .collect();
-
-        MetricsSummary(map)
     }
 
     #[rstest]
@@ -1447,6 +1448,128 @@ mod tests {
     }
 
     #[rstest]
+    #[case::float_large_value_to_larger_unit(
+        AnnotatedMetric::with_default_qualities(1500.0, Unit::Milliseconds),
+        AnnotatedMetric::with_default_qualities(1.5, Unit::Seconds)
+    )]
+    #[case::float_small_value_to_smaller_unit(
+        AnnotatedMetric::with_default_qualities(0.0005, Unit::Milliseconds),
+        AnnotatedMetric::with_default_qualities(500.0, Unit::Nanoseconds)
+    )]
+    #[case::float_passthrough(
+        AnnotatedMetric::with_default_qualities(1.5, Unit::Milliseconds),
+        AnnotatedMetric::with_default_qualities(1.5, Unit::Milliseconds)
+    )]
+    #[case::int_passthrough(
+        AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
+        AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds)
+    )]
+    #[case::no_unit_passthrough(
+        AnnotatedMetric::with_default_qualities(1.5, None),
+        AnnotatedMetric::with_default_qualities(1.5, None)
+    )]
+    #[case::zero(
+        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
+        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds)
+    )]
+    #[case::infinity(
+        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
+        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds)
+    )]
+    #[case::neg_infinity(
+        AnnotatedMetric::with_default_qualities(
+            Metric::Float(f64::NEG_INFINITY),
+            Unit::Milliseconds
+        ),
+        AnnotatedMetric::with_default_qualities(
+            Metric::Float(f64::NEG_INFINITY),
+            Unit::Milliseconds
+        )
+    )]
+    fn test_annotated_metric_normalize(
+        #[case] input: AnnotatedMetric<PerfQualities>,
+        #[case] expected: AnnotatedMetric<PerfQualities>,
+    ) {
+        assert_eq!(input.normalize(), expected);
+    }
+
+    #[test]
+    fn test_annotated_metric_normalize_scales_perf_qualities() {
+        let metric = AnnotatedMetric::new(
+            Metric::Float(1_500.0),
+            PerfQualities::new(123, 45.0, 6.0, 1, 123.0),
+            Unit::Milliseconds,
+        );
+
+        let expected = AnnotatedMetric::new(
+            Metric::Float(1.5),
+            PerfQualities::new(123, 45.0, 6.0, 1, 0.123),
+            Unit::Seconds,
+        );
+
+        let actual = metric.normalize();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_annotated_metric_normalize_when_mean_is_none_then_preserves_perf_qualities() {
+        let qualities = PerfQualities::new(123, 45.0, 6.0, 1, None);
+
+        let metric = AnnotatedMetric::new(
+            Metric::Float(1_500.0),
+            qualities.clone(),
+            Unit::Milliseconds,
+        );
+
+        let expected = AnnotatedMetric::new(1.5, qualities, Unit::Seconds);
+
+        let actual = metric.normalize();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_annotated_metric_normalize_with_scales_perf_qualities() {
+        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, 100.0);
+        let lhs = AnnotatedMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
+        let rhs = AnnotatedMetric::new(
+            Metric::Float(1_500.0),
+            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
+            Unit::Milliseconds,
+        );
+
+        let expected_lhs = AnnotatedMetric::new(1.0, lhs_qualities, Unit::Seconds);
+        let expected_rhs = AnnotatedMetric::new(
+            Metric::Float(1.5),
+            PerfQualities::new(300, 75.0, 11.0, 2, 0.3),
+            Unit::Seconds,
+        );
+
+        let actual = lhs.normalize_with(&rhs);
+
+        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
+    }
+
+    #[test]
+    fn test_annotated_metric_normalize_with_when_mean_is_none_then_preserves_perf_qualities() {
+        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, None);
+        let rhs_qualities = PerfQualities::new(300, 75.0, 11.0, 2, None);
+
+        let lhs = AnnotatedMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
+        let rhs = AnnotatedMetric::new(
+            Metric::Float(1_500.0),
+            rhs_qualities.clone(),
+            Unit::Milliseconds,
+        );
+
+        let expected_lhs = AnnotatedMetric::new(1.0, lhs_qualities, Unit::Seconds);
+        let expected_rhs = AnnotatedMetric::new(1.5, rhs_qualities, Unit::Seconds);
+
+        let actual = lhs.normalize_with(&rhs);
+
+        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
+    }
+
+    #[rstest]
     #[case::same_unit(
         AnnotatedMetric::with_default_qualities(3.0, Unit::Seconds),
         AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
@@ -1502,155 +1625,6 @@ mod tests {
         let actual = lhs.saturating_sub(&rhs);
 
         assert_eq!(actual, expected);
-    }
-
-    #[rstest]
-    #[case::float_large_value_to_larger_unit(
-        AnnotatedMetric::with_default_qualities(1500.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Seconds)
-    )]
-    #[case::float_small_value_to_smaller_unit(
-        AnnotatedMetric::with_default_qualities(0.0005, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(500.0, Unit::Nanoseconds)
-    )]
-    #[case::float_passthrough(
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Milliseconds)
-    )]
-    #[case::int_passthrough(
-        AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds)
-    )]
-    #[case::no_unit_passthrough(
-        AnnotatedMetric::with_default_qualities(1.5, None),
-        AnnotatedMetric::with_default_qualities(1.5, None)
-    )]
-    #[case::zero(
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds)
-    )]
-    #[case::infinity(
-        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds)
-    )]
-    #[case::neg_infinity(
-        AnnotatedMetric::with_default_qualities(
-            Metric::Float(f64::NEG_INFINITY),
-            Unit::Milliseconds
-        ),
-        AnnotatedMetric::with_default_qualities(
-            Metric::Float(f64::NEG_INFINITY),
-            Unit::Milliseconds
-        )
-    )]
-    fn test_annotated_metric_normalize(
-        #[case] input: AnnotatedMetric<PerfQualities>,
-        #[case] expected: AnnotatedMetric<PerfQualities>,
-    ) {
-        assert_eq!(input.normalize(), expected);
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_when_mean_is_none_then_preserves_perf_qualities() {
-        let qualities = PerfQualities::new(123, 45.0, 6.0, 1, None);
-
-        let metric = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            qualities.clone(),
-            Unit::Milliseconds,
-        );
-
-        let expected = AnnotatedMetric::new(1.5, qualities, Unit::Seconds);
-
-        let actual = metric.normalize();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_perf_qualities_deserialize_rse() {
-        let qualities: PerfQualities = serde_json::from_str(r#"{"rse":0.5}"#).unwrap();
-
-        assert_eq!(qualities.rse, Some(0.5));
-    }
-
-    #[test]
-    fn test_perf_qualities_serialize_omits_absent_mean_and_n() {
-        let qualities = PerfQualities::new(123, 45.0, 6.0, None, None);
-
-        let value = serde_json::to_value(qualities).unwrap();
-
-        assert_eq!(value.get("mean"), None);
-        assert_eq!(value.get("n"), None);
-    }
-
-    #[test]
-    fn test_perf_qualities_serialize_rse() {
-        let qualities = PerfQualities::new(None, None, 0.5, None, None);
-
-        let value = serde_json::to_value(qualities).unwrap();
-
-        assert_eq!(value.get("rse"), Some(&serde_json::json!(0.5)));
-        assert_eq!(value.get("variance"), None);
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_scales_perf_qualities() {
-        let metric = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            PerfQualities::new(123, 45.0, 6.0, 1, 123.0),
-            Unit::Milliseconds,
-        );
-
-        let expected = AnnotatedMetric::new(
-            Metric::Float(1.5),
-            PerfQualities::new(123, 45.0, 6.0, 1, 0.123),
-            Unit::Seconds,
-        );
-
-        let actual = metric.normalize();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_with_when_mean_is_none_then_preserves_perf_qualities() {
-        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, None);
-        let rhs_qualities = PerfQualities::new(300, 75.0, 11.0, 2, None);
-
-        let lhs = AnnotatedMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
-        let rhs = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            rhs_qualities.clone(),
-            Unit::Milliseconds,
-        );
-
-        let expected_lhs = AnnotatedMetric::new(1.0, lhs_qualities, Unit::Seconds);
-        let expected_rhs = AnnotatedMetric::new(1.5, rhs_qualities, Unit::Seconds);
-
-        let actual = lhs.normalize_with(&rhs);
-
-        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_with_scales_perf_qualities() {
-        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, 100.0);
-        let lhs = AnnotatedMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
-        let rhs = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
-            Unit::Milliseconds,
-        );
-
-        let expected_lhs = AnnotatedMetric::new(1.0, lhs_qualities, Unit::Seconds);
-        let expected_rhs = AnnotatedMetric::new(
-            Metric::Float(1.5),
-            PerfQualities::new(300, 75.0, 11.0, 2, 0.3),
-            Unit::Seconds,
-        );
-
-        let actual = lhs.normalize_with(&rhs);
-
-        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
     }
 
     #[rstest]
@@ -1798,6 +1772,68 @@ mod tests {
     }
 
     #[rstest]
+    #[case::zero("0", 0)]
+    #[case::one("1", 1)]
+    #[case::u64_max(&format!("{}", u64::MAX), u64::MAX)]
+    #[case::one_below_u64_max(&format!("{}", u64::MAX - 1), u64::MAX - 1)]
+    #[case::zero_float("0.0", 0.0f64)]
+    #[case::one_float("1.0", 1.0f64)]
+    #[case::one_point("1.", 1.0f64)]
+    #[case::point_one(".1", 0.1f64)]
+    #[case::two_float("2.0", 2.0f64)]
+    #[case::neg_one_float("-1.0", -1.0f64)]
+    #[case::neg_two_float("-2.0", -2.0f64)]
+    #[case::inf("inf", f64::INFINITY)]
+    fn test_metric_from_str<E>(#[case] input: &str, #[case] expected: E)
+    where
+        E: Into<Metric>,
+    {
+        let expected = expected.into();
+        assert_eq!(input.parse::<Metric>().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_metric_from_str_when_invalid_then_error() {
+        let err = "abc".parse::<Metric>().unwrap_err();
+        assert_eq!(
+            "Invalid metric: invalid float literal".to_owned(),
+            err.to_string()
+        );
+    }
+
+    #[test]
+    fn test_metric_results_normalizes_compatible_units() {
+        let metric_kind = PerfMetric("task-clock:u".to_owned());
+        let results = MetricResults::new(EitherOrBoth::Both(
+            Metrics(indexmap! {
+             metric_kind.clone() => AnnotatedMetric::with_default_qualities(
+                 Metric::Float(1.0),
+                 Unit::Seconds
+            )}),
+            Metrics(indexmap! {
+            metric_kind.clone() => AnnotatedMetric::with_default_qualities(
+                Metric::Float(1000.0),
+                Unit::Milliseconds)
+            }),
+        ));
+
+        let expected = MetricResult {
+            change: Some(MetricChange {
+                diff_pct: 0.0,
+                factor: 1.0,
+            }),
+            values: EitherOrBoth::Both(
+                AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
+                AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
+            ),
+        };
+
+        let actual = results.result_by_kind(&metric_kind).unwrap();
+
+        assert_eq!(*actual, expected);
+    }
+
+    #[rstest]
     #[case::single_zero(&[Ir], &["0"], expected_metrics([(Ir, 0)]))]
     #[case::single_one(&[Ir], &["1"], expected_metrics([(Ir, 1)]))]
     #[case::single_float(&[Ir], &["1.0"], expected_metrics([(Ir, 1.0f64)]))]
@@ -1902,36 +1938,6 @@ mod tests {
 
         lhs += rhs;
         assert_eq!(lhs, expected);
-    }
-
-    #[rstest]
-    #[case::zero("0", 0)]
-    #[case::one("1", 1)]
-    #[case::u64_max(&format!("{}", u64::MAX), u64::MAX)]
-    #[case::one_below_u64_max(&format!("{}", u64::MAX - 1), u64::MAX - 1)]
-    #[case::zero_float("0.0", 0.0f64)]
-    #[case::one_float("1.0", 1.0f64)]
-    #[case::one_point("1.", 1.0f64)]
-    #[case::point_one(".1", 0.1f64)]
-    #[case::two_float("2.0", 2.0f64)]
-    #[case::neg_one_float("-1.0", -1.0f64)]
-    #[case::neg_two_float("-2.0", -2.0f64)]
-    #[case::inf("inf", f64::INFINITY)]
-    fn test_metric_from_str<E>(#[case] input: &str, #[case] expected: E)
-    where
-        E: Into<Metric>,
-    {
-        let expected = expected.into();
-        assert_eq!(input.parse::<Metric>().unwrap(), expected);
-    }
-
-    #[test]
-    fn test_metric_from_str_when_invalid_then_error() {
-        let err = "abc".parse::<Metric>().unwrap_err();
-        assert_eq!(
-            "Invalid metric: invalid float literal".to_owned(),
-            err.to_string()
-        );
     }
 
     #[rstest]
@@ -2044,12 +2050,12 @@ mod tests {
         EitherOrBoth::Both(2, 1),
         (100f64, 2f64)
     )]
-    fn test_metrics_diff_new<T>(#[case] metrics: EitherOrBoth<u64>, #[case] expected_diffs: T)
+    fn test_metric_result_new<T>(#[case] metrics: EitherOrBoth<u64>, #[case] expected_changes: T)
     where
         T: Into<Option<(f64, f64)>>,
     {
-        let expected = expected_metrics_diff(metrics.map(Metric::Int), expected_diffs);
-        let actual = MetricsDiff::new(metrics.map(Metric::Int));
+        let expected = expected_metrics_result(metrics.map(Metric::Int), expected_changes);
+        let actual = MetricResult::new(metrics.map(Metric::Int));
 
         assert_eq!(actual, expected);
     }
@@ -2122,17 +2128,17 @@ mod tests {
         EitherOrBoth::Both(u64::MAX, u64::MAX),
         EitherOrBoth::Both(u64::MAX, u64::MAX)
     )]
-    fn test_metrics_diff_add(
+    fn test_metric_result_add(
         #[case] metric: EitherOrBoth<u64>,
         #[case] other_metric: EitherOrBoth<u64>,
         #[case] expected: EitherOrBoth<u64>,
     ) {
-        let new_diff = MetricsDiff::new(metric.map(Metric::Int));
-        let old_diff = MetricsDiff::new(other_metric.map(Metric::Int));
-        let expected = MetricsDiff::new(expected.map(Metric::Int));
+        let new_result = MetricResult::new(metric.map(Metric::Int));
+        let old_result = MetricResult::new(other_metric.map(Metric::Int));
+        let expected = MetricResult::new(expected.map(Metric::Int));
 
-        assert_eq!(new_diff.add(&old_diff), expected);
-        assert_eq!(old_diff.add(&new_diff), expected);
+        assert_eq!(new_result.add(&old_result), expected);
+        assert_eq!(old_result.add(&new_result), expected);
     }
 
     #[rstest]
@@ -2257,7 +2263,7 @@ mod tests {
             ),
         ]
     )]
-    fn test_metrics_summary_new<V>(
+    fn test_metric_results_new<V>(
         #[case] new_metrics: &[u64],
         #[case] old_metrics: &[u64],
         #[case] expected: &[(EitherOrBoth<Metric>, V)],
@@ -2266,140 +2272,22 @@ mod tests {
     {
         use either_or_both::EitherOrBoth;
 
-        let expected_metrics_summary =
-            metrics_summary_fixture(expected.iter().map(|(e, v)| (*e, v.clone())));
+        let expected_metric_results =
+            metric_results_fixture(expected.iter().map(|(e, v)| (*e, v.clone())));
         let actual = match (
             (!new_metrics.is_empty()).then_some(new_metrics),
             (!old_metrics.is_empty()).then_some(old_metrics),
         ) {
             (None, None) => unreachable!(),
-            (Some(new), None) => MetricsSummary::new(EitherOrBoth::Left(metrics_fixture(new))),
-            (None, Some(old)) => MetricsSummary::new(EitherOrBoth::Right(metrics_fixture(old))),
-            (Some(new), Some(old)) => MetricsSummary::new(EitherOrBoth::Both(
+            (Some(new), None) => MetricResults::new(EitherOrBoth::Left(metrics_fixture(new))),
+            (None, Some(old)) => MetricResults::new(EitherOrBoth::Right(metrics_fixture(old))),
+            (Some(new), Some(old)) => MetricResults::new(EitherOrBoth::Both(
                 metrics_fixture(new),
                 metrics_fixture(old),
             )),
         };
 
-        assert_eq!(actual, expected_metrics_summary);
-    }
-
-    #[test]
-    fn test_metrics_summary_normalizes_compatible_units() {
-        let metric_kind = PerfMetric("task-clock:u".to_owned());
-        let summary = MetricsSummary::new(EitherOrBoth::Both(
-            Metrics(indexmap! {
-             metric_kind.clone() => AnnotatedMetric::with_default_qualities(
-                 Metric::Float(1.0),
-                 Unit::Seconds
-            )}),
-            Metrics(indexmap! {
-            metric_kind.clone() => AnnotatedMetric::with_default_qualities(
-                Metric::Float(1000.0),
-                Unit::Milliseconds)
-            }),
-        ));
-
-        let expected = MetricsDiff {
-            diffs: Some(Diffs {
-                diff_pct: 0.0,
-                factor: 1.0,
-            }),
-            metrics: EitherOrBoth::Both(
-                AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-                AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-            ),
-        };
-
-        let diff = summary.diff_by_kind(&metric_kind).unwrap();
-
-        assert_eq!(*diff, expected);
-    }
-
-    #[test]
-    fn test_perf_metric_summary_serializes_with_string_keys() {
-        let summary = MetricsSummary::new(EitherOrBoth::Left(Metrics(indexmap! {
-            PerfMetric("task-clock:u".to_owned()) => AnnotatedMetric::with_default_qualities(
-                Metric::Float(1.0),
-                Unit::Milliseconds
-           )
-        })));
-
-        let value = serde_json::to_value(summary).unwrap();
-        let expected_value = serde_json::to_value("Milliseconds").unwrap();
-
-        assert_eq!(
-            expected_value,
-            value.get("task-clock:u").unwrap()["metrics"]["Left"]["unit"],
-        );
-    }
-
-    #[rstest]
-    #[case::prefers_present_pair_over_absent_metadata(
-        PerfQualities::default(),
-        PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
-        PerfQualities::new(100, 50.0, None, 1, None)
-    )]
-    #[case::recomputes_running_percentage_and_clears_variance(
-        PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
-        PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
-        PerfQualities::new(400, 66.666_666_666_666_67, None, 3, None)
-    )]
-    #[case::canonicalizes_double_zero_runtime_pair(
-        PerfQualities::new(10, 0.0, 1.0, 1, 0.0),
-        PerfQualities::new(20, 0.0, 2.0, 2, 0.0),
-        PerfQualities::new(0, 0.0, None, 3, None)
-    )]
-    #[case::canonicalizes_both_zero_runtime_with_nonzero_pcnt(
-        PerfQualities::new(0, 50.0, 1.0, 1, 0.0),
-        PerfQualities::new(0, 75.0, 2.0, 2, 0.0),
-        PerfQualities::new(0, 0.0, None, 3, None)
-    )]
-    #[case::one_zero_runtime_uses_other_pcnt(
-        PerfQualities::new(0, 50.0, 1.0, 1, 0.0),
-        PerfQualities::new(300, 75.0, 2.0, 2, 300.0),
-        PerfQualities::new(300, 75.0, None, 3, None)
-    )]
-    fn test_perf_qualities_add(
-        #[case] lhs: PerfQualities,
-        #[case] rhs: PerfQualities,
-        #[case] expected: PerfQualities,
-    ) {
-        let actual = lhs.add(&rhs);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_normalize_metrics_when_repetitions_then_divides_metric() {
-        let mut metrics = Metrics::with_metric_kinds([
-            (
-                PerfMetric("instructions:u".to_owned()),
-                AnnotatedMetric::with_default_qualities(100, None),
-            ),
-            (
-                PerfMetric("task-clock".to_owned()),
-                AnnotatedMetric::with_default_qualities(25.0, Unit::Milliseconds),
-            ),
-        ]);
-
-        let expected = Metrics::with_metric_kinds([
-            (
-                PerfMetric("instructions:u".to_owned()),
-                AnnotatedMetric::with_default_qualities(25, None),
-            ),
-            (
-                PerfMetric("task-clock".to_owned()),
-                AnnotatedMetric::with_default_qualities(6.25, Unit::Milliseconds),
-            ),
-        ]);
-
-        metrics.normalize_by_repetitions(4);
-
-        assert_eq!(metrics, expected);
-
-        assert!(metrics.0.first().unwrap().1.metric.is_int());
-        assert!(metrics.0.get_index(1).unwrap().1.metric.is_float());
+        assert_eq!(actual, expected_metric_results);
     }
 
     #[test]
@@ -2465,5 +2353,118 @@ mod tests {
         metrics.normalize_by_repetitions(4);
 
         assert_eq!(metrics, expected);
+    }
+
+    #[test]
+    fn test_normalize_metrics_when_repetitions_then_divides_metric() {
+        let mut metrics = Metrics::with_metric_kinds([
+            (
+                PerfMetric("instructions:u".to_owned()),
+                AnnotatedMetric::with_default_qualities(100, None),
+            ),
+            (
+                PerfMetric("task-clock".to_owned()),
+                AnnotatedMetric::with_default_qualities(25.0, Unit::Milliseconds),
+            ),
+        ]);
+
+        let expected = Metrics::with_metric_kinds([
+            (
+                PerfMetric("instructions:u".to_owned()),
+                AnnotatedMetric::with_default_qualities(25, None),
+            ),
+            (
+                PerfMetric("task-clock".to_owned()),
+                AnnotatedMetric::with_default_qualities(6.25, Unit::Milliseconds),
+            ),
+        ]);
+
+        metrics.normalize_by_repetitions(4);
+
+        assert_eq!(metrics, expected);
+
+        assert!(metrics.0.first().unwrap().1.value.is_int());
+        assert!(metrics.0.get_index(1).unwrap().1.value.is_float());
+    }
+
+    #[test]
+    fn test_perf_metric_result_serializes_with_string_keys() {
+        let results = MetricResults::new(EitherOrBoth::Left(Metrics(indexmap! {
+            PerfMetric("task-clock:u".to_owned()) => AnnotatedMetric::with_default_qualities(
+                Metric::Float(1.0),
+                Unit::Milliseconds
+           )
+        })));
+
+        let actual = serde_json::to_value(results).unwrap();
+        let expected = serde_json::to_value("ms").unwrap();
+
+        assert_eq!(
+            actual.get("task-clock:u").unwrap()["values"]["new"]["unit"],
+            expected,
+        );
+    }
+
+    #[rstest]
+    #[case::prefers_present_pair_over_absent_metadata(
+        PerfQualities::default(),
+        PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
+        PerfQualities::new(100, 50.0, None, 1, None)
+    )]
+    #[case::recomputes_running_percentage_and_clears_variance(
+        PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
+        PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
+        PerfQualities::new(400, 66.666_666_666_666_67, None, 3, None)
+    )]
+    #[case::canonicalizes_double_zero_runtime_pair(
+        PerfQualities::new(10, 0.0, 1.0, 1, 0.0),
+        PerfQualities::new(20, 0.0, 2.0, 2, 0.0),
+        PerfQualities::new(0, 0.0, None, 3, None)
+    )]
+    #[case::canonicalizes_both_zero_runtime_with_nonzero_pcnt(
+        PerfQualities::new(0, 50.0, 1.0, 1, 0.0),
+        PerfQualities::new(0, 75.0, 2.0, 2, 0.0),
+        PerfQualities::new(0, 0.0, None, 3, None)
+    )]
+    #[case::one_zero_runtime_uses_other_pcnt(
+        PerfQualities::new(0, 50.0, 1.0, 1, 0.0),
+        PerfQualities::new(300, 75.0, 2.0, 2, 300.0),
+        PerfQualities::new(300, 75.0, None, 3, None)
+    )]
+    fn test_perf_qualities_add(
+        #[case] lhs: PerfQualities,
+        #[case] rhs: PerfQualities,
+        #[case] expected: PerfQualities,
+    ) {
+        let actual = lhs.add(&rhs);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_perf_qualities_deserialize_rse() {
+        let qualities: PerfQualities = serde_json::from_str(r#"{"rse":0.5}"#).unwrap();
+
+        assert_eq!(qualities.rse, Some(0.5));
+    }
+
+    #[test]
+    fn test_perf_qualities_serialize_omits_absent_mean_and_n() {
+        let qualities = PerfQualities::new(123, 45.0, 6.0, None, None);
+
+        let value = serde_json::to_value(qualities).unwrap();
+
+        assert_eq!(value.get("mean"), None);
+        assert_eq!(value.get("n"), None);
+    }
+
+    #[test]
+    fn test_perf_qualities_serialize_rse() {
+        let qualities = PerfQualities::new(None, None, 0.5, None, None);
+
+        let value = serde_json::to_value(qualities).unwrap();
+
+        assert_eq!(value.get("rse"), Some(&serde_json::json!(0.5)));
+        assert_eq!(value.get("variance"), None);
     }
 }

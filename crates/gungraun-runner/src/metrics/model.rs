@@ -1,6 +1,6 @@
 //! Metric value and comparison types
 //!
-//! These types describe metric values, per-metric diffs, and grouped metric summaries.
+//! These types describe metric values, per-metric changes, and grouped metric summaries.
 //!
 //! The model contains the non-derive implementations of [`PartialEq`], [`Eq`] for [`Metric`] and
 //! not the [`metrics::logic`][super::logic].
@@ -15,26 +15,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric};
-use crate::summary::model::Diffs;
+use crate::summary::model::MetricChange;
 use crate::units::Unit;
-
-/// A metric value paired with additional metadata and an optional [`Unit`].
-///
-/// This type is used for metrics, such as perf results, that need to carry more than the raw
-/// numeric value when they are stored, merged, or compared.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct AnnotatedMetric<Q> {
-    /// The measured numeric value.
-    #[serde(flatten)]
-    pub metric: Metric,
-    /// Additional metadata associated with the metric value.
-    #[serde(flatten)]
-    pub qualities: Q,
-    /// The [`Unit`] of the metric value, if one is given or known.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub unit: Option<Unit>,
-}
 
 /// The value type used for metrics measured by a benchmark tool
 ///
@@ -53,6 +35,7 @@ pub struct AnnotatedMetric<Q> {
 /// `f64`).
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(untagged)]
 pub enum Metric {
     /// An integer `Metric`
     Int(u64),
@@ -65,7 +48,6 @@ pub enum Metric {
 /// This enum appears in places where a summary needs to describe a metric without separately
 /// carrying the tool family that owns it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MetricKind {
     /// The `None` kind if there are no metrics for a tool (i.e. BBV and Massif)
     None,
@@ -85,6 +67,78 @@ pub enum MetricKind {
     Perf(PerfMetric),
 }
 
+/// A per-tool collection of raw metric values.
+///
+/// This enum is used where the summary needs to store metrics keyed by the tool that produced them,
+/// without comparison metadata.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub enum ToolMetrics {
+    /// If there are no metrics extracted from a tool (currently Massif, BBV)
+    #[default]
+    None,
+    /// The metrics of a dhat benchmark
+    Dhat(Metrics<DhatMetric>),
+    /// The error metrics from a Memcheck run.
+    Memcheck(Metrics<ErrorMetric>),
+    /// The error metrics from a Helgrind run.
+    Helgrind(Metrics<ErrorMetric>),
+    /// The error metrics from a DRD run.
+    DRD(Metrics<ErrorMetric>),
+    /// The metrics of a Callgrind benchmark
+    Callgrind(Metrics<EventKind>),
+    /// The metrics of a Cachegrind benchmark
+    Cachegrind(Metrics<CachegrindMetric>),
+    /// Perf metrics with attached runtime and variability metadata.
+    ///
+    /// These metrics are summarized per part, but no synthetic aggregate `total` is currently
+    /// constructed across parts.
+    Perf(Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>),
+}
+
+/// A metric value paired with additional metadata and an optional [`Unit`].
+///
+/// This type is used for metrics, such as perf results, that need to carry more than the raw
+/// numeric value when they are stored, merged, or compared.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct AnnotatedMetric<Q> {
+    /// Additional metadata associated with the metric value.
+    #[serde(flatten)]
+    pub qualities: Q,
+    /// The [`Unit`] of the metric value, if one is given or known.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unit: Option<Unit>,
+    /// The measured numeric value.
+    pub value: Metric,
+}
+
+/// Comparison data for one metric in a parsed summary.
+///
+/// If both, old and new values, are present, [`MetricChange`] stores the derived percentage and
+/// factor. Otherwise the summary only stores whichever side is available. Per convention, the left
+/// side or [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or
+/// [`EitherOrBoth::Right`] stores the old metric.
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(bound(serialize = "V: Serialize", deserialize = "V: Deserialize<'de>"))]
+pub struct MetricResult<V = Metric> {
+    /// If both values are present there is also a `change` present
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub change: Option<MetricChange>,
+    /// Either the `new`, `old` or both values
+    #[serde(with = "crate::serde::either_or_both")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "crate::serde::either_or_both::NewOldOrBoth<V, V>")
+    )]
+    pub values: EitherOrBoth<V>,
+}
+
+/// An insertion-ordered mapping from metric identifier to [`MetricResult`].
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct MetricResults<K: Hash + Eq = EventKind, V = Metric>(pub IndexMap<K, MetricResult<V>>);
+
 /// An insertion-ordered mapping from metric identifier to [`Metric`].
 ///
 /// # Benchmark Summary
@@ -92,26 +146,6 @@ pub enum MetricKind {
 /// This struct is not part of the recent summary anymore.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
-
-/// Comparison data for one metric in a parsed summary.
-///
-/// If both, old and new values, are present, [`Diffs`] stores the derived percentage and factor.
-/// Otherwise the summary only stores whichever side is available. Per convention, the left side or
-/// [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or [`EitherOrBoth::Right`]
-/// stores the old metric.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct MetricsDiff<V = Metric> {
-    /// If both metrics ([`EitherOrBoth::Both`]) are present there is also a `Diffs` present
-    pub diffs: Option<Diffs>,
-    /// Either the `new` ([`EitherOrBoth::Left`]), `old` ([`EitherOrBoth::Right`]) or both metrics
-    pub metrics: EitherOrBoth<V>,
-}
-
-/// An insertion-ordered mapping from metric identifier to [`MetricsDiff`].
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct MetricsSummary<K: Hash + Eq = EventKind, V = Metric>(pub IndexMap<K, MetricsDiff<V>>);
 
 /// Perf-specific metadata attached to a metric value.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -167,5 +201,117 @@ impl PartialEq for Metric {
             (Self::Float(a), Self::Int(b)) => a.total_cmp(&(*b as f64)) == Ordering::Equal,
             (Self::Float(a), Self::Float(b)) => a.total_cmp(b) == Ordering::Equal,
         }
+    }
+}
+
+#[cfg(feature = "schema")]
+impl JsonSchema for MetricKind {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "MetricKind".into()
+    }
+
+    fn json_schema(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "anyOf": [
+                { "type": "string" },
+                { "type": "object", "additionalProperties": true }
+            ]
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_annotated_metric_deserializes_value_field() {
+        let deserialized: AnnotatedMetric<PerfQualities> =
+            serde_json::from_value(json!({ "value": 5 })).unwrap();
+
+        assert_eq!(deserialized.value, Metric::Int(5));
+        assert_eq!(deserialized.qualities, PerfQualities::default());
+        assert_eq!(deserialized.unit, None);
+    }
+
+    #[test]
+    fn test_annotated_metric_serializes_named_value_field() {
+        let annotated = AnnotatedMetric {
+            qualities: PerfQualities {
+                mean: Some(2.0),
+                ..PerfQualities::default()
+            },
+            unit: None,
+            value: Metric::Float(1.5),
+        };
+
+        assert_eq!(
+            serde_json::to_value(&annotated).unwrap(),
+            json!({ "mean": 2.0, "value": 1.5 })
+        );
+
+        let roundtrip: AnnotatedMetric<PerfQualities> =
+            serde_json::from_value(serde_json::to_value(&annotated).unwrap()).unwrap();
+        assert_eq!(roundtrip, annotated);
+    }
+
+    #[test]
+    #[cfg(feature = "schema")]
+    fn test_metric_kind_schema_is_open_for_string_and_object_kinds() {
+        let schema = serde_json::to_value(schemars::schema_for!(MetricKind)).unwrap();
+
+        assert_eq!(
+            schema["anyOf"],
+            json!([
+                { "type": "string" },
+                { "type": "object", "additionalProperties": true }
+            ])
+        );
+    }
+
+    #[test]
+    fn test_metrics_result_serializes_values_as_new_and_old() {
+        let metrics_result = MetricResult {
+            change: None,
+            values: EitherOrBoth::Both(Metric::Int(2), Metric::Int(1)),
+        };
+
+        assert_eq!(
+            serde_json::to_value(metrics_result).unwrap(),
+            json!({
+                "values": { "new": 2, "old": 1 }
+            })
+        );
+    }
+
+    // Untagged JSON numbers cannot express non-finite floats. This is the accepted trade-off of
+    // serializing `Metric::Float` as plain JSON numbers instead of strings: `serde_json` maps
+    // `NaN` and infinities to `null`, which cannot round-trip back into `Metric`.
+    #[rstest]
+    #[case::nan(f64::NAN)]
+    #[case::infinity(f64::INFINITY)]
+    #[case::neg_infinity(f64::NEG_INFINITY)]
+    fn test_metric_serde_non_finite_floats_map_to_null(#[case] float: f64) {
+        assert_eq!(
+            serde_json::to_string(&Metric::Float(float)).unwrap(),
+            "null"
+        );
+    }
+
+    #[rstest]
+    #[case::int_zero(Metric::Int(0))]
+    #[case::int(Metric::Int(42))]
+    #[case::int_max(Metric::Int(u64::MAX))]
+    #[case::float_zero(Metric::Float(0.0))]
+    #[case::float_negative(Metric::Float(-2.5))]
+    #[case::float(Metric::Float(42.0))]
+    #[case::float_max(Metric::Float(f64::MAX))]
+    fn test_metric_serde_roundtrip(#[case] metric: Metric) {
+        let deserialized: Metric =
+            serde_json::from_value(serde_json::to_value(metric).unwrap()).unwrap();
+        assert_eq!(deserialized, metric);
     }
 }

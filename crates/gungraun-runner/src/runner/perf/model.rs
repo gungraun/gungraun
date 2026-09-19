@@ -140,7 +140,7 @@ impl PerfStatRecord {
 
         if let Some(counter_value) = self.counter_value.as_mut() {
             #[expect(clippy::cast_precision_loss)]
-            let metric_value = match metric.metric {
+            let metric_value = match metric.value {
                 Metric::Int(int) => int as f64,
                 Metric::Float(float) => float,
             };
@@ -168,7 +168,7 @@ impl PerfStatRecord {
                 }
             }
 
-            *counter_value = Self::format_metric(&metric.metric);
+            *counter_value = Self::format_metric(&metric.value);
         }
 
         self.gungraun_mean = metric.qualities.mean;

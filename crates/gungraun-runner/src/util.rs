@@ -106,6 +106,15 @@ where
     }
 }
 
+/// Convert a boolean value to a `yes` or `no` string
+pub fn bool_to_yesno(value: bool) -> String {
+    if value {
+        "yes".to_owned()
+    } else {
+        "no".to_owned()
+    }
+}
+
 /// Clears the close-on-exec flag on a raw file descriptor.
 ///
 /// This ensures the descriptor remains open across a successful `exec` call.
@@ -132,53 +141,6 @@ pub unsafe fn clear_cloexec(fd: libc::c_int) -> std::io::Result<()> {
     }
 }
 
-/// Duplicates `source` onto `target` and ensures the target is inherited across `exec`.
-///
-/// If `source` and `target` are the same descriptor, this only clears `FD_CLOEXEC` on `target`.
-/// Otherwise this behaves like `dup2(source, target)`.
-///
-/// # Safety
-///
-/// The caller must ensure `source` is a valid open file descriptor. The caller must also ensure
-/// that reassigning `target` is correct for the current process state and that `target` is safe to
-/// reuse as a duplicated descriptor.
-pub unsafe fn dup_to_inheritable_fd(
-    source: libc::c_int,
-    target: libc::c_int,
-) -> std::io::Result<()> {
-    if source == target {
-        // SAFETY: The caller guarantees `target` is a valid open file descriptor.
-        unsafe { clear_cloexec(target) }
-    } else {
-        // SAFETY: The caller guarantees `source` is valid and that duplicating it onto `target`
-        // is sound in the current pre-exec process state.
-        let result = unsafe { libc::dup2(source, target) };
-
-        if result == -1 {
-            Err(std::io::Error::last_os_error())
-        } else {
-            Ok(())
-        }
-    }
-}
-
-/// Closes a raw file descriptor.
-///
-/// # Safety
-///
-/// The caller must ensure `fd` refers to a valid open file descriptor and that no other owner will
-/// attempt to close it afterwards.
-pub unsafe fn close_raw_fd(fd: libc::c_int) -> std::io::Result<()> {
-    // SAFETY: The caller guarantees `fd` is a valid open file descriptor that may be closed here.
-    let result = unsafe { libc::close(fd) };
-
-    if result == -1 {
-        Err(std::io::Error::last_os_error())
-    } else {
-        Ok(())
-    }
-}
-
 /// Closes `source` if it differs from `target`.
 ///
 /// This is useful after duplicating a file descriptor onto a fixed target number, where closing the
@@ -197,12 +159,20 @@ pub unsafe fn close_if_different(source: libc::c_int, target: libc::c_int) -> st
     Ok(())
 }
 
-/// Convert a boolean value to a `yes` or `no` string
-pub fn bool_to_yesno(value: bool) -> String {
-    if value {
-        "yes".to_owned()
+/// Closes a raw file descriptor.
+///
+/// # Safety
+///
+/// The caller must ensure `fd` refers to a valid open file descriptor and that no other owner will
+/// attempt to close it afterwards.
+pub unsafe fn close_raw_fd(fd: libc::c_int) -> std::io::Result<()> {
+    // SAFETY: The caller guarantees `fd` is a valid open file descriptor that may be closed here.
+    let result = unsafe { libc::close(fd) };
+
+    if result == -1 {
+        Err(std::io::Error::last_os_error())
     } else {
-        "no".to_owned()
+        Ok(())
     }
 }
 
@@ -254,6 +224,36 @@ pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Resu
         }
     }
     Ok(())
+}
+
+/// Duplicates `source` onto `target` and ensures the target is inherited across `exec`.
+///
+/// If `source` and `target` are the same descriptor, this only clears `FD_CLOEXEC` on `target`.
+/// Otherwise this behaves like `dup2(source, target)`.
+///
+/// # Safety
+///
+/// The caller must ensure `source` is a valid open file descriptor. The caller must also ensure
+/// that reassigning `target` is correct for the current process state and that `target` is safe to
+/// reuse as a duplicated descriptor.
+pub unsafe fn dup_to_inheritable_fd(
+    source: libc::c_int,
+    target: libc::c_int,
+) -> std::io::Result<()> {
+    if source == target {
+        // SAFETY: The caller guarantees `target` is a valid open file descriptor.
+        unsafe { clear_cloexec(target) }
+    } else {
+        // SAFETY: The caller guarantees `source` is valid and that duplicating it onto `target`
+        // is sound in the current pre-exec process state.
+        let result = unsafe { libc::dup2(source, target) };
+
+        if result == -1 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// Calculate the difference between `new` and `old` as factor

@@ -3,14 +3,14 @@ map:
     file: null
     func: main
   : metrics:
-      Ir: !Int 1
-      Dr: !Int 2
-      Dw: !Int 3
-      I1mr: !Int 4
-      D1mr: !Int 5
-      D1mw: !Int 6
-      ILmr: !Int 7
-      DLmr: !Int 8
-      DLmw: !Int 9
+      Ir: 1
+      Dr: 2
+      Dw: 3
+      I1mr: 4
+      D1mr: 5
+      D1mw: 6
+      ILmr: 7
+      DLmr: 8
+      DLmw: 9
 sentinel: null
 sentinel_key: null

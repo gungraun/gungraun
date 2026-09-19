@@ -13,14 +13,32 @@
 
 #[cfg(all(target_os = "linux", feature = "perf"))]
 mod imp {
-    /// Writes a message to the perf side-channel log used by the runner.
+    /// Disables the active process-global perf measurement started by
+    /// [`perf_enable!`](crate::perf_enable!).
     ///
-    /// When the `perf` feature is enabled on Linux, the message is written to the inherited perf
-    /// log file descriptor.
+    /// The token must come from the matching `perf_enable!` call. This macro is not thread-safe
+    /// and panics if called without an active perf section.
     #[macro_export]
-    macro_rules! perf_log {
-        ($($arg:tt)*) => {{
-            $crate::perf::log(&format!("{}", format_args!($($arg)*)));
+    macro_rules! perf_disable {
+        ($control_token:expr) => {{
+            let __gungraun_control = $control_token;
+
+            // SAFETY: The token comes from `perf_enable!`, which returns a raw pointer to the
+            // process-global `PerfControl`.
+            unsafe {
+                if let Err(error) =
+                    std::io::Write::write_all(&mut (*__gungraun_control).control, b"disable\n")
+                {
+                    panic!("gungraun: failed writing to control file: {error}");
+                }
+
+                let _ = std::io::Read::read_exact(&mut (*__gungraun_control).ack, &mut [0_u8; 1]);
+                assert!(
+                    (*__gungraun_control).enabled,
+                    "gungraun: perf_disable! called without a matching perf_enable!"
+                );
+                (*__gungraun_control).enabled = false;
+            }
         }};
     }
 
@@ -86,32 +104,14 @@ mod imp {
         }};
     }
 
-    /// Disables the active process-global perf measurement started by
-    /// [`perf_enable!`](crate::perf_enable!).
+    /// Writes a message to the perf side-channel log used by the runner.
     ///
-    /// The token must come from the matching `perf_enable!` call. This macro is not thread-safe and
-    /// panics if called without an active perf section.
+    /// When the `perf` feature is enabled on Linux, the message is written to the inherited
+    /// perf log file descriptor.
     #[macro_export]
-    macro_rules! perf_disable {
-        ($control_token:expr) => {{
-            let __gungraun_control = $control_token;
-
-            // SAFETY: The token comes from `perf_enable!`, which returns a raw pointer to the
-            // process-global `PerfControl`.
-            unsafe {
-                if let Err(error) =
-                    std::io::Write::write_all(&mut (*__gungraun_control).control, b"disable\n")
-                {
-                    panic!("gungraun: failed writing to control file: {error}");
-                }
-
-                let _ = std::io::Read::read_exact(&mut (*__gungraun_control).ack, &mut [0_u8; 1]);
-                assert!(
-                    (*__gungraun_control).enabled,
-                    "gungraun: perf_disable! called without a matching perf_enable!"
-                );
-                (*__gungraun_control).enabled = false;
-            }
+    macro_rules! perf_log {
+        ($($arg:tt)*) => {{
+            $crate::perf::log(&format!("{}", format_args!($($arg)*)));
         }};
     }
 
@@ -122,6 +122,11 @@ mod imp {
 
     use crate::__internal::PERF_LOG_FD;
 
+    /// Lazily initialized process-global perf control state.
+    pub static mut PERF_CONTROL: Option<PerfControl> = None;
+    /// Synchronizes writes to the inherited perf log file descriptor.
+    static PERF_LOG_LOCK: OnceLock<Mutex<Option<File>>> = OnceLock::new();
+
     /// Process-global perf control state for the inherited control and acknowledgement fds.
     pub struct PerfControl {
         /// File descriptor used to receive acknowledgement bytes from perf.
@@ -131,11 +136,6 @@ mod imp {
         /// Tracks whether a perf section is currently active for this process.
         pub enabled: bool,
     }
-
-    /// Lazily initialized process-global perf control state.
-    pub static mut PERF_CONTROL: Option<PerfControl> = None;
-    /// Synchronizes writes to the inherited perf log file descriptor.
-    static PERF_LOG_LOCK: OnceLock<Mutex<Option<File>>> = OnceLock::new();
 
     /// Writes a single message line to the perf log file.
     #[inline]
@@ -222,6 +222,11 @@ mod tests {
     use super::PERF_CONTROL;
     use super::imp::PerfControl;
 
+    struct PerfControlPeers {
+        _control_reader: UnixStream,
+        ack_writer: UnixStream,
+    }
+
     struct ResetPerfControl;
 
     impl Drop for ResetPerfControl {
@@ -232,11 +237,6 @@ mod tests {
                 PERF_CONTROL = None;
             }
         }
-    }
-
-    struct PerfControlPeers {
-        _control_reader: UnixStream,
-        ack_writer: UnixStream,
     }
 
     fn perf_control(enabled: bool) -> (PerfControl, PerfControlPeers) {

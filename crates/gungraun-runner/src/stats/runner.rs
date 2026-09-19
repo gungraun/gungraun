@@ -244,26 +244,6 @@ impl OnlineStats {
     }
 }
 
-impl Stats {
-    /// Creates a new `Stats` storing the given [`OnlineStats`] and computing the RSE from it
-    pub fn new(online_stats: OnlineStats) -> Self {
-        let rse = if online_stats.mean == 0.0 || online_stats.n < 2 {
-            0.0
-        } else {
-            #[expect(clippy::cast_precision_loss)]
-            let n = online_stats.n as f64;
-            let var = online_stats
-                .sample_variance()
-                .expect("the variance should be valid since n>=2");
-            let stddev = var.sqrt();
-            let stderr = stddev / n.sqrt();
-            stderr / online_stats.mean.abs()
-        };
-
-        Self { online_stats, rse }
-    }
-}
-
 impl<T> OnlineStatsMap<T>
 where
     T: Eq + Hash + Clone,
@@ -285,6 +265,26 @@ where
     /// Returns the [`OnlineStats`] for `key`, if present.
     pub fn get(&self, key: &T) -> Option<&OnlineStats> {
         self.0.get(key)
+    }
+}
+
+impl Stats {
+    /// Creates a new `Stats` storing the given [`OnlineStats`] and computing the RSE from it
+    pub fn new(online_stats: OnlineStats) -> Self {
+        let rse = if online_stats.mean == 0.0 || online_stats.n < 2 {
+            0.0
+        } else {
+            #[expect(clippy::cast_precision_loss)]
+            let n = online_stats.n as f64;
+            let var = online_stats
+                .sample_variance()
+                .expect("the variance should be valid since n>=2");
+            let stddev = var.sqrt();
+            let stderr = stddev / n.sqrt();
+            stderr / online_stats.mean.abs()
+        };
+
+        Self { online_stats, rse }
     }
 }
 

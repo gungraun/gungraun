@@ -9,12 +9,12 @@ use gungraun::prelude::*;
 #[derive(Debug)]
 struct A;
 
+#[derive(Debug)]
+struct B;
+
 fn input_a() -> A {
     A
 }
-
-#[derive(Debug)]
-struct B;
 
 fn input_b() -> B {
     B
@@ -29,6 +29,12 @@ where
     output.len()
 }
 
+fn setup_with_const_parameter<const C: usize>() -> usize {
+    let output = format!("SETUP: const: {C}");
+    println!("{output}");
+    output.len()
+}
+
 fn setup_with_type_parameter<T>(arg_t: T) -> usize
 where
     T: std::fmt::Debug,
@@ -38,24 +44,18 @@ where
     output.len()
 }
 
-fn teardown_with_type_parameter<T>(arg_t: T)
-where
-    T: std::fmt::Debug,
-{
-    println!("TEARDOWN: arg: {arg_t:?}");
-}
-
-fn setup_with_const_parameter<const C: usize>() -> usize {
-    let output = format!("SETUP: const: {C}");
-    println!("{output}");
-    output.len()
-}
-
 fn teardown_with_const_parameter<const C: usize, T>(arg_t: T)
 where
     T: std::fmt::Debug,
 {
     println!("TEARDOWN: const: {C}, arg: {arg_t:?}");
+}
+
+fn teardown_with_type_parameter<T>(arg_t: T)
+where
+    T: std::fmt::Debug,
+{
+    println!("TEARDOWN: arg: {arg_t:?}");
 }
 
 #[library_benchmark]

@@ -14,3 +14,4 @@ graphify-out/
 .superpowers/
 .omo/
 .serena/
+!summary.schema.json

@@ -9,9 +9,9 @@ use log::{debug, trace};
 use super::model::Metrics;
 use super::parser::{CallgrindParser, CallgrindProperties, parse_header};
 use crate::error::Error;
+use crate::metrics::model::ToolMetrics::Callgrind;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics::Callgrind;
 
 /// Parse the `total:` line in the callgrind output or `summary:` if total is not present
 ///

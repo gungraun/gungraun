@@ -27,7 +27,9 @@
 //!           count: 2
 //! ```
 
+use core::panic;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -40,12 +42,13 @@ use serde::{Deserialize, Serialize};
 use tera::Tera;
 use valico::json_schema::schema::ScopedSchema;
 
-use super::io::{deserialize_json, print_error, print_info, serialize_yaml};
+use super::io::{deserialize_json, print_info, serialize_yaml};
+use crate::io::print_error;
+
+pub static TEMPLATE_DATA: OnceCell<HashMap<String, serde_json::Value>> = OnceCell::new();
 
 pub const SCHEMA_PATH: &str = "crates/gungraun-summary/schemas";
 pub const SCHEMA_VERSION: &str = "7";
-
-pub static TEMPLATE_DATA: OnceCell<HashMap<String, serde_json::Value>> = OnceCell::new();
 
 /// Expected files and globs for one benchmark output directory.
 ///
@@ -582,21 +585,27 @@ impl ExpectedFilesManifestEntry {
             print_info(format!("Validating summary '{}'", summary.display()));
             let value: serde_json::Value = deserialize_json(&summary)?;
 
-            let result = schema.validate(&value);
-            if !result.is_valid() {
-                for error in result.errors {
-                    print_error(format!("{}: Validation error: {error}", summary.display()));
-                }
-            }
-            let (_, value) = value
+            let (_, version) = value
                 .as_object()
                 .expect("The summary should be a json object")
                 .get_key_value("version")
                 .expect("The summary should have a version");
             assert_eq!(
-                value, SCHEMA_VERSION,
+                version, SCHEMA_VERSION,
                 "summary json schema version mismatch"
             );
+
+            let result = schema.validate(&value);
+            if !result.is_valid() {
+                print_error(format!("Validation error of {}", summary.display()));
+
+                let msg = result.errors.iter().fold(String::new(), |mut acc, error| {
+                    writeln!(acc, "Validation error: {error:#?}").unwrap();
+                    acc
+                });
+
+                panic!("{msg}");
+            }
         }
 
         assert!(

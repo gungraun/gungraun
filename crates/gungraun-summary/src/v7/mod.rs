@@ -10,7 +10,7 @@ pub use gungraun_runner::api::{
     CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool,
 };
 pub use gungraun_runner::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, MetricsDiff, MetricsSummary, PerfQualities,
+    AnnotatedMetric, Metric, MetricKind, MetricResult, MetricsSummary, PerfQualities,
 };
 pub use gungraun_runner::summary::model::{
     BenchmarkKind, BenchmarkSummary, MetricChange, Profile, ProfileData, ProfileInfo, ProfilePart,

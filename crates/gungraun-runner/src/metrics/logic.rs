@@ -15,7 +15,7 @@ use indexmap::IndexMap;
 
 use crate::api::{Limit, PerfMetric};
 use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, Metrics, MetricsDiff, MetricsSummary, PerfQualities,
+    AnnotatedMetric, Metric, MetricKind, MetricResult, Metrics, MetricsSummary, PerfQualities,
 };
 use crate::summary::model::MetricChange;
 use crate::units::Unit;
@@ -737,6 +737,63 @@ impl Display for MetricKind {
     }
 }
 
+impl<V> MetricResult<V>
+where
+    V: MetricValue,
+{
+    /// Creates a new `MetricResult` from an [`EitherOrBoth`] of metric values.
+    pub fn new(values: EitherOrBoth<V>) -> Self {
+        if let EitherOrBoth::Both(new, old) = &values {
+            if let Some((normalized_new, normalized_old)) = new.normalize_with(old) {
+                let change = MetricChange::new(normalized_new.metric(), normalized_old.metric());
+                Self {
+                    change: Some(change),
+                    values: EitherOrBoth::Both(normalized_new, normalized_old),
+                }
+            } else {
+                // Can't create change for metrics with different units or scales
+                Self {
+                    change: None,
+                    values: values.map(|m| m.normalize()),
+                }
+            }
+        } else {
+            Self {
+                values: values.map(|m| m.normalize()),
+                change: None,
+            }
+        }
+    }
+
+    /// Sum this `MetricResult` with another `MetricResult`
+    #[must_use]
+    pub fn add(&self, other: &Self) -> Self {
+        match (&self.values, &other.values) {
+            (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
+                Self::new(EitherOrBoth::Left(new.add(other_new)))
+            }
+            (EitherOrBoth::Right(old), EitherOrBoth::Left(new))
+            | (EitherOrBoth::Left(new), EitherOrBoth::Right(old)) => {
+                Self::new(EitherOrBoth::Both(new.clone(), old.clone()))
+            }
+            (EitherOrBoth::Right(old), EitherOrBoth::Right(other_old)) => {
+                Self::new(EitherOrBoth::Right(old.add(other_old)))
+            }
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Left(other_new))
+            | (EitherOrBoth::Left(new), EitherOrBoth::Both(other_new, old)) => {
+                Self::new(EitherOrBoth::Both(new.add(other_new), old.clone()))
+            }
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Right(other_old))
+            | (EitherOrBoth::Right(old), EitherOrBoth::Both(new, other_old)) => {
+                Self::new(EitherOrBoth::Both(new.clone(), old.add(other_old)))
+            }
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Both(other_new, other_old)) => {
+                Self::new(EitherOrBoth::Both(new.add(other_new), old.add(other_old)))
+            }
+        }
+    }
+}
+
 impl<K, V> Metrics<K, V>
 where
     K: Hash + Eq + Display + Clone,
@@ -1002,63 +1059,6 @@ where
     }
 }
 
-impl<V> MetricsDiff<V>
-where
-    V: MetricValue,
-{
-    /// Creates a new `MetricsDiff` from an [`EitherOrBoth`] of metric values.
-    pub fn new(values: EitherOrBoth<V>) -> Self {
-        if let EitherOrBoth::Both(new, old) = &values {
-            if let Some((normalized_new, normalized_old)) = new.normalize_with(old) {
-                let change = MetricChange::new(normalized_new.metric(), normalized_old.metric());
-                Self {
-                    change: Some(change),
-                    values: EitherOrBoth::Both(normalized_new, normalized_old),
-                }
-            } else {
-                // Can't create change for metrics with different units or scales
-                Self {
-                    change: None,
-                    values: values.map(|m| m.normalize()),
-                }
-            }
-        } else {
-            Self {
-                values: values.map(|m| m.normalize()),
-                change: None,
-            }
-        }
-    }
-
-    /// Sum this metrics diff with another [`MetricsDiff`]
-    #[must_use]
-    pub fn add(&self, other: &Self) -> Self {
-        match (&self.values, &other.values) {
-            (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
-                Self::new(EitherOrBoth::Left(new.add(other_new)))
-            }
-            (EitherOrBoth::Right(old), EitherOrBoth::Left(new))
-            | (EitherOrBoth::Left(new), EitherOrBoth::Right(old)) => {
-                Self::new(EitherOrBoth::Both(new.clone(), old.clone()))
-            }
-            (EitherOrBoth::Right(old), EitherOrBoth::Right(other_old)) => {
-                Self::new(EitherOrBoth::Right(old.add(other_old)))
-            }
-            (EitherOrBoth::Both(new, old), EitherOrBoth::Left(other_new))
-            | (EitherOrBoth::Left(new), EitherOrBoth::Both(other_new, old)) => {
-                Self::new(EitherOrBoth::Both(new.add(other_new), old.clone()))
-            }
-            (EitherOrBoth::Both(new, old), EitherOrBoth::Right(other_old))
-            | (EitherOrBoth::Right(old), EitherOrBoth::Both(new, other_old)) => {
-                Self::new(EitherOrBoth::Both(new.clone(), old.add(other_old)))
-            }
-            (EitherOrBoth::Both(new, old), EitherOrBoth::Both(other_new, other_old)) => {
-                Self::new(EitherOrBoth::Both(new.add(other_new), old.add(other_old)))
-            }
-        }
-    }
-}
-
 impl<K, V> MetricsSummary<K, V>
 where
     K: Hash + Eq + Summarize<V> + Display + Clone,
@@ -1073,43 +1073,43 @@ where
             summarized
         });
 
-        let diffs = match summarized {
+        let results = match summarized {
             EitherOrBoth::Left(new) => new
                 .into_owned()
                 .into_iter()
                 .map(|(metric_kind, metric)| {
-                    (metric_kind, MetricsDiff::new(EitherOrBoth::Left(metric)))
+                    (metric_kind, MetricResult::new(EitherOrBoth::Left(metric)))
                 })
                 .collect(),
             EitherOrBoth::Right(old) => old
                 .into_owned()
                 .into_iter()
                 .map(|(metric_kind, metric)| {
-                    (metric_kind, MetricsDiff::new(EitherOrBoth::Right(metric)))
+                    (metric_kind, MetricResult::new(EitherOrBoth::Right(metric)))
                 })
                 .collect(),
             EitherOrBoth::Both(new, old) => new
                 .into_owned()
                 .union(old.into_owned())
                 .into_iter()
-                .map(|(metric_kind, metric)| (metric_kind, MetricsDiff::new(metric)))
+                .map(|(metric_kind, metric)| (metric_kind, MetricResult::new(metric)))
                 .collect(),
         };
 
-        Self(diffs)
+        Self(results)
     }
 
-    /// Try to return a [`MetricsDiff`] for the specified `MetricKind`
-    pub fn diff_by_kind(&self, metric_kind: &K) -> Option<&MetricsDiff<V>> {
+    /// Try to return a [`MetricResult`] for the specified `MetricKind`
+    pub fn result_by_kind(&self, metric_kind: &K) -> Option<&MetricResult<V>> {
         self.0.get(metric_kind)
     }
 
-    /// Return an iterator over all [`MetricsDiff`]s
-    pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff<V>)> {
+    /// Return an iterator over all [`MetricResult`]s
+    pub fn all_results(&self) -> impl Iterator<Item = (&K, &MetricResult<V>)> {
         self.0.iter()
     }
 
-    /// Returns `true` if there are no metric diffs present.
+    /// Returns `true` if there are no metric results present.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -1120,8 +1120,9 @@ where
     pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K, V>> {
         self.0
             .iter()
-            .map(|(metric_kind, diff)| {
-                diff.values
+            .map(|(metric_kind, result)| {
+                result
+                    .values
                     .clone()
                     .map(|metric| (metric_kind.clone(), metric))
             })
@@ -1131,7 +1132,7 @@ where
 
     /// Sum up another `MetricsSummary` with this one
     ///
-    /// If a [`MetricsDiff`] is not present in this summary but in the other, it is added to this
+    /// If a [`MetricResult`] is not present in this summary but in the other, it is added to this
     /// summary.
     pub fn add(&mut self, other: &Self) {
         for (other_key, other_value) in &other.0 {
@@ -1298,12 +1299,12 @@ mod tests {
         )
     }
 
-    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, change: D) -> MetricsDiff
+    fn expected_metrics_result<D>(values: EitherOrBoth<Metric>, change: D) -> MetricResult
     where
         D: Into<Option<(f64, f64)>>,
     {
-        MetricsDiff {
-            values: metrics,
+        MetricResult {
+            values,
             change: change
                 .into()
                 .map(|(diff_pct, factor)| MetricChange { diff_pct, factor }),
@@ -1376,10 +1377,10 @@ mod tests {
             RamHitRate,
         ];
 
-        let map: IndexMap<EventKind, MetricsDiff> = event_kinds
+        let map: IndexMap<EventKind, MetricResult> = event_kinds
             .iter()
             .zip(kinds)
-            .map(|(e, (m, d))| (*e, expected_metrics_diff(m, d)))
+            .map(|(e, (m, d))| (*e, expected_metrics_result(m, d)))
             .collect();
 
         MetricsSummary(map)
@@ -1816,7 +1817,7 @@ mod tests {
             }),
         ));
 
-        let expected = MetricsDiff {
+        let expected = MetricResult {
             change: Some(MetricChange {
                 diff_pct: 0.0,
                 factor: 1.0,
@@ -1827,7 +1828,7 @@ mod tests {
             ),
         };
 
-        let diff = summary.diff_by_kind(&metric_kind).unwrap();
+        let diff = summary.result_by_kind(&metric_kind).unwrap();
 
         assert_eq!(*diff, expected);
     }
@@ -2049,12 +2050,12 @@ mod tests {
         EitherOrBoth::Both(2, 1),
         (100f64, 2f64)
     )]
-    fn test_metrics_diff_new<T>(#[case] metrics: EitherOrBoth<u64>, #[case] expected_diffs: T)
+    fn test_metric_result_new<T>(#[case] metrics: EitherOrBoth<u64>, #[case] expected_changes: T)
     where
         T: Into<Option<(f64, f64)>>,
     {
-        let expected = expected_metrics_diff(metrics.map(Metric::Int), expected_diffs);
-        let actual = MetricsDiff::new(metrics.map(Metric::Int));
+        let expected = expected_metrics_result(metrics.map(Metric::Int), expected_changes);
+        let actual = MetricResult::new(metrics.map(Metric::Int));
 
         assert_eq!(actual, expected);
     }
@@ -2127,17 +2128,17 @@ mod tests {
         EitherOrBoth::Both(u64::MAX, u64::MAX),
         EitherOrBoth::Both(u64::MAX, u64::MAX)
     )]
-    fn test_metrics_diff_add(
+    fn test_metric_result_add(
         #[case] metric: EitherOrBoth<u64>,
         #[case] other_metric: EitherOrBoth<u64>,
         #[case] expected: EitherOrBoth<u64>,
     ) {
-        let new_diff = MetricsDiff::new(metric.map(Metric::Int));
-        let old_diff = MetricsDiff::new(other_metric.map(Metric::Int));
-        let expected = MetricsDiff::new(expected.map(Metric::Int));
+        let new_result = MetricResult::new(metric.map(Metric::Int));
+        let old_result = MetricResult::new(other_metric.map(Metric::Int));
+        let expected = MetricResult::new(expected.map(Metric::Int));
 
-        assert_eq!(new_diff.add(&old_diff), expected);
-        assert_eq!(old_diff.add(&new_diff), expected);
+        assert_eq!(new_result.add(&old_result), expected);
+        assert_eq!(old_result.add(&new_result), expected);
     }
 
     #[rstest]

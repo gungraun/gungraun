@@ -67,7 +67,7 @@ where
         let mut regressions = vec![];
         for (metric, new_cost, old_cost, pct, limit) in
             self.get_soft_limits().iter().filter_map(|(kind, limit)| {
-                metrics_summary.diff_by_kind(kind).and_then(|d| {
+                metrics_summary.result_by_kind(kind).and_then(|d| {
                     if let EitherOrBoth::Both(new, old) = d.values.as_ref() {
                         // This unwrap is safe since the `change` is calculated if both costs are
                         // present
@@ -108,7 +108,7 @@ where
         for (metric, new_cost, limit) in
             self.get_hard_limits().iter().filter_map(|(kind, limit)| {
                 metrics_summary
-                    .diff_by_kind(kind)
+                    .result_by_kind(kind)
                     .and_then(|d| d.values.as_ref().left().map(|metric| (kind, metric, limit)))
             })
         {

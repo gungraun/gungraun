@@ -112,14 +112,6 @@ pub struct AnnotatedMetric<Q> {
     pub value: Metric,
 }
 
-/// An insertion-ordered mapping from metric identifier to [`Metric`].
-///
-/// # Benchmark Summary
-///
-/// This struct is not part of the recent summary anymore.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
-
 /// Comparison data for one metric in a parsed summary.
 ///
 /// If both, old and new values, are present, [`MetricChange`] stores the derived percentage and
@@ -129,7 +121,7 @@ pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(bound(serialize = "V: Serialize", deserialize = "V: Deserialize<'de>"))]
-pub struct MetricsDiff<V = Metric> {
+pub struct MetricResult<V = Metric> {
     /// If both values are present there is also a `change` present
     #[serde(skip_serializing_if = "Option::is_none")]
     pub change: Option<MetricChange>,
@@ -142,10 +134,18 @@ pub struct MetricsDiff<V = Metric> {
     pub values: EitherOrBoth<V>,
 }
 
-/// An insertion-ordered mapping from metric identifier to [`MetricsDiff`].
+/// An insertion-ordered mapping from metric identifier to [`Metric`].
+///
+/// # Benchmark Summary
+///
+/// This struct is not part of the recent summary anymore.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
+
+/// An insertion-ordered mapping from metric identifier to [`MetricResult`].
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct MetricsSummary<K: Hash + Eq = EventKind, V = Metric>(pub IndexMap<K, MetricsDiff<V>>);
+pub struct MetricsSummary<K: Hash + Eq = EventKind, V = Metric>(pub IndexMap<K, MetricResult<V>>);
 
 /// Perf-specific metadata attached to a metric value.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -273,14 +273,14 @@ mod tests {
     }
 
     #[test]
-    fn test_metrics_diff_serializes_values_as_new_and_old() {
-        let metrics_diff = MetricsDiff {
+    fn test_metrics_result_serializes_values_as_new_and_old() {
+        let metrics_result = MetricResult {
             change: None,
             values: EitherOrBoth::Both(Metric::Int(2), Metric::Int(1)),
         };
 
         assert_eq!(
-            serde_json::to_value(metrics_diff).unwrap(),
+            serde_json::to_value(metrics_result).unwrap(),
             json!({
                 "values": { "new": 2, "old": 1 }
             })

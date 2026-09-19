@@ -204,7 +204,7 @@
         }
       ]
     },
-    "MetricsDiff": {
+    "MetricResult": {
       "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`MetricChange`] stores the derived percentage and\nfactor. Otherwise the summary only stores whichever side is available. Per convention, the left\nside or [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or\n[`EitherOrBoth::Right`] stores the old metric.",
       "type": "object",
       "properties": {
@@ -230,7 +230,7 @@
       },
       "required": ["values"]
     },
-    "MetricsDiff2": {
+    "MetricResult2": {
       "description": "Comparison data for one metric in a parsed summary.\n\nIf both, old and new values, are present, [`MetricChange`] stores the derived percentage and\nfactor. Otherwise the summary only stores whichever side is available. Per convention, the left\nside or [`EitherOrBoth::Left`] stores the new [`Metric`] and the right side or\n[`EitherOrBoth::Right`] stores the old metric.",
       "type": "object",
       "properties": {
@@ -475,10 +475,10 @@
           "additionalProperties": {
             "anyOf": [
               {
-                "$ref": "#/definitions/MetricsDiff"
+                "$ref": "#/definitions/MetricResult"
               },
               {
-                "$ref": "#/definitions/MetricsDiff2"
+                "$ref": "#/definitions/MetricResult2"
               }
             ]
           }
@@ -503,10 +503,10 @@
           "additionalProperties": {
             "anyOf": [
               {
-                "$ref": "#/definitions/MetricsDiff"
+                "$ref": "#/definitions/MetricResult"
               },
               {
-                "$ref": "#/definitions/MetricsDiff2"
+                "$ref": "#/definitions/MetricResult2"
               }
             ]
           }

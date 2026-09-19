@@ -26,7 +26,7 @@ fn assert_default() {
             panic!();
         };
         let new_ir = metrics_summary
-            .diff_by_kind(&EventKind::Ir)
+            .result_by_kind(&EventKind::Ir)
             .unwrap()
             .values
             .unwrap_left();
@@ -70,7 +70,7 @@ fn assert_nested() {
             panic!();
         };
         let new_ir = metrics_summary
-            .diff_by_kind(&EventKind::Ir)
+            .result_by_kind(&EventKind::Ir)
             .unwrap()
             .values
             .unwrap_left();
@@ -117,7 +117,7 @@ fn assert_none() {
                 panic!();
             };
             let new_ir = metrics_summary
-                .diff_by_kind(&EventKind::Ir)
+                .result_by_kind(&EventKind::Ir)
                 .unwrap()
                 .values
                 .unwrap_left();

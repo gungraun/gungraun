@@ -509,7 +509,7 @@ impl ProfilePart {
             ToolMetricSummary::Memcheck(metrics)
             | ToolMetricSummary::Helgrind(metrics)
             | ToolMetricSummary::DRD(metrics) => metrics
-                .diff_by_kind(&ErrorMetric::Errors)
+                .result_by_kind(&ErrorMetric::Errors)
                 .is_some_and(|e| e.values.has_left_and(|new| new > Metric::Int(0))),
         }
     }

@@ -23,7 +23,7 @@ use crate::api::{
 };
 use crate::metrics::logic::MetricValue;
 use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, MetricsDiff, MetricsSummary, PerfQualities,
+    AnnotatedMetric, Metric, MetricKind, MetricResult, MetricsSummary, PerfQualities,
 };
 use crate::stats::runner::DiffStats;
 use crate::summary::model::{
@@ -1223,7 +1223,7 @@ impl VerticalFormatter {
         }
     }
 
-    fn format_metrics<'a, K, V>(&mut self, metrics: impl Iterator<Item = (K, &'a MetricsDiff<V>)>)
+    fn format_metrics<'a, K, V>(&mut self, metrics: impl Iterator<Item = (K, &'a MetricResult<V>)>)
     where
         K: Display,
         V: MetricValue + PartialEq + 'a,
@@ -1237,7 +1237,7 @@ impl VerticalFormatter {
     fn format_perf_metrics<'a, K>(
         &mut self,
         perf_config: &PerfOutputConfig,
-        metrics: impl Iterator<Item = (K, &'a MetricsDiff<AnnotatedMetric<PerfQualities>>)>,
+        metrics: impl Iterator<Item = (K, &'a MetricResult<AnnotatedMetric<PerfQualities>>)>,
     ) where
         K: Display,
     {
@@ -1376,17 +1376,19 @@ impl VerticalFormatter {
             output_format
                 .clone()
                 .iter()
-                .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                .filter_map(|e| summary.result_by_kind(e).map(|d| (e, d))),
         );
 
         // We only check for `new` errors
         if let Some(info) = info
-            && summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
-                e.values
-                    .as_ref()
-                    .left()
-                    .is_some_and(|l| *l > Metric::Int(0))
-            })
+            && summary
+                .result_by_kind(&ErrorMetric::Errors)
+                .is_some_and(|e| {
+                    e.values
+                        .as_ref()
+                        .left()
+                        .is_some_and(|l| *l > Metric::Int(0))
+                })
             && let Some(new) = info.as_ref().left()
             && let Some(details) = new.details.as_ref()
         {
@@ -1446,7 +1448,7 @@ impl Formatter for VerticalFormatter {
                     .dhat
                     .clone()
                     .iter()
-                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                    .filter_map(|e| summary.result_by_kind(e).map(|d| (e, d))),
             ),
             ToolMetricSummary::Callgrind(summary) => {
                 self.format_metrics(
@@ -1454,7 +1456,7 @@ impl Formatter for VerticalFormatter {
                         .callgrind
                         .clone()
                         .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                        .filter_map(|e| summary.result_by_kind(e).map(|d| (e, d))),
                 );
             }
             ToolMetricSummary::Cachegrind(summary) => {
@@ -1463,7 +1465,7 @@ impl Formatter for VerticalFormatter {
                         .cachegrind
                         .clone()
                         .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                        .filter_map(|e| summary.result_by_kind(e).map(|d| (e, d))),
                 );
             }
             ToolMetricSummary::Perf(summary) => {
@@ -1471,7 +1473,7 @@ impl Formatter for VerticalFormatter {
                 self.format_perf_metrics(
                     perf_config.unwrap_or(&default_perf_config),
                     summary
-                        .all_diffs()
+                        .all_results()
                         .map(|(perf_metric, diff)| (perf_metric.display(), diff)),
                 );
             }
@@ -2065,7 +2067,7 @@ mod tests {
         };
         let metrics_summary = MetricsSummary::new(costs);
         let mut formatter = VerticalFormatter::new(OutputFormat::default());
-        formatter.format_metrics(metrics_summary.all_diffs());
+        formatter.format_metrics(metrics_summary.all_results());
 
         let expected = format!(
             "  {:<36}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
@@ -2132,7 +2134,7 @@ mod tests {
         };
         let metrics_summary = MetricsSummary::new(costs);
         let mut formatter = VerticalFormatter::new(output_format);
-        formatter.format_metrics(metrics_summary.all_diffs());
+        formatter.format_metrics(metrics_summary.all_results());
 
         assert_eq!(formatter.buffer, expected);
     }

@@ -60,13 +60,13 @@ pub enum BenchmarkKind {
 /// ```rust
 /// use either_or_both::EitherOrBoth;
 /// use gungraun_runner::api::EventKind;
-/// use gungraun_runner::metrics::model::{Metric, MetricsDiff, MetricsSummary};
+/// use gungraun_runner::metrics::model::{Metric, MetricResult, MetricsSummary};
 /// use gungraun_runner::summary::model::{MetricChange, ToolMetricSummary};
 /// use indexmap::IndexMap;
 ///
 /// let callgrind_summary = ToolMetricSummary::Callgrind(MetricsSummary(IndexMap::from([(
 ///     EventKind::Ir,
-///     MetricsDiff {
+///     MetricResult {
 ///         change: Some(MetricChange {
 ///             diff_pct: -50.0,
 ///             factor: -2.0,
@@ -437,14 +437,14 @@ where
 
 #[cfg(feature = "schema")]
 fn metric_summary_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
-    let metric_diff = generator.subschema_for::<crate::metrics::model::MetricsDiff>();
-    let perf_metric_diff = generator
-        .subschema_for::<crate::metrics::model::MetricsDiff<AnnotatedMetric<PerfQualities>>>();
+    let metric_result = generator.subschema_for::<crate::metrics::model::MetricResult>();
+    let perf_metric_result = generator
+        .subschema_for::<crate::metrics::model::MetricResult<AnnotatedMetric<PerfQualities>>>();
 
     schemars::json_schema!({
         "type": "object",
         "additionalProperties": {
-            "anyOf": [metric_diff, perf_metric_diff]
+            "anyOf": [metric_result, perf_metric_result]
         }
     })
 }

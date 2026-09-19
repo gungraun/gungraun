@@ -82,8 +82,8 @@ impl PerfRegressionConfig {
 
         self.soft_limits.iter().flat_map(move |(pattern, limit)| {
             metrics_summary
-                .all_diffs()
-                .filter_map(move |(metric, metrics_diff)| {
+                .all_results()
+                .filter_map(move |(metric, result)| {
                     if !pattern::matches(pattern.name(), metric.name()) {
                         return None;
                     }
@@ -94,7 +94,7 @@ impl PerfRegressionConfig {
                         metric.name()
                     );
 
-                    let EitherOrBoth::Both(new, old) = metrics_diff.values.as_ref() else {
+                    let EitherOrBoth::Both(new, old) = result.values.as_ref() else {
                         return None;
                     };
 
@@ -106,7 +106,7 @@ impl PerfRegressionConfig {
 
                     // new and old have the same unit, so it doesn't matter which one we pick
                     let result_unit = new.unit.as_ref();
-                    let pct = metrics_diff
+                    let pct = result
                         .change
                         .expect("a change should exist when both metrics are present")
                         .diff_pct;
@@ -140,8 +140,8 @@ impl PerfRegressionConfig {
             .iter()
             .flat_map(move |(pattern, unit, limit)| {
                 metrics_summary
-                    .all_diffs()
-                    .filter_map(move |(metric, metrics_diff)| {
+                    .all_results()
+                    .filter_map(move |(metric, result)| {
                         if !pattern::matches(pattern.name(), metric.name()) {
                             return None;
                         }
@@ -152,7 +152,7 @@ impl PerfRegressionConfig {
                             metric.name()
                         );
 
-                        metrics_diff.values.as_ref().left().and_then(|m| {
+                        result.values.as_ref().left().and_then(|m| {
                             let (metric_value, result_unit) =
                                 if let Some(limit_unit) = unit.as_ref() {
                                     let metric_value = normalize_metric_to_limit(

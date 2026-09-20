@@ -7,7 +7,7 @@ use std::hash::Hash;
 use approx::relative_eq;
 use statrs::distribution::{ContinuousCDF, StudentsT};
 
-use crate::metrics::model::{PerfQualities, StatisticalMetric};
+use crate::metrics::model::{PerfStats, StatisticalMetric};
 
 /// Statistical significance summary for the difference between two metrics.
 ///
@@ -103,15 +103,15 @@ impl DiffStats {
     /// Creates a new `DiffStats` for the relative change between two [`StatisticalMetric`]s
     ///
     /// This method requires the stored means, sample counts, and relative standard errors of
-    /// [`PerfQualities`] to estimate the uncertainty of the relative change.
+    /// [`PerfStats`] to estimate the uncertainty of the relative change.
     ///
     /// This method returns `None` if the required statistical metadata is incomplete, or if the
     /// derived statistics are not usable.
     #[expect(clippy::cast_precision_loss)]
     #[expect(clippy::similar_names)]
     pub fn from_metrics(
-        new: &StatisticalMetric<PerfQualities>,
-        old: &StatisticalMetric<PerfQualities>,
+        new: &StatisticalMetric<PerfStats>,
+        old: &StatisticalMetric<PerfStats>,
         alpha: f64,
     ) -> Option<Self> {
         assert!(
@@ -127,12 +127,12 @@ impl DiffStats {
             Some(old_mean),
             Some(old_rse),
         ) = (
-            new.qualities.n,
-            new.qualities.mean,
-            new.qualities.rse,
-            old.qualities.n,
-            old.qualities.mean,
-            old.qualities.rse,
+            new.stats.n,
+            new.stats.mean,
+            new.stats.rse,
+            old.stats.n,
+            old.stats.mean,
+            old.stats.rse,
         )
         else {
             return None;
@@ -473,8 +473,8 @@ mod tests {
         statistical_metric_perf_f().metric(2.0).mean(0.0).n(2).rse(0.1).fx(),
     )]
     fn test_diff_stats_from_metrics_when_invalid_input_then_none(
-        #[case] new: StatisticalMetric<PerfQualities>,
-        #[case] old: StatisticalMetric<PerfQualities>,
+        #[case] new: StatisticalMetric<PerfStats>,
+        #[case] old: StatisticalMetric<PerfStats>,
     ) {
         assert_eq!(
             DiffStats::from_metrics(&new, &old, DEFAULT_PERF_ALPHA),

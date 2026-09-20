@@ -124,7 +124,7 @@ use crate::metrics::logic::Summarize;
 #[cfg(feature = "runner")]
 use crate::metrics::logic::TypeChecker;
 #[cfg(feature = "runner")]
-use crate::metrics::model::{Metric, PerfQualities, StatisticalMetric};
+use crate::metrics::model::{Metric, PerfStats, StatisticalMetric};
 pub use crate::stats::common::{calibrate_linear, logistic};
 pub use crate::units::Unit;
 #[cfg(feature = "runner")]
@@ -2610,7 +2610,7 @@ impl From<&str> for PerfMetric {
 impl Summarize for PerfMetric {}
 
 #[cfg(feature = "runner")]
-impl Summarize<StatisticalMetric<PerfQualities>> for PerfMetric {}
+impl Summarize<StatisticalMetric<PerfStats>> for PerfMetric {}
 
 impl RawToolArgs {
     /// Returns a slice of the underlying argument strings

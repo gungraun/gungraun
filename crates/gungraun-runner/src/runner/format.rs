@@ -23,7 +23,7 @@ use crate::api::{
 };
 use crate::metrics::logic::MetricValue;
 use crate::metrics::model::{
-    Metric, MetricKind, MetricResult, MetricResults, PerfQualities, StatisticalMetric,
+    Metric, MetricKind, MetricResult, MetricResults, PerfStats, StatisticalMetric,
 };
 use crate::stats::runner::DiffStats;
 use crate::summary::model::{
@@ -1019,7 +1019,7 @@ impl VerticalFormatter {
     fn write_perf_metric(
         &mut self,
         field: &str,
-        metrics: EitherOrBoth<&StatisticalMetric<PerfQualities>>,
+        metrics: EitherOrBoth<&StatisticalMetric<PerfStats>>,
         change: Option<MetricChange>,
         perf_config: &PerfOutputConfig,
     ) {
@@ -1032,11 +1032,11 @@ impl VerticalFormatter {
 
     fn write_perf_significance_line(
         &mut self,
-        metrics: EitherOrBoth<&StatisticalMetric<PerfQualities>>,
+        metrics: EitherOrBoth<&StatisticalMetric<PerfStats>>,
         perf_config: &PerfOutputConfig,
     ) {
         let field = "  rse% (sig.thr) [sig.fact]".bright_black();
-        match metrics.map(|a| (a, a.qualities.rse)) {
+        match metrics.map(|a| (a, a.stats.rse)) {
             EitherOrBoth::Left((_, Some(rse))) | EitherOrBoth::Both((_, Some(rse)), (_, None)) => {
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
@@ -1113,12 +1113,9 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_perf_samples_line(
-        &mut self,
-        metrics: EitherOrBoth<&StatisticalMetric<PerfQualities>>,
-    ) {
+    fn write_perf_samples_line(&mut self, metrics: EitherOrBoth<&StatisticalMetric<PerfStats>>) {
         let field = "  samples".bright_black();
-        match metrics.map(|a| a.qualities.n) {
+        match metrics.map(|a| a.stats.n) {
             EitherOrBoth::Left(Some(n)) | EitherOrBoth::Both(Some(n), None) => {
                 let right = format!(
                     "{:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
@@ -1240,7 +1237,7 @@ impl VerticalFormatter {
     fn format_perf_metrics<'a, K>(
         &mut self,
         perf_config: &PerfOutputConfig,
-        metrics: impl Iterator<Item = (K, &'a MetricResult<StatisticalMetric<PerfQualities>>)>,
+        metrics: impl Iterator<Item = (K, &'a MetricResult<StatisticalMetric<PerfStats>>)>,
     ) where
         K: Display,
     {

@@ -481,7 +481,6 @@ impl Display for Unit {
             Self::Amperes => f.write_str("A"),
             Self::RevolutionsPerMinute => f.write_str("rpm"),
             Self::Celsius => f.write_str("'C"),
-            // FIX: Why not the original long names cycles and capacity?
             Self::Capacity => f.write_str("cap"),
             Self::Cycles => f.write_str("cyc"),
             Self::Rate(numerator, denominator) => write!(f, "{numerator}/{denominator}"),

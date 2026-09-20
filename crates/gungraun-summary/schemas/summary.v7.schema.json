@@ -432,7 +432,7 @@
       }
     },
     "StatisticalMetric": {
-      "description": "A metric `value` paired with additional metadata, stats and an optional [`Unit`].\n\nThis type is used for metrics, such as perf results, that need to carry more than the raw\nnumeric value when they are stored, merged, or compared.",
+      "description": "A metric `value` paired with additional metadata, statistics and an optional [`Unit`].\n\nThis type is used for metrics, such as perf results, that need to carry more than the raw\nnumeric value when they are stored, merged, or compared.",
       "type": "object",
       "properties": {
         "event_runtime": {

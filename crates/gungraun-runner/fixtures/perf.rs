@@ -3,7 +3,7 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{PerfMetric, PerfRunMode, PerfSpec, RawToolArgs, Unit};
-use crate::metrics::model::{Metric, Metrics, PerfQualities, StatisticalMetric, ToolMetrics};
+use crate::metrics::model::{Metric, Metrics, PerfStats, StatisticalMetric, ToolMetrics};
 use crate::runner::perf::json_parser::JsonParser;
 use crate::runner::perf::model::PerfStatRecord;
 use crate::runner::perf::records::PerfStatRecords;
@@ -31,14 +31,14 @@ pub fn json_parser_f(
 pub fn metric_perf_f(
     #[builder(into)] event: Option<String>,
     #[builder(into)] value: Option<Metric>,
-    qualities: Option<PerfQualities>,
+    stats: Option<PerfStats>,
     unit: Option<Unit>,
-) -> (PerfMetric, StatisticalMetric<PerfQualities>) {
+) -> (PerfMetric, StatisticalMetric<PerfStats>) {
     (
         PerfMetric(event.unwrap_or_else(|| "foo".to_owned())),
         StatisticalMetric::new(
             value.unwrap_or(Metric::Int(1)),
-            qualities.unwrap_or_default(),
+            stats.unwrap_or_default(),
             unit,
         ),
     )
@@ -113,8 +113,8 @@ pub fn perf_spec_f(
 pub fn perf_stat_record_f(
     instructions: Option<u64>,
     task_clock: Option<f64>,
-    qualities: Option<(u64, f64, f64)>,
-    some_qualities: Option<bool>,
+    stats: Option<(u64, f64, f64)>,
+    some_stats: Option<bool>,
     mut unit: Option<&str>,
     mut event: Option<&str>,
     runtime: Option<u64>,
@@ -150,7 +150,7 @@ pub fn perf_stat_record_f(
         // do nothing
     }
 
-    if some_qualities == Some(true) {
+    if some_stats == Some(true) {
         if n.is_none() {
             n = Some(1);
         }
@@ -160,7 +160,7 @@ pub fn perf_stat_record_f(
         if variance.is_none() {
             variance = Some(1.0);
         }
-    } else if let Some((new_n, new_mean, new_variance)) = qualities {
+    } else if let Some((new_n, new_mean, new_variance)) = stats {
         if n.is_none() {
             n = Some(new_n);
         }
@@ -212,7 +212,7 @@ pub fn perf_stat_records_f(
 pub fn tool_metrics_perf_f(
     #[builder(default = vec![], with = FromIterator::from_iter)] metrics: Vec<(
         PerfMetric,
-        StatisticalMetric<PerfQualities>,
+        StatisticalMetric<PerfStats>,
     )>,
 ) -> ToolMetrics {
     ToolMetrics::Perf(Metrics::with_metric_kinds(metrics))

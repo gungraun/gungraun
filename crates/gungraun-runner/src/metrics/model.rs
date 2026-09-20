@@ -92,7 +92,7 @@ pub enum ToolMetrics {
     ///
     /// These metrics are summarized per part, but no synthetic aggregate `total` is currently
     /// constructed across parts.
-    Perf(Metrics<PerfMetric, StatisticalMetric<PerfQualities>>),
+    Perf(Metrics<PerfMetric, StatisticalMetric<PerfStats>>),
 }
 
 /// Comparison data for one metric in a parsed summary.
@@ -133,7 +133,7 @@ pub struct Metrics<K: Hash + Eq, V = Metric>(pub IndexMap<K, V>);
 /// Perf-specific metadata attached to a metric value.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct PerfQualities {
+pub struct PerfStats {
     /// Runtime reported by perf for the event
     ///
     /// This field is extracted directly from perf's JSON field with the same name.
@@ -173,16 +173,16 @@ pub struct PerfQualities {
     pub rse: Option<f64>,
 }
 
-/// A metric `value` paired with additional metadata, stats and an optional [`Unit`].
+/// A metric `value` paired with additional metadata, statistics and an optional [`Unit`].
 ///
 /// This type is used for metrics, such as perf results, that need to carry more than the raw
 /// numeric value when they are stored, merged, or compared.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct StatisticalMetric<S> {
-    /// Additional metadata associated with the metric value.
+    /// Additional metadata and statistics associated with the metric value.
     #[serde(flatten)]
-    pub qualities: S,
+    pub stats: S,
     /// The [`Unit`] of the metric value, if one is given or known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit: Option<Unit>,
@@ -286,20 +286,20 @@ mod tests {
 
     #[test]
     fn test_statistical_metric_deserializes_value_field() {
-        let deserialized: StatisticalMetric<PerfQualities> =
+        let deserialized: StatisticalMetric<PerfStats> =
             serde_json::from_value(json!({ "value": 5 })).unwrap();
 
         assert_eq!(deserialized.value, Metric::Int(5));
-        assert_eq!(deserialized.qualities, PerfQualities::default());
+        assert_eq!(deserialized.stats, PerfStats::default());
         assert_eq!(deserialized.unit, None);
     }
 
     #[test]
     fn test_statistical_metric_serializes_named_value_field() {
         let stats = StatisticalMetric {
-            qualities: PerfQualities {
+            stats: PerfStats {
                 mean: Some(2.0),
-                ..PerfQualities::default()
+                ..PerfStats::default()
             },
             unit: None,
             value: Metric::Float(1.5),
@@ -310,7 +310,7 @@ mod tests {
             json!({ "mean": 2.0, "value": 1.5 })
         );
 
-        let roundtrip: StatisticalMetric<PerfQualities> =
+        let roundtrip: StatisticalMetric<PerfStats> =
             serde_json::from_value(serde_json::to_value(&stats).unwrap()).unwrap();
         assert_eq!(roundtrip, stats);
     }

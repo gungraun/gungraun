@@ -25,7 +25,7 @@ use crate::api::{
     CachegrindMetric, DelayKind, DhatMetric, EntryPoint, ExitWith, PerfRunMode, RawToolArgs,
     SanitizeOutput, Tool, ToolOutputFormat, ToolSpec, ToolSpecOptions, ToolSpecs,
 };
-use crate::metrics::model::{Metric, PerfQualities, StatisticalMetric, ToolMetrics};
+use crate::metrics::model::{Metric, PerfStats, StatisticalMetric, ToolMetrics};
 use crate::runner::bin_bench::Delay;
 use crate::runner::cachegrind::args::CachegrindArgs;
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
@@ -281,10 +281,10 @@ pub fn statistical_metric_perf_f(
     n: Option<u64>,
     mean: Option<f64>,
     unit: Option<Unit>,
-) -> StatisticalMetric<PerfQualities> {
+) -> StatisticalMetric<PerfStats> {
     StatisticalMetric::new(
         metric,
-        PerfQualities::new(event_runtime, pcnt_running, rse, n, mean),
+        PerfStats::new(event_runtime, pcnt_running, rse, n, mean),
         unit,
     )
 }

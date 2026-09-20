@@ -5,7 +5,7 @@ use gungraun::Tool;
 use gungraun_runner::api::Unit;
 use gungraun_runner::fixtures::perf::{json_parser_f, metric_perf_f, tool_metrics_perf_f};
 use gungraun_runner::fixtures::{header_f, parser_output_f, tool_output_path_f};
-use gungraun_runner::metrics::model::{PerfQualities, ToolMetrics};
+use gungraun_runner::metrics::model::{PerfStats, ToolMetrics};
 use gungraun_runner::runner::tool::parser::Parser;
 use gungraun_runner::runner::tool::path::ToolOutputPath;
 use pretty_assertions::assert_eq;
@@ -157,19 +157,13 @@ fn test_perf_duplicates_write_back() {
                 .event("event_dup_01")
                 .value(66.666_666_666_666_67)
                 .unit(Unit::Unknown("count".to_owned()))
-                .qualities(PerfQualities::new(
-                    None,
-                    None,
-                    0.5,
-                    2,
-                    66.666_666_666_666_67,
-                ))
+                .stats(PerfStats::new(None, None, 0.5, 2, 66.666_666_666_666_67))
                 .fx(),
             metric_perf_f()
                 .event("event_control_01")
                 .value(300.0)
                 .unit(Unit::Milliseconds)
-                .qualities(PerfQualities::new(None, None, 0.04, None, None))
+                .stats(PerfStats::new(None, None, 0.04, None, None))
                 .fx(),
         ])
         .fx();
@@ -283,14 +277,14 @@ fn test_perf_mixed() {
                     .event("event_004")
                     .value(4.0)
                     .unit(Unit::Nanoseconds)
-                    .qualities(PerfQualities::new(None, None, 0.025, None, None))
+                    .stats(PerfStats::new(None, None, 0.025, None, None))
                     .fx(),
                 // event_005 is filtered out due to low pcnt_running
                 metric_perf_f()
                     .event("event_006_all")
                     .value(6)
                     .unit(Unit::Milliseconds)
-                    .qualities(PerfQualities::new(
+                    .stats(PerfStats::new(
                         Some(1100),
                         Some(100.0),
                         Some(0.05),
@@ -343,7 +337,7 @@ fn test_perf_one() {
         .metrics([metric_perf_f()
             .event("event_1")
             .value(42.0)
-            .qualities(PerfQualities::new(None, 100.0, None, None, None))
+            .stats(PerfStats::new(None, 100.0, None, None, None))
             .unit(Unit::Unknown("count".to_owned()))
             .fx()])
         .fx();
@@ -440,7 +434,7 @@ fn test_perf_repeated_event_records() {
             metric_perf_f()
                 .event(format!("event_repeat_{x:02}"))
                 .value(100 + x)
-                .qualities(PerfQualities::new(
+                .stats(PerfStats::new(
                     1000 + x,
                     90.0 + x as f64,
                     x as f64 / 100.0,

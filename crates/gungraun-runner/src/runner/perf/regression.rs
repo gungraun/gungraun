@@ -37,7 +37,7 @@ use indexmap::IndexMap;
 use log::{info, warn};
 
 use crate::api::{self, PerfMetric};
-use crate::metrics::model::{Metric, MetricKind, MetricResults, PerfQualities, StatisticalMetric};
+use crate::metrics::model::{Metric, MetricKind, MetricResults, PerfStats, StatisticalMetric};
 use crate::runner::perf::pattern;
 use crate::runner::tool::config::resolve_perf_alpha;
 use crate::runner::tool::regression::{
@@ -66,13 +66,13 @@ pub struct PerfRegressionConfig {
 impl PerfRegressionConfig {
     fn soft_limit_matches<'a>(
         &self,
-        metric_results: &'a MetricResults<PerfMetric, StatisticalMetric<PerfQualities>>,
+        metric_results: &'a MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> impl Iterator<
         Item = (
             &'a PerfMetric,
             String,
-            &'a StatisticalMetric<PerfQualities>,
-            &'a StatisticalMetric<PerfQualities>,
+            &'a StatisticalMetric<PerfStats>,
+            &'a StatisticalMetric<PerfStats>,
             f64,
             f64,
             Option<&'a Unit>,
@@ -126,12 +126,12 @@ impl PerfRegressionConfig {
 
     fn hard_limit_matches<'a>(
         &'a self,
-        metric_results: &'a MetricResults<PerfMetric, StatisticalMetric<PerfQualities>>,
+        metric_results: &'a MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> impl Iterator<
         Item = (
             &'a PerfMetric,
             String,
-            StatisticalMetric<PerfQualities>,
+            StatisticalMetric<PerfStats>,
             &'a Metric,
             Option<Unit>,
         ),
@@ -177,10 +177,10 @@ impl PerfRegressionConfig {
     }
 }
 
-impl RegressionConfig<PerfMetric, StatisticalMetric<PerfQualities>> for PerfRegressionConfig {
+impl RegressionConfig<PerfMetric, StatisticalMetric<PerfStats>> for PerfRegressionConfig {
     fn check_regressions(
         &self,
-        metric_results: &MetricResults<PerfMetric, StatisticalMetric<PerfQualities>>,
+        metric_results: &MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> Vec<RegressionMetrics<PerfMetric>> {
         let mut regressions = vec![];
 
@@ -232,7 +232,7 @@ impl RegressionConfig<PerfMetric, StatisticalMetric<PerfQualities>> for PerfRegr
 
     fn check(
         &self,
-        metric_results: &MetricResults<PerfMetric, StatisticalMetric<PerfQualities>>,
+        metric_results: &MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> Vec<ToolRegression> {
         self.check_regressions(metric_results)
             .into_iter()
@@ -294,9 +294,9 @@ fn normalize_metric_to_limit(
     limit_kind: &str,
     pattern: &PerfMetric,
     metric_kind: &PerfMetric,
-    metric: &StatisticalMetric<PerfQualities>,
+    metric: &StatisticalMetric<PerfStats>,
     limit_unit: &Unit,
-) -> Option<StatisticalMetric<PerfQualities>> {
+) -> Option<StatisticalMetric<PerfStats>> {
     let Some(metric_unit) = metric.unit.as_ref() else {
         warn!(
             "Skipping regression check for perf {limit_kind} limit {}: This metric has no unit \
@@ -324,7 +324,7 @@ fn normalize_metric_to_limit(
 
     Some(StatisticalMetric::new(
         metric.value * factor,
-        metric.qualities.scale_by_metric(factor),
+        metric.stats.scale_by_metric(factor),
         limit_unit.clone(),
     ))
 }
@@ -340,7 +340,7 @@ mod tests {
     use crate::fixtures::api::perf_regression_config_f as api_perf_regression_config_f;
     use crate::fixtures::perf::perf_regression_config_f;
     use crate::metrics::model::{
-        Metric, MetricKind, MetricResults, Metrics, PerfQualities, StatisticalMetric,
+        Metric, MetricKind, MetricResults, Metrics, PerfStats, StatisticalMetric,
     };
     use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
     use crate::runner::tool::regression::{RegressionConfig, RegressionMetrics};
@@ -349,9 +349,9 @@ mod tests {
 
     fn perf_summary(
         name: &str,
-        new: StatisticalMetric<PerfQualities>,
-        old: StatisticalMetric<PerfQualities>,
-    ) -> MetricResults<PerfMetric, StatisticalMetric<PerfQualities>> {
+        new: StatisticalMetric<PerfStats>,
+        old: StatisticalMetric<PerfStats>,
+    ) -> MetricResults<PerfMetric, StatisticalMetric<PerfStats>> {
         MetricResults::new(EitherOrBoth::Both(
             Metrics(indexmap! { PerfMetric(name.to_owned()) => new }),
             Metrics(indexmap! { PerfMetric(name.to_owned()) => old }),
@@ -360,8 +360,8 @@ mod tests {
 
     fn perf_summary_new_only(
         name: &str,
-        new: StatisticalMetric<PerfQualities>,
-    ) -> MetricResults<PerfMetric, StatisticalMetric<PerfQualities>> {
+        new: StatisticalMetric<PerfStats>,
+    ) -> MetricResults<PerfMetric, StatisticalMetric<PerfStats>> {
         MetricResults::new(EitherOrBoth::Left(Metrics(indexmap! {
             PerfMetric(name.to_owned()) => new
         })))
@@ -382,7 +382,7 @@ mod tests {
 
         let summary = perf_summary_new_only(
             "memory",
-            StatisticalMetric::with_default_qualities(2000, Unit::Bytes),
+            StatisticalMetric::with_default_stats(2000, Unit::Bytes),
         );
 
         let regressions = config.check(&summary);
@@ -415,7 +415,7 @@ mod tests {
 
         let summary = perf_summary_new_only(
             "memory",
-            StatisticalMetric::with_default_qualities(2000, Unit::Bytes),
+            StatisticalMetric::with_default_stats(2000, Unit::Bytes),
         );
 
         assert!(config.check(&summary).is_empty());
@@ -431,8 +431,8 @@ mod tests {
         };
         let summary = perf_summary(
             "task-clock:u",
-            StatisticalMetric::with_default_qualities(2000, Unit::Milliseconds),
-            StatisticalMetric::with_default_qualities(1000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(2000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(1000, Unit::Milliseconds),
         );
 
         assert_eq!(config.check(&summary).len(), 1);
@@ -449,8 +449,8 @@ mod tests {
 
         let summary = perf_summary(
             "duration",
-            StatisticalMetric::with_default_qualities(2000, Unit::Milliseconds),
-            StatisticalMetric::with_default_qualities(1000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(2000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(1000, Unit::Milliseconds),
         );
 
         let regressions = config.check(&summary);
@@ -480,8 +480,8 @@ mod tests {
 
         let summary = perf_summary(
             "duration",
-            StatisticalMetric::with_default_qualities(2000, Unit::Milliseconds),
-            StatisticalMetric::with_default_qualities(1000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(2000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(1000, Unit::Milliseconds),
         );
 
         let regressions = config.check_regressions(&summary);

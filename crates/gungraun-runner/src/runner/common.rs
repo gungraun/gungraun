@@ -2074,7 +2074,6 @@ impl Display for ModulePath {
     }
 }
 
-// FIX: Sort structs, impls, ... in this module
 impl PerfOutputConfig {
     /// Returns the alpha threshold for statistical significance testing.
     pub fn alpha(&self) -> f64 {

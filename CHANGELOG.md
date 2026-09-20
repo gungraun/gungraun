@@ -71,6 +71,32 @@ and this project adheres to
 - gungraun-macros: Fix clippy lints are triggered unnecessarily
 - gungraun-runner: Removed schemas link to gungraun-summary schemas directory
 - deps: Exchange minijinja with tera
+- ([#746]): Breaking: Rework of the json summary (and schema) from version 6 to
+  7 with the goal of a consumer-oriented format:
+    - Metric values are plain numbers instead of `{"Int": ...}` /
+      `{"Float": ...}` wrappers and old/new comparisons are
+      `{"new": ..., "old": ...}` objects instead of `Left`/`Right`/`Both`
+    - Metric maps are flat without the tool-variant wrapper key
+      (`metrics_summary.Callgrind.Ir` -> `metrics.Ir`) and `"None"` becomes an
+      empty map
+    - Renamed `details` -> `description`, `summaries` -> `data`,
+      `metrics_summary` -> `metrics`, the total's `summary` -> `metrics`,
+      `diffs` -> `change`, `metrics` -> `values` and `ProfileInfo` -> `ToolRun`
+      with its `details` -> `output`
+    - New top-level `group` and `output_dir` fields; removed `summary_output`
+      and the per-profile `flamegraphs`, `log_paths`, `out_paths` lists and the
+      tool run `path` in favor of `output_dir`; paths are now relative to the
+      project root where possible
+    - Optional fields are omitted instead of serialized as `null` (except the
+      `baselines` tuple)
+    - Added optional `display` and `unit` fields to `ToolRegression`
+- ([#746]): gungraun-summary: Added a `v7` module and version-aware parsing
+  helpers for version 7 summaries. The version 6 model is frozen as released
+  with `gungraun-summary` 6.0.0 (see the
+  [gungraun-summary CHANGELOG](./crates/gungraun-summary/CHANGELOG.md))
+- ([#746]): Fixed flamegraphs being empty when running with `--save-baseline`
+
+[#746]: https://github.com/gungraun/gungraun/pull/746
 
 ## [0.19.4] - 2026-07-10
 

@@ -353,8 +353,9 @@ reqs-test target *args:
         || { echo "Unsupported target: '{{ target }}'. \
             Run 'just reqs-test-targets' to get a list of supported targets"; \
             exit 1; }
-    CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096' CROSS_CONFIG=Cross.toml cross test \
-        --test tests --target {{ target }} --release {{ args }} -- --nocapture
+    CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096 -e CARGO_BUILD_RUSTC_WRAPPER=' \
+        CROSS_CONFIG=Cross.toml cross test \
+            --test tests --target {{ target }} --release {{ args }} -- --nocapture
 
 # Run a single system test (Uses: 'coreutils', 'cargo')
 [group('test')]

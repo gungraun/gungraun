@@ -7,7 +7,7 @@ use std::hash::Hash;
 use approx::relative_eq;
 use statrs::distribution::{ContinuousCDF, StudentsT};
 
-use crate::metrics::model::{AnnotatedMetric, PerfQualities};
+use crate::metrics::model::{PerfStats, StatisticalMetric};
 
 /// Statistical significance summary for the difference between two metrics.
 ///
@@ -100,18 +100,18 @@ impl DiffStats {
         self.p_value < alpha
     }
 
-    /// Creates a new `DiffStats` for the relative change between two [`AnnotatedMetric`]s
+    /// Creates a new `DiffStats` for the relative change between two [`StatisticalMetric`]s
     ///
     /// This method requires the stored means, sample counts, and relative standard errors of
-    /// [`PerfQualities`] to estimate the uncertainty of the relative change.
+    /// [`PerfStats`] to estimate the uncertainty of the relative change.
     ///
     /// This method returns `None` if the required statistical metadata is incomplete, or if the
     /// derived statistics are not usable.
     #[expect(clippy::cast_precision_loss)]
     #[expect(clippy::similar_names)]
     pub fn from_metrics(
-        new: &AnnotatedMetric<PerfQualities>,
-        old: &AnnotatedMetric<PerfQualities>,
+        new: &StatisticalMetric<PerfStats>,
+        old: &StatisticalMetric<PerfStats>,
         alpha: f64,
     ) -> Option<Self> {
         assert!(
@@ -127,12 +127,12 @@ impl DiffStats {
             Some(old_mean),
             Some(old_rse),
         ) = (
-            new.qualities.n,
-            new.qualities.mean,
-            new.qualities.rse,
-            old.qualities.n,
-            old.qualities.mean,
-            old.qualities.rse,
+            new.stats.n,
+            new.stats.mean,
+            new.stats.rse,
+            old.stats.n,
+            old.stats.mean,
+            old.stats.rse,
         )
         else {
             return None;
@@ -244,26 +244,6 @@ impl OnlineStats {
     }
 }
 
-impl Stats {
-    /// Creates a new `Stats` storing the given [`OnlineStats`] and computing the RSE from it
-    pub fn new(online_stats: OnlineStats) -> Self {
-        let rse = if online_stats.mean == 0.0 || online_stats.n < 2 {
-            0.0
-        } else {
-            #[expect(clippy::cast_precision_loss)]
-            let n = online_stats.n as f64;
-            let var = online_stats
-                .sample_variance()
-                .expect("the variance should be valid since n>=2");
-            let stddev = var.sqrt();
-            let stderr = stddev / n.sqrt();
-            stderr / online_stats.mean.abs()
-        };
-
-        Self { online_stats, rse }
-    }
-}
-
 impl<T> OnlineStatsMap<T>
 where
     T: Eq + Hash + Clone,
@@ -288,13 +268,33 @@ where
     }
 }
 
+impl Stats {
+    /// Creates a new `Stats` storing the given [`OnlineStats`] and computing the RSE from it
+    pub fn new(online_stats: OnlineStats) -> Self {
+        let rse = if online_stats.mean == 0.0 || online_stats.n < 2 {
+            0.0
+        } else {
+            #[expect(clippy::cast_precision_loss)]
+            let n = online_stats.n as f64;
+            let var = online_stats
+                .sample_variance()
+                .expect("the variance should be valid since n>=2");
+            let stddev = var.sqrt();
+            let stderr = stddev / n.sqrt();
+            stderr / online_stats.mean.abs()
+        };
+
+        Self { online_stats, rse }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
     use rstest::rstest;
 
     use super::*;
-    use crate::fixtures::annotated_metric_perf_f;
+    use crate::fixtures::statistical_metric_perf_f;
     use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
 
     #[rstest]
@@ -431,13 +431,13 @@ mod tests {
         let metric = 0.0;
         let rse = 0.1;
 
-        let new = annotated_metric_perf_f()
+        let new = statistical_metric_perf_f()
             .metric(metric)
             .mean(new_mean)
             .n(new_n)
             .rse(rse)
             .fx();
-        let old = annotated_metric_perf_f()
+        let old = statistical_metric_perf_f()
             .metric(metric)
             .mean(100.0)
             .n(old_n)
@@ -461,20 +461,20 @@ mod tests {
 
     #[rstest]
     #[case::missing_new_n(
-        annotated_metric_perf_f().metric(1.0).mean(1.0).rse(0.1).fx(),
-        annotated_metric_perf_f().metric(2.0).mean(2.0).n(2).rse(0.1).fx(),
+        statistical_metric_perf_f().metric(1.0).mean(1.0).rse(0.1).fx(),
+        statistical_metric_perf_f().metric(2.0).mean(2.0).n(2).rse(0.1).fx(),
     )]
     #[case::all_missing(
-        annotated_metric_perf_f().metric(0.0).fx(),
-        annotated_metric_perf_f().metric(100.0).fx()
+        statistical_metric_perf_f().metric(0.0).fx(),
+        statistical_metric_perf_f().metric(100.0).fx()
     )]
     #[case::old_mean_zero(
-        annotated_metric_perf_f().metric(1.0).mean(1.0).n(2).rse(0.1).fx(),
-        annotated_metric_perf_f().metric(2.0).mean(0.0).n(2).rse(0.1).fx(),
+        statistical_metric_perf_f().metric(1.0).mean(1.0).n(2).rse(0.1).fx(),
+        statistical_metric_perf_f().metric(2.0).mean(0.0).n(2).rse(0.1).fx(),
     )]
     fn test_diff_stats_from_metrics_when_invalid_input_then_none(
-        #[case] new: AnnotatedMetric<PerfQualities>,
-        #[case] old: AnnotatedMetric<PerfQualities>,
+        #[case] new: StatisticalMetric<PerfStats>,
+        #[case] old: StatisticalMetric<PerfStats>,
     ) {
         assert_eq!(
             DiffStats::from_metrics(&new, &old, DEFAULT_PERF_ALPHA),
@@ -490,7 +490,7 @@ mod tests {
     #[case::nan(f64::NAN)]
     #[should_panic = "alpha should be in the range"]
     fn test_diff_stats_from_metrics_when_alpha_invalid_then_panics(#[case] alpha: f64) {
-        let metric = annotated_metric_perf_f().metric(0.0).fx();
+        let metric = statistical_metric_perf_f().metric(0.0).fx();
 
         let _ = DiffStats::from_metrics(&metric, &metric, alpha);
     }

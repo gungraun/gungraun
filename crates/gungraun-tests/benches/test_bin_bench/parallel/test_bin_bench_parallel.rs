@@ -4,11 +4,15 @@ use std::time::Duration;
 use gungraun::prelude::*;
 use gungraun::{Delay, DelayKind, Stdio};
 
-const SUFFIX: &str = "test-file";
 const PREFIX: &str = module_path!();
+const SUFFIX: &str = "test-file";
 
-fn test_file() -> PathBuf {
-    std::env::temp_dir().join(format!("{PREFIX}.{SUFFIX}"))
+#[binary_benchmark]
+fn create_file() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_echo"))
+        .arg("FOO")
+        .stdout(Stdio::File(test_file()))
+        .build()
 }
 
 #[binary_benchmark]
@@ -22,12 +26,13 @@ fn file_exists() -> Command {
         .build()
 }
 
-#[binary_benchmark]
-fn create_file() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_echo"))
-        .arg("FOO")
-        .stdout(Stdio::File(test_file()))
-        .build()
+fn max_parallel() -> usize {
+    if let Ok(var) = std::env::var("__MAX_PARALLEL") {
+        var.parse::<usize>()
+            .expect("__MAX_PARALLEL should be a valid number")
+    } else {
+        panic!("__MAX_PARALLEL needs to be set with a valid value");
+    }
 }
 
 fn remove_test_file(panic_if_not_exists: bool) {
@@ -44,13 +49,8 @@ fn remove_test_file(panic_if_not_exists: bool) {
     );
 }
 
-fn max_parallel() -> usize {
-    if let Ok(var) = std::env::var("__MAX_PARALLEL") {
-        var.parse::<usize>()
-            .expect("__MAX_PARALLEL should be a valid number")
-    } else {
-        panic!("__MAX_PARALLEL needs to be set with a valid value");
-    }
+fn test_file() -> PathBuf {
+    std::env::temp_dir().join(format!("{PREFIX}.{SUFFIX}"))
 }
 
 // The point here is to start `file_exists` first and then `create_file`

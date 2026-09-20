@@ -368,6 +368,147 @@ fn test_start_bench_when_setup_not_parallel_with_error_then_no_bench_and_setup_e
 }
 
 #[test]
+fn test_wait_for_setup() {
+    let test_dir = tempdir().unwrap();
+    let (test_file_path, _) = test_file_f().dir(test_dir.path()).fx();
+
+    let mut handler = process_handler_f()
+        .assistant(
+            setup_child_f()
+                .exe(&FILE_EXISTS_EXE)
+                .args(&[&test_file_path.display().to_string(), "true"])
+                .fx(),
+        )
+        .fx();
+
+    handler
+        .wait_for_setup()
+        .expect("A result should be present")
+        .expect("There should be no errors");
+
+    assert!(handler.setup.is_none());
+
+    cleanup_test_process_handler(handler);
+}
+
+#[test]
+fn test_wait_for_setup_when_force_shutdown_is_true_then_interrupt() {
+    let force_shutdown = force_shutdown_f().yes(true).fx();
+    let mut handler = process_handler_f()
+        .assistant(setup_child_f().exe(&TIMEOUT_EXE).args(&["5000"]).fx())
+        .set_force_shutdown(force_shutdown)
+        .fx();
+
+    let error = assert_not_elapsed!(
+        Duration::from_millis(500),
+        handler
+            .wait_for_setup()
+            .expect("A result should be present")
+            .expect_err("There should be an error")
+            .downcast::<Error>()
+            .expect("The error should be a gungraun error")
+    );
+
+    assert!(handler.setup.is_none());
+    assert!(matches!(error, Error::TaskInterrupt));
+
+    cleanup_test_process_handler(handler);
+}
+
+#[test]
+fn test_wait_for_setup_when_no_setup() {
+    let mut handler = process_handler_f().fx();
+    let result = handler.wait_for_setup();
+
+    assert!(handler.setup.is_none());
+    assert!(result.is_none());
+
+    cleanup_test_process_handler(handler);
+}
+
+#[test]
+fn test_wait_for_teardown() {
+    let test_dir = tempdir().unwrap();
+    let (test_file_path, _) = test_file_f().dir(test_dir.path()).fx();
+
+    let mut handler = process_handler_f()
+        .assistant(
+            teardown_child_f()
+                .exe(&FILE_EXISTS_EXE)
+                .args(&[&test_file_path.display().to_string(), "true"])
+                .fx(),
+        )
+        .fx();
+
+    handler
+        .wait_for_teardown()
+        .expect("A result should be present")
+        .expect("There should be no errors");
+
+    assert!(handler.teardown.is_none());
+
+    cleanup_test_process_handler(handler);
+}
+
+#[test]
+fn test_wait_for_teardown_when_no_teardown() {
+    let mut handler = process_handler_f().fx();
+    let result = handler.wait_for_teardown();
+
+    assert!(handler.teardown.is_none());
+    assert!(result.is_none());
+
+    cleanup_test_process_handler(handler);
+}
+
+#[test]
+fn test_wait_or_shutdown_when_exit_with_no_match_then_error() {
+    let test_dir = tempfile::tempdir().unwrap();
+    let actual_exit_code = 0;
+
+    let tool_command_child = tool_command_child_f()
+        .exe(&EXIT_WITH_EXE)
+        .args(&[&actual_exit_code.to_string()])
+        .exit_with(ExitWith::Code(222))
+        .output_path(
+            tool_output_path_f()
+                .target_dir(test_dir.path())
+                .init(true)
+                .fx()
+                .to_log_output(),
+        )
+        .fx();
+
+    let mut handler = process_handler_f().bench(tool_command_child).fx();
+
+    let error = handler
+        .wait_or_shutdown(None, &None::<fn() -> bool>)
+        .expect_err(
+            "There should be an error if the actual exit code does not match the `ExitWith` code",
+        )
+        .downcast::<Error>()
+        .expect("The error should be a gungraun error");
+
+    assert!(handler.bench.is_none());
+    match error {
+        Error::ProcessError(_, output, _) => {
+            assert_eq!(
+                output
+                    .status
+                    .code()
+                    .expect("An exit code should be present"),
+                actual_exit_code
+            );
+        }
+        _ => {
+            panic!("The error should be a process error");
+        }
+    }
+
+    cleanup_test_process_handler(handler);
+}
+
+#[test]
 #[should_panic = "A benchmark should be started before waiting"]
 fn test_wait_or_shutdown_when_no_bench_then_panic() {
     let mut handler = process_handler_f().fx();
@@ -547,147 +688,6 @@ fn test_wait_or_shutdown_when_exit_with(#[case] exit_with_code: i32) {
             .expect("An exit code should be present"),
         exit_with_code
     );
-
-    cleanup_test_process_handler(handler);
-}
-
-#[test]
-fn test_wait_or_shutdown_when_exit_with_no_match_then_error() {
-    let test_dir = tempfile::tempdir().unwrap();
-    let actual_exit_code = 0;
-
-    let tool_command_child = tool_command_child_f()
-        .exe(&EXIT_WITH_EXE)
-        .args(&[&actual_exit_code.to_string()])
-        .exit_with(ExitWith::Code(222))
-        .output_path(
-            tool_output_path_f()
-                .target_dir(test_dir.path())
-                .init(true)
-                .fx()
-                .to_log_output(),
-        )
-        .fx();
-
-    let mut handler = process_handler_f().bench(tool_command_child).fx();
-
-    let error = handler
-        .wait_or_shutdown(None, &None::<fn() -> bool>)
-        .expect_err(
-            "There should be an error if the actual exit code does not match the `ExitWith` code",
-        )
-        .downcast::<Error>()
-        .expect("The error should be a gungraun error");
-
-    assert!(handler.bench.is_none());
-    match error {
-        Error::ProcessError(_, output, _) => {
-            assert_eq!(
-                output
-                    .status
-                    .code()
-                    .expect("An exit code should be present"),
-                actual_exit_code
-            );
-        }
-        _ => {
-            panic!("The error should be a process error");
-        }
-    }
-
-    cleanup_test_process_handler(handler);
-}
-
-#[test]
-fn test_wait_for_setup_when_no_setup() {
-    let mut handler = process_handler_f().fx();
-    let result = handler.wait_for_setup();
-
-    assert!(handler.setup.is_none());
-    assert!(result.is_none());
-
-    cleanup_test_process_handler(handler);
-}
-
-#[test]
-fn test_wait_for_setup() {
-    let test_dir = tempdir().unwrap();
-    let (test_file_path, _) = test_file_f().dir(test_dir.path()).fx();
-
-    let mut handler = process_handler_f()
-        .assistant(
-            setup_child_f()
-                .exe(&FILE_EXISTS_EXE)
-                .args(&[&test_file_path.display().to_string(), "true"])
-                .fx(),
-        )
-        .fx();
-
-    handler
-        .wait_for_setup()
-        .expect("A result should be present")
-        .expect("There should be no errors");
-
-    assert!(handler.setup.is_none());
-
-    cleanup_test_process_handler(handler);
-}
-
-#[test]
-fn test_wait_for_setup_when_force_shutdown_is_true_then_interrupt() {
-    let force_shutdown = force_shutdown_f().yes(true).fx();
-    let mut handler = process_handler_f()
-        .assistant(setup_child_f().exe(&TIMEOUT_EXE).args(&["5000"]).fx())
-        .set_force_shutdown(force_shutdown)
-        .fx();
-
-    let error = assert_not_elapsed!(
-        Duration::from_millis(500),
-        handler
-            .wait_for_setup()
-            .expect("A result should be present")
-            .expect_err("There should be an error")
-            .downcast::<Error>()
-            .expect("The error should be a gungraun error")
-    );
-
-    assert!(handler.setup.is_none());
-    assert!(matches!(error, Error::TaskInterrupt));
-
-    cleanup_test_process_handler(handler);
-}
-
-#[test]
-fn test_wait_for_teardown_when_no_teardown() {
-    let mut handler = process_handler_f().fx();
-    let result = handler.wait_for_teardown();
-
-    assert!(handler.teardown.is_none());
-    assert!(result.is_none());
-
-    cleanup_test_process_handler(handler);
-}
-
-#[test]
-fn test_wait_for_teardown() {
-    let test_dir = tempdir().unwrap();
-    let (test_file_path, _) = test_file_f().dir(test_dir.path()).fx();
-
-    let mut handler = process_handler_f()
-        .assistant(
-            teardown_child_f()
-                .exe(&FILE_EXISTS_EXE)
-                .args(&[&test_file_path.display().to_string(), "true"])
-                .fx(),
-        )
-        .fx();
-
-    handler
-        .wait_for_teardown()
-        .expect("A result should be present")
-        .expect("There should be no errors");
-
-    assert!(handler.teardown.is_none());
 
     cleanup_test_process_handler(handler);
 }

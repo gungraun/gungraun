@@ -2,7 +2,7 @@
 use indexmap::{IndexMap, IndexSet};
 
 use crate::api::{self, EventKind};
-use crate::metrics::model::{Metric, MetricKind, MetricsSummary};
+use crate::metrics::model::{Metric, MetricKind, MetricResults};
 use crate::runner::tool::regression::{DEFAULT_REGRESSION_FAIL_FAST, RegressionConfig};
 use crate::summary::model::ToolRegression;
 
@@ -34,11 +34,11 @@ impl Default for CallgrindRegressionConfig {
 }
 
 impl RegressionConfig<EventKind> for CallgrindRegressionConfig {
-    /// Check the `MetricsSummary` for regressions.
+    /// Check the [`MetricResults`] for regressions.
     ///
-    /// The limits for event kinds which are not present in the `MetricsSummary` are ignored.
-    fn check(&self, metrics_summary: &MetricsSummary) -> Vec<ToolRegression> {
-        self.check_regressions(metrics_summary)
+    /// The limits for event kinds which are not present in the `MetricResults` are ignored.
+    fn check(&self, metric_results: &MetricResults) -> Vec<ToolRegression> {
+        self.check_regressions(metric_results)
             .into_iter()
             .map(|regressions| ToolRegression::with(MetricKind::Callgrind, regressions))
             .collect()
@@ -125,7 +125,7 @@ mod tests {
     fn test_regression_check_when_old_is_none() {
         let regression = CallgrindRegressionConfig::default();
         let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let summary = MetricsSummary::new(EitherOrBoth::Left(new));
+        let summary = MetricResults::new(EitherOrBoth::Left(new));
 
         assert!(regression.check(&summary).is_empty());
     }
@@ -198,7 +198,7 @@ mod tests {
 
         let new = cachesim_costs(new);
         let old = cachesim_costs(old);
-        let summary = MetricsSummary::new(EitherOrBoth::Both(new, old));
+        let summary = MetricResults::new(EitherOrBoth::Both(new, old));
         let expected = expected
             .iter()
             .map(|(e, n, o, d, l)| ToolRegression::Soft {

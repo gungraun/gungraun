@@ -37,7 +37,7 @@ use indexmap::IndexMap;
 use log::{info, warn};
 
 use crate::api::{self, PerfMetric};
-use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricsSummary, PerfQualities};
+use crate::metrics::model::{Metric, MetricKind, MetricResults, PerfStats, StatisticalMetric};
 use crate::runner::perf::pattern;
 use crate::runner::tool::config::resolve_perf_alpha;
 use crate::runner::tool::regression::{
@@ -66,13 +66,13 @@ pub struct PerfRegressionConfig {
 impl PerfRegressionConfig {
     fn soft_limit_matches<'a>(
         &self,
-        metrics_summary: &'a MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &'a MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> impl Iterator<
         Item = (
             &'a PerfMetric,
             String,
-            &'a AnnotatedMetric<PerfQualities>,
-            &'a AnnotatedMetric<PerfQualities>,
+            &'a StatisticalMetric<PerfStats>,
+            &'a StatisticalMetric<PerfStats>,
             f64,
             f64,
             Option<&'a Unit>,
@@ -81,9 +81,9 @@ impl PerfRegressionConfig {
         let alpha = self.alpha;
 
         self.soft_limits.iter().flat_map(move |(pattern, limit)| {
-            metrics_summary
-                .all_diffs()
-                .filter_map(move |(metric, metrics_diff)| {
+            metric_results
+                .all_results()
+                .filter_map(move |(metric, result)| {
                     if !pattern::matches(pattern.name(), metric.name()) {
                         return None;
                     }
@@ -94,7 +94,7 @@ impl PerfRegressionConfig {
                         metric.name()
                     );
 
-                    let EitherOrBoth::Both(new, old) = metrics_diff.metrics.as_ref() else {
+                    let EitherOrBoth::Both(new, old) = result.values.as_ref() else {
                         return None;
                     };
 
@@ -106,9 +106,9 @@ impl PerfRegressionConfig {
 
                     // new and old have the same unit, so it doesn't matter which one we pick
                     let result_unit = new.unit.as_ref();
-                    let pct = metrics_diff
-                        .diffs
-                        .expect("diffs should exist when both metrics are present")
+                    let pct = result
+                        .change
+                        .expect("a change should exist when both metrics are present")
                         .diff_pct;
 
                     Some((
@@ -126,12 +126,12 @@ impl PerfRegressionConfig {
 
     fn hard_limit_matches<'a>(
         &'a self,
-        metrics_summary: &'a MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &'a MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> impl Iterator<
         Item = (
             &'a PerfMetric,
             String,
-            AnnotatedMetric<PerfQualities>,
+            StatisticalMetric<PerfStats>,
             &'a Metric,
             Option<Unit>,
         ),
@@ -139,9 +139,9 @@ impl PerfRegressionConfig {
         self.hard_limits
             .iter()
             .flat_map(move |(pattern, unit, limit)| {
-                metrics_summary
-                    .all_diffs()
-                    .filter_map(move |(metric, metrics_diff)| {
+                metric_results
+                    .all_results()
+                    .filter_map(move |(metric, result)| {
                         if !pattern::matches(pattern.name(), metric.name()) {
                             return None;
                         }
@@ -152,7 +152,7 @@ impl PerfRegressionConfig {
                             metric.name()
                         );
 
-                        metrics_diff.metrics.as_ref().left().and_then(|m| {
+                        result.values.as_ref().left().and_then(|m| {
                             let (metric_value, result_unit) =
                                 if let Some(limit_unit) = unit.as_ref() {
                                     let metric_value = normalize_metric_to_limit(
@@ -177,15 +177,14 @@ impl PerfRegressionConfig {
     }
 }
 
-impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegressionConfig {
+impl RegressionConfig<PerfMetric, StatisticalMetric<PerfStats>> for PerfRegressionConfig {
     fn check_regressions(
         &self,
-        metrics_summary: &MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> Vec<RegressionMetrics<PerfMetric>> {
         let mut regressions = vec![];
 
-        for (metric, display, new, old, pct, limit, unit) in
-            self.soft_limit_matches(metrics_summary)
+        for (metric, display, new, old, pct, limit, unit) in self.soft_limit_matches(metric_results)
         {
             if limit.is_sign_positive() {
                 if pct > limit {
@@ -193,8 +192,8 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
                         metric.clone(),
                         Some(display),
                         unit.cloned(),
-                        new.metric,
-                        old.metric,
+                        new.value,
+                        old.value,
                         pct,
                         limit,
                     ));
@@ -204,8 +203,8 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
                     metric.clone(),
                     Some(display),
                     unit.cloned(),
-                    new.metric,
-                    old.metric,
+                    new.value,
+                    old.value,
                     pct,
                     limit,
                 ));
@@ -215,15 +214,15 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
         }
 
         for (metric, display, new_cost, limit, result_unit) in
-            self.hard_limit_matches(metrics_summary)
+            self.hard_limit_matches(metric_results)
         {
-            if new_cost.metric > *limit {
+            if new_cost.value > *limit {
                 regressions.push(RegressionMetrics::Hard(
                     metric.clone(),
                     Some(display),
                     result_unit.clone(),
-                    new_cost.metric,
-                    new_cost.metric - *limit,
+                    new_cost.value,
+                    new_cost.value - *limit,
                     *limit,
                 ));
             }
@@ -233,9 +232,9 @@ impl RegressionConfig<PerfMetric, AnnotatedMetric<PerfQualities>> for PerfRegres
 
     fn check(
         &self,
-        metrics_summary: &MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metric_results: &MetricResults<PerfMetric, StatisticalMetric<PerfStats>>,
     ) -> Vec<ToolRegression> {
-        self.check_regressions(metrics_summary)
+        self.check_regressions(metric_results)
             .into_iter()
             .map(|regressions| ToolRegression::with(MetricKind::Perf, regressions))
             .collect()
@@ -292,40 +291,40 @@ fn format_metric_display(metric: &PerfMetric, pattern: &PerfMetric) -> String {
 }
 
 fn normalize_metric_to_limit(
-    kind: &str,
+    limit_kind: &str,
     pattern: &PerfMetric,
-    metric: &PerfMetric,
-    value: &AnnotatedMetric<PerfQualities>,
+    metric_kind: &PerfMetric,
+    metric: &StatisticalMetric<PerfStats>,
     limit_unit: &Unit,
-) -> Option<AnnotatedMetric<PerfQualities>> {
-    let Some(metric_unit) = value.unit.as_ref() else {
+) -> Option<StatisticalMetric<PerfStats>> {
+    let Some(metric_unit) = metric.unit.as_ref() else {
         warn!(
-            "Skipping regression check for perf {kind} limit {}: This metric has no unit while \
-             configured limit has '{}'",
-            format_metric_display(metric, pattern),
+            "Skipping regression check for perf {limit_kind} limit {}: This metric has no unit \
+             while configured limit has '{}'",
+            format_metric_display(metric_kind, pattern),
             limit_unit,
         );
         return None;
     };
 
     if metric_unit == limit_unit {
-        return Some(value.clone());
+        return Some(metric.clone());
     }
 
     let Some(factor) = metric_unit.scale_factor_metric(limit_unit) else {
         warn!(
-            "Skipping regression check for perf {kind} limit {}: This metric unit '{}' cannot be \
-             compared to the limit unit '{}'",
-            format_metric_display(metric, pattern),
+            "Skipping regression check for perf {limit_kind} limit {}: This metric unit '{}' \
+             cannot be compared to the limit unit '{}'",
+            format_metric_display(metric_kind, pattern),
             metric_unit,
             limit_unit,
         );
         return None;
     };
 
-    Some(AnnotatedMetric::new(
-        value.metric * factor,
-        value.qualities.scale_by_metric(factor),
+    Some(StatisticalMetric::new(
+        metric.value * factor,
+        metric.stats.scale_by_metric(factor),
         limit_unit.clone(),
     ))
 }
@@ -341,7 +340,7 @@ mod tests {
     use crate::fixtures::api::perf_regression_config_f as api_perf_regression_config_f;
     use crate::fixtures::perf::perf_regression_config_f;
     use crate::metrics::model::{
-        AnnotatedMetric, Metric, MetricKind, Metrics, MetricsSummary, PerfQualities,
+        Metric, MetricKind, MetricResults, Metrics, PerfStats, StatisticalMetric,
     };
     use crate::runner::tool::config::DEFAULT_PERF_ALPHA;
     use crate::runner::tool::regression::{RegressionConfig, RegressionMetrics};
@@ -350,10 +349,10 @@ mod tests {
 
     fn perf_summary(
         name: &str,
-        new: AnnotatedMetric<PerfQualities>,
-        old: AnnotatedMetric<PerfQualities>,
-    ) -> MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>> {
-        MetricsSummary::new(EitherOrBoth::Both(
+        new: StatisticalMetric<PerfStats>,
+        old: StatisticalMetric<PerfStats>,
+    ) -> MetricResults<PerfMetric, StatisticalMetric<PerfStats>> {
+        MetricResults::new(EitherOrBoth::Both(
             Metrics(indexmap! { PerfMetric(name.to_owned()) => new }),
             Metrics(indexmap! { PerfMetric(name.to_owned()) => old }),
         ))
@@ -361,11 +360,137 @@ mod tests {
 
     fn perf_summary_new_only(
         name: &str,
-        new: AnnotatedMetric<PerfQualities>,
-    ) -> MetricsSummary<PerfMetric, AnnotatedMetric<PerfQualities>> {
-        MetricsSummary::new(EitherOrBoth::Left(Metrics(indexmap! {
+        new: StatisticalMetric<PerfStats>,
+    ) -> MetricResults<PerfMetric, StatisticalMetric<PerfStats>> {
+        MetricResults::new(EitherOrBoth::Left(Metrics(indexmap! {
             PerfMetric(name.to_owned()) => new
         })))
+    }
+
+    #[test]
+    fn test_hard_limit_normalizes_to_limit_unit() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![],
+            hard_limits: vec![(
+                PerfMetric("memory".to_owned()),
+                Some(Unit::Kilobytes),
+                1.5.into(),
+            )],
+        };
+
+        let summary = perf_summary_new_only(
+            "memory",
+            StatisticalMetric::with_default_stats(2000, Unit::Bytes),
+        );
+
+        let regressions = config.check(&summary);
+
+        assert_eq!(
+            regressions,
+            vec![ToolRegression::Hard {
+                metric: MetricKind::Perf(PerfMetric("memory".to_owned())),
+                display: Some("memory".to_owned()),
+                unit: Some(Unit::Kilobytes),
+                new: Metric::Float(2.0),
+                diff: Metric::Float(0.5),
+                limit: Metric::Float(1.5),
+            }]
+        );
+    }
+
+    #[test]
+    fn test_hard_limit_skips_when_units_are_incompatible() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![],
+            hard_limits: vec![(
+                PerfMetric("memory".to_owned()),
+                Some(Unit::Seconds),
+                1.into(),
+            )],
+        };
+
+        let summary = perf_summary_new_only(
+            "memory",
+            StatisticalMetric::with_default_stats(2000, Unit::Bytes),
+        );
+
+        assert!(config.check(&summary).is_empty());
+    }
+
+    #[test]
+    fn test_soft_limit_matches_slash_pattern_to_colon_metric() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![(PerfMetric("task-clock/u".to_owned()), 50.0)],
+            hard_limits: vec![],
+        };
+        let summary = perf_summary(
+            "task-clock:u",
+            StatisticalMetric::with_default_stats(2000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(1000, Unit::Milliseconds),
+        );
+
+        assert_eq!(config.check(&summary).len(), 1);
+    }
+
+    #[test]
+    fn test_soft_limit_preserves_metric_unit() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![(PerfMetric("duration".to_owned()), 50.0)],
+            hard_limits: vec![],
+        };
+
+        let summary = perf_summary(
+            "duration",
+            StatisticalMetric::with_default_stats(2000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(1000, Unit::Milliseconds),
+        );
+
+        let regressions = config.check(&summary);
+
+        assert_eq!(
+            regressions,
+            vec![ToolRegression::Soft {
+                metric: MetricKind::Perf(PerfMetric("duration".to_owned())),
+                display: Some("duration".to_owned()),
+                unit: Some(Unit::Milliseconds),
+                new: Metric::Int(2000),
+                old: Metric::Int(1000),
+                diff_pct: 100.0,
+                limit: 50.0,
+            }]
+        );
+    }
+
+    #[test]
+    fn test_soft_limit_without_limit_unit_preserves_metric_unit() {
+        let config = PerfRegressionConfig {
+            alpha: DEFAULT_PERF_ALPHA,
+            fail_fast: false,
+            soft_limits: vec![(PerfMetric("duration".to_owned()), 50.0)],
+            hard_limits: vec![],
+        };
+
+        let summary = perf_summary(
+            "duration",
+            StatisticalMetric::with_default_stats(2000, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(1000, Unit::Milliseconds),
+        );
+
+        let regressions = config.check_regressions(&summary);
+        let unit = match &regressions[0] {
+            RegressionMetrics::Soft(_, _, unit, ..) => unit.as_ref(),
+            RegressionMetrics::Hard(..) => panic!("expected soft regression"),
+        };
+
+        assert_eq!(unit, Some(&Unit::Milliseconds));
     }
 
     #[rstest]
@@ -402,131 +527,5 @@ mod tests {
         let config = PerfRegressionConfig::try_from(input).unwrap();
 
         assert_eq!(config, expected);
-    }
-
-    #[test]
-    fn test_soft_limit_preserves_metric_unit() {
-        let config = PerfRegressionConfig {
-            alpha: DEFAULT_PERF_ALPHA,
-            fail_fast: false,
-            soft_limits: vec![(PerfMetric("duration".to_owned()), 50.0)],
-            hard_limits: vec![],
-        };
-
-        let summary = perf_summary(
-            "duration",
-            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        );
-
-        let regressions = config.check(&summary);
-
-        assert_eq!(
-            regressions,
-            vec![ToolRegression::Soft {
-                metric: MetricKind::Perf(PerfMetric("duration".to_owned())),
-                display: Some("duration".to_owned()),
-                unit: Some(Unit::Milliseconds),
-                new: Metric::Int(2000),
-                old: Metric::Int(1000),
-                diff_pct: 100.0,
-                limit: 50.0,
-            }]
-        );
-    }
-
-    #[test]
-    fn test_hard_limit_normalizes_to_limit_unit() {
-        let config = PerfRegressionConfig {
-            alpha: DEFAULT_PERF_ALPHA,
-            fail_fast: false,
-            soft_limits: vec![],
-            hard_limits: vec![(
-                PerfMetric("memory".to_owned()),
-                Some(Unit::Kilobytes),
-                1.5.into(),
-            )],
-        };
-
-        let summary = perf_summary_new_only(
-            "memory",
-            AnnotatedMetric::with_default_qualities(2000, Unit::Bytes),
-        );
-
-        let regressions = config.check(&summary);
-
-        assert_eq!(
-            regressions,
-            vec![ToolRegression::Hard {
-                metric: MetricKind::Perf(PerfMetric("memory".to_owned())),
-                display: Some("memory".to_owned()),
-                unit: Some(Unit::Kilobytes),
-                new: Metric::Float(2.0),
-                diff: Metric::Float(0.5),
-                limit: Metric::Float(1.5),
-            }]
-        );
-    }
-
-    #[test]
-    fn test_hard_limit_skips_when_units_are_incompatible() {
-        let config = PerfRegressionConfig {
-            alpha: DEFAULT_PERF_ALPHA,
-            fail_fast: false,
-            soft_limits: vec![],
-            hard_limits: vec![(
-                PerfMetric("memory".to_owned()),
-                Some(Unit::Seconds),
-                1.into(),
-            )],
-        };
-
-        let summary = perf_summary_new_only(
-            "memory",
-            AnnotatedMetric::with_default_qualities(2000, Unit::Bytes),
-        );
-
-        assert!(config.check(&summary).is_empty());
-    }
-
-    #[test]
-    fn test_soft_limit_without_limit_unit_preserves_metric_unit() {
-        let config = PerfRegressionConfig {
-            alpha: DEFAULT_PERF_ALPHA,
-            fail_fast: false,
-            soft_limits: vec![(PerfMetric("duration".to_owned()), 50.0)],
-            hard_limits: vec![],
-        };
-
-        let summary = perf_summary(
-            "duration",
-            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        );
-
-        let regressions = config.check_regressions(&summary);
-        let unit = match &regressions[0] {
-            RegressionMetrics::Soft(_, _, unit, ..) => unit.as_ref(),
-            RegressionMetrics::Hard(..) => panic!("expected soft regression"),
-        };
-
-        assert_eq!(unit, Some(&Unit::Milliseconds));
-    }
-
-    #[test]
-    fn test_soft_limit_matches_slash_pattern_to_colon_metric() {
-        let config = PerfRegressionConfig {
-            alpha: DEFAULT_PERF_ALPHA,
-            fail_fast: false,
-            soft_limits: vec![(PerfMetric("task-clock/u".to_owned()), 50.0)],
-            hard_limits: vec![],
-        };
-        let summary = perf_summary(
-            "task-clock:u",
-            AnnotatedMetric::with_default_qualities(2000, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        );
-
-        assert_eq!(config.check(&summary).len(), 1);
     }
 }

@@ -11,7 +11,7 @@ use log::trace;
 
 use crate::api::{PerfMetric, Unit};
 use crate::metrics::logic::MetricValue as _;
-use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
+use crate::metrics::model::{Metric, Metrics, PerfStats, StatisticalMetric};
 use crate::runner::perf::model::PerfStatRecord;
 use crate::runner::perf::pattern;
 use crate::stats::runner::{OnlineStatsMap, Stats};
@@ -19,9 +19,9 @@ use crate::stats::runner::{OnlineStatsMap, Stats};
 struct MetricsParser {
     first: Option<(PerfMetric, bool)>,
     invalid: bool,
-    metrics: Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>,
+    metrics: Metrics<PerfMetric, StatisticalMetric<PerfStats>>,
     online_stats: OnlineStatsMap<PerfMetric>,
-    temp: Vec<(PerfMetric, (AnnotatedMetric<PerfQualities>, f64))>,
+    temp: Vec<(PerfMetric, (StatisticalMetric<PerfStats>, f64))>,
 }
 
 /// A collection of parsed `perf stat -j` JSON records.
@@ -43,9 +43,9 @@ impl MetricsParser {
         mut self,
         records: &[PerfStatRecord],
         min_pcnt_running: f64,
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfStats>>>,
         non_zero_metrics: &[String],
-    ) -> (Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>, bool) {
+    ) -> (Metrics<PerfMetric, StatisticalMetric<PerfStats>>, bool) {
         for record in records {
             match (
                 &record.event,
@@ -155,14 +155,14 @@ impl MetricsParser {
 
                 *value = value.clone().into_mean(online_stats.mean);
 
-                if let Some(event_runtime) = value.qualities.event_runtime.as_mut() {
+                if let Some(event_runtime) = value.stats.event_runtime.as_mut() {
                     *event_runtime /= online_stats.n;
                 }
 
                 let stats = Stats::new(*online_stats);
-                value.qualities.rse = Some(stats.rse);
-                value.qualities.n = Some(stats.online_stats.n);
-                value.qualities.mean = Some(value.rebase(stats.online_stats.mean));
+                value.stats.rse = Some(stats.rse);
+                value.stats.n = Some(stats.online_stats.n);
+                value.stats.mean = Some(value.rebase(stats.online_stats.mean));
 
                 trace!("Metric (mean): {key}: {value:?}");
             }
@@ -210,9 +210,9 @@ impl MetricsParser {
         }
 
         let key = PerfMetric(event.to_owned());
-        let annotated_metric = AnnotatedMetric::new(
+        let statistical_metric = StatisticalMetric::new(
             metric,
-            PerfQualities::new(
+            PerfStats::new(
                 event_runtime,
                 pcnt_running,
                 Some(variance / 100.0),
@@ -222,7 +222,7 @@ impl MetricsParser {
             unit,
         );
         self.metrics
-            .insert_or_add(key, annotated_metric.normalize());
+            .insert_or_add(key, statistical_metric.normalize());
     }
 
     /// Shared validation and cold-start bookkeeping for new (non-base) perf records.
@@ -299,7 +299,7 @@ impl MetricsParser {
     fn parse_metric_without_unit(
         &mut self,
         non_zero_metrics: &[String],
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfStats>>>,
         event: &str,
         value: &str,
         event_runtime: Option<u64>,
@@ -318,7 +318,7 @@ impl MetricsParser {
             #[expect(clippy::cast_precision_loss)]
             #[expect(clippy::cast_possible_truncation)]
             #[expect(clippy::cast_sign_loss)]
-            let (new_int, new_float) = match metric.metric {
+            let (new_int, new_float) = match metric.value {
                 Metric::Int(int_metric) => (
                     int.saturating_sub(int_metric),
                     (float - int_metric as f64).max(0.0),
@@ -341,9 +341,9 @@ impl MetricsParser {
             return;
         }
 
-        let new_metric = AnnotatedMetric::new(
+        let new_metric = StatisticalMetric::new(
             Metric::Int(int),
-            PerfQualities::new(
+            PerfStats::new(
                 event_runtime,
                 pcnt_running,
                 variance.map(|v| v / 100.0),
@@ -365,7 +365,7 @@ impl MetricsParser {
     fn parse_metric_with_unit(
         &mut self,
         non_zero_metrics: &[String],
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfStats>>>,
         event: &str,
         value: &str,
         unit: &str,
@@ -377,9 +377,9 @@ impl MetricsParser {
             return;
         };
 
-        let mut new_metric = AnnotatedMetric::new(
+        let mut new_metric = StatisticalMetric::new(
             Metric::Float(float),
-            PerfQualities::new(
+            PerfStats::new(
                 event_runtime,
                 pcnt_running,
                 variance.map(|v| v / 100.0),
@@ -401,7 +401,7 @@ impl MetricsParser {
             .validate_record(
                 non_zero_metrics,
                 event,
-                new_metric.metric.to_float(),
+                new_metric.value.to_float(),
                 variance,
                 pcnt_running,
             )
@@ -439,7 +439,7 @@ impl PerfStatRecords {
     /// from the record's original unit, values are converted back to the original unit scale.
     pub fn filter_and_update(
         &mut self,
-        metrics: &Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metrics: &Metrics<PerfMetric, StatisticalMetric<PerfStats>>,
     ) {
         let mut seen = HashSet::new();
 
@@ -470,8 +470,8 @@ impl PerfStatRecords {
     ///
     /// Duplicate records for the same perf event are merged into a single metric. The numeric
     /// metric is averaged, `event_runtime` is averaged alongside it, `pcnt_running` is preserved
-    /// through the quality merge rules, and perf's `"variance"` field is preserved for single
-    /// records but recomputed for merged duplicates as perf's relative standard error percentage.
+    /// through the merge rules, and perf's `"variance"` field is preserved for single records but
+    /// recomputed for merged duplicates as perf's relative standard error percentage.
     ///
     /// Unit-less metrics are parsed as integer metrics when possible.
     ///
@@ -480,11 +480,15 @@ impl PerfStatRecords {
     pub fn to_metrics(
         &self,
         min_pcnt_running: f64,
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfStats>>>,
         non_zero_metrics: &[String],
-    ) -> (Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>, bool) {
+    ) -> (Metrics<PerfMetric, StatisticalMetric<PerfStats>>, bool) {
         MetricsParser::new().parse(&self.0, min_pcnt_running, adjustment, non_zero_metrics)
     }
+}
+
+fn parse_perf_f64(value: &str) -> Option<f64> {
+    value.parse::<f64>().ok().filter(|value| value.is_finite())
 }
 
 /// Parse a perf counter value string into a `(u64, f64)` pair.
@@ -523,10 +527,6 @@ fn parse_perf_u64(value: &str) -> Option<(u64, f64)> {
     )
 }
 
-fn parse_perf_f64(value: &str) -> Option<f64> {
-    value.parse::<f64>().ok().filter(|value| value.is_finite())
-}
-
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
@@ -535,6 +535,19 @@ mod tests {
     use super::*;
     use crate::fixtures::perf::{perf_stat_record_f, perf_stat_records_f};
     use crate::runner::tool::config::DEFAULT_PERF_MIN_PCNT_RUNNING;
+
+    #[rstest]
+    #[case::integer_string("1000", Some(1000.0))]
+    #[case::float_string("12.5", Some(12.5))]
+    #[case::zero("0.0", Some(0.0))]
+    #[case::negative("-1.5", Some(-1.5))]
+    #[case::nan("NaN", None)]
+    #[case::positive_infinity("inf", None)]
+    #[case::negative_infinity("-inf", None)]
+    #[case::not_supported("<not supported>", None)]
+    fn test_parse_perf_f64(#[case] input: &str, #[case] expected: Option<f64>) {
+        assert_eq!(parse_perf_f64(input), expected);
+    }
 
     #[rstest]
     #[case::integer_without_decimal("1000", Some((1000, 1000.0)))]
@@ -568,56 +581,6 @@ mod tests {
         assert_eq!(parse_perf_u64(input), expected);
     }
 
-    #[rstest]
-    #[case::integer_string("1000", Some(1000.0))]
-    #[case::float_string("12.5", Some(12.5))]
-    #[case::zero("0.0", Some(0.0))]
-    #[case::negative("-1.5", Some(-1.5))]
-    #[case::nan("NaN", None)]
-    #[case::positive_infinity("inf", None)]
-    #[case::negative_infinity("-inf", None)]
-    #[case::not_supported("<not supported>", None)]
-    fn test_parse_perf_f64(#[case] input: &str, #[case] expected: Option<f64>) {
-        assert_eq!(parse_perf_f64(input), expected);
-    }
-
-    #[test]
-    fn test_records_filter_and_update_filters_second_and_updates_first() {
-        let first = perf_stat_record_f()
-            .instructions(1)
-            .runtime(1)
-            .pcnt_running(1.0)
-            .variance(1.0)
-            .fx();
-        let second = perf_stat_record_f().instructions(10).fx();
-
-        let metrics = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(
-                Metric::Int(200),
-                PerfQualities::new(300, 66.666_666_666_666_67, 0.5, 1, 400.0),
-                None,
-            ),
-        )]);
-
-        let expected = perf_stat_records_f()
-            .records([perf_stat_record_f()
-                .instructions(200)
-                .runtime(300)
-                .mean(400.0)
-                .n(1)
-                .pcnt_running(66.666_666_666_666_67)
-                .variance(50.0)
-                .fx()])
-            .fx();
-
-        let mut actual = perf_stat_records_f().records([first, second]).fx();
-
-        actual.filter_and_update(&metrics);
-
-        assert_eq!(actual, expected);
-    }
-
     #[test]
     fn test_parse_records_reads_newline_delimited_perf_json() {
         let file = tempfile::NamedTempFile::new().unwrap();
@@ -646,197 +609,87 @@ mod tests {
     }
 
     #[test]
-    fn test_to_metrics_when_no_unit() {
-        let records = perf_stat_records_f()
-            .records([perf_stat_record_f().instructions(1).fx()])
+    fn test_records_filter_and_update_filters_second_and_updates_first() {
+        let first = perf_stat_record_f()
+            .instructions(1)
+            .runtime(1)
+            .pcnt_running(1.0)
+            .variance(1.0)
             .fx();
+        let second = perf_stat_record_f().instructions(10).fx();
 
-        let expected = Metrics::with_metric_kinds([(
+        let metrics = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(1, None),
+            StatisticalMetric::new(
+                Metric::Int(200),
+                PerfStats::new(300, 66.666_666_666_666_67, 0.5, 1, 400.0),
+                None,
+            ),
         )]);
 
-        let (actual, has_duplicates) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
-
-        assert!(!has_duplicates);
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_two_different_records_int_and_float() {
-        let records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f().instructions(1000).fx(),
-                perf_stat_record_f().task_clock(12.5).fx(),
-            ])
-            .fx();
-
-        let expected = Metrics::with_metric_kinds([
-            (
-                PerfMetric("instructions:u".to_owned()),
-                AnnotatedMetric::with_default_qualities(1000, None),
-            ),
-            (
-                PerfMetric("task-clock".to_owned()),
-                AnnotatedMetric::with_default_qualities(12.5, Unit::Milliseconds),
-            ),
-        ]);
-
-        let (metrics, has_duplicates) =
-            records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
-
-        assert!(!has_duplicates);
-        assert_eq!(metrics, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_qualities_are_present() {
-        let records = perf_stat_records_f()
+        let expected = perf_stat_records_f()
             .records([perf_stat_record_f()
-                .instructions(1000)
-                .runtime(100)
-                .pcnt_running(50.0)
-                .variance(7.0)
+                .instructions(200)
+                .runtime(300)
+                .mean(400.0)
+                .n(1)
+                .pcnt_running(66.666_666_666_666_67)
+                .variance(50.0)
                 .fx()])
             .fx();
 
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(1000, PerfQualities::new(100, 50.0, 0.07, None, None), None),
-        )]);
+        let mut actual = perf_stat_records_f().records([first, second]).fx();
 
-        let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);
-
-        assert!(!has_duplicates);
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_single_int_zero_metric_matching_pattern_then_empty() {
-        let records = perf_stat_records_f()
-            .records([perf_stat_record_f().instructions(0).fx()])
-            .fx();
-
-        let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_MIN_PCNT_RUNNING,
-            None,
-            &["*instructions*".to_owned()],
-        );
-
-        assert!(metrics.is_empty());
-    }
-
-    #[test]
-    fn test_to_metrics_when_float_zero_metric_matching_pattern_then_empty() {
-        let records = perf_stat_records_f()
-            .records([perf_stat_record_f().task_clock(0.0).fx()])
-            .fx();
-
-        let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_MIN_PCNT_RUNNING,
-            None,
-            &["task-clock*".to_owned()],
-        );
-
-        assert!(metrics.is_empty());
-    }
-
-    #[test]
-    fn test_to_metrics_when_int_zero_metric_in_batch_discards_all_metrics() {
-        let records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f()
-                    .event("cycles:u")
-                    .value("1000.000000")
-                    .unit("")
-                    .fx(),
-                perf_stat_record_f().instructions(0).fx(),
-            ])
-            .fx();
-
-        let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_MIN_PCNT_RUNNING,
-            None,
-            &["*instructions*".to_owned()],
-        );
-
-        assert!(metrics.is_empty());
-    }
-
-    #[test]
-    fn test_to_metrics_when_first_invalid() {
-        let records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f().instructions(0).fx(),
-                perf_stat_record_f().instructions(1000).fx(),
-            ])
-            .fx();
-
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(1000, None),
-        )]);
-
-        let (metrics, has_duplicates) = records.to_metrics(
-            DEFAULT_PERF_MIN_PCNT_RUNNING,
-            None,
-            &["*instructions*".to_owned()],
-        );
-
-        assert!(!has_duplicates);
-        assert_eq!(metrics, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_second_invalid_then_no_metric() {
-        let records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f().instructions(1).fx(),
-                perf_stat_record_f().instructions(0).fx(),
-            ])
-            .fx();
-
-        let (metrics, _) = records.to_metrics(
-            DEFAULT_PERF_MIN_PCNT_RUNNING,
-            None,
-            &["*instructions*".to_owned()],
-        );
-
-        assert!(metrics.is_empty());
-    }
-
-    #[test]
-    fn test_to_metrics_when_second_invalid_and_third_then_last() {
-        let records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f().instructions(1).fx(),
-                perf_stat_record_f().instructions(0).fx(),
-                perf_stat_record_f().instructions(2).fx(),
-            ])
-            .fx();
-
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(2, None),
-        )]);
-
-        let (actual, _) = records.to_metrics(
-            DEFAULT_PERF_MIN_PCNT_RUNNING,
-            None,
-            &["*instructions*".to_owned()],
-        );
+        actual.filter_and_update(&metrics);
 
         assert_eq!(actual, expected);
     }
 
     #[test]
-    fn test_to_metrics_when_corrupt_variance_then_empty() {
+    fn test_to_metrics_when_base_and_adjustment_then_ignores_adjustment() {
         let records = perf_stat_records_f()
-            .records([perf_stat_record_f()
-                .instructions(1)
-                .variance(f64::INFINITY)
-                .fx()])
+            .records([perf_stat_record_f().instructions(3).some_stats(true).fx()])
             .fx();
+
+        let adjustment = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::with_default_stats(2, None),
+        )]);
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::new(3, PerfStats::new(None, None, 0.01, 1, 1.0), None),
+        )]);
+
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[rstest]
+    #[case::value_with_unit(
+        perf_stat_record_f().task_clock(f64::INFINITY).some_stats(true).fx()
+    )]
+    #[case::value_without_unit(
+        perf_stat_record_f().instructions(1).value("inf").some_stats(true).fx()
+    )]
+    #[case::variance(
+        perf_stat_record_f().task_clock(1.0).variance(f64::INFINITY).some_stats(true).fx()
+    )]
+    #[case::mean(
+        perf_stat_record_f().task_clock(1.0).mean(f64::INFINITY).some_stats(true).fx()
+    )]
+    #[case::pcnt_running(
+        perf_stat_record_f()
+            .task_clock(1.0)
+            .pcnt_running(f64::INFINITY)
+            .some_stats(true)
+            .fx()
+    )]
+    fn test_to_metrics_when_base_metric_corrupt_data_then_no_metric(
+        #[case] record: PerfStatRecord,
+    ) {
+        let records = perf_stat_records_f().records([record]).fx();
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
@@ -857,181 +710,18 @@ mod tests {
         assert!(actual.is_empty());
     }
 
-    #[rstest]
-    #[case::value_with_unit(
-        perf_stat_record_f().task_clock(f64::INFINITY).some_qualities(true).fx()
-    )]
-    #[case::value_without_unit(
-        perf_stat_record_f().instructions(1).value("inf").some_qualities(true).fx()
-    )]
-    #[case::variance(
-        perf_stat_record_f().task_clock(1.0).variance(f64::INFINITY).some_qualities(true).fx()
-    )]
-    #[case::mean(
-        perf_stat_record_f().task_clock(1.0).mean(f64::INFINITY).some_qualities(true).fx()
-    )]
-    #[case::pcnt_running(
-        perf_stat_record_f()
-            .task_clock(1.0)
-            .pcnt_running(f64::INFINITY)
-            .some_qualities(true)
-            .fx()
-    )]
-    fn test_to_metrics_when_base_metric_corrupt_data_then_no_metric(
-        #[case] record: PerfStatRecord,
-    ) {
-        let records = perf_stat_records_f().records([record]).fx();
+    #[test]
+    fn test_to_metrics_when_corrupt_variance_then_empty() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f()
+                .instructions(1)
+                .variance(f64::INFINITY)
+                .fx()])
+            .fx();
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert!(actual.is_empty());
-    }
-
-    #[test]
-    fn test_to_metrics_when_integer_base_metric() {
-        let records = perf_stat_records_f()
-            .records([perf_stat_record_f()
-                .instructions(1)
-                .mean(1.0)
-                .n(1)
-                .variance(0.0)
-                .fx()])
-            .fx();
-
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(1, PerfQualities::new(None, None, 0.0, 1, 1.0), None),
-        )]);
-
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_float_base_metric() {
-        let records = perf_stat_records_f()
-            .records([perf_stat_record_f()
-                .task_clock(1.0)
-                .mean(1.0)
-                .n(1)
-                .variance(0.0)
-                .fx()])
-            .fx();
-
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
-                1.0,
-                PerfQualities::new(None, None, 0.0, 1, 1.0),
-                Unit::Milliseconds,
-            ),
-        )]);
-
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_base_and_adjustment_then_ignores_adjustment() {
-        let records = perf_stat_records_f()
-            .records([perf_stat_record_f()
-                .instructions(3)
-                .some_qualities(true)
-                .fx()])
-            .fx();
-
-        let adjustment = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(2, None),
-        )]);
-
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(3, PerfQualities::new(None, None, 0.01, 1, 1.0), None),
-        )]);
-
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_two_perf_qualities_then_first_is_dropped() {
-        let records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f()
-                    .instructions(100)
-                    .runtime(100)
-                    .pcnt_running(50.0)
-                    .variance(7.0)
-                    .fx(),
-                perf_stat_record_f()
-                    .instructions(300)
-                    .runtime(300)
-                    .pcnt_running(75.0)
-                    .variance(11.0)
-                    .fx(),
-            ])
-            .fx();
-
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(300, PerfQualities::new(300, 75.0, 0.11, None, None), None),
-        )]);
-
-        let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);
-
-        assert!(!has_duplicates);
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_to_metrics_when_three_perf_qualities_then_merge_dropping_variance() {
-        // The first one is sorted out
-        let records = perf_stat_records_f()
-            .records([
-                perf_stat_record_f()
-                    .instructions(1000)
-                    .runtime(500)
-                    .pcnt_running(100.0)
-                    .variance(10.0)
-                    .fx(),
-                perf_stat_record_f()
-                    .instructions(100)
-                    .runtime(100)
-                    .pcnt_running(50.0)
-                    .variance(7.0)
-                    .fx(),
-                perf_stat_record_f()
-                    .instructions(300)
-                    .runtime(300)
-                    .pcnt_running(75.0)
-                    .variance(11.0)
-                    .fx(),
-            ])
-            .fx();
-
-        let expected = Metrics::with_metric_kinds([(
-            PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(
-                200,
-                PerfQualities::new(
-                    Some(200),
-                    Some(66.666_666_666_666_67),
-                    Some(0.5),
-                    Some(2),
-                    Some(200.0),
-                ),
-                None,
-            ),
-        )]);
-
-        let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);
-
-        assert!(has_duplicates);
-        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -1062,9 +752,9 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 750.0,
-                PerfQualities::new(
+                PerfStats::new(
                     Some(750),
                     Some(100.0),
                     Some(0.333_333_333_333_333_3),
@@ -1081,7 +771,66 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
-    // --- to_metrics: Adjustment Subtraction ---
+    #[test]
+    fn test_to_metrics_when_first_invalid() {
+        let records = perf_stat_records_f()
+            .records([
+                perf_stat_record_f().instructions(0).fx(),
+                perf_stat_record_f().instructions(1000).fx(),
+            ])
+            .fx();
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::with_default_stats(1000, None),
+        )]);
+        let (metrics, has_duplicates) = records.to_metrics(
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
+            None,
+            &["*instructions*".to_owned()],
+        );
+        assert!(!has_duplicates);
+        assert_eq!(metrics, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_float_base_metric() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f()
+                .task_clock(1.0)
+                .mean(1.0)
+                .n(1)
+                .variance(0.0)
+                .fx()])
+            .fx();
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("task-clock".to_owned()),
+            StatisticalMetric::new(
+                1.0,
+                PerfStats::new(None, None, 0.0, 1, 1.0),
+                Unit::Milliseconds,
+            ),
+        )]);
+
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_float_cero_metric_matching_pattern_then_empty() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f().task_clock(0.0).fx()])
+            .fx();
+
+        let (metrics, _) = records.to_metrics(
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
+            None,
+            &["task-clock*".to_owned()],
+        );
+
+        assert!(metrics.is_empty());
+    }
 
     #[test]
     fn test_to_metrics_when_float_with_unit_and_adjustment_then_applies_adjustment() {
@@ -1091,12 +840,12 @@ mod tests {
 
         let adjustment = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::with_default_qualities(2.0, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(2.0, Unit::Milliseconds),
         )]);
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Milliseconds),
+            StatisticalMetric::with_default_stats(1.0, Unit::Milliseconds),
         )]);
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
@@ -1112,12 +861,12 @@ mod tests {
 
         let adjustment = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(2, None),
+            StatisticalMetric::with_default_stats(2, None),
         )]);
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(1, None),
+            StatisticalMetric::with_default_stats(1, None),
         )]);
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
@@ -1126,28 +875,44 @@ mod tests {
     }
 
     #[test]
-    fn test_to_metrics_when_pcnt_running_is_lower_than_threshold_then_no_metrics() {
+    fn test_to_metrics_when_int_zero_metric_in_batch_discards_all_metrics() {
         let records = perf_stat_records_f()
-            .records([perf_stat_record_f().instructions(3).pcnt_running(75.0).fx()])
+            .records([
+                perf_stat_record_f()
+                    .event("cycles:u")
+                    .value("1000.000000")
+                    .unit("")
+                    .fx(),
+                perf_stat_record_f().instructions(0).fx(),
+            ])
             .fx();
 
-        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
+        let (metrics, _) = records.to_metrics(
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
+            None,
+            &["*instructions*".to_owned()],
+        );
 
-        assert!(actual.is_empty());
+        assert!(metrics.is_empty());
     }
 
     #[test]
-    fn test_to_metrics_when_pcnt_running_is_custom_and_higher() {
+    fn test_to_metrics_when_integer_base_metric() {
         let records = perf_stat_records_f()
-            .records([perf_stat_record_f().instructions(3).pcnt_running(75.0).fx()])
+            .records([perf_stat_record_f()
+                .instructions(1)
+                .mean(1.0)
+                .n(1)
+                .variance(0.0)
+                .fx()])
             .fx();
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(3, PerfQualities::new(None, 75.0, None, None, None), None),
+            StatisticalMetric::new(1, PerfStats::new(None, None, 0.0, 1, 1.0), None),
         )]);
 
-        let (actual, _) = records.to_metrics(50.0, None, &[]);
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
 
         assert_eq!(actual, expected);
     }
@@ -1164,5 +929,229 @@ mod tests {
 
         let (metrics, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
         assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_to_metrics_when_no_unit() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f().instructions(1).fx()])
+            .fx();
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::with_default_stats(1, None),
+        )]);
+
+        let (actual, has_duplicates) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
+
+        assert!(!has_duplicates);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_pcnt_running_is_custom_and_higher() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f().instructions(3).pcnt_running(75.0).fx()])
+            .fx();
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::new(3, PerfStats::new(None, 75.0, None, None, None), None),
+        )]);
+
+        let (actual, _) = records.to_metrics(50.0, None, &[]);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_pcnt_running_is_lower_than_threshold_then_no_metrics() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f().instructions(3).pcnt_running(75.0).fx()])
+            .fx();
+
+        let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
+
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn test_to_metrics_when_second_invalid_and_third_then_last() {
+        let records = perf_stat_records_f()
+            .records([
+                perf_stat_record_f().instructions(1).fx(),
+                perf_stat_record_f().instructions(0).fx(),
+                perf_stat_record_f().instructions(2).fx(),
+            ])
+            .fx();
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::with_default_stats(2, None),
+        )]);
+
+        let (actual, _) = records.to_metrics(
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
+            None,
+            &["*instructions*".to_owned()],
+        );
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_second_invalid_then_no_metric() {
+        let records = perf_stat_records_f()
+            .records([
+                perf_stat_record_f().instructions(1).fx(),
+                perf_stat_record_f().instructions(0).fx(),
+            ])
+            .fx();
+
+        let (metrics, _) = records.to_metrics(
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
+            None,
+            &["*instructions*".to_owned()],
+        );
+
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_to_metrics_when_single_int_zero_metric_matching_pattern_then_empty() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f().instructions(0).fx()])
+            .fx();
+
+        let (metrics, _) = records.to_metrics(
+            DEFAULT_PERF_MIN_PCNT_RUNNING,
+            None,
+            &["*instructions*".to_owned()],
+        );
+
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_to_metrics_when_stats_are_present() {
+        let records = perf_stat_records_f()
+            .records([perf_stat_record_f()
+                .instructions(1000)
+                .runtime(100)
+                .pcnt_running(50.0)
+                .variance(7.0)
+                .fx()])
+            .fx();
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::new(1000, PerfStats::new(100, 50.0, 0.07, None, None), None),
+        )]);
+
+        let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);
+
+        assert!(!has_duplicates);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_three_perf_stats_then_merge_dropping_variance() {
+        // The first one is sorted out
+        let records = perf_stat_records_f()
+            .records([
+                perf_stat_record_f()
+                    .instructions(1000)
+                    .runtime(500)
+                    .pcnt_running(100.0)
+                    .variance(10.0)
+                    .fx(),
+                perf_stat_record_f()
+                    .instructions(100)
+                    .runtime(100)
+                    .pcnt_running(50.0)
+                    .variance(7.0)
+                    .fx(),
+                perf_stat_record_f()
+                    .instructions(300)
+                    .runtime(300)
+                    .pcnt_running(75.0)
+                    .variance(11.0)
+                    .fx(),
+            ])
+            .fx();
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::new(
+                200,
+                PerfStats::new(
+                    Some(200),
+                    Some(66.666_666_666_666_67),
+                    Some(0.5),
+                    Some(2),
+                    Some(200.0),
+                ),
+                None,
+            ),
+        )]);
+
+        let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);
+
+        assert!(has_duplicates);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_two_different_records_int_and_float() {
+        let records = perf_stat_records_f()
+            .records([
+                perf_stat_record_f().instructions(1000).fx(),
+                perf_stat_record_f().task_clock(12.5).fx(),
+            ])
+            .fx();
+        let expected = Metrics::with_metric_kinds([
+            (
+                PerfMetric("instructions:u".to_owned()),
+                StatisticalMetric::with_default_stats(1000, None),
+            ),
+            (
+                PerfMetric("task-clock".to_owned()),
+                StatisticalMetric::with_default_stats(12.5, Unit::Milliseconds),
+            ),
+        ]);
+        let (metrics, has_duplicates) =
+            records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
+        assert!(!has_duplicates);
+        assert_eq!(metrics, expected);
+    }
+
+    #[test]
+    fn test_to_metrics_when_two_perf_stats_then_first_is_dropped() {
+        let records = perf_stat_records_f()
+            .records([
+                perf_stat_record_f()
+                    .instructions(100)
+                    .runtime(100)
+                    .pcnt_running(50.0)
+                    .variance(7.0)
+                    .fx(),
+                perf_stat_record_f()
+                    .instructions(300)
+                    .runtime(300)
+                    .pcnt_running(75.0)
+                    .variance(11.0)
+                    .fx(),
+            ])
+            .fx();
+
+        let expected = Metrics::with_metric_kinds([(
+            PerfMetric("instructions:u".to_owned()),
+            StatisticalMetric::new(300, PerfStats::new(300, 75.0, 0.11, None, None), None),
+        )]);
+
+        let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);
+
+        assert!(!has_duplicates);
+        assert_eq!(actual, expected);
     }
 }

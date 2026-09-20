@@ -10,21 +10,20 @@ use log::debug;
 use regex::Regex;
 
 use crate::api::DhatMetric;
-use crate::metrics::model::Metrics;
+use crate::metrics::model::{Metrics, ToolMetrics};
 use crate::runner::tool::logfile_parser::{
     EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE, parse_header,
 };
 use crate::runner::tool::parser::{Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics;
 
 // The different regex have to consider --time-stamp=yes
+static FIXUP_NUMBERS_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("([0-9]),([0-9])").expect("Regex should compile"));
 static METRICS_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^\s*(?<bytes>[0-9]+)\s*(?<unit>bytes|units)(?:\s*in\s*(?<blocks>[0-9]+))?.*$")
         .expect("Regex should compile")
 });
-static FIXUP_NUMBERS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("([0-9]),([0-9])").expect("Regex should compile"));
 
 #[derive(Debug, PartialEq, Eq)]
 enum State {

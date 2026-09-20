@@ -8,10 +8,10 @@ use log::{debug, trace};
 
 use super::parser::parse_header;
 use crate::error::Error;
+use crate::metrics::model::ToolMetrics;
 use crate::runner::tool::logfile_parser;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics;
 
 /// Parse the `summary:` line in the cachegrind output file
 ///

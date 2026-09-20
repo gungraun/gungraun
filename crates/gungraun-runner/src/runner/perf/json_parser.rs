@@ -9,13 +9,12 @@ use anyhow::{Result, anyhow};
 use log::debug;
 
 use crate::api::PerfMetric;
-use crate::metrics::model::{AnnotatedMetric, Metrics, PerfQualities};
+use crate::metrics::model::{Metrics, PerfStats, StatisticalMetric, ToolMetrics};
 use crate::runner::perf::logfile_parser::parse_perf_log;
 use crate::runner::perf::records::PerfStatRecords;
 use crate::runner::perf::run::{PERF_CALIBRATION_FILE_MODIFIER, PERF_OVERHEAD_FILE_MODIFIER};
 use crate::runner::tool::parser::{Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::summary::model::ToolMetrics;
 
 /// Parser for `perf stat -j` JSON output.
 #[derive(Debug)]
@@ -37,7 +36,7 @@ impl JsonParser {
     fn parse_single_with_repetitions(
         &self,
         path: PathBuf,
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfStats>>>,
     ) -> Result<(ParserOutput, usize, PerfStatRecords, bool)> {
         debug!("Parsing file: {}", path.display());
 
@@ -73,7 +72,7 @@ impl JsonParser {
     fn parse_adjustment(
         &self,
         (path, modifiers): (&PathBuf, &Option<String>),
-    ) -> Result<Option<Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>> {
+    ) -> Result<Option<Metrics<PerfMetric, StatisticalMetric<PerfStats>>>> {
         if modifiers.as_deref() == Some(PERF_OVERHEAD_FILE_MODIFIER)
             || modifiers.as_deref() == Some(PERF_CALIBRATION_FILE_MODIFIER)
         {
@@ -93,7 +92,7 @@ impl JsonParser {
     fn parse_part_path(
         &self,
         path: &Path,
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfStats>>>,
     ) -> Result<ParserOutput> {
         let (mut parsed, repetitions, mut records, has_duplicates) =
             self.parse_single_with_repetitions(path.to_path_buf(), adjustment)?;

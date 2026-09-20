@@ -26,6 +26,12 @@ use crate::runner::perf::run::{
 use crate::runner::tool::config::ToolConfigOptions;
 use crate::util::resolve_binary_path;
 
+/// Workspace path mapping for a tool runner.
+///
+/// Maps the workspace path to the path used by the tool runner, such as a path in a container.
+#[derive(Debug, Default, Clone)]
+pub struct Roots(Option<(PathBuf, PathBuf)>);
+
 /// The run options for the [`ToolCommand`]
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
@@ -53,11 +59,47 @@ pub struct RunOptions {
     pub teardown: Option<Assistant>,
 }
 
-/// Workspace path mapping for a tool runner.
+/// A configured tool command ready to be executed.
 ///
-/// Maps the workspace path to the path used by the tool runner, such as a path in a container.
-#[derive(Debug, Default, Clone)]
-pub struct Roots(Option<(PathBuf, PathBuf)>);
+/// This struct encapsulates a valgrind tool invocation with its command, output capture
+/// configuration, and the specific tool being used.
+#[derive(Debug)]
+pub struct ToolCommand {
+    /// The `std::process` command to be spawned
+    pub command: Command,
+    /// The resolved path to the benchmark executable.
+    pub executable: PathBuf,
+    /// Configuration for whether to capture or pass through the subprocess output
+    pub nocapture: NoCapture,
+    /// Path mapping for a containerized tool runner
+    pub roots: Roots,
+    /// Whether [`Self::command`] runs the benchmark directly without a tool
+    ///
+    /// See [`Metadata::is_test_mode`].
+    pub test_mode: bool,
+    /// The [`Tool`] to run
+    pub tool: Tool,
+}
+
+/// A running tool process and its metadata.
+///
+/// This struct represents an actively spawned valgrind tool process and tracks information needed
+/// to monitor its execution and validate its exit status.
+#[derive(Debug)]
+pub struct ToolCommandChild {
+    /// The spawned child process, or `None` if the process has already been consumed
+    pub child: Option<Child>,
+    /// The path to the executable being profiled by the tool.
+    pub executable: PathBuf,
+    /// The expected exit behavior (exit code or signal), or `None` if any exit is acceptable
+    pub exit_with: Option<ExitWith>,
+    /// The path where the tool will write its normal output files.
+    pub output_path: ToolOutputPath,
+    /// Keeps the parent-side perf descriptors alive for the lifetime of the running tool process.
+    pub perf_data: Option<PerfData>,
+    /// The tool running this process (e.g., Memcheck, Callgrind, Massif)
+    pub tool: Tool,
+}
 
 impl Roots {
     /// Create path mapping from metadata.
@@ -132,48 +174,6 @@ impl Roots {
 
         Some(new_arg)
     }
-}
-
-/// A configured tool command ready to be executed.
-///
-/// This struct encapsulates a valgrind tool invocation with its command, output capture
-/// configuration, and the specific tool being used.
-#[derive(Debug)]
-pub struct ToolCommand {
-    /// The `std::process` command to be spawned
-    pub command: Command,
-    /// The resolved path to the benchmark executable.
-    pub executable: PathBuf,
-    /// Configuration for whether to capture or pass through the subprocess output
-    pub nocapture: NoCapture,
-    /// Path mapping for a containerized tool runner
-    pub roots: Roots,
-    /// Whether [`Self::command`] runs the benchmark directly without a tool
-    ///
-    /// See [`Metadata::is_test_mode`].
-    pub test_mode: bool,
-    /// The [`Tool`] to run
-    pub tool: Tool,
-}
-
-/// A running tool process and its metadata.
-///
-/// This struct represents an actively spawned valgrind tool process and tracks information needed
-/// to monitor its execution and validate its exit status.
-#[derive(Debug)]
-pub struct ToolCommandChild {
-    /// The spawned child process, or `None` if the process has already been consumed
-    pub child: Option<Child>,
-    /// The path to the executable being profiled by the tool.
-    pub executable: PathBuf,
-    /// The expected exit behavior (exit code or signal), or `None` if any exit is acceptable
-    pub exit_with: Option<ExitWith>,
-    /// The path where the tool will write its normal output files.
-    pub output_path: ToolOutputPath,
-    /// Keeps the parent-side perf descriptors alive for the lifetime of the running tool process.
-    pub perf_data: Option<PerfData>,
-    /// The tool running this process (e.g., Memcheck, Callgrind, Massif)
-    pub tool: Tool,
 }
 
 impl ToolCommand {
@@ -492,28 +492,6 @@ impl ToolCommandChild {
     }
 }
 
-/// Clone the stable parts of a [`Command`]
-///
-/// The stable parts are: exe path, args, current dir and env vars
-pub fn clone_command(command: &Command) -> Command {
-    let mut clone = Command::new(command.get_program());
-    clone.args(command.get_args());
-
-    if let Some(current_dir) = command.get_current_dir() {
-        clone.current_dir(current_dir);
-    }
-
-    for (key, value) in command.get_envs() {
-        if let Some(value) = value {
-            clone.env(key, value);
-        } else {
-            clone.env_remove(key);
-        }
-    }
-
-    clone
-}
-
 /// Check the exit code of the [`ToolCommand`] and verify the expected [`ExitWith`] if present
 pub fn check_exit(
     tool: Tool,
@@ -641,63 +619,36 @@ pub fn check_exit(
     }
 }
 
+/// Clone the stable parts of a [`Command`]
+///
+/// The stable parts are: exe path, args, current dir and env vars
+pub fn clone_command(command: &Command) -> Command {
+    let mut clone = Command::new(command.get_program());
+    clone.args(command.get_args());
+
+    if let Some(current_dir) = command.get_current_dir() {
+        clone.current_dir(current_dir);
+    }
+
+    for (key, value) in command.get_envs() {
+        if let Some(value) = value {
+            clone.env(key, value);
+        } else {
+            clone.env_remove(key);
+        }
+    }
+
+    clone
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::fixtures::{metadata_f, tool_command_f, tool_config_f, tool_output_path_f};
 
     #[test]
-    fn tool_command_runs_the_executable_itself_in_test_mode() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let output_path = tool_output_path_f().target_dir(temp_dir.path()).fx();
-        let meta = metadata_f().raw_command_line_args(["--test"]).fx();
-        let executable = temp_dir.path().join("bench");
-
-        assert!(meta.is_test_mode());
-
-        let tool_command = tool_command_f()
-            .executable(&executable)
-            .output_path(&output_path)
-            .metadata(meta)
-            .fx();
-
-        assert!(tool_command.test_mode);
-        assert_eq!(tool_command.command.get_program(), executable.as_os_str());
-        assert_eq!(tool_command.command.get_args().count(), 0);
-    }
-
-    #[test]
-    fn prepare_perf_command_uses_tool_runner_dest_for_output_arg() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let output_path = tool_output_path_f()
-            .init(true)
-            .target_dir(temp_dir.path())
-            .tool(Tool::Perf)
-            .fx();
-        let config = tool_config_f().tool(Tool::Perf).fx();
-        let tool_runner_dest = Path::new("/runner/dest");
-        let mut command = Command::new("perf");
-
-        let (_perf_data, args, _log_path) = prepare_perf_command(
-            &mut command,
-            &config,
-            &output_path,
-            false,
-            Some(tool_runner_dest),
-        )
-        .unwrap();
-
-        let mut expected = OsString::from("--output=");
-        expected.push(tool_runner_dest.join(output_path.file_name()));
-
-        assert!(
-            args.contains(&expected),
-            "perf args did not contain rebased output path {expected:?}: {args:?}"
-        );
-    }
-
-    #[test]
-    fn append_tool_invocation_rebases_tool_and_benchmark_args() {
+    fn test_append_tool_invocation_rebases_tool_and_benchmark_args() {
         let mut tool_command = ToolCommand {
             command: Command::new("runner"),
             executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
@@ -734,7 +685,7 @@ mod tests {
     }
 
     #[test]
-    fn cloned_tool_command_preserves_rebasing_roots() {
+    fn test_cloned_tool_command_preserves_rebasing_roots() {
         let tool_command = ToolCommand {
             command: Command::new("runner"),
             executable: PathBuf::from("/container/workspace/target/release/deps/bench"),
@@ -752,5 +703,55 @@ mod tests {
             vec![OsStr::new("--input=/container/workspace/data.txt")]
         );
         assert_eq!(cloned.executable, tool_command.executable);
+    }
+
+    #[test]
+    fn test_prepare_perf_command_uses_tool_runner_dest_for_output_arg() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = tool_output_path_f()
+            .init(true)
+            .target_dir(temp_dir.path())
+            .tool(Tool::Perf)
+            .fx();
+        let config = tool_config_f().tool(Tool::Perf).fx();
+        let tool_runner_dest = Path::new("/runner/dest");
+        let mut command = Command::new("perf");
+
+        let (_perf_data, args, _log_path) = prepare_perf_command(
+            &mut command,
+            &config,
+            &output_path,
+            false,
+            Some(tool_runner_dest),
+        )
+        .unwrap();
+
+        let mut expected = OsString::from("--output=");
+        expected.push(tool_runner_dest.join(output_path.file_name()));
+
+        assert!(
+            args.contains(&expected),
+            "perf args did not contain rebased output path {expected:?}: {args:?}"
+        );
+    }
+
+    #[test]
+    fn test_tool_command_runs_the_executable_itself_in_test_mode() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let output_path = tool_output_path_f().target_dir(temp_dir.path()).fx();
+        let meta = metadata_f().raw_command_line_args(["--test"]).fx();
+        let executable = temp_dir.path().join("bench");
+
+        assert!(meta.is_test_mode());
+
+        let tool_command = tool_command_f()
+            .executable(&executable)
+            .output_path(&output_path)
+            .metadata(meta)
+            .fx();
+
+        assert!(tool_command.test_mode);
+        assert_eq!(tool_command.command.get_program(), executable.as_os_str());
+        assert_eq!(tool_command.command.get_args().count(), 0);
     }
 }

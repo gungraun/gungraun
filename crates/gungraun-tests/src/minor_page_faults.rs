@@ -156,27 +156,34 @@ pub fn cause_minor_page_faults(page_count: usize) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::io;
-    use std::mem::MaybeUninit;
+    mod helper {
+        use std::mem::MaybeUninit;
 
-    use nix::libc;
+        use nix::libc;
 
-    use super::cause_minor_page_faults;
+        use super::*;
 
-    fn minor_page_fault_count() -> io::Result<i64> {
-        let mut usage = MaybeUninit::<libc::rusage>::uninit();
-        // SAFETY: Category 8 (FFI boundary). `usage` points to writable storage for one
-        // `rusage`, and the return value is checked before the initialized value is read.
-        let result = unsafe { libc::getrusage(libc::RUSAGE_THREAD, usage.as_mut_ptr()) };
-        if result == -1 {
-            return Err(io::Error::last_os_error());
+        pub fn minor_page_fault_count() -> io::Result<i64> {
+            let mut usage = MaybeUninit::<libc::rusage>::uninit();
+            // SAFETY: Category 8 (FFI boundary). `usage` points to writable storage for one
+            // `rusage`, and the return value is checked before the initialized value is read.
+            let result = unsafe { libc::getrusage(libc::RUSAGE_THREAD, usage.as_mut_ptr()) };
+            if result == -1 {
+                return Err(io::Error::last_os_error());
+            }
+
+            // SAFETY: Category 4 (uninitialized memory). A successful `getrusage` call initialized
+            // the complete `rusage` value at `usage`.
+            let usage = unsafe { usage.assume_init() };
+            Ok(usage.ru_minflt)
         }
-
-        // SAFETY: Category 4 (uninitialized memory). A successful `getrusage` call initialized
-        // the complete `rusage` value at `usage`.
-        let usage = unsafe { usage.assume_init() };
-        Ok(usage.ru_minflt)
     }
+
+    use std::io;
+
+    use helper::*;
+
+    use super::*;
 
     #[test]
     fn causes_at_least_one_minor_fault_per_requested_page() -> io::Result<()> {
@@ -192,16 +199,16 @@ mod tests {
     }
 
     #[test]
-    fn rejects_zero_pages() {
-        let error = cause_minor_page_faults(0).expect_err("zero pages should be rejected");
+    fn rejects_mapping_length_overflow() {
+        let error =
+            cause_minor_page_faults(usize::MAX).expect_err("mapping length should overflow");
 
         assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
     }
 
     #[test]
-    fn rejects_mapping_length_overflow() {
-        let error =
-            cause_minor_page_faults(usize::MAX).expect_err("mapping length should overflow");
+    fn rejects_zero_pages() {
+        let error = cause_minor_page_faults(0).expect_err("zero pages should be rejected");
 
         assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
     }

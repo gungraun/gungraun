@@ -5,12 +5,19 @@ fn setup_no_output() {
     fibonacci(5);
 }
 
-fn teardown_no_output() {
-    fibonacci(5);
-}
-
 fn setup_with_output(tag: &str) {
     println!("SETUP in {tag}");
+}
+
+#[binary_benchmark]
+fn subprocess() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_subprocess"))
+        .args([env!("CARGO_BIN_EXE_echo"), "BAR"])
+        .build()
+}
+
+fn teardown_no_output() {
+    fibonacci(5);
 }
 
 fn teardown_with_output(tag: &str) {
@@ -28,13 +35,6 @@ fn teardown_with_output(tag: &str) {
 )]
 fn with_output_in_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_echo")).arg("FOO").build()
-}
-
-#[binary_benchmark]
-fn subprocess() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_subprocess"))
-        .args([env!("CARGO_BIN_EXE_echo"), "BAR"])
-        .build()
 }
 
 binary_benchmark_group!(

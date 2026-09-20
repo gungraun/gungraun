@@ -50,10 +50,10 @@ pub use gungraun_runner::api::{
     ToolSpecOptions as InternalToolSpecOptions, ToolSpecs as InternalToolSpecs,
 };
 
-#[derive(Debug, Clone, Copy)]
-pub enum InternalLibFunctionKind {
-    Iter(fn(InternalBenchRunMode, Option<usize>) -> usize),
-    Default(fn(InternalBenchRunMode)),
+#[derive(Debug)]
+pub enum BenchmarkKind {
+    BinaryBenchmark,
+    LibraryBenchmark,
 }
 
 #[derive(Debug, Clone, Copy, Eq)]
@@ -63,42 +63,16 @@ pub enum InternalBinAssistantKind {
     None,
 }
 
-impl PartialEq for InternalBinAssistantKind {
-    fn eq(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (Self::Iter(_), Self::Iter(_))
-                | (Self::Default(_), Self::Default(_))
-                | (Self::None, Self::None)
-        )
-    }
-}
-
-impl InternalBinAssistantKind {
-    pub fn is_some(&self) -> bool {
-        !matches!(*self, Self::None)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum InternalBinFunctionKind {
     Iter(fn() -> Vec<crate::Command>),
     Default(fn() -> crate::Command),
 }
 
-/// Used in gungraun-macros to store the essential information about a library benchmark
-#[derive(Debug, Clone)]
-pub struct InternalMacroLibBench {
-    /// The arguments as a display string for output purposes
-    pub args_display: Option<&'static str>,
-    /// The configuration at `#[bench]` level
-    pub config: Option<fn() -> InternalLibraryBenchmarkConfig>,
-    /// The const generic arguments as a display string for output purposes
-    pub consts_display: Option<&'static str>,
-    /// The kind of function (Default or Iter)
-    pub func: InternalLibFunctionKind,
-    /// The id of the benchmark as a display string
-    pub id_display: Option<&'static str>,
+#[derive(Debug, Clone, Copy)]
+pub enum InternalLibFunctionKind {
+    Iter(fn(InternalBenchRunMode, Option<usize>) -> usize),
+    Default(fn(InternalBenchRunMode)),
 }
 
 /// Used in gungraun-macros to store the essential information about a binary benchmark
@@ -120,9 +94,47 @@ pub struct InternalMacroBinBench {
     pub teardown: InternalBinAssistantKind,
 }
 
+/// Used in gungraun-macros to store the essential information about a library benchmark
+#[derive(Debug, Clone)]
+pub struct InternalMacroLibBench {
+    /// The arguments as a display string for output purposes
+    pub args_display: Option<&'static str>,
+    /// The configuration at `#[bench]` level
+    pub config: Option<fn() -> InternalLibraryBenchmarkConfig>,
+    /// The const generic arguments as a display string for output purposes
+    pub consts_display: Option<&'static str>,
+    /// The kind of function (Default or Iter)
+    pub func: InternalLibFunctionKind,
+    /// The id of the benchmark as a display string
+    pub id_display: Option<&'static str>,
+}
+
 /// A small internal helper to easily create module paths like `file::group::benchmark::id`
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
+
+#[derive(Debug)]
+pub struct Runner {
+    cmd: std::process::Command,
+    module_path: String,
+}
+
+impl InternalBinAssistantKind {
+    pub fn is_some(&self) -> bool {
+        !matches!(*self, Self::None)
+    }
+}
+
+impl PartialEq for InternalBinAssistantKind {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Iter(_), Self::Iter(_))
+                | (Self::Default(_), Self::Default(_))
+                | (Self::None, Self::None)
+        )
+    }
+}
 
 impl ModulePath {
     pub fn new(path: &str) -> Self {
@@ -139,18 +151,6 @@ impl std::fmt::Display for ModulePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
     }
-}
-
-#[derive(Debug)]
-pub enum BenchmarkKind {
-    BinaryBenchmark,
-    LibraryBenchmark,
-}
-
-#[derive(Debug)]
-pub struct Runner {
-    cmd: std::process::Command,
-    module_path: String,
 }
 
 impl Runner {

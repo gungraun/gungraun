@@ -2,10 +2,6 @@ use std::hint::black_box;
 
 use gungraun::prelude::*;
 
-fn setup_two_arguments(first: u64, second: u64) -> u64 {
-    first + second
-}
-
 fn setup_expected(a: u64, expected: u64) -> (u64, u64) {
     (a * a, expected)
 }
@@ -14,12 +10,16 @@ fn setup_expected_two(a: u64, b: u64, expected: u64) -> (u64, u64) {
     (a * b, expected)
 }
 
+fn setup_no_argument() -> u64 {
+    9
+}
+
 fn setup_one_argument(value: u64) -> u64 {
     value * value
 }
 
-fn setup_no_argument() -> u64 {
-    9
+fn setup_two_arguments(first: u64, second: u64) -> u64 {
+    first + second
 }
 
 fn teardown((result, expected): (u64, u64)) {

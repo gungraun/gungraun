@@ -6,10 +6,6 @@ pub mod cachegrind;
 pub mod callgrind;
 pub mod common;
 pub mod dhat;
-pub mod perf;
-pub mod run;
-pub mod tasks;
-
 /// Names of environment variables which are used in different places
 ///
 /// The variables here are not part of the parsed environment variables of `clap` in
@@ -30,10 +26,12 @@ pub mod envs {
     /// Internally used to set the terminal width for the --help print usable in just recipes
     pub const GUNGRAUN_TERM_WIDTH: &str = "__GUNGRAUN_TERM_WIDTH";
 }
-
 pub mod format;
 pub mod lib_bench;
 pub mod meta;
+pub mod perf;
+pub mod run;
+pub mod tasks;
 pub mod tool;
 
 /// The default toggle/frame used by the [`crate::api::EntryPoint::Default`]

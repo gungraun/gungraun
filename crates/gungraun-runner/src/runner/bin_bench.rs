@@ -28,23 +28,27 @@ use crate::api::{
 use crate::error::Error;
 use crate::runner::args;
 use crate::runner::common::{
-    Assistant, AssistantKind, BaselineAndSaveDataProcessor, BaselineDataProcessor, Baselines,
-    BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config, Groups,
-    LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
+    Assistant, AssistantKind, BaselineAndSaveDataProcessor, BaselineDataProcessor, BaselineKind,
+    BaselineName, Baselines, BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config,
+    Groups, LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
 };
-use crate::summary::model::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput,
-};
+use crate::summary::model::{BenchmarkKind, BenchmarkSummary};
 
-const DEFAULT_STDIN: Stdin = Stdin::Pipe;
-const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
-const DEFAULT_PERF_RUN_MODE: PerfRunMode = PerfRunMode::Direct;
 const DEFAULT_DELAY_POLL: Duration = Duration::from_millis(10);
 const DEFAULT_DELAY_TIMEOUT: Duration = Duration::from_secs(600);
+const DEFAULT_ENTRY_POINT: EntryPoint = EntryPoint::None;
+const DEFAULT_PERF_RUN_MODE: PerfRunMode = PerfRunMode::Direct;
 const DEFAULT_SETUP_PARALLEL: bool = false;
+const DEFAULT_STDIN: Stdin = Stdin::Pipe;
 
 const MIN_DELAY_TIMEOUT: Duration = Duration::from_millis(10);
 const WORKSPACE_ROOT_ENV_VAR: &str = "_WORKSPACE_ROOT";
+
+#[derive(Debug)]
+struct BaselineAndSaveBenchmark {
+    baseline: BaselineName,
+    save_baseline: BaselineName,
+}
 
 #[derive(Debug)]
 struct BaselineBenchmark {
@@ -64,6 +68,8 @@ pub struct BinBench {
     pub display: Option<String>,
     /// The name of the annotated function
     pub function_name: String,
+    /// The name of the `benchmark_group`
+    pub group: String,
     /// The id of the benchmark as in `#[bench::id]`
     pub id: Option<String>,
     /// The [`ModulePath`].
@@ -104,12 +110,6 @@ pub struct Delay {
 struct LoadBaselineBenchmark {
     baseline: BaselineName,
     loaded_baseline: BaselineName,
-}
-
-#[derive(Debug)]
-struct BaselineAndSaveBenchmark {
-    baseline: BaselineName,
-    save_baseline: BaselineName,
 }
 
 #[derive(Debug)]
@@ -385,6 +385,7 @@ impl BinBench {
         iter_index: Option<usize>,
         command: api::Command,
         default_tool: Tool,
+        group: String,
     ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|id| format!("{id}_{iter_index}"))
@@ -489,6 +490,7 @@ impl BinBench {
             display,
             consts_display,
             function_name,
+            group,
             tools: tool_configs,
             run_options: RunOptions {
                 env_clear: meta
@@ -529,12 +531,6 @@ impl BinBench {
         description: Option<String>,
         baselines: Baselines,
     ) -> BenchmarkSummary {
-        let summary_output = config
-            .meta
-            .args
-            .save_summary
-            .map(|format| SummaryOutput::new(format, &output_path.dir));
-
         BenchmarkSummary::new(
             BenchmarkKind::BinaryBenchmark,
             config.meta.project_root.clone(),
@@ -543,9 +539,10 @@ impl BinBench {
             self.command.path.clone(),
             &self.module_path,
             function_name,
+            &self.group,
             self.id.clone(),
             description,
-            summary_output,
+            output_path.dir.clone(),
             baselines,
         )
     }

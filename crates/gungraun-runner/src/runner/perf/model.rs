@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api::{PerfMetric, Unit};
-use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
+use crate::metrics::model::{Metric, Metrics, PerfStats, StatisticalMetric};
 
 /// A single record from `perf stat --json` output.
 ///
@@ -58,18 +58,18 @@ pub struct PerfStatRecord {
     pub event_runtime: Option<u64>,
     /// Mean value of this [`Self::event`], added by Gungraun.
     ///
-    /// This field is populated from [`PerfQualities::mean`] when the record is re-constructed and
+    /// This field is populated from [`PerfStats::mean`] when the record is re-constructed and
     /// written back from processed and analyzed perf data.
     ///
-    /// [`PerfQualities::mean`]: crate::metrics::model::PerfQualities
+    /// [`PerfStats::mean`]: crate::metrics::model::PerfStats
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gungraun_mean: Option<f64>,
     /// Number of samples (n) of this [`Self::event`], added by Gungraun.
     ///
-    /// This field is populated from [`PerfQualities::n`] when the record is re-constructed and
+    /// This field is populated from [`PerfStats::n`] when the record is re-constructed and
     /// written back from processed and analyzed perf data.
     ///
-    /// [`PerfQualities::n`]: crate::metrics::model::PerfQualities
+    /// [`PerfStats::n`]: crate::metrics::model::PerfStats
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gungraun_n: Option<u64>,
     /// Timestamp as seconds since epoch (e.g. `1234.567890123`).
@@ -124,7 +124,7 @@ impl PerfStatRecord {
     /// Update the record with the values from `metrics`
     ///
     /// The original units of the record are preserved transforming the units from metrics.
-    pub fn update(&mut self, metrics: &Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>) {
+    pub fn update(&mut self, metrics: &Metrics<PerfMetric, StatisticalMetric<PerfStats>>) {
         let Some(event) = self.event.as_ref() else {
             return;
         };
@@ -133,14 +133,14 @@ impl PerfStatRecord {
             return;
         };
 
-        self.event_runtime = metric.qualities.event_runtime;
-        self.pcnt_running = metric.qualities.pcnt_running;
-        self.variance = metric.qualities.rse.map(|rse| rse * 100.0);
-        self.gungraun_n = metric.qualities.n;
+        self.event_runtime = metric.stats.event_runtime;
+        self.pcnt_running = metric.stats.pcnt_running;
+        self.variance = metric.stats.rse.map(|rse| rse * 100.0);
+        self.gungraun_n = metric.stats.n;
 
         if let Some(counter_value) = self.counter_value.as_mut() {
             #[expect(clippy::cast_precision_loss)]
-            let metric_value = match metric.metric {
+            let metric_value = match metric.value {
                 Metric::Int(int) => int as f64,
                 Metric::Float(float) => float,
             };
@@ -157,7 +157,7 @@ impl PerfStatRecord {
                     let base = metric_unit.base_value(metric_value);
                     let converted_value = orig_unit.rebase(base);
 
-                    let converted_mean = metric.qualities.mean.map(|mean| {
+                    let converted_mean = metric.stats.mean.map(|mean| {
                         let base_mean = metric_unit.base_value(mean);
                         orig_unit.rebase(base_mean)
                     });
@@ -168,10 +168,10 @@ impl PerfStatRecord {
                 }
             }
 
-            *counter_value = Self::format_metric(&metric.metric);
+            *counter_value = Self::format_metric(&metric.value);
         }
 
-        self.gungraun_mean = metric.qualities.mean;
+        self.gungraun_mean = metric.stats.mean;
     }
 
     fn format_metric(metric: &Metric) -> String {
@@ -199,9 +199,9 @@ mod tests {
             .fx(),
         (
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Int(200),
-                PerfQualities::new(200, 66.666_666_666_666_67, 0.5, 1, 200.0),
+                PerfStats::new(200, 66.666_666_666_666_67, 0.5, 1, 200.0),
                 None,
             ),
         ),
@@ -224,9 +224,9 @@ mod tests {
             .fx(),
         (
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Float(1.5),
-                PerfQualities::new(300, 75.0, 0.05, 2, 200.0),
+                PerfStats::new(300, 75.0, 0.05, 2, 200.0),
                 Unit::Seconds,
             ),
         ),
@@ -248,9 +248,9 @@ mod tests {
             .fx(),
         (
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Float(1.5),
-                PerfQualities::new(300, 75.0, 0.05, 2, 200.0),
+                PerfStats::new(300, 75.0, 0.05, 2, 200.0),
                 Unit::Milliseconds,
             ),
         ),
@@ -273,9 +273,9 @@ mod tests {
             .fx(),
         (
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Float(1.5),
-                PerfQualities::new(300, 75.0, 0.05, 2, 200.0),
+                PerfStats::new(300, 75.0, 0.05, 2, 200.0),
                 Unit::Unknown("nope".to_owned()),
             ),
         ),
@@ -291,7 +291,7 @@ mod tests {
     )]
     fn test_update_record(
         #[case] mut record: PerfStatRecord,
-        #[case] metric: (PerfMetric, AnnotatedMetric<PerfQualities>),
+        #[case] metric: (PerfMetric, StatisticalMetric<PerfStats>),
         #[case] expected: PerfStatRecord,
     ) {
         let metrics = Metrics::with_metric_kinds([metric]);

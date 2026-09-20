@@ -94,59 +94,6 @@
     "version"
   ],
   "definitions": {
-    "AnnotatedMetric": {
-      "description": "A metric value paired with additional metadata and an optional [`Unit`].\n\nThis type is used for metrics, such as perf results, that need to carry more than the raw\nnumeric value when they are stored, merged, or compared.",
-      "type": "object",
-      "properties": {
-        "event_runtime": {
-          "description": "Runtime reported by perf for the event\n\nThis field is extracted directly from perf's JSON field with the same name.\n\nTogether with `pcnt_running`, this forms a coupled value during merges.",
-          "type": ["integer", "null"],
-          "format": "uint64",
-          "minimum": 0
-        },
-        "mean": {
-          "description": "The mean value computed for this metric, if available.\n\nThis value is computed by Gungraun, if there were multiple perf records for a metric (for\nexample using sampling)",
-          "type": ["number", "null"],
-          "format": "double"
-        },
-        "n": {
-          "description": "The number of repetitions or samples perf used for this metric, if reported.\n\nThis value is computed by Gungraun, if there were multiple perf records for a metric (for\nexample using sampling)",
-          "type": ["integer", "null"],
-          "format": "uint64",
-          "minimum": 0
-        },
-        "pcnt_running": {
-          "description": "Percentage of enabled time reported by perf during which the event was running.\n\nThis field is extracted directly from perf's JSON field with the same name.\n\nThis value is only meaningful together with `event_runtime`.",
-          "type": ["number", "null"],
-          "format": "double"
-        },
-        "rse": {
-          "description": "Gungraun's correct name for perf's relative standard error (\"variance\"), as a fraction.\n\nPerf's own JSON calls this field `\"variance\"`, but the value is not a statistical variance.\nIt corresponds to the percentage shown in perf text output as `( +-X.XX% )`, but Gungraun\nstores it as a fraction instead, so `5%` is stored as `0.05`.\n\nGungraun stores this value in summaries under the name `rse`. For a single parsed perf\nrecord the value is preserved from perf JSON. When duplicate records for the same event are\nmerged, it is recomputed by Gungraun from the aggregated samples.",
-          "type": ["number", "null"],
-          "format": "double"
-        },
-        "unit": {
-          "description": "The [`Unit`] of the metric value, if one is given or known.",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Unit"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "value": {
-          "description": "The measured numeric value.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Metric"
-            }
-          ]
-        }
-      },
-      "required": ["value"]
-    },
     "BenchmarkKind": {
       "description": "Identifies whether a summary describes a library or binary benchmark.",
       "oneOf": [
@@ -305,10 +252,10 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/StatisticalMetric"
             },
             "old": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/StatisticalMetric"
             }
           },
           "additionalProperties": false,
@@ -319,7 +266,7 @@
           "type": "object",
           "properties": {
             "new": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/StatisticalMetric"
             }
           },
           "additionalProperties": false,
@@ -330,7 +277,7 @@
           "type": "object",
           "properties": {
             "old": {
-              "$ref": "#/definitions/AnnotatedMetric"
+              "$ref": "#/definitions/StatisticalMetric"
             }
           },
           "additionalProperties": false,
@@ -483,6 +430,59 @@
       "items": {
         "$ref": "#/definitions/Profile"
       }
+    },
+    "StatisticalMetric": {
+      "description": "A metric `value` paired with additional metadata, stats and an optional [`Unit`].\n\nThis type is used for metrics, such as perf results, that need to carry more than the raw\nnumeric value when they are stored, merged, or compared.",
+      "type": "object",
+      "properties": {
+        "event_runtime": {
+          "description": "Runtime reported by perf for the event\n\nThis field is extracted directly from perf's JSON field with the same name.\n\nTogether with `pcnt_running`, this forms a coupled value during merges.",
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "mean": {
+          "description": "The mean value computed for this metric, if available.\n\nThis value is computed by Gungraun, if there were multiple perf records for a metric (for\nexample using sampling)",
+          "type": ["number", "null"],
+          "format": "double"
+        },
+        "n": {
+          "description": "The number of repetitions or samples perf used for this metric, if reported.\n\nThis value is computed by Gungraun, if there were multiple perf records for a metric (for\nexample using sampling)",
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "pcnt_running": {
+          "description": "Percentage of enabled time reported by perf during which the event was running.\n\nThis field is extracted directly from perf's JSON field with the same name.\n\nThis value is only meaningful together with `event_runtime`.",
+          "type": ["number", "null"],
+          "format": "double"
+        },
+        "rse": {
+          "description": "Gungraun's correct name for perf's relative standard error (\"variance\"), as a fraction.\n\nPerf's own JSON calls this field `\"variance\"`, but the value is not a statistical variance.\nIt corresponds to the percentage shown in perf text output as `( +-X.XX% )`, but Gungraun\nstores it as a fraction instead, so `5%` is stored as `0.05`.\n\nGungraun stores this value in summaries under the name `rse`. For a single parsed perf\nrecord the value is preserved from perf JSON. When duplicate records for the same event are\nmerged, it is recomputed by Gungraun from the aggregated samples.",
+          "type": ["number", "null"],
+          "format": "double"
+        },
+        "unit": {
+          "description": "The [`Unit`] of the metric value, if one is given or known.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Unit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "description": "The measured numeric value.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Metric"
+            }
+          ]
+        }
+      },
+      "required": ["value"]
     },
     "ToolRegression": {
       "description": "A regression detected while evaluating a [`BenchmarkSummary`].\n\nSoft regressions compare a new value against an older measurement using a percentage threshold.\nHard regressions compare a new value against an absolute limit.",

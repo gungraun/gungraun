@@ -25,7 +25,7 @@ use crate::api::{
     CachegrindMetric, DelayKind, DhatMetric, EntryPoint, ExitWith, PerfRunMode, RawToolArgs,
     SanitizeOutput, Tool, ToolOutputFormat, ToolSpec, ToolSpecOptions, ToolSpecs,
 };
-use crate::metrics::model::{AnnotatedMetric, Metric, PerfQualities, ToolMetrics};
+use crate::metrics::model::{Metric, PerfQualities, StatisticalMetric, ToolMetrics};
 use crate::runner::bin_bench::Delay;
 use crate::runner::cachegrind::args::CachegrindArgs;
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
@@ -50,23 +50,6 @@ use crate::runner::tool::run::{RunOptions, ToolCommand, ToolCommandChild};
 use crate::units::Unit;
 
 pub const DEFAULT_TOOL: Tool = Tool::Callgrind;
-
-#[builder(finish_fn = "fx", on(Metric, into))]
-pub fn annotated_metric_perf_f(
-    metric: Metric,
-    event_runtime: Option<u64>,
-    pcnt_running: Option<f64>,
-    rse: Option<f64>,
-    n: Option<u64>,
-    mean: Option<f64>,
-    unit: Option<Unit>,
-) -> AnnotatedMetric<PerfQualities> {
-    AnnotatedMetric::new(
-        metric,
-        PerfQualities::new(event_runtime, pcnt_running, rse, n, mean),
-        unit,
-    )
-}
 
 #[builder(finish_fn = "fx")]
 pub fn assistant_f(kind: AssistantKind) -> Assistant {
@@ -287,6 +270,23 @@ pub fn setup_child_f(
         .maybe_stdout(stdout)
         .fx();
     (AssistantKind::Setup, child)
+}
+
+#[builder(finish_fn = "fx", on(Metric, into))]
+pub fn statistical_metric_perf_f(
+    metric: Metric,
+    event_runtime: Option<u64>,
+    pcnt_running: Option<f64>,
+    rse: Option<f64>,
+    n: Option<u64>,
+    mean: Option<f64>,
+    unit: Option<Unit>,
+) -> StatisticalMetric<PerfQualities> {
+    StatisticalMetric::new(
+        metric,
+        PerfQualities::new(event_runtime, pcnt_running, rse, n, mean),
+        unit,
+    )
 }
 
 #[builder(finish_fn = "fx")]

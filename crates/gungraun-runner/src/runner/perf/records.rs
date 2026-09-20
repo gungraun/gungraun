@@ -11,7 +11,7 @@ use log::trace;
 
 use crate::api::{PerfMetric, Unit};
 use crate::metrics::logic::MetricValue as _;
-use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
+use crate::metrics::model::{Metric, Metrics, PerfQualities, StatisticalMetric};
 use crate::runner::perf::model::PerfStatRecord;
 use crate::runner::perf::pattern;
 use crate::stats::runner::{OnlineStatsMap, Stats};
@@ -19,9 +19,9 @@ use crate::stats::runner::{OnlineStatsMap, Stats};
 struct MetricsParser {
     first: Option<(PerfMetric, bool)>,
     invalid: bool,
-    metrics: Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>,
+    metrics: Metrics<PerfMetric, StatisticalMetric<PerfQualities>>,
     online_stats: OnlineStatsMap<PerfMetric>,
-    temp: Vec<(PerfMetric, (AnnotatedMetric<PerfQualities>, f64))>,
+    temp: Vec<(PerfMetric, (StatisticalMetric<PerfQualities>, f64))>,
 }
 
 /// A collection of parsed `perf stat -j` JSON records.
@@ -43,9 +43,9 @@ impl MetricsParser {
         mut self,
         records: &[PerfStatRecord],
         min_pcnt_running: f64,
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfQualities>>>,
         non_zero_metrics: &[String],
-    ) -> (Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>, bool) {
+    ) -> (Metrics<PerfMetric, StatisticalMetric<PerfQualities>>, bool) {
         for record in records {
             match (
                 &record.event,
@@ -210,7 +210,7 @@ impl MetricsParser {
         }
 
         let key = PerfMetric(event.to_owned());
-        let annotated_metric = AnnotatedMetric::new(
+        let statistical_metric = StatisticalMetric::new(
             metric,
             PerfQualities::new(
                 event_runtime,
@@ -222,7 +222,7 @@ impl MetricsParser {
             unit,
         );
         self.metrics
-            .insert_or_add(key, annotated_metric.normalize());
+            .insert_or_add(key, statistical_metric.normalize());
     }
 
     /// Shared validation and cold-start bookkeeping for new (non-base) perf records.
@@ -299,7 +299,7 @@ impl MetricsParser {
     fn parse_metric_without_unit(
         &mut self,
         non_zero_metrics: &[String],
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfQualities>>>,
         event: &str,
         value: &str,
         event_runtime: Option<u64>,
@@ -341,7 +341,7 @@ impl MetricsParser {
             return;
         }
 
-        let new_metric = AnnotatedMetric::new(
+        let new_metric = StatisticalMetric::new(
             Metric::Int(int),
             PerfQualities::new(
                 event_runtime,
@@ -365,7 +365,7 @@ impl MetricsParser {
     fn parse_metric_with_unit(
         &mut self,
         non_zero_metrics: &[String],
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfQualities>>>,
         event: &str,
         value: &str,
         unit: &str,
@@ -377,7 +377,7 @@ impl MetricsParser {
             return;
         };
 
-        let mut new_metric = AnnotatedMetric::new(
+        let mut new_metric = StatisticalMetric::new(
             Metric::Float(float),
             PerfQualities::new(
                 event_runtime,
@@ -439,7 +439,7 @@ impl PerfStatRecords {
     /// from the record's original unit, values are converted back to the original unit scale.
     pub fn filter_and_update(
         &mut self,
-        metrics: &Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>,
+        metrics: &Metrics<PerfMetric, StatisticalMetric<PerfQualities>>,
     ) {
         let mut seen = HashSet::new();
 
@@ -480,9 +480,9 @@ impl PerfStatRecords {
     pub fn to_metrics(
         &self,
         min_pcnt_running: f64,
-        adjustment: Option<&Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>>,
+        adjustment: Option<&Metrics<PerfMetric, StatisticalMetric<PerfQualities>>>,
         non_zero_metrics: &[String],
-    ) -> (Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>, bool) {
+    ) -> (Metrics<PerfMetric, StatisticalMetric<PerfQualities>>, bool) {
         MetricsParser::new().parse(&self.0, min_pcnt_running, adjustment, non_zero_metrics)
     }
 }
@@ -620,7 +620,7 @@ mod tests {
 
         let metrics = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Int(200),
                 PerfQualities::new(300, 66.666_666_666_666_67, 0.5, 1, 400.0),
                 None,
@@ -656,12 +656,12 @@ mod tests {
 
         let adjustment = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(2, None),
+            StatisticalMetric::with_default_qualities(2, None),
         )]);
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(3, PerfQualities::new(None, None, 0.01, 1, 1.0), None),
+            StatisticalMetric::new(3, PerfQualities::new(None, None, 0.01, 1, 1.0), None),
         )]);
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
@@ -755,7 +755,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 750.0,
                 PerfQualities::new(
                     Some(750),
@@ -784,7 +784,7 @@ mod tests {
             .fx();
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(1000, None),
+            StatisticalMetric::with_default_qualities(1000, None),
         )]);
         let (metrics, has_duplicates) = records.to_metrics(
             DEFAULT_PERF_MIN_PCNT_RUNNING,
@@ -808,7 +808,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 1.0,
                 PerfQualities::new(None, None, 0.0, 1, 1.0),
                 Unit::Milliseconds,
@@ -843,12 +843,12 @@ mod tests {
 
         let adjustment = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::with_default_qualities(2.0, Unit::Milliseconds),
+            StatisticalMetric::with_default_qualities(2.0, Unit::Milliseconds),
         )]);
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Milliseconds),
+            StatisticalMetric::with_default_qualities(1.0, Unit::Milliseconds),
         )]);
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
@@ -864,12 +864,12 @@ mod tests {
 
         let adjustment = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(2, None),
+            StatisticalMetric::with_default_qualities(2, None),
         )]);
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(1, None),
+            StatisticalMetric::with_default_qualities(1, None),
         )]);
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, Some(&adjustment), &[]);
@@ -912,7 +912,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(1, PerfQualities::new(None, None, 0.0, 1, 1.0), None),
+            StatisticalMetric::new(1, PerfQualities::new(None, None, 0.0, 1, 1.0), None),
         )]);
 
         let (actual, _) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
@@ -942,7 +942,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(1, None),
+            StatisticalMetric::with_default_qualities(1, None),
         )]);
 
         let (actual, has_duplicates) = records.to_metrics(DEFAULT_PERF_MIN_PCNT_RUNNING, None, &[]);
@@ -959,7 +959,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(3, PerfQualities::new(None, 75.0, None, None, None), None),
+            StatisticalMetric::new(3, PerfQualities::new(None, 75.0, None, None, None), None),
         )]);
 
         let (actual, _) = records.to_metrics(50.0, None, &[]);
@@ -991,7 +991,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(1000, PerfQualities::new(100, 50.0, 0.07, None, None), None),
+            StatisticalMetric::new(1000, PerfQualities::new(100, 50.0, 0.07, None, None), None),
         )]);
 
         let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);
@@ -1012,7 +1012,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(2, None),
+            StatisticalMetric::with_default_qualities(2, None),
         )]);
 
         let (actual, _) = records.to_metrics(
@@ -1085,7 +1085,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 200,
                 PerfQualities::new(
                     Some(200),
@@ -1115,11 +1115,11 @@ mod tests {
         let expected = Metrics::with_metric_kinds([
             (
                 PerfMetric("instructions:u".to_owned()),
-                AnnotatedMetric::with_default_qualities(1000, None),
+                StatisticalMetric::with_default_qualities(1000, None),
             ),
             (
                 PerfMetric("task-clock".to_owned()),
-                AnnotatedMetric::with_default_qualities(12.5, Unit::Milliseconds),
+                StatisticalMetric::with_default_qualities(12.5, Unit::Milliseconds),
             ),
         ]);
         let (metrics, has_duplicates) =
@@ -1149,7 +1149,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(300, PerfQualities::new(300, 75.0, 0.11, None, None), None),
+            StatisticalMetric::new(300, PerfQualities::new(300, 75.0, 0.11, None, None), None),
         )]);
 
         let (actual, has_duplicates) = records.to_metrics(50.0, None, &[]);

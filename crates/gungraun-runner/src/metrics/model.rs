@@ -92,24 +92,7 @@ pub enum ToolMetrics {
     ///
     /// These metrics are summarized per part, but no synthetic aggregate `total` is currently
     /// constructed across parts.
-    Perf(Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>),
-}
-
-/// A metric value paired with additional metadata and an optional [`Unit`].
-///
-/// This type is used for metrics, such as perf results, that need to carry more than the raw
-/// numeric value when they are stored, merged, or compared.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct AnnotatedMetric<Q> {
-    /// Additional metadata associated with the metric value.
-    #[serde(flatten)]
-    pub qualities: Q,
-    /// The [`Unit`] of the metric value, if one is given or known.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub unit: Option<Unit>,
-    /// The measured numeric value.
-    pub value: Metric,
+    Perf(Metrics<PerfMetric, StatisticalMetric<PerfQualities>>),
 }
 
 /// Comparison data for one metric in a parsed summary.
@@ -190,6 +173,23 @@ pub struct PerfQualities {
     pub rse: Option<f64>,
 }
 
+/// A metric `value` paired with additional metadata, stats and an optional [`Unit`].
+///
+/// This type is used for metrics, such as perf results, that need to carry more than the raw
+/// numeric value when they are stored, merged, or compared.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct StatisticalMetric<S> {
+    /// Additional metadata associated with the metric value.
+    #[serde(flatten)]
+    pub qualities: S,
+    /// The [`Unit`] of the metric value, if one is given or known.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unit: Option<Unit>,
+    /// The measured numeric value.
+    pub value: Metric,
+}
+
 impl Eq for Metric {}
 
 impl PartialEq for Metric {
@@ -226,37 +226,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-
-    #[test]
-    fn test_annotated_metric_deserializes_value_field() {
-        let deserialized: AnnotatedMetric<PerfQualities> =
-            serde_json::from_value(json!({ "value": 5 })).unwrap();
-
-        assert_eq!(deserialized.value, Metric::Int(5));
-        assert_eq!(deserialized.qualities, PerfQualities::default());
-        assert_eq!(deserialized.unit, None);
-    }
-
-    #[test]
-    fn test_annotated_metric_serializes_named_value_field() {
-        let annotated = AnnotatedMetric {
-            qualities: PerfQualities {
-                mean: Some(2.0),
-                ..PerfQualities::default()
-            },
-            unit: None,
-            value: Metric::Float(1.5),
-        };
-
-        assert_eq!(
-            serde_json::to_value(&annotated).unwrap(),
-            json!({ "mean": 2.0, "value": 1.5 })
-        );
-
-        let roundtrip: AnnotatedMetric<PerfQualities> =
-            serde_json::from_value(serde_json::to_value(&annotated).unwrap()).unwrap();
-        assert_eq!(roundtrip, annotated);
-    }
 
     #[test]
     #[cfg(feature = "schema")]
@@ -313,5 +282,36 @@ mod tests {
         let deserialized: Metric =
             serde_json::from_value(serde_json::to_value(metric).unwrap()).unwrap();
         assert_eq!(deserialized, metric);
+    }
+
+    #[test]
+    fn test_statistical_metric_deserializes_value_field() {
+        let deserialized: StatisticalMetric<PerfQualities> =
+            serde_json::from_value(json!({ "value": 5 })).unwrap();
+
+        assert_eq!(deserialized.value, Metric::Int(5));
+        assert_eq!(deserialized.qualities, PerfQualities::default());
+        assert_eq!(deserialized.unit, None);
+    }
+
+    #[test]
+    fn test_statistical_metric_serializes_named_value_field() {
+        let stats = StatisticalMetric {
+            qualities: PerfQualities {
+                mean: Some(2.0),
+                ..PerfQualities::default()
+            },
+            unit: None,
+            value: Metric::Float(1.5),
+        };
+
+        assert_eq!(
+            serde_json::to_value(&stats).unwrap(),
+            json!({ "mean": 2.0, "value": 1.5 })
+        );
+
+        let roundtrip: StatisticalMetric<PerfQualities> =
+            serde_json::from_value(serde_json::to_value(&stats).unwrap()).unwrap();
+        assert_eq!(roundtrip, stats);
     }
 }

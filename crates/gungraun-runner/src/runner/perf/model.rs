@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api::{PerfMetric, Unit};
-use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities};
+use crate::metrics::model::{Metric, Metrics, PerfQualities, StatisticalMetric};
 
 /// A single record from `perf stat --json` output.
 ///
@@ -124,7 +124,7 @@ impl PerfStatRecord {
     /// Update the record with the values from `metrics`
     ///
     /// The original units of the record are preserved transforming the units from metrics.
-    pub fn update(&mut self, metrics: &Metrics<PerfMetric, AnnotatedMetric<PerfQualities>>) {
+    pub fn update(&mut self, metrics: &Metrics<PerfMetric, StatisticalMetric<PerfQualities>>) {
         let Some(event) = self.event.as_ref() else {
             return;
         };
@@ -199,7 +199,7 @@ mod tests {
             .fx(),
         (
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Int(200),
                 PerfQualities::new(200, 66.666_666_666_666_67, 0.5, 1, 200.0),
                 None,
@@ -224,7 +224,7 @@ mod tests {
             .fx(),
         (
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Float(1.5),
                 PerfQualities::new(300, 75.0, 0.05, 2, 200.0),
                 Unit::Seconds,
@@ -248,7 +248,7 @@ mod tests {
             .fx(),
         (
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Float(1.5),
                 PerfQualities::new(300, 75.0, 0.05, 2, 200.0),
                 Unit::Milliseconds,
@@ -273,7 +273,7 @@ mod tests {
             .fx(),
         (
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 Metric::Float(1.5),
                 PerfQualities::new(300, 75.0, 0.05, 2, 200.0),
                 Unit::Unknown("nope".to_owned()),
@@ -291,7 +291,7 @@ mod tests {
     )]
     fn test_update_record(
         #[case] mut record: PerfStatRecord,
-        #[case] metric: (PerfMetric, AnnotatedMetric<PerfQualities>),
+        #[case] metric: (PerfMetric, StatisticalMetric<PerfQualities>),
         #[case] expected: PerfStatRecord,
     ) {
         let metrics = Metrics::with_metric_kinds([metric]);

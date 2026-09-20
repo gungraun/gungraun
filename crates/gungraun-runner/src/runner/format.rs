@@ -23,7 +23,7 @@ use crate::api::{
 };
 use crate::metrics::logic::MetricValue;
 use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, MetricResult, MetricResults, PerfQualities,
+    Metric, MetricKind, MetricResult, MetricResults, PerfQualities, StatisticalMetric,
 };
 use crate::stats::runner::DiffStats;
 use crate::summary::model::{
@@ -1019,7 +1019,7 @@ impl VerticalFormatter {
     fn write_perf_metric(
         &mut self,
         field: &str,
-        metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
+        metrics: EitherOrBoth<&StatisticalMetric<PerfQualities>>,
         change: Option<MetricChange>,
         perf_config: &PerfOutputConfig,
     ) {
@@ -1032,7 +1032,7 @@ impl VerticalFormatter {
 
     fn write_perf_significance_line(
         &mut self,
-        metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>,
+        metrics: EitherOrBoth<&StatisticalMetric<PerfQualities>>,
         perf_config: &PerfOutputConfig,
     ) {
         let field = "  rse% (sig.thr) [sig.fact]".bright_black();
@@ -1113,7 +1113,10 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_perf_samples_line(&mut self, metrics: EitherOrBoth<&AnnotatedMetric<PerfQualities>>) {
+    fn write_perf_samples_line(
+        &mut self,
+        metrics: EitherOrBoth<&StatisticalMetric<PerfQualities>>,
+    ) {
         let field = "  samples".bright_black();
         match metrics.map(|a| a.qualities.n) {
             EitherOrBoth::Left(Some(n)) | EitherOrBoth::Both(Some(n), None) => {
@@ -1237,7 +1240,7 @@ impl VerticalFormatter {
     fn format_perf_metrics<'a, K>(
         &mut self,
         perf_config: &PerfOutputConfig,
-        metrics: impl Iterator<Item = (K, &'a MetricResult<AnnotatedMetric<PerfQualities>>)>,
+        metrics: impl Iterator<Item = (K, &'a MetricResult<StatisticalMetric<PerfQualities>>)>,
     ) where
         K: Display,
     {

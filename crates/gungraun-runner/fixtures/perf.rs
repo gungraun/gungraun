@@ -3,7 +3,7 @@ use std::time::Duration;
 use bon::builder;
 
 use crate::api::{PerfMetric, PerfRunMode, PerfSpec, RawToolArgs, Unit};
-use crate::metrics::model::{AnnotatedMetric, Metric, Metrics, PerfQualities, ToolMetrics};
+use crate::metrics::model::{Metric, Metrics, PerfQualities, StatisticalMetric, ToolMetrics};
 use crate::runner::perf::json_parser::JsonParser;
 use crate::runner::perf::model::PerfStatRecord;
 use crate::runner::perf::records::PerfStatRecords;
@@ -33,10 +33,10 @@ pub fn metric_perf_f(
     #[builder(into)] value: Option<Metric>,
     qualities: Option<PerfQualities>,
     unit: Option<Unit>,
-) -> (PerfMetric, AnnotatedMetric<PerfQualities>) {
+) -> (PerfMetric, StatisticalMetric<PerfQualities>) {
     (
         PerfMetric(event.unwrap_or_else(|| "foo".to_owned())),
-        AnnotatedMetric::new(
+        StatisticalMetric::new(
             value.unwrap_or(Metric::Int(1)),
             qualities.unwrap_or_default(),
             unit,
@@ -212,7 +212,7 @@ pub fn perf_stat_records_f(
 pub fn tool_metrics_perf_f(
     #[builder(default = vec![], with = FromIterator::from_iter)] metrics: Vec<(
         PerfMetric,
-        AnnotatedMetric<PerfQualities>,
+        StatisticalMetric<PerfQualities>,
     )>,
 ) -> ToolMetrics {
     ToolMetrics::Perf(Metrics::with_metric_kinds(metrics))

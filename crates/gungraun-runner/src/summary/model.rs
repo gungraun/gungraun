@@ -22,7 +22,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, PerfMetric, Tool};
-use crate::metrics::model::{AnnotatedMetric, Metric, MetricKind, MetricResults, PerfQualities};
+use crate::metrics::model::{Metric, MetricKind, MetricResults, PerfQualities, StatisticalMetric};
 use crate::units::Unit;
 
 /// The version string stored in version summary JSON files.
@@ -106,7 +106,7 @@ pub enum ToolMetricResults {
     ///
     /// Unlike the valgrind-based tools, perf does not currently produce a synthetic aggregated
     /// `total` summary across parts in [`ProfileData::new`].
-    Perf(MetricResults<PerfMetric, AnnotatedMetric<PerfQualities>>),
+    Perf(MetricResults<PerfMetric, StatisticalMetric<PerfQualities>>),
 }
 
 /// A regression detected while evaluating a [`BenchmarkSummary`].
@@ -447,7 +447,7 @@ where
 fn metric_results_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     let metric_result = generator.subschema_for::<crate::metrics::model::MetricResult>();
     let perf_metric_result = generator
-        .subschema_for::<crate::metrics::model::MetricResult<AnnotatedMetric<PerfQualities>>>();
+        .subschema_for::<crate::metrics::model::MetricResult<StatisticalMetric<PerfQualities>>>();
 
     schemars::json_schema!({
         "type": "object",

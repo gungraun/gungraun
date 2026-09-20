@@ -15,7 +15,7 @@ use indexmap::IndexMap;
 
 use crate::api::{Limit, PerfMetric};
 use crate::metrics::model::{
-    AnnotatedMetric, Metric, MetricKind, MetricResult, MetricResults, Metrics, PerfQualities,
+    Metric, MetricKind, MetricResult, MetricResults, Metrics, PerfQualities, StatisticalMetric,
 };
 use crate::summary::model::MetricChange;
 use crate::units::Unit;
@@ -74,405 +74,6 @@ pub trait TypeChecker {
     /// Returns `true` if the `Metric` has the expected metric type.
     fn verify_metric(&self, metric: Metric) -> bool {
         (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
-    }
-}
-
-impl<Q> AnnotatedMetric<Q> {
-    /// Creates an `AnnotatedMetric` from a numeric value, metadata, and an optional [`Unit`].
-    pub fn new<M, U>(value: M, qualities: Q, unit: U) -> Self
-    where
-        M: Into<Metric>,
-        U: Into<Option<Unit>>,
-    {
-        Self {
-            value: value.into(),
-            qualities,
-            unit: unit.into(),
-        }
-    }
-}
-
-impl AnnotatedMetric<PerfQualities> {
-    /// Creates a perf metric with default [`PerfQualities`] and an optional [`Unit`].
-    pub fn with_default_qualities<M, U>(value: M, unit: U) -> Self
-    where
-        M: Into<Metric>,
-        U: Into<Option<Unit>>,
-    {
-        Self::new(value, PerfQualities::default(), unit)
-    }
-
-    /// Returns this metric value converted into the canonical base scale of its [`Unit`].
-    ///
-    /// Unit-less metrics are returned unchanged.
-    ///
-    /// ```
-    /// use gungraun_runner::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
-    /// use gungraun_runner::units::Unit;
-    ///
-    /// let duration = AnnotatedMetric::new(750.0, PerfQualities::default(), Unit::Milliseconds);
-    ///
-    /// assert_eq!(duration.base_value(), 0.75);
-    ///
-    /// let bytes = AnnotatedMetric::new(2.0, PerfQualities::default(), Unit::Kilobytes);
-    ///
-    /// assert_eq!(bytes.base_value(), 2000.0);
-    /// ```
-    #[expect(clippy::cast_precision_loss)]
-    pub fn base_value(&self) -> f64 {
-        match self.value {
-            Metric::Int(value) => self
-                .unit
-                .as_ref()
-                .map_or(value as f64, |unit| unit.base_value(value as f64)),
-            Metric::Float(value) => self
-                .unit
-                .as_ref()
-                .map_or(value, |unit| unit.base_value(value)),
-        }
-    }
-
-    /// Converts a canonical base-scale value into this metric's current [`Unit`].
-    ///
-    /// This is useful when values are accumulated in a canonical scale but need to be written back
-    /// using the metric's current display unit.
-    ///
-    /// Unit-less metrics return the input unchanged.
-    pub fn rebase(&self, value: f64) -> f64 {
-        self.unit.as_ref().map_or(value, |unit| unit.rebase(value))
-    }
-
-    /// Creates the averaged metric value for a merged perf event from a canonical mean.
-    ///
-    /// `canonical_mean` must be in the canonical base scale returned by
-    /// [`AnnotatedMetric::base_value`]. This function converts that mean back into the metric's
-    /// current unit and then reapplies normal display scaling for float metrics.
-    #[expect(clippy::cast_possible_truncation)]
-    #[expect(clippy::cast_sign_loss)]
-    pub fn into_mean(self, canonical_mean: f64) -> Self {
-        match self.value {
-            Metric::Int(_) => {
-                let new_value = self.rebase(canonical_mean);
-                match self.unit {
-                    Some(unit) => {
-                        let (rescaled, unit) = unit.rescale(new_value);
-                        Self {
-                            value: Metric::Int(rescaled.round() as u64),
-                            unit: Some(unit),
-                            qualities: self.qualities,
-                        }
-                    }
-                    None => Self {
-                        value: Metric::Int(new_value.round() as u64),
-                        unit: None,
-                        qualities: self.qualities,
-                    },
-                }
-            }
-            Metric::Float(_) => {
-                let new_value = self.rebase(canonical_mean);
-                match self.unit {
-                    Some(unit) => Self {
-                        value: Metric::Float(new_value),
-                        unit: Some(unit),
-                        qualities: self.qualities,
-                    }
-                    .normalize(),
-                    None => Self {
-                        value: Metric::Float(new_value),
-                        unit: None,
-                        qualities: self.qualities,
-                    },
-                }
-            }
-        }
-    }
-}
-
-impl<Q> Display for AnnotatedMetric<Q> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.unit {
-            Some(unit) => write!(f, "{} {unit}", self.value),
-            None => self.value.fmt(f),
-        }
-    }
-}
-
-impl From<Metric> for AnnotatedMetric<PerfQualities> {
-    fn from(value: Metric) -> Self {
-        Self {
-            value,
-            unit: None,
-            qualities: PerfQualities::default(),
-        }
-    }
-}
-
-impl MetricValue for AnnotatedMetric<PerfQualities> {
-    fn metric(&self) -> Metric {
-        self.value
-    }
-
-    /// Adds another perf metric to this one returning the normalized result.
-    ///
-    /// Both operands are first normalized into a shared [`Unit`] and scale with
-    /// [`MetricValue::normalize_with`]. The summed result is normalized again before it is
-    /// returned.
-    ///
-    /// When both metrics carry [`PerfQualities`], their quality data is merged with
-    /// [`PerfQualities::add`]. This keeps metadata such as `event_runtime`, `pcnt_running`, and `n`
-    /// in sync with the combined metric value, while fields without a sound merge rule, such as
-    /// `rse`, are discarded.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the two metrics cannot be normalized into a shared unit, for example when their
-    /// units are incompatible or when one metric has a unit and the other is unit-less.
-    fn add(&self, other: &Self) -> Self {
-        let (this_normalized, other_normalized) = self
-            .normalize_with(other)
-            .expect("Only compatible units should be summed up");
-        let metric = this_normalized.value + other_normalized.value;
-
-        Self {
-            value: metric,
-            unit: this_normalized.unit,
-            qualities: this_normalized.qualities.add(&other_normalized.qualities),
-        }
-        .normalize()
-    }
-
-    /// Subtracts another perf metric from this one, saturating results at zero.
-    ///
-    /// Like in [`Self::add`], both operands are first normalized into a shared unit and scale with
-    /// [`MetricValue::normalize_with`]. The difference is then normalized again before it is
-    /// returned.
-    ///
-    /// Unlike [`MetricValue::add`], subtraction does not attempt to preserve or merge
-    /// [`PerfQualities`]. The returned metric always uses default perf qualities, because the
-    /// existing metadata fields do not have well-defined subtraction semantics.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the two metrics cannot be normalized into a shared unit, for example when their
-    /// units are incompatible or when one metric has a unit and the other is unit-less.
-    fn saturating_sub(&self, other: &Self) -> Self {
-        let (this_normalized, other_normalized) = self
-            .normalize_with(other)
-            .expect("Only compatible units should be subtracted");
-
-        let metric = this_normalized
-            .value
-            .saturating_sub(&other_normalized.value);
-
-        Self {
-            value: metric,
-            unit: this_normalized.unit,
-            qualities: PerfQualities::default(),
-        }
-        .normalize()
-    }
-
-    fn to_string_without_unit(&self) -> String {
-        self.value.to_string()
-    }
-
-    fn unit(&self) -> Option<&Unit> {
-        self.unit.as_ref()
-    }
-
-    /// Returns this value normalized into a stable scale for its [`Unit`].
-    ///
-    /// For finite, non-zero floating-point metrics with a unit, normalization chooses the unit
-    /// returned by [`Unit::rescale`] for the current numeric value. This prefers a representation
-    /// whose magnitude is easier to read than the original one, for example turning `1500 ms` into
-    /// `1.5 s` or `0.0005 ms` into `500 ns`.
-    ///
-    /// Integer metrics, unit-less values, and floating-point values that are zero or non-finite are
-    /// returned unchanged.
-    ///
-    /// When the metric value is rescaled, attached perf quality fields that use the same unit are
-    /// scaled alongside it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use gungraun_runner::metrics::logic::MetricValue;
-    /// use gungraun_runner::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
-    /// use gungraun_runner::units::Unit;
-    ///
-    /// let metric = AnnotatedMetric::new(
-    ///     1_500.0,
-    ///     PerfQualities::new(123, 45.0, 0.06, 1, 123.0),
-    ///     Unit::Milliseconds,
-    /// );
-    ///
-    /// let normalized = metric.normalize();
-    ///
-    /// assert_eq!(normalized.value, Metric::Float(1.5));
-    /// assert_eq!(normalized.unit, Some(Unit::Seconds));
-    /// assert_eq!(normalized.qualities.mean, Some(0.123));
-    /// ```
-    ///
-    /// ```
-    /// use gungraun_runner::metrics::logic::MetricValue;
-    /// use gungraun_runner::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
-    ///
-    /// let metric = AnnotatedMetric::new(42, PerfQualities::default(), None);
-    ///
-    /// assert_eq!(metric.normalize(), metric);
-    /// ```
-    fn normalize(&self) -> Self {
-        match (self.value, self.unit.as_ref()) {
-            (Metric::Float(float), Some(unit)) if float.is_finite() && float != 0.0 => {
-                let (new_value, new_unit) = unit.rescale(float);
-                let factor = new_value / float;
-                Self {
-                    value: Metric::Float(new_value),
-                    unit: Some(new_unit),
-                    qualities: self.qualities.scale_by_metric(Metric::Float(factor)),
-                }
-            }
-            _ => self.clone(),
-        }
-    }
-
-    /// Normalizes this value and another perf metric into a shared [`Unit`] and scale.
-    ///
-    /// If both metrics have compatible units with a base scale, this method first chooses the finer
-    /// of the two units as a common starting point, so neither value loses precision during
-    /// conversion. When both converted metrics are floating-point values, it then calls
-    /// [`Unit::rescale`] on the smaller absolute magnitude of the pair to choose a shared display
-    /// unit that is readable for both values.
-    ///
-    /// Integer-only pairs, and mixed integer / floating-point pairs, keep the chosen target unit
-    /// directly instead of applying the readability rescaling step. If one metric is unit-less and
-    /// the other has a unit, or if the units are incompatible, this returns `None`.
-    ///
-    /// # Examples
-    ///
-    /// Normalize two compatible floating point units [`Unit::Seconds`] and [`Unit::Milliseconds`]:
-    ///
-    /// ```
-    /// use gungraun_runner::metrics::logic::MetricValue;
-    /// use gungraun_runner::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
-    /// use gungraun_runner::units::Unit;
-    ///
-    /// let lhs = AnnotatedMetric::new(1.0, PerfQualities::default(), Unit::Seconds);
-    /// let rhs = AnnotatedMetric::new(1_500.0, PerfQualities::default(), Unit::Milliseconds);
-    ///
-    /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
-    ///
-    /// assert_eq!(lhs.value, Metric::Float(1.0));
-    /// assert_eq!(rhs.value, Metric::Float(1.5));
-    /// assert_eq!(lhs.unit, Some(Unit::Seconds));
-    /// assert_eq!(rhs.unit, Some(Unit::Seconds));
-    /// ```
-    ///
-    /// The same, but this time as integer units
-    ///
-    /// ```
-    /// use gungraun_runner::metrics::logic::MetricValue;
-    /// use gungraun_runner::metrics::model::{AnnotatedMetric, Metric, PerfQualities};
-    /// use gungraun_runner::units::Unit;
-    ///
-    /// let lhs = AnnotatedMetric::new(1, PerfQualities::default(), Unit::Seconds);
-    /// let rhs = AnnotatedMetric::new(1_500, PerfQualities::default(), Unit::Milliseconds);
-    ///
-    /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
-    ///
-    /// assert_eq!(lhs.value, Metric::Int(1_000));
-    /// assert_eq!(rhs.value, Metric::Int(1_500));
-    /// assert_eq!(lhs.unit, Some(Unit::Milliseconds));
-    /// assert_eq!(rhs.unit, Some(Unit::Milliseconds));
-    /// ```
-    fn normalize_with(&self, other: &Self) -> Option<(Self, Self)> {
-        match (&self.unit, &other.unit) {
-            (None, None) => Some((self.clone(), other.clone())),
-            (Some(_), None) | (None, Some(_)) => None,
-            (Some(this_unit), Some(other_unit)) => {
-                let (target_unit, this_factor, other_factor) =
-                    match (this_unit.base_scale(), other_unit.base_scale()) {
-                        (Some(ts), Some(os)) if ts <= os => {
-                            // self has finer (smaller base_scale) or equal unit
-                            let other_factor = other_unit.scale_factor_metric(this_unit)?;
-                            (this_unit.clone(), Metric::Int(1), other_factor)
-                        }
-                        (Some(_), Some(_)) => {
-                            // other has finer unit
-                            let this_factor = this_unit.scale_factor_metric(other_unit)?;
-                            (other_unit.clone(), this_factor, Metric::Int(1))
-                        }
-                        _ => {
-                            // Rate or units without base_scale: pick self as target
-                            let other_factor = other_unit.scale_factor_metric(this_unit)?;
-                            (this_unit.clone(), Metric::Int(1), other_factor)
-                        }
-                    };
-
-                // This is similar to what the normalize method does for a single metric, however we
-                // have to scale both metrics with the same factor, or else it could happen that one
-                // unit `0.5 ms` -> `500 us` while the other `1000 ms` -> `1 s`
-                let (this_metric_value, other_metric_value) =
-                    match (self.value * this_factor, other.value * other_factor) {
-                        (Metric::Float(this_value), Metric::Float(other_value)) => {
-                            let rescale_value = this_value.abs().min(other_value.abs());
-                            let rescale_value = if rescale_value == 0.0 {
-                                this_value.abs().max(other_value.abs())
-                            } else {
-                                rescale_value
-                            };
-
-                            let (_, mutual_unit) = target_unit.rescale(rescale_value);
-
-                            match target_unit.scale_factor_metric(&mutual_unit) {
-                                Some(mutual_factor) => (
-                                    Self {
-                                        value: Metric::Float(this_value) * mutual_factor,
-                                        unit: Some(mutual_unit.clone()),
-                                        qualities: self
-                                            .qualities
-                                            .scale_by_metric(mutual_factor * this_factor),
-                                    },
-                                    Self {
-                                        value: Metric::Float(other_value) * mutual_factor,
-                                        unit: Some(mutual_unit),
-                                        qualities: other
-                                            .qualities
-                                            .scale_by_metric(mutual_factor * other_factor),
-                                    },
-                                ),
-                                None => (
-                                    Self {
-                                        value: Metric::Float(this_value),
-                                        unit: Some(target_unit.clone()),
-                                        qualities: self.qualities.scale_by_metric(this_factor),
-                                    },
-                                    Self {
-                                        value: Metric::Float(other_value),
-                                        unit: Some(target_unit),
-                                        qualities: other.qualities.scale_by_metric(other_factor),
-                                    },
-                                ),
-                            }
-                        }
-                        (this_metric, other_metric) => (
-                            Self {
-                                value: this_metric,
-                                unit: Some(target_unit.clone()),
-                                qualities: self.qualities.scale_by_metric(this_factor),
-                            },
-                            Self {
-                                value: other_metric,
-                                unit: Some(target_unit),
-                                qualities: other.qualities.scale_by_metric(other_factor),
-                            },
-                        ),
-                    };
-
-                Some((this_metric_value, other_metric_value))
-            }
-        }
     }
 }
 
@@ -1068,7 +669,7 @@ where
     }
 }
 
-impl Metrics<PerfMetric, AnnotatedMetric<PerfQualities>> {
+impl Metrics<PerfMetric, StatisticalMetric<PerfQualities>> {
     /// Normalizes perf metrics by the number of benchmark repetitions.
     ///
     /// This scales the measured metric value and `event_runtime`. Percent-like qualities such as
@@ -1250,6 +851,405 @@ impl PerfQualities {
     }
 }
 
+impl<S> StatisticalMetric<S> {
+    /// Creates a `StatisticalMetric` from a numeric value, metadata, and an optional [`Unit`].
+    pub fn new<M, U>(value: M, qualities: S, unit: U) -> Self
+    where
+        M: Into<Metric>,
+        U: Into<Option<Unit>>,
+    {
+        Self {
+            value: value.into(),
+            qualities,
+            unit: unit.into(),
+        }
+    }
+}
+
+impl StatisticalMetric<PerfQualities> {
+    /// Creates a perf metric with default [`PerfQualities`] and an optional [`Unit`].
+    pub fn with_default_qualities<M, U>(value: M, unit: U) -> Self
+    where
+        M: Into<Metric>,
+        U: Into<Option<Unit>>,
+    {
+        Self::new(value, PerfQualities::default(), unit)
+    }
+
+    /// Returns this metric value converted into the canonical base scale of its [`Unit`].
+    ///
+    /// Unit-less metrics are returned unchanged.
+    ///
+    /// ```
+    /// use gungraun_runner::metrics::model::{Metric, PerfQualities, StatisticalMetric};
+    /// use gungraun_runner::units::Unit;
+    ///
+    /// let duration = StatisticalMetric::new(750.0, PerfQualities::default(), Unit::Milliseconds);
+    ///
+    /// assert_eq!(duration.base_value(), 0.75);
+    ///
+    /// let bytes = StatisticalMetric::new(2.0, PerfQualities::default(), Unit::Kilobytes);
+    ///
+    /// assert_eq!(bytes.base_value(), 2000.0);
+    /// ```
+    #[expect(clippy::cast_precision_loss)]
+    pub fn base_value(&self) -> f64 {
+        match self.value {
+            Metric::Int(value) => self
+                .unit
+                .as_ref()
+                .map_or(value as f64, |unit| unit.base_value(value as f64)),
+            Metric::Float(value) => self
+                .unit
+                .as_ref()
+                .map_or(value, |unit| unit.base_value(value)),
+        }
+    }
+
+    /// Converts a canonical base-scale value into this metric's current [`Unit`].
+    ///
+    /// This is useful when values are accumulated in a canonical scale but need to be written back
+    /// using the metric's current display unit.
+    ///
+    /// Unit-less metrics return the input unchanged.
+    pub fn rebase(&self, value: f64) -> f64 {
+        self.unit.as_ref().map_or(value, |unit| unit.rebase(value))
+    }
+
+    /// Creates the averaged metric value for a merged perf event from a canonical mean.
+    ///
+    /// `canonical_mean` must be in the canonical base scale returned by
+    /// [`StatisticalMetric::base_value`]. This function converts that mean back into the metric's
+    /// current unit and then reapplies normal display scaling for float metrics.
+    #[expect(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_sign_loss)]
+    pub fn into_mean(self, canonical_mean: f64) -> Self {
+        match self.value {
+            Metric::Int(_) => {
+                let new_value = self.rebase(canonical_mean);
+                match self.unit {
+                    Some(unit) => {
+                        let (rescaled, unit) = unit.rescale(new_value);
+                        Self {
+                            value: Metric::Int(rescaled.round() as u64),
+                            unit: Some(unit),
+                            qualities: self.qualities,
+                        }
+                    }
+                    None => Self {
+                        value: Metric::Int(new_value.round() as u64),
+                        unit: None,
+                        qualities: self.qualities,
+                    },
+                }
+            }
+            Metric::Float(_) => {
+                let new_value = self.rebase(canonical_mean);
+                match self.unit {
+                    Some(unit) => Self {
+                        value: Metric::Float(new_value),
+                        unit: Some(unit),
+                        qualities: self.qualities,
+                    }
+                    .normalize(),
+                    None => Self {
+                        value: Metric::Float(new_value),
+                        unit: None,
+                        qualities: self.qualities,
+                    },
+                }
+            }
+        }
+    }
+}
+
+impl<S> Display for StatisticalMetric<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.unit {
+            Some(unit) => write!(f, "{} {unit}", self.value),
+            None => self.value.fmt(f),
+        }
+    }
+}
+
+impl From<Metric> for StatisticalMetric<PerfQualities> {
+    fn from(value: Metric) -> Self {
+        Self {
+            value,
+            unit: None,
+            qualities: PerfQualities::default(),
+        }
+    }
+}
+
+impl MetricValue for StatisticalMetric<PerfQualities> {
+    fn metric(&self) -> Metric {
+        self.value
+    }
+
+    /// Adds another perf metric to this one returning the normalized result.
+    ///
+    /// Both operands are first normalized into a shared [`Unit`] and scale with
+    /// [`MetricValue::normalize_with`]. The summed result is normalized again before it is
+    /// returned.
+    ///
+    /// When both metrics carry [`PerfQualities`], their quality data is merged with
+    /// [`PerfQualities::add`]. This keeps metadata such as `event_runtime`, `pcnt_running`, and `n`
+    /// in sync with the combined metric value, while fields without a sound merge rule, such as
+    /// `rse`, are discarded.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the two metrics cannot be normalized into a shared unit, for example when their
+    /// units are incompatible or when one metric has a unit and the other is unit-less.
+    fn add(&self, other: &Self) -> Self {
+        let (this_normalized, other_normalized) = self
+            .normalize_with(other)
+            .expect("Only compatible units should be summed up");
+        let metric = this_normalized.value + other_normalized.value;
+
+        Self {
+            value: metric,
+            unit: this_normalized.unit,
+            qualities: this_normalized.qualities.add(&other_normalized.qualities),
+        }
+        .normalize()
+    }
+
+    /// Subtracts another perf metric from this one, saturating results at zero.
+    ///
+    /// Like in [`Self::add`], both operands are first normalized into a shared unit and scale with
+    /// [`MetricValue::normalize_with`]. The difference is then normalized again before it is
+    /// returned.
+    ///
+    /// Unlike [`MetricValue::add`], subtraction does not attempt to preserve or merge
+    /// [`PerfQualities`]. The returned metric always uses default perf qualities, because the
+    /// existing metadata fields do not have well-defined subtraction semantics.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the two metrics cannot be normalized into a shared unit, for example when their
+    /// units are incompatible or when one metric has a unit and the other is unit-less.
+    fn saturating_sub(&self, other: &Self) -> Self {
+        let (this_normalized, other_normalized) = self
+            .normalize_with(other)
+            .expect("Only compatible units should be subtracted");
+
+        let metric = this_normalized
+            .value
+            .saturating_sub(&other_normalized.value);
+
+        Self {
+            value: metric,
+            unit: this_normalized.unit,
+            qualities: PerfQualities::default(),
+        }
+        .normalize()
+    }
+
+    fn to_string_without_unit(&self) -> String {
+        self.value.to_string()
+    }
+
+    fn unit(&self) -> Option<&Unit> {
+        self.unit.as_ref()
+    }
+
+    /// Returns this value normalized into a stable scale for its [`Unit`].
+    ///
+    /// For finite, non-zero floating-point metrics with a unit, normalization chooses the unit
+    /// returned by [`Unit::rescale`] for the current numeric value. This prefers a representation
+    /// whose magnitude is easier to read than the original one, for example turning `1500 ms` into
+    /// `1.5 s` or `0.0005 ms` into `500 ns`.
+    ///
+    /// Integer metrics, unit-less values, and floating-point values that are zero or non-finite are
+    /// returned unchanged.
+    ///
+    /// When the metric value is rescaled, attached perf quality fields that use the same unit are
+    /// scaled alongside it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gungraun_runner::metrics::logic::MetricValue;
+    /// use gungraun_runner::metrics::model::{Metric, PerfQualities, StatisticalMetric};
+    /// use gungraun_runner::units::Unit;
+    ///
+    /// let metric = StatisticalMetric::new(
+    ///     1_500.0,
+    ///     PerfQualities::new(123, 45.0, 0.06, 1, 123.0),
+    ///     Unit::Milliseconds,
+    /// );
+    ///
+    /// let normalized = metric.normalize();
+    ///
+    /// assert_eq!(normalized.value, Metric::Float(1.5));
+    /// assert_eq!(normalized.unit, Some(Unit::Seconds));
+    /// assert_eq!(normalized.qualities.mean, Some(0.123));
+    /// ```
+    ///
+    /// ```
+    /// use gungraun_runner::metrics::logic::MetricValue;
+    /// use gungraun_runner::metrics::model::{Metric, PerfQualities, StatisticalMetric};
+    ///
+    /// let metric = StatisticalMetric::new(42, PerfQualities::default(), None);
+    ///
+    /// assert_eq!(metric.normalize(), metric);
+    /// ```
+    fn normalize(&self) -> Self {
+        match (self.value, self.unit.as_ref()) {
+            (Metric::Float(float), Some(unit)) if float.is_finite() && float != 0.0 => {
+                let (new_value, new_unit) = unit.rescale(float);
+                let factor = new_value / float;
+                Self {
+                    value: Metric::Float(new_value),
+                    unit: Some(new_unit),
+                    qualities: self.qualities.scale_by_metric(Metric::Float(factor)),
+                }
+            }
+            _ => self.clone(),
+        }
+    }
+
+    /// Normalizes this value and another perf metric into a shared [`Unit`] and scale.
+    ///
+    /// If both metrics have compatible units with a base scale, this method first chooses the finer
+    /// of the two units as a common starting point, so neither value loses precision during
+    /// conversion. When both converted metrics are floating-point values, it then calls
+    /// [`Unit::rescale`] on the smaller absolute magnitude of the pair to choose a shared display
+    /// unit that is readable for both values.
+    ///
+    /// Integer-only pairs, and mixed integer / floating-point pairs, keep the chosen target unit
+    /// directly instead of applying the readability rescaling step. If one metric is unit-less and
+    /// the other has a unit, or if the units are incompatible, this returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// Normalize two compatible floating point units [`Unit::Seconds`] and [`Unit::Milliseconds`]:
+    ///
+    /// ```
+    /// use gungraun_runner::metrics::logic::MetricValue;
+    /// use gungraun_runner::metrics::model::{Metric, PerfQualities, StatisticalMetric};
+    /// use gungraun_runner::units::Unit;
+    ///
+    /// let lhs = StatisticalMetric::new(1.0, PerfQualities::default(), Unit::Seconds);
+    /// let rhs = StatisticalMetric::new(1_500.0, PerfQualities::default(), Unit::Milliseconds);
+    ///
+    /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
+    ///
+    /// assert_eq!(lhs.value, Metric::Float(1.0));
+    /// assert_eq!(rhs.value, Metric::Float(1.5));
+    /// assert_eq!(lhs.unit, Some(Unit::Seconds));
+    /// assert_eq!(rhs.unit, Some(Unit::Seconds));
+    /// ```
+    ///
+    /// The same, but this time as integer units
+    ///
+    /// ```
+    /// use gungraun_runner::metrics::logic::MetricValue;
+    /// use gungraun_runner::metrics::model::{Metric, PerfQualities, StatisticalMetric};
+    /// use gungraun_runner::units::Unit;
+    ///
+    /// let lhs = StatisticalMetric::new(1, PerfQualities::default(), Unit::Seconds);
+    /// let rhs = StatisticalMetric::new(1_500, PerfQualities::default(), Unit::Milliseconds);
+    ///
+    /// let (lhs, rhs) = lhs.normalize_with(&rhs).unwrap();
+    ///
+    /// assert_eq!(lhs.value, Metric::Int(1_000));
+    /// assert_eq!(rhs.value, Metric::Int(1_500));
+    /// assert_eq!(lhs.unit, Some(Unit::Milliseconds));
+    /// assert_eq!(rhs.unit, Some(Unit::Milliseconds));
+    /// ```
+    fn normalize_with(&self, other: &Self) -> Option<(Self, Self)> {
+        match (&self.unit, &other.unit) {
+            (None, None) => Some((self.clone(), other.clone())),
+            (Some(_), None) | (None, Some(_)) => None,
+            (Some(this_unit), Some(other_unit)) => {
+                let (target_unit, this_factor, other_factor) =
+                    match (this_unit.base_scale(), other_unit.base_scale()) {
+                        (Some(ts), Some(os)) if ts <= os => {
+                            // self has finer (smaller base_scale) or equal unit
+                            let other_factor = other_unit.scale_factor_metric(this_unit)?;
+                            (this_unit.clone(), Metric::Int(1), other_factor)
+                        }
+                        (Some(_), Some(_)) => {
+                            // other has finer unit
+                            let this_factor = this_unit.scale_factor_metric(other_unit)?;
+                            (other_unit.clone(), this_factor, Metric::Int(1))
+                        }
+                        _ => {
+                            // Rate or units without base_scale: pick self as target
+                            let other_factor = other_unit.scale_factor_metric(this_unit)?;
+                            (this_unit.clone(), Metric::Int(1), other_factor)
+                        }
+                    };
+
+                // This is similar to what the normalize method does for a single metric, however we
+                // have to scale both metrics with the same factor, or else it could happen that one
+                // unit `0.5 ms` -> `500 us` while the other `1000 ms` -> `1 s`
+                let (this_metric_value, other_metric_value) =
+                    match (self.value * this_factor, other.value * other_factor) {
+                        (Metric::Float(this_value), Metric::Float(other_value)) => {
+                            let rescale_value = this_value.abs().min(other_value.abs());
+                            let rescale_value = if rescale_value == 0.0 {
+                                this_value.abs().max(other_value.abs())
+                            } else {
+                                rescale_value
+                            };
+
+                            let (_, mutual_unit) = target_unit.rescale(rescale_value);
+
+                            match target_unit.scale_factor_metric(&mutual_unit) {
+                                Some(mutual_factor) => (
+                                    Self {
+                                        value: Metric::Float(this_value) * mutual_factor,
+                                        unit: Some(mutual_unit.clone()),
+                                        qualities: self
+                                            .qualities
+                                            .scale_by_metric(mutual_factor * this_factor),
+                                    },
+                                    Self {
+                                        value: Metric::Float(other_value) * mutual_factor,
+                                        unit: Some(mutual_unit),
+                                        qualities: other
+                                            .qualities
+                                            .scale_by_metric(mutual_factor * other_factor),
+                                    },
+                                ),
+                                None => (
+                                    Self {
+                                        value: Metric::Float(this_value),
+                                        unit: Some(target_unit.clone()),
+                                        qualities: self.qualities.scale_by_metric(this_factor),
+                                    },
+                                    Self {
+                                        value: Metric::Float(other_value),
+                                        unit: Some(target_unit),
+                                        qualities: other.qualities.scale_by_metric(other_factor),
+                                    },
+                                ),
+                            }
+                        }
+                        (this_metric, other_metric) => (
+                            Self {
+                                value: this_metric,
+                                unit: Some(target_unit.clone()),
+                                qualities: self.qualities.scale_by_metric(this_factor),
+                            },
+                            Self {
+                                value: other_metric,
+                                unit: Some(target_unit),
+                                qualities: other.qualities.scale_by_metric(other_factor),
+                            },
+                        ),
+                    };
+
+                Some((this_metric_value, other_metric_value))
+            }
+        }
+    }
+}
+
 impl From<Metric> for f64 {
     #[expect(clippy::cast_precision_loss)]
     fn from(value: Metric) -> Self {
@@ -1387,391 +1387,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case::same_unit(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(2.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(3.0, Unit::Seconds)
-    )]
-    #[case::compatible_scaled_units(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(500.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Seconds)
-    )]
-    #[case::unitless_metrics(
-        AnnotatedMetric::with_default_qualities(1, None),
-        AnnotatedMetric::with_default_qualities(2, None),
-        AnnotatedMetric::with_default_qualities(3, None)
-    )]
-    #[case::result_is_normalized(
-        AnnotatedMetric::with_default_qualities(1000.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(500.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Seconds)
-    )]
-    fn test_annotated_metric_add(
-        #[case] lhs: AnnotatedMetric<PerfQualities>,
-        #[case] rhs: AnnotatedMetric<PerfQualities>,
-        #[case] expected: AnnotatedMetric<PerfQualities>,
-    ) {
-        assert_eq!(lhs.add(&rhs), expected);
-    }
-
-    #[test]
-    fn test_annotated_metric_add_merges_perf_qualities() {
-        let expected = AnnotatedMetric::new(
-            1_500,
-            PerfQualities::new(400, 66.666_666_666_666_67, None, 3, None),
-            Unit::Milliseconds,
-        );
-        let lhs = AnnotatedMetric::new(
-            500,
-            PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
-            Unit::Milliseconds,
-        );
-        let rhs = AnnotatedMetric::new(
-            1,
-            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
-            Unit::Seconds,
-        );
-
-        let actual = lhs.add(&rhs);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    #[should_panic(expected = "Only compatible units should be summed up")]
-    fn test_annotated_metric_add_panics_for_incompatible_units() {
-        let lhs = AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds);
-        let rhs = AnnotatedMetric::with_default_qualities(1.0, Unit::Bytes);
-
-        let _ = lhs.add(&rhs);
-    }
-
-    #[rstest]
-    #[case::float_large_value_to_larger_unit(
-        AnnotatedMetric::with_default_qualities(1500.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Seconds)
-    )]
-    #[case::float_small_value_to_smaller_unit(
-        AnnotatedMetric::with_default_qualities(0.0005, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(500.0, Unit::Nanoseconds)
-    )]
-    #[case::float_passthrough(
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1.5, Unit::Milliseconds)
-    )]
-    #[case::int_passthrough(
-        AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds)
-    )]
-    #[case::no_unit_passthrough(
-        AnnotatedMetric::with_default_qualities(1.5, None),
-        AnnotatedMetric::with_default_qualities(1.5, None)
-    )]
-    #[case::zero(
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds)
-    )]
-    #[case::infinity(
-        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds)
-    )]
-    #[case::neg_infinity(
-        AnnotatedMetric::with_default_qualities(
-            Metric::Float(f64::NEG_INFINITY),
-            Unit::Milliseconds
-        ),
-        AnnotatedMetric::with_default_qualities(
-            Metric::Float(f64::NEG_INFINITY),
-            Unit::Milliseconds
-        )
-    )]
-    fn test_annotated_metric_normalize(
-        #[case] input: AnnotatedMetric<PerfQualities>,
-        #[case] expected: AnnotatedMetric<PerfQualities>,
-    ) {
-        assert_eq!(input.normalize(), expected);
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_scales_perf_qualities() {
-        let metric = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            PerfQualities::new(123, 45.0, 6.0, 1, 123.0),
-            Unit::Milliseconds,
-        );
-
-        let expected = AnnotatedMetric::new(
-            Metric::Float(1.5),
-            PerfQualities::new(123, 45.0, 6.0, 1, 0.123),
-            Unit::Seconds,
-        );
-
-        let actual = metric.normalize();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_when_mean_is_none_then_preserves_perf_qualities() {
-        let qualities = PerfQualities::new(123, 45.0, 6.0, 1, None);
-
-        let metric = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            qualities.clone(),
-            Unit::Milliseconds,
-        );
-
-        let expected = AnnotatedMetric::new(1.5, qualities, Unit::Seconds);
-
-        let actual = metric.normalize();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_with_scales_perf_qualities() {
-        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, 100.0);
-        let lhs = AnnotatedMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
-        let rhs = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
-            Unit::Milliseconds,
-        );
-
-        let expected_lhs = AnnotatedMetric::new(1.0, lhs_qualities, Unit::Seconds);
-        let expected_rhs = AnnotatedMetric::new(
-            Metric::Float(1.5),
-            PerfQualities::new(300, 75.0, 11.0, 2, 0.3),
-            Unit::Seconds,
-        );
-
-        let actual = lhs.normalize_with(&rhs);
-
-        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
-    }
-
-    #[test]
-    fn test_annotated_metric_normalize_with_when_mean_is_none_then_preserves_perf_qualities() {
-        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, None);
-        let rhs_qualities = PerfQualities::new(300, 75.0, 11.0, 2, None);
-
-        let lhs = AnnotatedMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
-        let rhs = AnnotatedMetric::new(
-            Metric::Float(1_500.0),
-            rhs_qualities.clone(),
-            Unit::Milliseconds,
-        );
-
-        let expected_lhs = AnnotatedMetric::new(1.0, lhs_qualities, Unit::Seconds);
-        let expected_rhs = AnnotatedMetric::new(1.5, rhs_qualities, Unit::Seconds);
-
-        let actual = lhs.normalize_with(&rhs);
-
-        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
-    }
-
-    #[rstest]
-    #[case::same_unit(
-        AnnotatedMetric::with_default_qualities(3.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(2.0, Unit::Seconds)
-    )]
-    #[case::compatible_scaled_units(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(500.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(500.0, Unit::Milliseconds)
-    )]
-    #[case::unitless_metrics(
-        AnnotatedMetric::with_default_qualities(3, None),
-        AnnotatedMetric::with_default_qualities(2, None),
-        AnnotatedMetric::with_default_qualities(1, None)
-    )]
-    #[case::saturates_at_zero(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(1500.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Seconds)
-    )]
-    fn test_annotated_metric_saturating_sub(
-        #[case] lhs: AnnotatedMetric<PerfQualities>,
-        #[case] rhs: AnnotatedMetric<PerfQualities>,
-        #[case] expected: AnnotatedMetric<PerfQualities>,
-    ) {
-        assert_eq!(lhs.saturating_sub(&rhs), expected);
-    }
-
-    #[test]
-    #[should_panic(expected = "Only compatible units should be subtracted")]
-    fn test_annotated_metric_saturating_sub_panics_for_incompatible_units() {
-        let lhs = AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds);
-        let rhs = AnnotatedMetric::with_default_qualities(1.0, Unit::Bytes);
-
-        let _ = lhs.saturating_sub(&rhs);
-    }
-
-    #[test]
-    fn test_annotated_metric_saturating_sub_resets_perf_qualities() {
-        let lhs = AnnotatedMetric::new(
-            500,
-            PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
-            Unit::Milliseconds,
-        );
-        let rhs = AnnotatedMetric::new(
-            1,
-            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
-            Unit::Seconds,
-        );
-
-        let expected = AnnotatedMetric::with_default_qualities(0, Unit::Milliseconds);
-
-        let actual = lhs.saturating_sub(&rhs);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[rstest]
-    #[case::same_unit_float(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(2.0, Unit::Seconds),
-        (
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-            AnnotatedMetric::with_default_qualities(2.0, Unit::Seconds),
-        ),
-    )]
-    #[case::different_unit_float(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(2.0, Unit::Bytes),
-        None
-    )]
-    #[case::same_unit_int(
-        AnnotatedMetric::with_default_qualities(100, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(200, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(100, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(200, Unit::Milliseconds),
-        ),
-    )]
-    #[case::different_unit_int(
-        AnnotatedMetric::with_default_qualities(100, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(200, Unit::Bytes),
-        None
-    )]
-    #[case::both_no_unit(
-        AnnotatedMetric::with_default_qualities(1.0, None),
-        AnnotatedMetric::with_default_qualities(2.0, None),
-        (
-            AnnotatedMetric::with_default_qualities(1.0, None),
-            AnnotatedMetric::with_default_qualities(2.0, None),
-        ),
-    )]
-    #[case::one_no_unit(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(2.0, None),
-        None
-    )]
-    #[case::s_and_ms_float(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(1000.0, Unit::Milliseconds
-        ),
-        (
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        ),
-    )]
-    #[case::ms_and_s_float(
-        AnnotatedMetric::with_default_qualities(1000.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        (
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        ),
-    )]
-    #[case::ms_and_s_int(
-        AnnotatedMetric::with_default_qualities(500, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(1, Unit::Seconds),
-        (
-            AnnotatedMetric::with_default_qualities(500, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(1000, Unit::Milliseconds),
-        ),
-    )]
-    #[case::display_normalization(
-        AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(1500.0, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-            AnnotatedMetric::with_default_qualities(1.5, Unit::Seconds),
-        ),
-    )]
-    #[case::fract_ms_and_ms(
-        AnnotatedMetric::with_default_qualities(0.05, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.005, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(50.0, Unit::Microseconds),
-            AnnotatedMetric::with_default_qualities(5.0, Unit::Microseconds),
-        ),
-    )]
-    #[case::one_is_zero(
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.005, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(0.0, Unit::Microseconds),
-            AnnotatedMetric::with_default_qualities(5.0, Unit::Microseconds),
-        ),
-    )]
-    #[case::both_zero(
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(0.0, Unit::Milliseconds),
-        ),
-    )]
-    #[case::one_is_infinity(
-        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.005, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Microseconds),
-            AnnotatedMetric::with_default_qualities(5.0, Unit::Microseconds),
-        ),
-    )]
-    #[case::both_infinity(
-        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
-            AnnotatedMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
-        ),
-    )]
-    #[case::one_is_neg_infinity(
-        AnnotatedMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Milliseconds),
-        AnnotatedMetric::with_default_qualities(0.005, Unit::Milliseconds),
-        (
-            AnnotatedMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Microseconds),
-            AnnotatedMetric::with_default_qualities(5.0, Unit::Microseconds),
-        ),
-    )]
-    #[case::both_neg_infinity(
-        AnnotatedMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
-        AnnotatedMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
-        (
-            AnnotatedMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
-            AnnotatedMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
-        ),
-    )]
-    fn test_annotated_metric_normalize_with<E>(
-        #[case] this: AnnotatedMetric<PerfQualities>,
-        #[case] other: AnnotatedMetric<PerfQualities>,
-        #[case] expected: E,
-    ) where
-        E: Into<
-            Option<(
-                AnnotatedMetric<PerfQualities>,
-                AnnotatedMetric<PerfQualities>,
-            )>,
-        >,
-    {
-        assert_eq!(this.normalize_with(&other), expected.into());
-    }
-
-    #[rstest]
     #[case::zero("0", 0)]
     #[case::one("1", 1)]
     #[case::u64_max(&format!("{}", u64::MAX), u64::MAX)]
@@ -1806,12 +1421,12 @@ mod tests {
         let metric_kind = PerfMetric("task-clock:u".to_owned());
         let results = MetricResults::new(EitherOrBoth::Both(
             Metrics(indexmap! {
-             metric_kind.clone() => AnnotatedMetric::with_default_qualities(
+             metric_kind.clone() => StatisticalMetric::with_default_qualities(
                  Metric::Float(1.0),
                  Unit::Seconds
             )}),
             Metrics(indexmap! {
-            metric_kind.clone() => AnnotatedMetric::with_default_qualities(
+            metric_kind.clone() => StatisticalMetric::with_default_qualities(
                 Metric::Float(1000.0),
                 Unit::Milliseconds)
             }),
@@ -1823,8 +1438,8 @@ mod tests {
                 factor: 1.0,
             }),
             values: EitherOrBoth::Both(
-                AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
-                AnnotatedMetric::with_default_qualities(1.0, Unit::Seconds),
+                StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+                StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
             ),
         };
 
@@ -2294,17 +1909,17 @@ mod tests {
     fn test_normalize_metrics_calibration_subtraction_happens_before_repetition_normalization() {
         let mut metrics = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(120, None),
+            StatisticalMetric::with_default_qualities(120, None),
         )]);
 
         let calibration = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(20, None),
+            StatisticalMetric::with_default_qualities(20, None),
         )]);
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::with_default_qualities(25, None),
+            StatisticalMetric::with_default_qualities(25, None),
         )]);
 
         metrics.saturating_sub_by_key(&calibration);
@@ -2317,12 +1932,12 @@ mod tests {
     fn test_normalize_metrics_divides_event_runtime_but_preserves_percent_like_qualities() {
         let mut metrics = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(100, PerfQualities::new(200, 75.0, 5.0, 1, 200.0), None),
+            StatisticalMetric::new(100, PerfQualities::new(200, 75.0, 5.0, 1, 200.0), None),
         )]);
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("instructions:u".to_owned()),
-            AnnotatedMetric::new(25, PerfQualities::new(50, 75.0, 5.0, 1, 50.0), None),
+            StatisticalMetric::new(25, PerfQualities::new(50, 75.0, 5.0, 1, 50.0), None),
         )]);
 
         metrics.normalize_by_repetitions(4);
@@ -2334,7 +1949,7 @@ mod tests {
     fn test_normalize_metrics_rescales_time_metric_and_mean_together() {
         let mut metrics = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 1.5,
                 PerfQualities::new(300, 75.0, 0.05, 2, 1.5),
                 Unit::Seconds,
@@ -2343,7 +1958,7 @@ mod tests {
 
         let expected = Metrics::with_metric_kinds([(
             PerfMetric("task-clock".to_owned()),
-            AnnotatedMetric::new(
+            StatisticalMetric::new(
                 375.0,
                 PerfQualities::new(75, 75.0, 0.05, 2, 375.0),
                 Unit::Milliseconds,
@@ -2360,22 +1975,22 @@ mod tests {
         let mut metrics = Metrics::with_metric_kinds([
             (
                 PerfMetric("instructions:u".to_owned()),
-                AnnotatedMetric::with_default_qualities(100, None),
+                StatisticalMetric::with_default_qualities(100, None),
             ),
             (
                 PerfMetric("task-clock".to_owned()),
-                AnnotatedMetric::with_default_qualities(25.0, Unit::Milliseconds),
+                StatisticalMetric::with_default_qualities(25.0, Unit::Milliseconds),
             ),
         ]);
 
         let expected = Metrics::with_metric_kinds([
             (
                 PerfMetric("instructions:u".to_owned()),
-                AnnotatedMetric::with_default_qualities(25, None),
+                StatisticalMetric::with_default_qualities(25, None),
             ),
             (
                 PerfMetric("task-clock".to_owned()),
-                AnnotatedMetric::with_default_qualities(6.25, Unit::Milliseconds),
+                StatisticalMetric::with_default_qualities(6.25, Unit::Milliseconds),
             ),
         ]);
 
@@ -2390,7 +2005,7 @@ mod tests {
     #[test]
     fn test_perf_metric_result_serializes_with_string_keys() {
         let results = MetricResults::new(EitherOrBoth::Left(Metrics(indexmap! {
-            PerfMetric("task-clock:u".to_owned()) => AnnotatedMetric::with_default_qualities(
+            PerfMetric("task-clock:u".to_owned()) => StatisticalMetric::with_default_qualities(
                 Metric::Float(1.0),
                 Unit::Milliseconds
            )
@@ -2466,5 +2081,390 @@ mod tests {
 
         assert_eq!(value.get("rse"), Some(&serde_json::json!(0.5)));
         assert_eq!(value.get("variance"), None);
+    }
+
+    #[rstest]
+    #[case::same_unit(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(2.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(3.0, Unit::Seconds)
+    )]
+    #[case::compatible_scaled_units(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(500.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(1.5, Unit::Seconds)
+    )]
+    #[case::unitless_metrics(
+        StatisticalMetric::with_default_qualities(1, None),
+        StatisticalMetric::with_default_qualities(2, None),
+        StatisticalMetric::with_default_qualities(3, None)
+    )]
+    #[case::result_is_normalized(
+        StatisticalMetric::with_default_qualities(1000.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(500.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(1.5, Unit::Seconds)
+    )]
+    fn test_statistical_metric_add(
+        #[case] lhs: StatisticalMetric<PerfQualities>,
+        #[case] rhs: StatisticalMetric<PerfQualities>,
+        #[case] expected: StatisticalMetric<PerfQualities>,
+    ) {
+        assert_eq!(lhs.add(&rhs), expected);
+    }
+
+    #[test]
+    fn test_statistical_metric_add_merges_perf_qualities() {
+        let expected = StatisticalMetric::new(
+            1_500,
+            PerfQualities::new(400, 66.666_666_666_666_67, None, 3, None),
+            Unit::Milliseconds,
+        );
+        let lhs = StatisticalMetric::new(
+            500,
+            PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
+            Unit::Milliseconds,
+        );
+        let rhs = StatisticalMetric::new(
+            1,
+            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
+            Unit::Seconds,
+        );
+
+        let actual = lhs.add(&rhs);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only compatible units should be summed up")]
+    fn test_statistical_metric_add_panics_for_incompatible_units() {
+        let lhs = StatisticalMetric::with_default_qualities(1.0, Unit::Seconds);
+        let rhs = StatisticalMetric::with_default_qualities(1.0, Unit::Bytes);
+
+        let _ = lhs.add(&rhs);
+    }
+
+    #[rstest]
+    #[case::float_large_value_to_larger_unit(
+        StatisticalMetric::with_default_qualities(1500.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(1.5, Unit::Seconds)
+    )]
+    #[case::float_small_value_to_smaller_unit(
+        StatisticalMetric::with_default_qualities(0.0005, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(500.0, Unit::Nanoseconds)
+    )]
+    #[case::float_passthrough(
+        StatisticalMetric::with_default_qualities(1.5, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(1.5, Unit::Milliseconds)
+    )]
+    #[case::int_passthrough(
+        StatisticalMetric::with_default_qualities(1000, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(1000, Unit::Milliseconds)
+    )]
+    #[case::no_unit_passthrough(
+        StatisticalMetric::with_default_qualities(1.5, None),
+        StatisticalMetric::with_default_qualities(1.5, None)
+    )]
+    #[case::zero(
+        StatisticalMetric::with_default_qualities(0.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(0.0, Unit::Milliseconds)
+    )]
+    #[case::infinity(
+        StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds)
+    )]
+    #[case::neg_infinity(
+        StatisticalMetric::with_default_qualities(
+            Metric::Float(f64::NEG_INFINITY),
+            Unit::Milliseconds
+        ),
+        StatisticalMetric::with_default_qualities(
+            Metric::Float(f64::NEG_INFINITY),
+            Unit::Milliseconds
+        )
+    )]
+    fn test_statistical_metric_normalize(
+        #[case] input: StatisticalMetric<PerfQualities>,
+        #[case] expected: StatisticalMetric<PerfQualities>,
+    ) {
+        assert_eq!(input.normalize(), expected);
+    }
+
+    #[test]
+    fn test_statistical_metric_normalize_scales_perf_qualities() {
+        let metric = StatisticalMetric::new(
+            Metric::Float(1_500.0),
+            PerfQualities::new(123, 45.0, 6.0, 1, 123.0),
+            Unit::Milliseconds,
+        );
+
+        let expected = StatisticalMetric::new(
+            Metric::Float(1.5),
+            PerfQualities::new(123, 45.0, 6.0, 1, 0.123),
+            Unit::Seconds,
+        );
+
+        let actual = metric.normalize();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_statistical_metric_normalize_when_mean_is_none_then_preserves_perf_qualities() {
+        let qualities = PerfQualities::new(123, 45.0, 6.0, 1, None);
+
+        let metric = StatisticalMetric::new(
+            Metric::Float(1_500.0),
+            qualities.clone(),
+            Unit::Milliseconds,
+        );
+
+        let expected = StatisticalMetric::new(1.5, qualities, Unit::Seconds);
+
+        let actual = metric.normalize();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_statistical_metric_normalize_with_scales_perf_qualities() {
+        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, 100.0);
+        let lhs = StatisticalMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
+        let rhs = StatisticalMetric::new(
+            Metric::Float(1_500.0),
+            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
+            Unit::Milliseconds,
+        );
+
+        let expected_lhs = StatisticalMetric::new(1.0, lhs_qualities, Unit::Seconds);
+        let expected_rhs = StatisticalMetric::new(
+            Metric::Float(1.5),
+            PerfQualities::new(300, 75.0, 11.0, 2, 0.3),
+            Unit::Seconds,
+        );
+
+        let actual = lhs.normalize_with(&rhs);
+
+        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
+    }
+
+    #[test]
+    fn test_statistical_metric_normalize_with_when_mean_is_none_then_preserves_perf_qualities() {
+        let lhs_qualities = PerfQualities::new(100, 50.0, 7.0, 1, None);
+        let rhs_qualities = PerfQualities::new(300, 75.0, 11.0, 2, None);
+
+        let lhs = StatisticalMetric::new(1.0, lhs_qualities.clone(), Unit::Seconds);
+        let rhs = StatisticalMetric::new(
+            Metric::Float(1_500.0),
+            rhs_qualities.clone(),
+            Unit::Milliseconds,
+        );
+
+        let expected_lhs = StatisticalMetric::new(1.0, lhs_qualities, Unit::Seconds);
+        let expected_rhs = StatisticalMetric::new(1.5, rhs_qualities, Unit::Seconds);
+
+        let actual = lhs.normalize_with(&rhs);
+
+        assert_eq!(actual, Some((expected_lhs, expected_rhs)));
+    }
+
+    #[rstest]
+    #[case::same_unit(
+        StatisticalMetric::with_default_qualities(3.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(2.0, Unit::Seconds)
+    )]
+    #[case::compatible_scaled_units(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(500.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(500.0, Unit::Milliseconds)
+    )]
+    #[case::unitless_metrics(
+        StatisticalMetric::with_default_qualities(3, None),
+        StatisticalMetric::with_default_qualities(2, None),
+        StatisticalMetric::with_default_qualities(1, None)
+    )]
+    #[case::saturates_at_zero(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(1500.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(0.0, Unit::Seconds)
+    )]
+    fn test_statistical_metric_saturating_sub(
+        #[case] lhs: StatisticalMetric<PerfQualities>,
+        #[case] rhs: StatisticalMetric<PerfQualities>,
+        #[case] expected: StatisticalMetric<PerfQualities>,
+    ) {
+        assert_eq!(lhs.saturating_sub(&rhs), expected);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only compatible units should be subtracted")]
+    fn test_statistical_metric_saturating_sub_panics_for_incompatible_units() {
+        let lhs = StatisticalMetric::with_default_qualities(1.0, Unit::Seconds);
+        let rhs = StatisticalMetric::with_default_qualities(1.0, Unit::Bytes);
+
+        let _ = lhs.saturating_sub(&rhs);
+    }
+
+    #[test]
+    fn test_statistical_metric_saturating_sub_resets_perf_qualities() {
+        let lhs = StatisticalMetric::new(
+            500,
+            PerfQualities::new(100, 50.0, 7.0, 1, 100.0),
+            Unit::Milliseconds,
+        );
+        let rhs = StatisticalMetric::new(
+            1,
+            PerfQualities::new(300, 75.0, 11.0, 2, 300.0),
+            Unit::Seconds,
+        );
+
+        let expected = StatisticalMetric::with_default_qualities(0, Unit::Milliseconds);
+
+        let actual = lhs.saturating_sub(&rhs);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[rstest]
+    #[case::same_unit_float(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(2.0, Unit::Seconds),
+        (
+            StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+            StatisticalMetric::with_default_qualities(2.0, Unit::Seconds),
+        ),
+    )]
+    #[case::different_unit_float(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(2.0, Unit::Bytes),
+        None
+    )]
+    #[case::same_unit_int(
+        StatisticalMetric::with_default_qualities(100, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(200, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(100, Unit::Milliseconds),
+            StatisticalMetric::with_default_qualities(200, Unit::Milliseconds),
+        ),
+    )]
+    #[case::different_unit_int(
+        StatisticalMetric::with_default_qualities(100, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(200, Unit::Bytes),
+        None
+    )]
+    #[case::both_no_unit(
+        StatisticalMetric::with_default_qualities(1.0, None),
+        StatisticalMetric::with_default_qualities(2.0, None),
+        (
+            StatisticalMetric::with_default_qualities(1.0, None),
+            StatisticalMetric::with_default_qualities(2.0, None),
+        ),
+    )]
+    #[case::one_no_unit(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(2.0, None),
+        None
+    )]
+    #[case::s_and_ms_float(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(1000.0, Unit::Milliseconds
+        ),
+        (
+            StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+            StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        ),
+    )]
+    #[case::ms_and_s_float(
+        StatisticalMetric::with_default_qualities(1000.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        (
+            StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+            StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        ),
+    )]
+    #[case::ms_and_s_int(
+        StatisticalMetric::with_default_qualities(500, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(1, Unit::Seconds),
+        (
+            StatisticalMetric::with_default_qualities(500, Unit::Milliseconds),
+            StatisticalMetric::with_default_qualities(1000, Unit::Milliseconds),
+        ),
+    )]
+    #[case::display_normalization(
+        StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(1500.0, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(1.0, Unit::Seconds),
+            StatisticalMetric::with_default_qualities(1.5, Unit::Seconds),
+        ),
+    )]
+    #[case::fract_ms_and_ms(
+        StatisticalMetric::with_default_qualities(0.05, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(0.005, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(50.0, Unit::Microseconds),
+            StatisticalMetric::with_default_qualities(5.0, Unit::Microseconds),
+        ),
+    )]
+    #[case::one_is_zero(
+        StatisticalMetric::with_default_qualities(0.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(0.005, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(0.0, Unit::Microseconds),
+            StatisticalMetric::with_default_qualities(5.0, Unit::Microseconds),
+        ),
+    )]
+    #[case::both_zero(
+        StatisticalMetric::with_default_qualities(0.0, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(0.0, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(0.0, Unit::Milliseconds),
+            StatisticalMetric::with_default_qualities(0.0, Unit::Milliseconds),
+        ),
+    )]
+    #[case::one_is_infinity(
+        StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(0.005, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Microseconds),
+            StatisticalMetric::with_default_qualities(5.0, Unit::Microseconds),
+        ),
+    )]
+    #[case::both_infinity(
+        StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
+            StatisticalMetric::with_default_qualities(f64::INFINITY, Unit::Milliseconds),
+        ),
+    )]
+    #[case::one_is_neg_infinity(
+        StatisticalMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Milliseconds),
+        StatisticalMetric::with_default_qualities(0.005, Unit::Milliseconds),
+        (
+            StatisticalMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Microseconds),
+            StatisticalMetric::with_default_qualities(5.0, Unit::Microseconds),
+        ),
+    )]
+    #[case::both_neg_infinity(
+        StatisticalMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
+        StatisticalMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
+        (
+            StatisticalMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
+            StatisticalMetric::with_default_qualities(f64::NEG_INFINITY, Unit::Seconds),
+        ),
+    )]
+    fn test_statistical_metric_normalize_with<E>(
+        #[case] this: StatisticalMetric<PerfQualities>,
+        #[case] other: StatisticalMetric<PerfQualities>,
+        #[case] expected: E,
+    ) where
+        E: Into<
+            Option<(
+                StatisticalMetric<PerfQualities>,
+                StatisticalMetric<PerfQualities>,
+            )>,
+        >,
+    {
+        assert_eq!(this.normalize_with(&other), expected.into());
     }
 }

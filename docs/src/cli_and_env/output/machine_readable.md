@@ -27,12 +27,6 @@ save a summary file for each benchmark with `--save-summary=json|pretty-json`
 (env: `GUNGRAUN_SAVE_SUMMARY`). The `summary.json` files are stored next to the
 usual benchmark output files in the `target/gungraun` directory.
 
-Each v7 summary includes an `output_dir` field that identifies that benchmark's
-artifact directory. Paths below `project_root`, including `output_dir`, are
-relative to `project_root`; paths outside it remain absolute. Artifact paths
-inside `output_dir` are not repeated in the summary and can be discovered by
-scanning that directory.
-
 <!-- TODO: Add gungraun-summary description -->
 
 [summary.v1.schema.json]:

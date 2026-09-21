@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, anyhow};
 use either_or_both::EitherOrBoth;
 use itertools::Itertools;
+use jiff::Timestamp;
 use serde_json::Value;
 
 use crate::api::{ErrorMetric, Tool};
@@ -17,6 +18,7 @@ use crate::metrics::model::{Metric, MetricKind, MetricResults, Metrics, ToolMetr
 use crate::runner::args::NoCapture;
 use crate::runner::common::{
     Baselines, CapturedOutput, Config, ModulePath, PerfOutputConfig, PostProcessingConfig,
+    ToolRunTiming,
 };
 use crate::runner::format::{
     Formatter, OutputFormat, OutputFormatKind, VerticalFormatter, print_no_capture_footer,
@@ -65,10 +67,12 @@ impl BenchmarkSummary {
             group: group.to_owned(),
             id,
             description,
+            duration_ns: 0,
             profiles: Profiles::default(),
             output_dir: make_relative(&project_root, make_absolute(&project_root, output_dir)),
             package_dir: make_relative(&project_root, make_absolute(&project_root, package_dir)),
             project_root,
+            started_at: Timestamp::now().to_string(),
             baselines,
         }
     }
@@ -265,9 +269,40 @@ impl MetricChange {
 }
 
 impl Profile {
+    /// Create a new `Profile` for the given [`Tool`] and [`ProfileData`]
+    ///
+    /// Initial timings are all set to `0` or `None`
+    pub fn new(tool: Tool, data: ProfileData) -> Self {
+        Self {
+            data,
+            delay_ns: Option::default(),
+            duration_ns: 0,
+            process_ns: 0,
+            setup_ns: Option::default(),
+            started_at: String::new(),
+            teardown_ns: Option::default(),
+            tool,
+        }
+    }
+
     /// Returns `true` if one of the summaries has regressed.
     pub fn is_regressed(&self) -> bool {
         self.data.is_regressed()
+    }
+
+    /// Set the timings from a [`ToolRunTiming`]
+    pub fn set_timings(&mut self, timings: &ToolRunTiming) {
+        self.delay_ns = timings.delay_ns;
+        self.duration_ns = timings.duration_ns;
+        self.process_ns = timings.process_ns;
+        self.setup_ns = timings.setup_ns;
+        self.started_at = timings.started_at.to_string();
+        self.teardown_ns = timings.teardown_ns;
+    }
+
+    /// Set the start time of this profile
+    pub fn set_started_at(&mut self, started_at: &str) {
+        started_at.clone_into(&mut self.started_at);
     }
 }
 

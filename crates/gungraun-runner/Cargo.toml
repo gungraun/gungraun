@@ -41,6 +41,7 @@ runner = [
   "dep:gungraun-common",
   "dep:inferno",
   "dep:itertools",
+  "dep:jiff",
   "dep:log",
   "dep:nix",
   "dep:num_cpus",
@@ -95,6 +96,7 @@ inferno = { workspace = true, optional = true, default-features = false, feature
   'multithreaded',
 ] }
 itertools = { workspace = true, optional = true }
+jiff = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 nix = { workspace = true, optional = true, features = ["signal", "fs"] }
 num_cpus = { workspace = true, optional = true }

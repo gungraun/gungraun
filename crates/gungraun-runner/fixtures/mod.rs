@@ -216,18 +216,22 @@ pub fn process_handler_f(
     }
 
     if let Some((kind, child)) = assistant {
+        let started = std::time::Instant::now();
         match kind {
             AssistantKind::Setup => {
                 handler.setup = Some((kind.id(), child));
+                handler.setup_started = Some(started);
             }
             AssistantKind::Teardown => {
                 handler.teardown = Some((kind.id(), child));
+                handler.teardown_started = Some(started);
             }
         }
     }
 
     if let Some(child) = bench {
         handler.bench = Some(child);
+        handler.process_started = Some(std::time::Instant::now());
     }
 
     handler

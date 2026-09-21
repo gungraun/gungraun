@@ -1,4 +1,4 @@
-//! TODO: DOCS
+//! Summary output formats and destination-file management.
 
 use std::fs::File;
 use std::path::{Path, PathBuf};

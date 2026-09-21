@@ -193,6 +193,8 @@ pub struct BenchmarkSummary {
     /// `id` for a better way to construct an unique identifier for a benchmark run.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// The duration of the complete benchmark run in nanoseconds.
+    pub duration_ns: u64,
     /// The name of the function under test
     pub function_name: String,
     /// The name of the `benchmark_group`
@@ -229,6 +231,8 @@ pub struct BenchmarkSummary {
     pub profiles: Profiles,
     /// The project's absolute root directory
     pub project_root: PathBuf,
+    /// The RFC 3339 timestamp at which the benchmark run started.
+    pub started_at: String,
     /// The version string of this format.
     ///
     /// This is not semver and only major version numbers are used. There might be text occurrences
@@ -260,6 +264,24 @@ pub struct MetricChange {
 pub struct Profile {
     /// The data with the metrics and details about the tool run
     pub data: ProfileData,
+    /// The duration of the configured delays for this tool in nanoseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delay_ns: Option<u64>,
+    /// The total duration of this tool's complete run in nanoseconds.
+    pub duration_ns: u64,
+    /// The duration of the actual benchmark process in nanoseconds.
+    pub process_ns: u64,
+    /// The duration of the binary benchmark setup for this tool in nanoseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub setup_ns: Option<u64>,
+    /// The RFC 3339 timestamp at which this tool's first complete run started.
+    ///
+    /// In the case of --load-baseline runs or in general when no actual process and tool is
+    /// executed, this is the same time as [`BenchmarkSummary::started_at`].
+    pub started_at: String,
+    /// The duration of the binary benchmark teardown for this tool in nanoseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub teardown_ns: Option<u64>,
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
     #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub tool: Tool,
@@ -332,6 +354,12 @@ struct ProfileTotalWire {
 #[derive(Deserialize)]
 struct ProfileWire {
     data: ProfileDataWire,
+    delay_ns: Option<u64>,
+    duration_ns: u64,
+    process_ns: u64,
+    setup_ns: Option<u64>,
+    started_at: String,
+    teardown_ns: Option<u64>,
     tool: Tool,
 }
 
@@ -399,6 +427,12 @@ impl TryFrom<ProfileWire> for Profile {
                     metrics: total,
                 },
             },
+            delay_ns: wire.delay_ns,
+            duration_ns: wire.duration_ns,
+            process_ns: wire.process_ns,
+            setup_ns: wire.setup_ns,
+            started_at: wire.started_at,
+            teardown_ns: wire.teardown_ns,
             tool: wire.tool,
         })
     }
@@ -513,6 +547,7 @@ mod tests {
             "benchmark_exe": "benchmark",
             "benchmark_file": "benches/benchmark.rs",
             "description": null,
+            "duration_ns": 123_456_789,
             "function_name": "benchmark",
             "group": "group",
             "id": null,
@@ -522,6 +557,7 @@ mod tests {
             "package_dir": ".",
             "profiles": profiles,
             "project_root": "/project",
+            "started_at": "2026-09-21T14:03:22.123456789Z",
             "version": "7"
         })
     }
@@ -553,6 +589,12 @@ mod tests {
                     "metrics": {}
                 }
             },
+            "delay_ns": 1_000,
+            "duration_ns": 123_456,
+            "process_ns": 120_000,
+            "setup_ns": 2_000,
+            "started_at": "2026-09-21T14:03:22.123456789Z",
+            "teardown_ns": 456,
             "tool": tool
         })
     }
@@ -588,6 +630,12 @@ mod tests {
             100
         );
         assert!(serialized["data"]["parts"][0]["metrics"]["Callgrind"].is_null());
+        assert_eq!(serialized["delay_ns"], 1_000);
+        assert_eq!(serialized["duration_ns"], 123_456);
+        assert_eq!(serialized["process_ns"], 120_000);
+        assert_eq!(serialized["setup_ns"], 2_000);
+        assert_eq!(serialized["started_at"], "2026-09-21T14:03:22.123456789Z");
+        assert_eq!(serialized["teardown_ns"], 456);
     }
 
     #[test]
@@ -610,6 +658,27 @@ mod tests {
         assert!(regression.get("display").is_none());
         assert!(regression.get("unit").is_none());
         assert_eq!(regression["diff_pct"], "11.11111111111111");
+    }
+
+    #[test]
+    fn test_timing_fields_are_required() {
+        let mut summary = benchmark_summary(&[profile("Callgrind", "Ir")]);
+        summary.as_object_mut().unwrap().remove("started_at");
+        serde_json::from_value::<BenchmarkSummary>(summary).unwrap_err();
+
+        let mut summary = benchmark_summary(&[profile("Callgrind", "Ir")]);
+        summary["profiles"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("duration_ns");
+        serde_json::from_value::<BenchmarkSummary>(summary).unwrap_err();
+
+        let mut summary = benchmark_summary(&[profile("Callgrind", "Ir")]);
+        summary["profiles"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("process_ns");
+        serde_json::from_value::<BenchmarkSummary>(summary).unwrap_err();
     }
 
     #[test]

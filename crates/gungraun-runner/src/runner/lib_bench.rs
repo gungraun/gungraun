@@ -25,7 +25,7 @@ use crate::error::Error;
 use crate::runner::args;
 use crate::runner::common::{
     BaselineAndSaveDataProcessor, BaselineDataProcessor, BaselineKind, BaselineName, Baselines,
-    BenchmarkDataProcessor, BenchmarkSummaries, CapturedOutput, Config, Groups,
+    BenchmarkDataProcessor, BenchmarkRun, BenchmarkSummaries, CapturedOutput, Config, Groups,
     LoadBaselineDataProcessor, ModulePath, Runner, SaveBaselineDataProcessor,
 };
 use crate::runner::tool::config::ToolConfig;
@@ -151,7 +151,7 @@ pub trait Benchmark: Debug + Send + Sync {
         captured_output: Option<CapturedOutput>,
         force_shutdown: &Arc<AtomicBool>,
         output_path: ToolOutputPath,
-    ) -> Result<BenchmarkSummary>;
+    ) -> Result<BenchmarkRun>;
 }
 
 impl Benchmark for BaselineAndSaveBenchmark {
@@ -200,7 +200,7 @@ impl Benchmark for BaselineAndSaveBenchmark {
         captured_output: Option<CapturedOutput>,
         force_shutdown: &Arc<AtomicBool>,
         output_path: ToolOutputPath,
-    ) -> Result<BenchmarkSummary> {
+    ) -> Result<BenchmarkRun> {
         let header = LibraryBenchmarkHeader::new(&lib_bench);
         let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
@@ -299,7 +299,7 @@ impl Benchmark for BaselineBenchmark {
         captured_output: Option<CapturedOutput>,
         force_shutdown: &Arc<AtomicBool>,
         output_path: ToolOutputPath,
-    ) -> Result<BenchmarkSummary> {
+    ) -> Result<BenchmarkRun> {
         let header = LibraryBenchmarkHeader::new(&lib_bench);
         let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
@@ -579,15 +579,16 @@ impl Benchmark for LoadBaselineBenchmark {
         _captured_output: Option<CapturedOutput>,
         _force_shutdown: &Arc<AtomicBool>,
         output_path: ToolOutputPath,
-    ) -> Result<BenchmarkSummary> {
+    ) -> Result<BenchmarkRun> {
         let header = LibraryBenchmarkHeader::new(&lib_bench);
-        Ok(lib_bench.create_benchmark_summary(
+        let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
             &output_path,
             &lib_bench.function_name,
             header.description(),
             self.baselines(),
-        ))
+        );
+        Ok(BenchmarkRun::zero(benchmark_summary))
     }
 
     fn data_processor(
@@ -648,7 +649,7 @@ impl Benchmark for SaveBaselineBenchmark {
         captured_output: Option<CapturedOutput>,
         force_shutdown: &Arc<AtomicBool>,
         output_path: ToolOutputPath,
-    ) -> Result<BenchmarkSummary> {
+    ) -> Result<BenchmarkRun> {
         let header = LibraryBenchmarkHeader::new(&lib_bench);
         let benchmark_summary = lib_bench.create_benchmark_summary(
             config,

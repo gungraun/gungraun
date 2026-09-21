@@ -50,7 +50,7 @@ use std::ffi::OsString;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Result, anyhow, bail};
 
@@ -66,7 +66,8 @@ use crate::api::{
 use crate::runner::args::PerfSampling;
 use crate::runner::callgrind::flamegraph::Config as FlamegraphConfig;
 use crate::runner::common::{
-    Analyzer, Assistant, CapturedOutput, Config, ModulePath, PerfOutputConfig, Sandbox,
+    Analyzer, Assistant, BenchmarkRun, CapturedOutput, Config, ModulePath, PerfOutputConfig,
+    Sandbox, ToolRunTimings,
 };
 use crate::runner::format::OutputFormat;
 use crate::runner::meta::Metadata;
@@ -999,7 +1000,7 @@ impl ToolConfigs {
         Ok(())
     }
 
-    /// Runs all retained [`ToolConfig`]s and returns the [`BenchmarkSummary`].
+    /// Runs all retained [`ToolConfig`]s and returns the completed benchmark run.
     ///
     /// Each [`ToolConfig`] is executed in isolation and sequentially so that tools do not interfere
     /// with each other: [`ToolOutputPath`]s are scoped per tool and [`ToolConfig::part`], the
@@ -1020,10 +1021,13 @@ impl ToolConfigs {
         module_path: &ModulePath,
         captured_output: Option<&CapturedOutput>,
         force_shutdown: &Arc<AtomicBool>,
-    ) -> Result<BenchmarkSummary>
+    ) -> Result<BenchmarkRun>
     where
         F: Fn(&ToolConfig, Option<BenchRunMode>) -> Cow<'args, [OsString]>,
     {
+        let start = Instant::now();
+        let mut tool_timings = ToolRunTimings::default();
+
         for tool_config in self.0 {
             let output_path = tool_config.output_path(output_path);
 
@@ -1073,7 +1077,8 @@ impl ToolConfigs {
             })?;
 
             if let Some(delay) = run_options.delay.as_ref()
-                && let Err(delay_error) = delay.apply(sandbox.as_ref().and_then(Sandbox::path))
+                && let Err(delay_error) = process_handler
+                    .apply_delay(|| delay.apply(sandbox.as_ref().and_then(Sandbox::path)))
                 && let Some(Err(_)) = process_handler.wait_for_setup()
             {
                 return Err(delay_error);
@@ -1137,12 +1142,15 @@ impl ToolConfigs {
                     .and_then(|()| process_handler.wait_for_teardown().transpose())?;
             }
 
+            let timings = process_handler.finish()?;
+            tool_timings.add(tool_config.tool(), timings)?;
+
             if let Some(sandbox) = sandbox {
                 sandbox.reset()?;
             }
         }
 
-        Ok(benchmark_summary)
+        BenchmarkRun::new(benchmark_summary, start, tool_timings)
     }
 }
 

@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow};
 use itertools::Itertools;
+use jiff::Timestamp;
 use log::{Level, debug, log_enabled, warn};
 use tempfile::{TempDir, tempfile};
 
@@ -130,6 +131,17 @@ pub struct BaselineDataProcessor {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BaselineName(pub String);
 
+/// Internal result of executing or loading one benchmark.
+#[derive(Debug)]
+pub struct BenchmarkRun {
+    /// Summary populated during post-processing.
+    pub benchmark_summary: BenchmarkSummary,
+    /// Completed tool process timings
+    ///
+    /// Absent for example for --load-baseline runs.
+    pub tool_timings: Option<ToolRunTimings>,
+}
+
 /// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
 ///
 /// Used to print a final summary after all benchmarks.
@@ -199,8 +211,8 @@ pub struct Groups(pub Vec<Group>);
 /// Result payload returned by worker jobs when running a benchmark group.
 #[derive(Debug)]
 pub struct JobResult {
-    /// Final benchmark summary produced by the executed job.
-    pub benchmark_summary: BenchmarkSummary,
+    /// Completed benchmark run, including its summary and any tool process timings.
+    pub benchmark_run: BenchmarkRun,
     /// Captured stdout/stderr output associated with this job.
     pub captured_output: CapturedOutput,
     /// Data processor used to parse and finalize tool outputs.
@@ -267,6 +279,27 @@ pub struct SaveBaselineDataProcessor {
     /// Analyzer pipeline used to parse and process benchmark outputs.
     pub analyzers: Vec<Analyzer>,
 }
+
+/// Timing recorded for all complete runs belonging to one tool profile.
+#[derive(Debug)]
+pub struct ToolRunTiming {
+    /// Sum of delay phase durations in nanoseconds.
+    pub delay_ns: Option<u64>,
+    /// Sum of complete tool run durations in nanoseconds.
+    pub duration_ns: u64,
+    /// Sum of process phase durations in nanoseconds.
+    pub process_ns: u64,
+    /// Sum of setup phase durations in nanoseconds.
+    pub setup_ns: Option<u64>,
+    /// Wall-clock timestamp of the first complete tool run.
+    pub started_at: Timestamp,
+    /// Sum of teardown phase durations in nanoseconds.
+    pub teardown_ns: Option<u64>,
+}
+
+/// Tool timings keyed by the profile's tool.
+#[derive(Debug, Default)]
+pub struct ToolRunTimings(HashMap<Tool, ToolRunTiming>);
 
 /// Shared post-processing interface for library and binary benchmark runs.
 pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
@@ -419,8 +452,7 @@ pub trait BenchmarkDataProcessor: std::fmt::Debug + Send {
             };
 
             let data = ProfileData::new(parsed_new, (!parsed_old.is_empty()).then_some(parsed_old));
-
-            let mut profile = Profile { data, tool };
+            let mut profile = Profile::new(tool, data);
 
             if tool == Tool::Perf {
                 profile.data.total.regressions = profile
@@ -866,6 +898,33 @@ impl Benches {
     }
 }
 
+impl BenchmarkRun {
+    /// Create a new `BenchmarkRun` with `start` as the benchmark run start [`Instant`]
+    pub fn new(
+        mut benchmark_summary: BenchmarkSummary,
+        start: Instant,
+        tool_timings: ToolRunTimings,
+    ) -> Result<Self> {
+        u64::try_from(start.elapsed().as_nanos())
+            .with_context(|| "benchmark run time exceeds u64 nanoseconds")
+            .map(|duration_ns| {
+                benchmark_summary.duration_ns = duration_ns;
+                Self {
+                    benchmark_summary,
+                    tool_timings: Some(tool_timings),
+                }
+            })
+    }
+
+    /// Create a new `BenchmarkRun` with zero duration and no timings
+    pub fn zero(benchmark_summary: BenchmarkSummary) -> Self {
+        Self {
+            benchmark_summary,
+            tool_timings: None,
+        }
+    }
+}
+
 impl BenchmarkSummaries {
     /// Add a [`BenchmarkSummary`]
     pub fn add_summary(&mut self, summary: BenchmarkSummary) {
@@ -1148,8 +1207,8 @@ impl Group {
                     &force_shutdown,
                     output_path.clone(),
                 ) {
-                    Ok(benchmark_summary) => Ok(JobResult {
-                        benchmark_summary,
+                    Ok(benchmark_run) => Ok(JobResult {
+                        benchmark_run,
                         post_processing_config: PostProcessingConfig {
                             compare_by_id,
                             fail_fast,
@@ -1206,8 +1265,8 @@ impl Group {
                     &force_shutdown,
                     output_path.clone(),
                 ) {
-                    Ok(benchmark_summary) => Ok(JobResult {
-                        benchmark_summary,
+                    Ok(benchmark_run) => Ok(JobResult {
+                        benchmark_run,
                         output_format,
                         captured_output,
                         data_processor,
@@ -1375,7 +1434,7 @@ impl Group {
 
                     // Return a job error on error to match the behavior in `run_parallel` and have
                     // better error reporting
-                    let benchmark_summary = match benchmark.run(
+                    let benchmark_run = match benchmark.run(
                         bench,
                         config,
                         self.index,
@@ -1383,7 +1442,7 @@ impl Group {
                         &force_shutdown,
                         output_path.clone(),
                     ) {
-                        Ok(benchmark_summary) => benchmark_summary,
+                        Ok(benchmark_run) => benchmark_run,
                         Err(error) => {
                             return Err(Into::into(Error::new_job_error(
                                 error,
@@ -1402,7 +1461,7 @@ impl Group {
                     };
 
                     let job_result = JobResult {
-                        benchmark_summary,
+                        benchmark_run,
                         captured_output,
                         data_processor,
                         output_format,
@@ -1442,14 +1501,14 @@ impl Group {
                         &output_path,
                     );
 
-                    let benchmark_summary = match benchmark.run(
+                    let benchmark_run = match benchmark.run(
                         bench,
                         config,
                         Some(captured_output.try_clone()?),
                         &force_shutdown,
                         output_path.clone(),
                     ) {
-                        Ok(benchmark_summary) => benchmark_summary,
+                        Ok(benchmark_run) => benchmark_run,
                         Err(error) => {
                             return Err(Into::into(Error::new_job_error(
                                 error,
@@ -1461,7 +1520,7 @@ impl Group {
                     };
 
                     let job_result = JobResult {
-                        benchmark_summary,
+                        benchmark_run,
                         captured_output,
                         data_processor,
                         output_format,
@@ -1881,12 +1940,17 @@ impl JobResult {
         comparison_summaries: &mut HashMap<String, Vec<BenchmarkSummary>>,
     ) -> Result<()> {
         let Self {
-            mut benchmark_summary,
+            benchmark_run,
             output_format,
             captured_output,
             mut data_processor,
             post_processing_config,
         } = self;
+
+        let BenchmarkRun {
+            mut benchmark_summary,
+            tool_timings,
+        } = benchmark_run;
 
         if !data_processor.has_benchmarks() {
             return Ok(());
@@ -1898,6 +1962,22 @@ impl JobResult {
                 config,
                 &post_processing_config.header,
             )
+            .and_then(|()| {
+                if let Some(tool_timings) = tool_timings.as_ref() {
+                    for profile in &mut benchmark_summary.profiles.0 {
+                        let timings = tool_timings.get(profile.tool).with_context(|| {
+                            format!("missing process timing for {} profile", profile.tool)
+                        })?;
+                        profile.set_timings(timings);
+                    }
+                } else {
+                    for profile in &mut benchmark_summary.profiles.0 {
+                        profile.set_started_at(&benchmark_summary.started_at);
+                    }
+                }
+
+                Ok(())
+            })
             .and_then(|()| {
                 let summary_output = config.meta.args.save_summary.and_then(|format| {
                     data_processor
@@ -2368,6 +2448,69 @@ impl From<ModulePath> for String {
     }
 }
 
+impl ToolRunTiming {
+    /// Creates empty timing totals and records the current wall-clock start time.
+    pub fn new() -> Self {
+        Self {
+            delay_ns: Option::default(),
+            duration_ns: 0,
+            process_ns: 0,
+            setup_ns: Option::default(),
+            started_at: Timestamp::now(),
+            teardown_ns: Option::default(),
+        }
+    }
+}
+
+impl Default for ToolRunTiming {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ToolRunTimings {
+    /// Adds one completed run timing to its tool's aggregate.
+    pub fn add(&mut self, tool: Tool, timings: ToolRunTiming) -> Result<()> {
+        if let Some(current) = self.0.get_mut(&tool) {
+            Self::add_optional_duration(&mut current.delay_ns, timings.delay_ns, "delay")?;
+            current.duration_ns = current
+                .duration_ns
+                .checked_add(timings.duration_ns)
+                .context("aggregated tool run duration exceeds u64 nanoseconds")?;
+            current.process_ns = current
+                .process_ns
+                .checked_add(timings.process_ns)
+                .context("aggregated tool process duration exceeds u64 nanoseconds")?;
+            Self::add_optional_duration(&mut current.setup_ns, timings.setup_ns, "setup")?;
+            Self::add_optional_duration(&mut current.teardown_ns, timings.teardown_ns, "teardown")?;
+        } else {
+            self.0.insert(tool, timings);
+        }
+        Ok(())
+    }
+
+    fn get(&self, tool: Tool) -> Option<&ToolRunTiming> {
+        self.0.get(&tool)
+    }
+
+    fn add_optional_duration(
+        current: &mut Option<u64>,
+        duration: Option<u64>,
+        phase: &str,
+    ) -> Result<()> {
+        let Some(duration) = duration else {
+            return Ok(());
+        };
+        *current = Some(match current {
+            Some(current) => current.checked_add(duration).with_context(|| {
+                format!("aggregated tool {phase} duration exceeds u64 nanoseconds")
+            })?,
+            None => duration,
+        });
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
@@ -2400,5 +2543,45 @@ mod tests {
         let actual = ModulePath::new(module_path).first();
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_tool_run_timings_add_aggregates_present_phases_and_preserves_first_start() {
+        let mut tool_timings = ToolRunTimings::default();
+        tool_timings
+            .add(
+                Tool::Callgrind,
+                ToolRunTiming {
+                    delay_ns: None,
+                    duration_ns: 20,
+                    process_ns: 10,
+                    setup_ns: Some(3),
+                    started_at: Timestamp::new(1, 0).unwrap(),
+                    teardown_ns: None,
+                },
+            )
+            .unwrap();
+
+        tool_timings
+            .add(
+                Tool::Callgrind,
+                ToolRunTiming {
+                    delay_ns: Some(2),
+                    duration_ns: 40,
+                    process_ns: 30,
+                    setup_ns: None,
+                    started_at: Timestamp::new(2, 0).unwrap(),
+                    teardown_ns: Some(5),
+                },
+            )
+            .unwrap();
+
+        let timings = tool_timings.get(Tool::Callgrind).unwrap();
+        assert_eq!(timings.delay_ns, Some(2));
+        assert_eq!(timings.duration_ns, 60);
+        assert_eq!(timings.process_ns, 40);
+        assert_eq!(timings.setup_ns, Some(3));
+        assert_eq!(timings.started_at, Timestamp::new(1, 0).unwrap());
+        assert_eq!(timings.teardown_ns, Some(5));
     }
 }

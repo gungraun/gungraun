@@ -24,7 +24,7 @@ use super::common::AssistantKind;
 use crate::api::BenchRunMode;
 use crate::error::Error;
 use crate::runner::args::NoCapture;
-use crate::runner::common::{Assistant, CapturedOutput, Config, ModulePath};
+use crate::runner::common::{Assistant, CapturedOutput, Config, ModulePath, ToolRunTiming};
 use crate::runner::tool::config::ToolConfig;
 use crate::runner::tool::path::ToolOutputPath;
 use crate::runner::tool::run::{RunOptions, ToolCommand, ToolCommandChild, check_exit};
@@ -72,14 +72,24 @@ pub struct ProcessHandler {
     pub module_path: ModulePath,
     /// The time interval to poll for process status updates
     pub poll_interval: Duration,
+    /// The start of the process phase.
+    pub process_started: Option<Instant>,
     /// An optional directory that acts as a sandbox for process execution.
     pub sandbox_dir: Option<PathBuf>,
     /// An optional tuple that holds the setup process
     pub setup: Option<(String, Child)>,
     /// A boolean indicating whether the setup process should be run in parallel to benchmark
     pub setup_is_parallel: bool,
+    /// The start of the setup phase.
+    pub setup_started: Option<Instant>,
+    /// The monotonic start of the complete tool run.
+    pub started: Instant,
     /// An optional tuple that holds the teardown process
     pub teardown: Option<(String, Child)>,
+    /// The start of the teardown phase.
+    pub teardown_started: Option<Instant>,
+    /// Timing measurements accumulated across the phases of this tool run.
+    pub timings: ToolRunTiming,
 }
 
 #[derive(Debug)]
@@ -315,16 +325,58 @@ impl ProcessHandler {
         poll_interval: Duration,
         sandbox_dir: Option<&Path>,
     ) -> Self {
+        // Wall-clock timestamp must be captured before the monotonic Instant
+        let timings = ToolRunTiming::new();
+        let started = Instant::now();
+
         Self {
             bench: None,
             force_shutdown,
             module_path,
+            poll_interval,
+            process_started: None,
+            sandbox_dir: sandbox_dir.map(Path::to_path_buf),
             setup: None,
             setup_is_parallel,
+            setup_started: None,
+            started,
             teardown: None,
-            poll_interval,
-            sandbox_dir: sandbox_dir.map(Path::to_path_buf),
+            teardown_started: None,
+            timings,
         }
+    }
+
+    /// Measures the duration of applying a configured delay.
+    pub fn apply_delay<F>(&mut self, apply: F) -> Result<()>
+    where
+        F: FnOnce() -> Result<()>,
+    {
+        let started = Instant::now();
+        let result = apply();
+        self.timings.delay_ns = Some(Self::elapsed_ns(started, "delay duration")?);
+        result
+    }
+
+    /// Returns the monotonic time elapsed since `started` in nanoseconds.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the elapsed duration exceeds [`u64::MAX`] nanoseconds.
+    pub fn elapsed_ns(started: Instant, phase: &'static str) -> Result<u64> {
+        u64::try_from(started.elapsed().as_nanos())
+            .with_context(|| format!("{phase} exceeds u64 nanoseconds"))
+    }
+
+    /// Finalizes the complete tool-run duration and returns the accumulated timings.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the complete tool-run duration exceeds [`u64::MAX`] nanoseconds.
+    pub fn finish(mut self) -> Result<ToolRunTiming> {
+        Self::elapsed_ns(self.started, "tool run duration").map(|elapsed| {
+            self.timings.duration_ns = elapsed;
+            self.timings
+        })
     }
 
     /// Starts the [`Assistant`] process for either setup or teardown.
@@ -348,6 +400,7 @@ impl ProcessHandler {
             return Err(Error::TaskInterrupt.into());
         }
 
+        let started = Instant::now();
         match assistant.kind() {
             AssistantKind::Setup => {
                 let child = assistant.run(
@@ -360,6 +413,12 @@ impl ProcessHandler {
                 )?;
                 self.setup_is_parallel = assistant.is_parallel();
                 self.setup = child.map(|c| (assistant.kind().id(), c));
+
+                if self.setup.is_some() {
+                    self.setup_started = Some(started);
+                } else {
+                    self.timings.setup_ns = Some(Self::elapsed_ns(started, "setup duration")?);
+                }
             }
             AssistantKind::Teardown => {
                 let child = assistant.run(
@@ -371,6 +430,13 @@ impl ProcessHandler {
                     nocapture,
                 )?;
                 self.teardown = child.map(|c| (assistant.kind().id(), c));
+
+                if self.teardown.is_some() {
+                    self.teardown_started = Some(started);
+                } else {
+                    self.timings.teardown_ns =
+                        Some(Self::elapsed_ns(started, "teardown duration")?);
+                }
             }
         }
 
@@ -416,6 +482,7 @@ impl ProcessHandler {
 
         debug!("Spawning {} command", tool_config.tool());
 
+        self.process_started = Some(Instant::now());
         let child = command.run(
             tool_config,
             executable_args,
@@ -448,8 +515,8 @@ impl ProcessHandler {
     ///
     /// # Returns
     ///
-    /// - `Ok(Some(Output))` when the benchmark process exits and the exit status matches the
-    ///   configured expectations
+    /// - `Ok(Output)` when the benchmark process exits and the exit status matches the configured
+    ///   expectations
     ///
     /// # Errors
     ///
@@ -502,6 +569,13 @@ impl ProcessHandler {
                 )
             });
 
+        self.timings.process_ns = Self::elapsed_ns(
+            self.process_started
+                .take()
+                .context("benchmark process started without a process timer")?,
+            "tool process duration",
+        )?;
+
         if let Some(Err(error)) = self.wait_for_setup() {
             return Err(error);
         }
@@ -544,7 +618,15 @@ impl ProcessHandler {
     pub fn wait_for_setup(&mut self) -> Option<Result<()>> {
         self.setup.take().map(|(id, child)| {
             debug!("Waiting for setup to complete");
-            self.wait_for_assistant(child, &id)
+            let result = self.wait_for_assistant(child, &id);
+
+            self.timings.setup_ns = self
+                .setup_started
+                .take()
+                .map(|started| Self::elapsed_ns(started, "setup duration"))
+                .transpose()?;
+
+            result
         })
     }
 
@@ -559,7 +641,15 @@ impl ProcessHandler {
     pub fn wait_for_teardown(&mut self) -> Option<Result<()>> {
         self.teardown.take().map(|(id, child)| {
             debug!("Waiting for teardown to complete");
-            self.wait_for_assistant(child, &id)
+            let result = self.wait_for_assistant(child, &id);
+
+            self.timings.teardown_ns = self
+                .teardown_started
+                .take()
+                .map(|started| Self::elapsed_ns(started, "teardown duration"))
+                .transpose()?;
+
+            result
         })
     }
 }

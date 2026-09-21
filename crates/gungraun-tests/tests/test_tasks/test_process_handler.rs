@@ -545,12 +545,20 @@ fn test_wait_or_shutdown_when_force_shutdown_is_false(#[case] has_setup: bool) {
     let output = handler
         .wait_or_shutdown(None, &None::<fn() -> bool>)
         .expect("Waiting for the benchmark process should succeed");
-
     assert!(handler.bench.is_none());
+    let timings = handler
+        .finish()
+        .expect("Finishing the tool run should succeed");
+
     assert!(output.status.success());
     assert_eq!(std::str::from_utf8(&output.stdout).unwrap(), "foo\n");
-
-    cleanup_test_process_handler(handler);
+    assert!(timings.duration_ns > 0);
+    assert!(timings.process_ns > 0);
+    assert!(timings.duration_ns >= timings.process_ns);
+    assert_eq!(timings.setup_ns.is_some(), has_setup);
+    assert_eq!(timings.delay_ns, None);
+    assert!(timings.started_at.to_string().ends_with('Z'));
+    assert_eq!(timings.teardown_ns, None);
 }
 
 #[rstest]

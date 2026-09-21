@@ -30,6 +30,12 @@
       "description": "Details describing this benchmark run\n\nThe format of the `description` is unstable and is not considered part of the api. As a\nconsequence, changes to the format of `description` don't require a schema version change.\nDo not use the `description` as part of the identifier for a benchmark run. See the docs of\n`id` for a better way to construct an unique identifier for a benchmark run.",
       "type": ["string", "null"]
     },
+    "duration_ns": {
+      "description": "The duration of the complete benchmark run in nanoseconds.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
     "function_name": {
       "description": "The name of the function under test",
       "type": "string"
@@ -74,6 +80,10 @@
       "description": "The project's absolute root directory",
       "type": "string"
     },
+    "started_at": {
+      "description": "The RFC 3339 timestamp at which the benchmark run started.",
+      "type": "string"
+    },
     "version": {
       "description": "The version string of this format.\n\nThis is not semver and only major version numbers are used. There might be text occurrences\nof `v6`, `v7`, ... within this library documentation but vX is stored as raw number (`6`,\n`7`, ...) without the `v` prefix. Only backwards incompatible changes cause an increase of\nthe version.",
       "type": "string"
@@ -83,6 +93,7 @@
     "baselines",
     "benchmark_exe",
     "benchmark_file",
+    "duration_ns",
     "function_name",
     "group",
     "kind",
@@ -91,6 +102,7 @@
     "package_dir",
     "profiles",
     "project_root",
+    "started_at",
     "version"
   ],
   "definitions": {
@@ -338,12 +350,46 @@
             }
           ]
         },
+        "delay_ns": {
+          "description": "The duration of the configured delays for this tool in nanoseconds.",
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "duration_ns": {
+          "description": "The total duration of this tool's complete run in nanoseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "process_ns": {
+          "description": "The duration of the actual benchmark process in nanoseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "setup_ns": {
+          "description": "The duration of the binary benchmark setup for this tool in nanoseconds.",
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "started_at": {
+          "description": "The RFC 3339 timestamp at which this tool's first complete run started.\n\nIn the case of --load-baseline runs or in general when no actual process and tool is\nexecuted, this is the same time as [`BenchmarkSummary::started_at`].",
+          "type": "string"
+        },
+        "teardown_ns": {
+          "description": "The duration of the binary benchmark teardown for this tool in nanoseconds.",
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0
+        },
         "tool": {
           "description": "The Valgrind tool like `DHAT`, `Memcheck` etc.",
           "type": "string"
         }
       },
-      "required": ["data", "tool"]
+      "required": ["data", "duration_ns", "process_ns", "started_at", "tool"]
     },
     "ProfileData": {
       "description": "All [`ProfilePart`]-level and [`ProfileTotal`] data of a single tool run.\n\nFor Valgrind profiles, the [`ProfileTotal`] is always present and summarizes all\n[`ProfilePart`]s. If the tool produced only one part, the total matches that part's metrics.\n\nFor Perf profiles, the `total` only contains the [`ToolRegression`]s but no metrics.",

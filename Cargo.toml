@@ -50,7 +50,8 @@ inferno = { version = "0.12", default-features = false, features = [
   'multithreaded',
 ] }
 itertools = { version = "0.15" }
-log = { version = "0.4.8" }
+jiff = { version = "0.2" }
+log = { version = "0.4.21" }
 nix = { version = "0.31" }
 num_cpus = { version = "1" }
 once_cell = { version = "1" }

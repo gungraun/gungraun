@@ -95,8 +95,20 @@ and this project adheres to
   with `gungraun-summary` 6.0.0 (see the
   [gungraun-summary CHANGELOG](./crates/gungraun-summary/CHANGELOG.md))
 - ([#746]): Fixed flamegraphs being empty when running with `--save-baseline`
+- ([#767]): Added timings and a start date to the json summary (and schema) for
+  internal and consumer use:
+    - New required `started_at` field (RFC 3339 UTC timestamp) in the top-level
+      summary and in every profile
+    - New required profile fields `duration_ns` (wall time of the whole tool
+      run) and `process_ns` (time of the process phase including command
+      assembly and calibration)
+    - New optional profile fields `setup_ns`, `delay_ns` and `teardown_ns`,
+      which are omitted when the corresponding phase never runs
+    - Profiles from `--load-baseline` runs record the timings of the current
+      load/compare operation instead of the original benchmark run
 
 [#746]: https://github.com/gungraun/gungraun/pull/746
+[#767]: https://github.com/gungraun/gungraun/pull/767
 
 ## [0.19.4] - 2026-07-10
 

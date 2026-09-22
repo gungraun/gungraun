@@ -16,6 +16,10 @@ For a soft limit, a performance regression check consists of an [`EventKind`],
 negative, then a regression is assumed to be below this limit. Hard limits
 restrict the `EventKind`, ... by an absolute number.
 
+Perf limits, in contrast, are not defined over an enum event kind but match the
+names of the reported perf metrics with wildcard patterns, see
+[below](#the-format-short-names-and-groups-in-full-detail).
+
 Note that [comparing baselines](./cli_and_env/baselines.md) also detects
 performance regressions. This can be useful, for example, when setting up
 Gungraun in the [CI](./installation/ci.md) to cause a PR to fail when comparing
@@ -28,9 +32,9 @@ occur, and Gungraun will exit with error code `3`.
 
 Limits can be defined on the command-line for the following tools with
 `--callgrind-limits` (`GUNGRAUN_CALLGRIND_LIMITS`), `--cachegrind-limits`
-(`GUNGRAUN_CACHEGRIND_LIMITS`) and `--dhat-limits` (`GUNGRAUN_DHAT_LIMITS`).
-Command-line limits overwrite the limits specified in the benchmark file (see
-below).
+(`GUNGRAUN_CACHEGRIND_LIMITS`), `--dhat-limits` (`GUNGRAUN_DHAT_LIMITS`) and
+`--perf-limits` (`GUNGRAUN_PERF_LIMITS`). Command-line limits overwrite the
+limits specified in the benchmark file (see below).
 
 In order to disambiguate between soft and hard limits, soft limits have to be
 suffixed with a `%`. Hard limits are bare numbers. For example to limit the
@@ -127,6 +131,37 @@ event ::= ( "totalunits" | "tun" )
           | ( "maximumbytes" | "mb" )
           | ( "maximumblocks" | "mbk" )
 ```
+
+For `--perf-limits`:
+
+```text
+arg          ::= pair ("," pair)*
+pair         ::= glob_pattern "=" value ("|" value)*
+glob_pattern ::= glob_pattern ; see the bullet list below for details
+value        ::= soft_limit | hard_limit
+soft_limit   ::= (integer | float) "%" ; can be negative
+hard_limit   ::= (integer | float) [ unit ]
+unit         ::= "ms" | "s" | "B" | "Hz" | ... ; this is a non-exhaustive list
+```
+
+with:
+
+- A `glob_pattern` is matched against the name of a reported perf metric, where
+  `:` and `/` are interchangeable: `task-clock/u` and `task-clock:u` address the
+  same metric.
+- In a `glob_pattern`, `*` matches any sequence of characters, `?` a single
+  character, `[...]` a character class (negated as `[!...]`, with ranges like
+  `[a-zA-Z]`) and `\` escapes a special character.
+- A `soft_limit` is a percentage and a `hard_limit` is an absolute number with
+  an optional `unit` to which the metric value is normalized; a soft and a hard
+  limit can be combined for one `pattern` with the `|`-operator.
+- Examples are `*instructions*=5%`, `task-clock*=40%|2.5ms` and
+  `task-clock/u=5%` (equivalent: `task-clock:u=5%`).
+- The unit of a metric is shown next to the perf metric in the terminal output.
+
+In contrast to the Valgrind tools, soft limits on perf metrics are only reported
+if the change between the old and the new value is statistically significant at
+the `alpha` level of the [perf](./perf.md) configuration.
 
 ## Define a Performance Regression Check in a Benchmark
 

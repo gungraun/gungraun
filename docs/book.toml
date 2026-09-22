@@ -23,4 +23,4 @@ site-url = "/gungraun/"
 follow-web-links = true
 traverse-parent-directories = true
 warning-policy = "error"
-exclude = ['https://sourceware.org/git/.*']
+exclude = ['https://sourceware.org/git/.*', 'https://repology.org/']

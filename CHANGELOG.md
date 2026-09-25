@@ -14,10 +14,11 @@ Security in case of vulnerabilities.
 
 All notable changes to this project will be documented in this file.
 
-This is the combined CHANGELOG for the packages: `gungraun`, `gungraun-runner`
-and `gungraun-macros`. `gungraun` and `gungraun-runner` use the same version
-which is the version used here. `gungraun-macros` uses a different version
-number but is not a standalone package, so its changes are also listed here.
+This is the combined CHANGELOG for the packages: `gungraun`, `gungraun-common`,
+`gungraun-runner` and `gungraun-macros`. `gungraun`, `gungraun-common` and
+`gungraun-runner` use the same version which is the version used here.
+`gungraun-macros` uses a different version number but is not a standalone
+package, so its changes are also listed here.
 
 With the `0.17.0` version the project was renamed to `Gungraun`. The packages
 were renamed from `iai-callgrind` to `gungraun`, `iai-callgrind-runner` to
@@ -36,41 +37,77 @@ and this project adheres to
 
 ## [Unreleased]
 
-- Added test mode to run each benchmark once without Valgrind or perf. This
-  supports `cargo test --benches` and `cargo test --all-targets` on platforms
-  without these tools.
-- Rename ui_tests feature to `__ui_tests` to signal internal usage
-- Change serial execution to real serial execution without thread pool
-- Breaking: feature rename of `client_request_defs` -> `stubs` and
+This release is focused on [Linux perf][perf-wiki] and adds it as a first-class
+tool alongside the Valgrind tools. Existing Valgrind benchmarks work the same as
+before. Here the most important breaking changes in short. See the sections
+below for all changes and additions:
+
+- Renamed `gungraun::ValgrindTool` -> `gungraun::Tool`
+- Renamed the gungraun features `client_request_defs` -> `stubs` and
+  `client_requests` -> `act`
+
+This release also bumps the gungraun summary schema version from `v6` to `v7`.
+Parsing the new format is simplest with the `gungraun-summary` crate if the
+parser is written in Rust. For non-Rust parsers like `jq`, the schema has been
+refactored and simplified.
+
+### Added
+
+- ([#656]): New features `perf` (default), `perf_stubs` (at least one of them is
+  required)
+- ([#656]): New `--perf-args`, `--perf-bin`, `--perf-events`, `--perf-limits`,
+  `--perf-record`, `--perf-record-args`, `--perf-run-mode`, `--perf-sampling`,
+  command-line arguments to control perf
+- ([#656]): Added new variants `ExitWith::Signal(i32)`,
+  `ExitWith::Signals(Vec<i32>)`
+- ([#710]): Added test mode to run each benchmark once without Valgrind or perf.
+  This supports `cargo test --benches` and `cargo test --all-targets` on
+  platforms without these tools. Thanks to @nickbabcock
+- ([#746]): gungraun-summary: Added a `v7` module and version-aware parsing
+  helpers for version 7 summaries. The version 6 model is frozen as released
+  with `gungraun-summary` 6.0.0 (see the
+  [gungraun-summary CHANGELOG](./crates/gungraun-summary/CHANGELOG.md))
+- ([#767]): Added timings and a start date to the json summary (and schema) for
+  internal and consumer use:
+    - New required `started_at` field (RFC 3339 UTC timestamp) in the top-level
+      summary and in every profile
+    - New required profile fields `duration_ns` (wall time of the whole tool
+      run) and `process_ns` (time of the process phase including command
+      assembly and calibration)
+    - New optional profile fields `setup_ns`, `delay_ns` and `teardown_ns`,
+      which are omitted when the corresponding phase never runs
+    - Profiles from `--load-baseline` runs record the timings of the current
+      load/compare operation instead of the original benchmark run
+- ([#771]): Added perf section to the Gungraun online guide
+
+### Changed
+
+- ([#656]): Breaking: Renamed `gungraun::ValgrindTool` -> `gungraun::Tool`
+- ([#656]): Renamed `GUNGRAUN_VR_DEST_DIR`, `GUNGRAUN_VR_HOME`, and
+  `GUNGRAUN_VR_WORKSPACE_ROOT` to `GUNGRAUN_TR_DEST_DIR`, `GUNGRAUN_TR_HOME`,
+  and `GUNGRAUN_TR_WORKSPACE_ROOT` environment variables
+- ([#656]): Breaking: feature rename of `client_request_defs` -> `stubs` and
   `client_requests` -> `act`, `act` now includes `perf` and `stubs` includes
   `perf_stubs`
-- New features `perf`, `perf_stubs` (at least one of them is required)
-- `ExitWith::Failure` now accepts all signal deaths
-- Removed the now obsolete `gungraun-runner` feature from `gungraun`
-- Replaced specific valgrind-runner with tool-runner and updated the docs
-  accordingly.
-- Renamed to --tool-runner (GUNGRAUN_TOOL_RUNNER), --tool-runner-args
-  (GUNGRAUN_TOOL_RUNNER_ARGS), --tool-runner-dest (GUNGRAUN_TOOL_RUNNER_DEST),
-  --tool_runner_root (GUNGRAUN_TOOL_RUNNER_ROOT)
-- Added `GUNGRAUN_TR_DEST_DIR`, `GUNGRAUN_TR_HOME`, and
-  `GUNGRAUN_TR_WORKSPACE_ROOT` environment variables for tool runners
-- Improved multi-line split logic in terminal output
-- Print empty line between metrics and possible regressions
-- Added new variants `ExitWith::Signal(i32)`, `ExitWith::Signals(Vec<i32>)`
-- ExitWith is not Copy anymore
-- Changes to the json summary (and schema):
-    - Add display field to `summary::model::ToolRegression`, `Soft` and `Hard`
-      variants
-- Extract valgrind support table from valgrind-requests build script into new
-  gungraun-common crate.
-- The default tool can be disabled
-- Only enabled tool configurations are validated
-- Fixed serial execution if --parallel=1 or just using the args.parallel of 1 as
-  default (MaxParallel::NoMaximum).
-- Bump MSRV to 1.88.0
-- gungraun-macros: Fix clippy lints are triggered unnecessarily
-- gungraun-runner: Removed schemas link to gungraun-summary schemas directory
-- deps: Exchange minijinja with tera
+- ([#656]): Replaced specific valgrind-runner arguments with tool-runner
+  arguments and updated the docs accordingly. Renamed `--valgrind-runner`,
+  `--valgrind-runner-args`, `--valgrind-runner-dest`, `--valgrind-runner-root`
+  to `--tool-runner`, `--tool-runner-args`, `--tool-runner-dest`,
+  `--tool-runner-root`
+- ([#656]): `ExitWith::Failure` now accepts also death by signals in addition to
+  the already existing exit code > 0. `ExitWith` is not `Copy` anymore
+- ([#656]): Improved multi-line split logic in terminal output
+- ([#656]): Print empty line between metrics and possible regressions
+- ([#656]): Extract valgrind support table from valgrind-requests build script
+  into new gungraun-common crate.
+- ([#656]): The default tool can be disabled and only enabled tool
+  configurations are validated
+- ([#656]): Allow empty metrics and print an `Empty data` message instead
+- ([#723]): Bump MSRV to 1.88.0
+- ([#723]): deps: Exchange minijinja with tera
+- ([#723]): gungraun-runner: Removed schemas link to gungraun-summary schemas
+  directory
+- ([#764]): Errors are printed with more context
 - ([#746]): Breaking: Rework of the json summary (and schema) from version 6 to
   7 with the goal of a consumer-oriented format:
     - Metric values are plain numbers instead of `{"Int": ...}` /
@@ -89,26 +126,33 @@ and this project adheres to
       project root where possible
     - Optional fields are omitted instead of serialized as `null` (except the
       `baselines` tuple)
-    - Added optional `display` and `unit` fields to `ToolRegression`
-- ([#746]): gungraun-summary: Added a `v7` module and version-aware parsing
-  helpers for version 7 summaries. The version 6 model is frozen as released
-  with `gungraun-summary` 6.0.0 (see the
-  [gungraun-summary CHANGELOG](./crates/gungraun-summary/CHANGELOG.md))
-- ([#746]): Fixed flamegraphs being empty when running with `--save-baseline`
-- ([#767]): Added timings and a start date to the json summary (and schema) for
-  internal and consumer use:
-    - New required `started_at` field (RFC 3339 UTC timestamp) in the top-level
-      summary and in every profile
-    - New required profile fields `duration_ns` (wall time of the whole tool
-      run) and `process_ns` (time of the process phase including command
-      assembly and calibration)
-    - New optional profile fields `setup_ns`, `delay_ns` and `teardown_ns`,
-      which are omitted when the corresponding phase never runs
-    - Profiles from `--load-baseline` runs record the timings of the current
-      load/compare operation instead of the original benchmark run
+    - Added optional `display` and `unit` fields to `ToolRegression` (`Soft` and
+      `Hard` variants)
 
+### Removed
+
+- ([#656]): Removed the now obsolete `gungraun-runner` feature from `gungraun`
+
+### Fixed
+
+- ([#656]): Fixed serial execution if --parallel=1 or just using the
+  args.parallel of 1 as default (MaxParallel::NoMaximum).
+- ([#656]): gungraun-macros: Fix clippy lints are triggered unnecessarily
+- ([#656]): Fixed double units in perf regression terminal output
+- ([#741]): Fixed perf sampling to always produce at least one result
+- ([#743]): Fixed perf metric patterns to normalize to displayed metric names
+- ([#746]): Fixed flamegraphs being empty when running with `--save-baseline`
+
+[#656]: https://github.com/gungraun/gungraun/pull/656
+[#710]: https://github.com/gungraun/gungraun/pull/710
+[#723]: https://github.com/gungraun/gungraun/pull/723
+[#741]: https://github.com/gungraun/gungraun/pull/741
+[#743]: https://github.com/gungraun/gungraun/pull/743
 [#746]: https://github.com/gungraun/gungraun/pull/746
+[#764]: https://github.com/gungraun/gungraun/pull/764
 [#767]: https://github.com/gungraun/gungraun/pull/767
+[#771]: https://github.com/gungraun/gungraun/pull/771
+[perf-wiki]: https://perfwiki.github.io/main/
 
 ## [0.19.4] - 2026-07-10
 

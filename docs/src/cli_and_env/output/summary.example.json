@@ -1,0 +1,256 @@
+{
+  "baselines": [null, null],
+  "benchmark_exe": "target/release/deps/test_lib_bench_intro-0123456789abcdef",
+  "benchmark_file": "crates/gungraun-tests/benches/test_lib_bench/intro/test_lib_bench_intro.rs",
+  "duration_ns": 200553102,
+  "function_name": "bench_fibonacci_with_config",
+  "group": "fibonacci",
+  "kind": "LibraryBenchmark",
+  "module_path": "test_lib_bench_intro::fibonacci::bench_fibonacci_with_config",
+  "output_dir": "target/gungraun/gungraun-tests/test_lib_bench_intro/fibonacci/bench_fibonacci_with_config",
+  "package_dir": "crates/gungraun-tests",
+  "profiles": [
+    {
+      "data": {
+        "parts": [
+          {
+            "metrics": {
+              "D1MissRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": {
+                  "new": 0.33444816053511706,
+                  "old": 0.33444816053511706
+                }
+              },
+              "D1mr": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 1, "old": 1 }
+              },
+              "D1mw": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 0, "old": 0 }
+              },
+              "DLmr": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 0, "old": 0 }
+              },
+              "DLmw": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 0, "old": 0 }
+              },
+              "Dr": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 161, "old": 161 }
+              },
+              "Dw": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 138, "old": 138 }
+              },
+              "EstimatedCycles": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 1092, "old": 1092 }
+              },
+              "I1MissRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": {
+                  "new": 0.43668122270742354,
+                  "old": 0.43668122270742354
+                }
+              },
+              "I1mr": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 3, "old": 3 }
+              },
+              "ILmr": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 3, "old": 3 }
+              },
+              "Ir": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 687, "old": 687 }
+              },
+              "L1HitRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 99.59432048681542, "old": 99.59432048681542 }
+              },
+              "L1hits": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 982, "old": 982 }
+              },
+              "LLHitRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": {
+                  "new": 0.10141987829614604,
+                  "old": 0.10141987829614604
+                }
+              },
+              "LLMissRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": {
+                  "new": 0.3042596348884381,
+                  "old": 0.3042596348884381
+                }
+              },
+              "LLdMissRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 0.0, "old": 0.0 }
+              },
+              "LLhits": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 1, "old": 1 }
+              },
+              "LLiMissRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": {
+                  "new": 0.43668122270742354,
+                  "old": 0.43668122270742354
+                }
+              },
+              "RamHitRate": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": {
+                  "new": 0.3042596348884381,
+                  "old": 0.3042596348884381
+                }
+              },
+              "RamHits": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 3, "old": 3 }
+              },
+              "TotalRW": {
+                "change": { "diff_pct": "0", "factor": "1" },
+                "values": { "new": 986, "old": 986 }
+              }
+            },
+            "tool_run": {
+              "new": {
+                "command": "/home/user/my-project/target/release/deps/test_lib_bench_intro-0123456789abcdef --gungraun-run d:d:000000 00001 00001 00000",
+                "part": 1,
+                "pid": 2565576,
+                "thread": 1
+              },
+              "old": {
+                "command": "/home/user/my-project/target/release/deps/test_lib_bench_intro-0123456789abcdef --gungraun-run d:d:000000 00001 00001 00000",
+                "part": 1,
+                "pid": 2557960,
+                "thread": 1
+              }
+            }
+          }
+        ],
+        "total": {
+          "metrics": {
+            "D1MissRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": {
+                "new": 0.33444816053511706,
+                "old": 0.33444816053511706
+              }
+            },
+            "D1mr": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 1, "old": 1 }
+            },
+            "D1mw": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 0, "old": 0 }
+            },
+            "DLmr": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 0, "old": 0 }
+            },
+            "DLmw": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 0, "old": 0 }
+            },
+            "Dr": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 161, "old": 161 }
+            },
+            "Dw": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 138, "old": 138 }
+            },
+            "EstimatedCycles": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 1092, "old": 1092 }
+            },
+            "I1MissRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": {
+                "new": 0.43668122270742354,
+                "old": 0.43668122270742354
+              }
+            },
+            "I1mr": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 3, "old": 3 }
+            },
+            "ILmr": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 3, "old": 3 }
+            },
+            "Ir": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 687, "old": 687 }
+            },
+            "L1HitRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 99.59432048681542, "old": 99.59432048681542 }
+            },
+            "L1hits": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 982, "old": 982 }
+            },
+            "LLHitRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": {
+                "new": 0.10141987829614604,
+                "old": 0.10141987829614604
+              }
+            },
+            "LLMissRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 0.3042596348884381, "old": 0.3042596348884381 }
+            },
+            "LLdMissRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 0.0, "old": 0.0 }
+            },
+            "LLhits": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 1, "old": 1 }
+            },
+            "LLiMissRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": {
+                "new": 0.43668122270742354,
+                "old": 0.43668122270742354
+              }
+            },
+            "RamHitRate": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 0.3042596348884381, "old": 0.3042596348884381 }
+            },
+            "RamHits": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 3, "old": 3 }
+            },
+            "TotalRW": {
+              "change": { "diff_pct": "0", "factor": "1" },
+              "values": { "new": 986, "old": 986 }
+            }
+          },
+          "regressions": []
+        }
+      },
+      "duration_ns": 200542320,
+      "process_ns": 200490228,
+      "started_at": "2026-09-25T16:02:04.121681251Z",
+      "tool": "Callgrind"
+    }
+  ],
+  "project_root": "/home/user/my-project",
+  "started_at": "2026-09-25T16:02:04.121680298Z",
+  "version": "7"
+}

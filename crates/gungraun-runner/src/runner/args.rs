@@ -1004,7 +1004,9 @@ pub struct CommandLineArgs {
 
     #[rustfmt::skip]
     /// The terminal output format in default human-readable format or in machine-readable json
-    /// format
+    /// format.
+    ///
+    /// The gungraun-summary crate provides an easy way to parse the json output in Rust.
     ///
     /// # The JSON Output Format
     ///
@@ -1017,6 +1019,7 @@ pub struct CommandLineArgs {
     /// `cargo bench -- --output-format=json | jq -s`
     ///
     /// which transforms `{...}\n{...}` into `[{...},{...}]`
+    ///
     #[arg(
         default_value = "default",
         display_order = 300,
@@ -1328,6 +1331,8 @@ pub struct CommandLineArgs {
     ///
     /// See also `--output-format` for printing JSON summaries to the terminal instead of saving to
     /// a file.
+    ///
+    /// The gungraun-summary crate provides an easy way to parse the json output in Rust.
     ///
     /// Examples:
     ///   * `--save-summary` (saves as compact JSON)

@@ -406,6 +406,8 @@ dtlb
 itlb
 tonumber
 isfinite
+argjson
+fabs
 Sandboxed
 abspath
 endgroup

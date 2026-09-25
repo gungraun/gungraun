@@ -141,6 +141,11 @@ path = "benches/guide/lib_bench_iter.rs"
 
 [[bench]]
 harness = false
+name = "lib_bench_perf"
+path = "benches/guide/lib_bench_perf.rs"
+
+[[bench]]
+harness = false
 name = "lib_bench_regression"
 path = "benches/guide/lib_bench_regression.rs"
 

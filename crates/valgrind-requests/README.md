@@ -43,7 +43,7 @@ owned C strings. Allocation-free alternatives are [`valgrind_print`] or
 
 ```toml
 [dependencies]
-valgrind-requests = "1.1"
+valgrind-requests = "1.2"
 ```
 
 or `cargo add valgrind-requests`.
@@ -54,10 +54,10 @@ code:
 
 ```toml
 [dependencies]
-valgrind-requests = { version = "1.1", default-features = false, features = ["stubs"] }
+valgrind-requests = { version = "1.2", default-features = false, features = ["stubs"] }
 
 [dev-dependencies]
-valgrind-requests = { version = "1.1" }
+valgrind-requests = { version = "1.2" }
 ```
 
 The stubs compile down to nothing and your production code is as performant as
@@ -114,7 +114,7 @@ fn test_memcheck() {
 Disable default features and re-enable either `stubs` or `act`:
 
 ```toml
-valgrind-requests = { version = "1.1", default-features = false, features = ["act"] }
+valgrind-requests = { version = "1.2", default-features = false, features = ["act"] }
 ```
 
 The core client request functions are `no_std` compatible and can be used as

@@ -18,8 +18,12 @@ and this project adheres to
 
 ## [Unreleased]
 
-- Extract valgrind support table from build script into new gungraun-common
-  crate.
+## [1.2.0] - 2026-09-26
+
+### Added
+
+- New dependency gungraun-common. Extract valgrind support table from build
+  script into new gungraun-common crate.
 
 ## [1.1.0] - 2026-05-14
 

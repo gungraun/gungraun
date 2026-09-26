@@ -423,6 +423,7 @@ book-tests: book-check-version
     # We need the stable build because mdbook is built with the stable toolchain
     # and to avoid the error `found invalid metadata files for ...`
     RUSTUP_TOOLCHAIN=stable just build gungraun --all-features --lib --profile=mdbook
+    RUSTUP_TOOLCHAIN=stable just build gungraun-summary --all-features --lib --profile=mdbook
     # The exact values for the environment variables don't matter, we just need
     # them to be present.
     CARGO_MANIFEST_DIR=$(realpath .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L \

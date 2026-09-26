@@ -66,6 +66,7 @@ The version modules are self-contained. If the version of a file is already
 known, parse it directly with the `v7` module:
 
 ```rust,no_run
+# extern crate gungraun_summary;
 use std::path::Path;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -79,6 +80,7 @@ For input whose version is not known in advance, `util::parse` first reads the
 top-level `version` field and then selects the matching representation:
 
 ```rust,no_run
+# extern crate gungraun_summary;
 use std::path::Path;
 
 use gungraun_summary::util::{SummaryByVersion, parse};

@@ -105,4 +105,4 @@ keep it as it is and add it to a the `group` with
 `group.binary_benchmark(binary_benchmark_attribute!(attribute_benchmark))`.
 That's it! You can continue hacking on your benchmarks in the low-level API.
 
-[api-docs]: https://docs.rs/gungraun/0.19.4/gungraun/index.html
+[api-docs]: https://docs.rs/gungraun/0.20.0/gungraun/index.html

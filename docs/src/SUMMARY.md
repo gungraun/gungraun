@@ -14,7 +14,7 @@
 # Benchmarks
 
 - [Overview](./benchmarks/overview.md)
-- [Benchmarking Best Practices](./best_practices.md)
+- [Benchmarking Tips and Best Practices](./best_practices.md)
 - [Library Benchmarks](./benchmarks/library_benchmarks.md)
     - [Important Default Behaviour](./benchmarks/library_benchmarks/important.md)
     - [Quickstart](./benchmarks/library_benchmarks/quickstart.md)
@@ -57,7 +57,7 @@
 - [Running Tools with a Custom Runner](./cli_and_env/tool_runner.md)
 - [Controlling the Output of Gungraun](./cli_and_env/output.md)
     - [Customize the Output Directory](./cli_and_env/output/out_directory.md)
-    - [Machine-Readable Output](./cli_and_env/output/machine_readable.md)
+    - [Machine-Readable Output and gungraun-summary](./cli_and_env/output/machine_readable.md)
     - [Showing Terminal Output of Benchmarks](./cli_and_env/output/terminal_output.md)
     - [Changing the Color Output](./cli_and_env/output/color.md)
     - [Changing the Logging Output](./cli_and_env/output/logging.md)

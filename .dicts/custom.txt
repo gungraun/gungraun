@@ -406,6 +406,8 @@ dtlb
 itlb
 tonumber
 isfinite
+argjson
+fabs
 Sandboxed
 abspath
 endgroup
@@ -426,3 +428,4 @@ rederiving
 tera
 subschema
 reemitted
+nickbabcock

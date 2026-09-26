@@ -5,6 +5,10 @@ target. Valgrind is required for the default `Callgrind` configuration and the
 other Valgrind tools. On Linux, Gungraun also supports `perf`, so a benchmark
 configured exclusively for perf does not require Valgrind.
 
+If you want to benchmark with perf, Gungraun requires Linux perf version
+`>= 5.9`. Its measured-region control uses `--control=fd:...,ack`, which was
+added in that release.
+
 Target support and runtime availability are separate. A configured tool must be
 installed and executable in the environment where the benchmark runs. Perf may
 also require suitable kernel permissions for the requested events.
@@ -110,7 +114,6 @@ For detailed instructions and more examples, see
 [cargo-config]: https://doc.rust-lang.org/cargo/reference/config.html
 [cargo-profiles]: https://doc.rust-lang.org/cargo/reference/profiles.html
 [cc]: https://github.com/rust-lang/cc-rs
-[Valgrind]: https://www.valgrind.org
 [valgrind-client-req]:
     https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq
 [valgrind-requests]: https://docs.rs/valgrind-requests/latest/valgrind_requests/

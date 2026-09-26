@@ -2,7 +2,7 @@
 
 <h1 align="center">Gungraun</h1>
 
-<div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
+<div align="center">High-precision, one-shot and consistent benchmarking framework for Rust</div>
 
 This package is not published and exists merely for testing the client requests
 implementation of the [gungraun](../gungraun) package.

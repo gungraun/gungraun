@@ -1,0 +1,9 @@
+[tool.bumpversion]
+current_version = "7.0.0"
+commit = true
+message = "Bump gungraun-summary version v{current_version} -> v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "crates/gungraun-summary/Cargo.toml"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""

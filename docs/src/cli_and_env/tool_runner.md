@@ -1,5 +1,4 @@
 <!-- spell-checker: ignore unsetenv -->
-<!-- TODO: Double check when writing perf docs -->
 
 # Running Tools with a Custom Runner
 

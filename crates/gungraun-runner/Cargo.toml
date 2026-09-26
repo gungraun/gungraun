@@ -7,8 +7,8 @@ authors = [
 ]
 categories.workspace = true
 description = """
-Binary package needed by the Gungraun library. A high-precision, one-shot and \
-consistent benchmarking framework/harness for Rust.
+Binary package needed by the Gungraun library: A high-precision, one-shot and \
+consistent benchmarking framework for Rust.
 """
 edition.workspace = true
 homepage.workspace = true
@@ -90,7 +90,7 @@ either-or-both = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
 fundu = { workspace = true, optional = true }
 glob = { workspace = true, optional = true }
-gungraun-common = { path = "../gungraun-common/", version = "=0.1.0", optional = true }
+gungraun-common = { path = "../gungraun-common", version = "=0.1.0", optional = true }
 indexmap = { workspace = true, optional = true }
 inferno = { workspace = true, optional = true, default-features = false, features = [
   'multithreaded',

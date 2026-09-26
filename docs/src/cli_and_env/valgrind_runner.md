@@ -191,6 +191,6 @@ and we can configure `docker` with `--unsetenv-all` to clear the environment
 variables for the container.
 
 [`LibraryBenchmarkConfig`]:
-    https://docs.rs/gungraun/0.19.4/gungraun/struct.LibraryBenchmarkConfig.html
+    https://docs.rs/gungraun/0.20.0/gungraun/struct.LibraryBenchmarkConfig.html
 [`BinaryBenchmarkConfig`]:
-    https://docs.rs/gungraun/0.19.4/gungraun/struct.BinaryBenchmarkConfig.html
+    https://docs.rs/gungraun/0.20.0/gungraun/struct.BinaryBenchmarkConfig.html

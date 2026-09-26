@@ -260,15 +260,15 @@ The ones known to the author of this humble guide are
 If you know of others, please feel free to [add][github-src-regressions] them to
 this list.
 
-[`EventKind`]: https://docs.rs/gungraun/0.19.4/gungraun/enum.EventKind.html
+[`EventKind`]: https://docs.rs/gungraun/0.20.0/gungraun/enum.EventKind.html
 [`CallgrindMetrics`]:
-    https://docs.rs/gungraun/0.19.4/gungraun/enum.CallgrindMetrics.html
+    https://docs.rs/gungraun/0.20.0/gungraun/enum.CallgrindMetrics.html
 [`CachegrindMetric`]:
-    https://docs.rs/gungraun/0.19.4/gungraun/enum.CachegrindMetric.html
+    https://docs.rs/gungraun/0.20.0/gungraun/enum.CachegrindMetric.html
 [`CachegrindMetrics`]:
-    https://docs.rs/gungraun/0.19.4/gungraun/enum.CachegrindMetrics.html
-[`DhatMetric`]: https://docs.rs/gungraun/0.19.4/gungraun/enum.DhatMetric.html
-[`DhatMetrics`]: https://docs.rs/gungraun/0.19.4/gungraun/enum.DhatMetrics.html
+    https://docs.rs/gungraun/0.20.0/gungraun/enum.CachegrindMetrics.html
+[`DhatMetric`]: https://docs.rs/gungraun/0.20.0/gungraun/enum.DhatMetric.html
+[`DhatMetrics`]: https://docs.rs/gungraun/0.20.0/gungraun/enum.DhatMetrics.html
 [sqlite]: https://sqlite.org/cpu.html#performance_measurement
 [rustc]: https://github.com/rust-lang/rustc-perf
 [compiler-builtins]: https://github.com/rust-lang/compiler-builtins

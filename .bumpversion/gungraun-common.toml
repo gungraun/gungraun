@@ -1,0 +1,24 @@
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+message = "Bump gungraun-common version v{current_version} -> v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "crates/gungraun-common/Cargo.toml"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "crates/gungraun/Cargo.toml"
+search = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={current_version}\""
+replace = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "crates/gungraun-runner/Cargo.toml"
+search = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={current_version}\""
+replace = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "crates/valgrind-requests/Cargo.toml"
+search = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={current_version}\""
+replace = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={new_version}\""

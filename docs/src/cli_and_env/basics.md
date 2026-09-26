@@ -40,7 +40,7 @@ For an up-to-date list for your Gungraun version run `gungraun-runner --help`:
 <!-- start: gungraun-runner-help -->
 
 ````text
-High-precision, one-shot and consistent benchmarking framework/harness for Rust
+High-precision, one-shot and consistent benchmarking framework for Rust
 
 Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
 instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
@@ -433,7 +433,9 @@ Options:
 
       --output-format <OUTPUT_FORMAT>
           The terminal output format in default human-readable format or in machine-readable json
-          format
+          format.
+
+          The gungraun-summary crate provides an easy way to parse the json output in Rust.
 
           # The JSON Output Format
 
@@ -465,15 +467,13 @@ Options:
           The summary file is saved as `summary.json` in the benchmark's output directory next to the
           other usual benchmark output.
 
-          In v7 summaries, `output_dir` identifies that directory. Paths below `project_root` are
-          relative to it; paths outside remain absolute. Paths to artifacts inside `output_dir` are
-          omitted because the directory itself contains them.
-
           Available formats: - `json`: Compact JSON without newlines (space-efficient) -
           `pretty-json`: Pretty-printed JSON with indentation (human-readable)
 
           See also `--output-format` for printing JSON summaries to the terminal instead of saving to
           a file.
+
+          The gungraun-summary crate provides an easy way to parse the json output in Rust.
 
           Examples: * `--save-summary` (saves as compact JSON) * `--save-summary=json` (saves as
           compact JSON) * `--save-summary=pretty-json` (saves as pretty-printed JSON)

@@ -2,13 +2,13 @@
 authors = ["gamma0987"]
 language = "en"
 title = "Gungraun Guide"
-description = "Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust"
+description = "Gungraun, a high-precision, one-shot and consistent benchmarking framework for Rust"
 
 [rust]
 edition = "2024"
 
 [build]
-build-dir = "book/0.19.4"
+build-dir = "book/0.20.0"
 
 [output.html]
 git-repository-url = "https://github.com/gungraun/gungraun"

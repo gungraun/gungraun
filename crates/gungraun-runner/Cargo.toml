@@ -90,7 +90,7 @@ either-or-both = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
 fundu = { workspace = true, optional = true }
 glob = { workspace = true, optional = true }
-gungraun-common = { path = "../gungraun-common/", version = "=0.1.0", optional = true }
+gungraun-common = { path = "../gungraun-common", version = "=0.1.0", optional = true }
 indexmap = { workspace = true, optional = true }
 inferno = { workspace = true, optional = true, default-features = false, features = [
   'multithreaded',

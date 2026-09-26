@@ -12,19 +12,23 @@ same.
 
 ## Why Using a Sandbox?
 
-A `Sandbox` can help mitigating differences in benchmark results on different
-machines. As long as `$TMPDIR` is unset or consistently set to `/tmp`, the
-temporary directory has a constant length on unix machines (except android which
-uses `/data/local/tmp`). The directory itself is created with a constant length
-but random name like `/tmp/.a23sr8fk`.
+Although this might be surprising at first, the main goal of the sandbox is to
+create a stable path and more stable benchmark metrics. As long as `$TMPDIR` is
+unset or consistently set to `/tmp`, the temporary directory has a constant
+length on unix machines (except android which uses `/data/local/tmp`). The
+directory itself is created with a constant length but random name like
+`/tmp/.a23sr8fk`.
 
-It is not implausible that code has different event counts just because the
-directory it is executed in has a different length. For example, if a member of
-your project has set up the project in `/home/bob/workspace/our-project` running
-the benchmarks in this directory, and the ci runs the benchmarks in
-`/runner/our-project`, the event counts might differ. If possible, the
-benchmarks should be run in a constant environment. For example
-[clearing the environment variables](../important.md) is also such a measure.
+The reason for this is that the layout of the benchmark binary can change with
+the Linux environment. For example the environment variables and in turn the
+current directory are copied to the stack before the program starts which
+changes the layout and therefore has an effect on the measurements [^1][^2].
+
+For example, if a member of your project has set up the project in
+`/home/bob/workspace/our-project` running the benchmarks in this directory, and
+the ci runs the benchmarks in `/runner/our-project`, the event counts might
+differ. If possible, the benchmarks should be run in a constant environment.
+[Clearing the environment variables](../important.md) is also such a measure.
 
 Other good reasons for using a `Sandbox` are convenience, e.g. if you create
 files during `setup`, the benchmark function, or `teardown` and do not want to
@@ -208,5 +212,10 @@ library_benchmark_group!(name = my_group, benchmarks = bench_library);
 main!(library_benchmark_groups = my_group);
 # }
 ```
+
+[^1]: https://www.youtube.com/watch?v=r-TLSBdHe1A
+
+[^2]:
+    https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
 
 [`Sandbox`]: https://docs.rs/gungraun/0.19.4/gungraun/struct.Sandbox.html

@@ -1,4 +1,4 @@
-# Benchmarking Best Practices
+# Benchmarking Tips and Best Practices
 
 This page describes best practices for writing benchmarks with Gungraun that
 produce accurate, meaningful, and reproducible results.
@@ -114,15 +114,15 @@ fn bench_example(n: u64) -> u64 {
 
 ## Use a Sandbox When Feasible
 
-Use a [`Sandbox`](./benchmarks/library_benchmarks/configuration/sandbox.md) for
-benchmarks that read or write files if it is feasible for the benchmark. A
-sandbox gives each benchmark run a temporary working directory with a more
+A sandbox gives each benchmark run a temporary working directory with a more
 stable path, removes files created during the run, and helps protect your
 workspace from benchmarked code that creates, overwrites, or deletes files.
 
-Sandboxing is not always the right fit. If a benchmark intentionally depends on
-workspace-relative paths or other external state, either copy the needed
-fixtures into the sandbox or leave sandboxing disabled for that benchmark.
+Although this might be surprising at first, the main goal of the sandbox is to
+create a stable path in `/tmp` and a subdirectory with a random name but
+constant length. See
+[`Why using a Sandbox`](./benchmarks/library_benchmarks/configuration/sandbox.md#why-using-a-sandbox)
+for the reasons.
 
 ## Design for CI
 
@@ -149,6 +149,21 @@ For user-perceived latency validation, combine Gungraun with wall-clock
 benchmarks like Criterion.rs. Use Gungraun for detecting regressions and
 microoptimizations; use wall-clock benchmarks for validating end-to-end
 performance claims.
+
+## Further Links
+
+- An excellent source of performance and benchmarking tips can be found in the
+  [Rust Performance Book](https://nnethercote.github.io/perf-book/introduction.html)
+  by [N.Nethercote](https://nnethercote.github.io/), the creator of Valgrind.
+- A collection of very good tips for reproducible benchmarking in Linux
+  environments used on
+  [Julia](https://github.com/JuliaCI/BenchmarkTools.jl/blob/main/docs/src/linuxtips.md)
+  benchmark runners. These tips are predominantly useful for [Perf](./perf.md)
+  and wall-clock benchmarks which rely on real hardware.
+- If you are setting up a dedicated benchmark runner to avoid virtualized
+  hardware and get the most out of [Perf](./perf.md) benchmarks, have a look at
+  the basic setup of
+  [Julia benchmark runners](https://github.com/JuliaCI/julia-perf/blob/master/docs/perf-runner.md)
 
 ## Where to Go Next
 

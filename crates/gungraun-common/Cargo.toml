@@ -2,8 +2,9 @@
 authors = ["gamma0987 <gamma0987@posteo.de>"]
 categories.workspace = true
 description = """
-High-precision, one-shot and consistent benchmarking framework/harness for Rust. \
-All Valgrind tools at your fingertips.
+Common library for Gungraun crates: High-precision, one-shot and consistent \
+benchmarking framework for Rust. All Valgrind tools and Linux perf at your \
+fingertips.
 """
 edition.workspace = true
 homepage.workspace = true

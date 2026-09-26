@@ -5,9 +5,10 @@ and search rules.
 
 ## Overview
 
-Gungraun is a Rust 2024 workspace for deterministic Valgrind-based library and
-binary benchmarking. Public macros and runtime metadata feed a separate runner,
-which executes tools, interprets metrics, and emits summaries.
+Gungraun is a Rust 2024 workspace for library and binary benchmarking with
+deterministic Valgrind tools and Linux perf. Public macros and runtime metadata
+feed a separate runner, which executes tools, interprets metrics, and emits
+summaries.
 
 ## Structure
 
@@ -35,7 +36,7 @@ gungraun/
 | Attribute expansion   | `crates/gungraun-macros/src/`                                                | Parsing, validation, generated runner glue         |
 | CLI startup           | `crates/gungraun-runner/src/main.rs`                                         | Warning setup and top-level execution              |
 | Runner orchestration  | `crates/gungraun-runner/src/runner/`                                         | Bench selection, execution, sandboxing             |
-| Tool commands         | `crates/gungraun-runner/src/runner/tool/`                                    | Valgrind command/config/path/run lifecycle         |
+| Tool commands         | `crates/gungraun-runner/src/runner/tool/`                                    | Tool command/config/path/run lifecycle             |
 | Metrics and summaries | `crates/gungraun-runner/src/metrics/`, `crates/gungraun-runner/src/summary/` | Keep model and processing roles distinct           |
 | Shared protocol       | `crates/gungraun-common/src/`                                                | Exit and command-line transport types              |
 | Summary API/schema    | `crates/gungraun-summary/src/`, `crates/gungraun-summary/schemas/`           | Versioned public format                            |
@@ -54,14 +55,14 @@ gungraun/
 | `library_benchmark`  | proc macro    | `crates/gungraun-macros/src/lib.rs`       | Expands library benchmark declarations           |
 | `binary_benchmark`   | proc macro    | `crates/gungraun-macros/src/lib.rs`       | Expands binary benchmark declarations            |
 | `main`               | entry point   | `crates/gungraun-runner/src/main.rs`      | Starts runner and prints deferred warnings       |
-| `Tool`               | runner model  | `crates/gungraun-runner/src/runner/tool/` | Configures and invokes Valgrind tools            |
+| `Tool`               | runner model  | `crates/gungraun-runner/src/runner/tool/` | Configures and invokes Valgrind tools or perf    |
 | `SystemTestRunner`   | test harness  | `crates/gungraun-tests/src/bench.rs`      | Executes benchmark fixtures and validates output |
 | `do_client_request!` | request macro | `crates/valgrind-requests/src/lib.rs`     | Encodes architecture-specific Valgrind requests  |
 | `v6`                 | schema module | `crates/gungraun-summary/src/lib.rs`      | Current public summary representation            |
 
 ## Conventions
 
-- Rust edition 2024; workspace MSRV is 1.85.1.
+- Rust edition 2024; workspace MSRV is 1.88.0.
 - Follow `rustfmt.toml`: Unix newlines, 100-character comments,
   module-granularity imports, and `StdExternalCrate` grouping.
 - Import order is standard library, external crates, then workspace modules;

@@ -2,30 +2,32 @@
 
 Welcome to the Gungraun guide, your comprehensive resource for a one-shot
 benchmarking harness and framework that leverages Valgrind's powerful CPU,
-cache, and memory profiling tools: [Callgrind][callgrind-manual],
-[Cachegrind][cachegrind-manual], and [DHAT][dhat-manual]. Gungraun delivers
-highly accurate and consistent measurements of Rust code, making it an ideal
-choice for continuous integration (CI) environments. Its flexibility allows you
-to access all Valgrind tools, even `Memcheck`, and use
-[Valgrind client requests](./client_requests.md) effortlessly.
+cache, and memory profiling tools ([Callgrind][callgrind-manual],
+[Cachegrind][cachegrind-manual], [DHAT][dhat-manual]) as well as [Linux
+perf][perf-wiki]. Gungraun delivers highly accurate and consistent measurements
+of Rust code, making it an ideal choice for continuous integration (CI)
+environments. Its flexibility allows you to access all Valgrind tools, even
+`Memcheck`, and use [Valgrind client requests](./client_requests.md)
+effortlessly.
 
 Gungraun is:
 
-- **Precise**: High-precision measurements of `Instruction` counts and many
-  other metrics allow you to reliably detect very small optimizations and
-  regressions of your code.
-- **Consistent**: Gungraun can take accurate measurements even in virtualized CI
-  environments and make them comparable between different systems completely
-  negating the noise of the environment.
-- **Fast**: Each benchmark is only run once, which is usually much faster than
-  benchmarks which measure execution and wall-clock time. Benchmarks measuring
-  the wall-clock time have to be run many times to increase their accuracy,
-  detect outliers, filter out noise, etc.
-- **Visualizable**: Gungraun generates a Callgrind (DHAT, ...) profile of the
-  benchmarked code and can be configured to create flamegraph-like charts from
-  Callgrind metrics. In general, all Valgrind-compatible tools like
-  [callgrind_annotate][callgrind-annotate], [kcachegrind] or `dh_view.html` and
-  others to analyze the results in detail are fully supported.
+- **Precise**: High-precision measurements of `Instruction` counts,
+  `Estimated Cycles` and many other metrics allow you to reliably detect very
+  small optimizations and regressions of your code.
+- **Consistent**: Gungraun can take accurate measurements with Valgrind even in
+  virtualized CI environments and make them comparable between different systems
+  completely negating the noise of the environment.
+- **Fast**: Each Valgrind benchmark is only run once, which is usually much
+  faster than benchmarks which measure execution and wall-clock time. Benchmarks
+  measuring the wall-clock time have to be run many times to increase their
+  accuracy, detect outliers, filter out noise, etc.
+- **Visualizable**: Gungraun generates a Callgrind (DHAT, ...) or Linux perf
+  profile of the benchmarked code and can be configured to create
+  flamegraph-like charts from Callgrind metrics. In general, all
+  Valgrind-compatible tools like [callgrind_annotate][callgrind-annotate],
+  [kcachegrind] or `dh_view.html` and others to analyze the results in detail
+  are fully supported.
 - **Easy**: The API for setting up benchmarks is easy to use and allows you to
   quickly create concise and clear benchmarks. Focus more on profiling and your
   code than on the framework.
@@ -46,10 +48,11 @@ tries to stay out of your way so you can focus more on profiling and your code!
 Although Gungraun is useful in many projects, there are cases where Gungraun is
 not a good fit.
 
-- If you need only wall-clock times, Gungraun cannot help you much. The
-  estimation of cpu cycles merely correlates to wall-clock times but is not a
-  replacement for wall-clock times. The cycles estimation is primarily designed
-  to be a relative metric to be used for comparison.
+- If you need wall-clock times, Gungraun cannot help you much. The estimation of
+  cpu cycles of Callgrind merely correlates to wall-clock times but is not a
+  replacement for wall-clock times. Valgrind cycles estimation is primarily
+  designed to be a relative metric to be used for comparison. But, as an
+  alternative Linux perf can be used to measure the real hardware cycles.
 - Gungraun cannot be run on Windows or targets that support neither the
   Valgrind-based tools nor Linux perf.
 
@@ -82,3 +85,4 @@ subdirectory][docs-subdir].
 [docs-subdir]: https://github.com/gungraun/gungraun/tree/main/docs
 [kcachegrind]: https://kcachegrind.github.io/html/Home.html
 [open-an-issue]: https://github.com/gungraun/gungraun/issues
+[perf-wiki]: https://perfwiki.github.io/main/

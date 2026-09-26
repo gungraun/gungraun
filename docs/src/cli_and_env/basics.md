@@ -40,7 +40,7 @@ For an up-to-date list for your Gungraun version run `gungraun-runner --help`:
 <!-- start: gungraun-runner-help -->
 
 ````text
-High-precision, one-shot and consistent benchmarking framework/harness for Rust
+High-precision, one-shot and consistent benchmarking framework for Rust
 
 Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
 instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of

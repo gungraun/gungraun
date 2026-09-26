@@ -1,7 +1,8 @@
-//! Gungraun is a one-shot benchmarking harness and framework which uses Valgrind's [Callgrind],
-//! [Cachegrind], and [DHAT] to provide extremely accurate and consistent measurements of Rust code,
-//! making it perfectly suited to run in environments like a CI. Its flexibility allows you to
-//! access all Valgrind tools, even [Memcheck], and utilize [`client_requests`] effortlessly.
+//! Gungraun is a high-precision benchmarking framework which uses Valgrind's [Callgrind],
+//! [Cachegrind], and [DHAT] as well as [Linux perf] to profile Rust code. Valgrind provides
+//! deterministic measurements that are well suited to environments like CI, while perf measures
+//! the real CPU at near-native speed. Gungraun also gives you access to all Valgrind tools, even
+//! [Memcheck], and lets you utilize [`client_requests`] effortlessly.
 //!
 //! The [online guide][Guide] contains all the details to start profiling with Gungraun.
 //!
@@ -16,7 +17,7 @@
 //!     - [Important default behavior](#important-default-behavior)
 //!     - [Quickstart](#quickstart-binary-benchmarks)
 //!     - [Configuration](#configuration-binary-benchmarks)
-//! - [Valgrind Tools](#valgrind-tools)
+//! - [Profiling Tools](#profiling-tools)
 //! - [Client Requests](#client-requests)
 //! - [Flamegraphs](#flamegraphs)
 //!
@@ -24,14 +25,16 @@
 //!
 //! - __Precision__: High-precision measurements allow you to reliably detect very small
 //!   optimizations of your code
-//! - __Consistency__: Gungraun can take accurate measurements even in virtualized CI environments
-//! - __Performance__: Since Gungraun only executes a benchmark once (hence one-shot), it is
-//!   typically a lot faster to run than benchmarks measuring the execution and wall-clock time
+//! - __Consistency__: With Valgrind, Gungraun can take accurate measurements even in virtualized CI
+//!   environments
+//! - __Performance__: Since Gungraun executes each Valgrind benchmark only once it is typically a
+//!   lot faster to run than benchmarks measuring execution and wall-clock time. Perf benchmarks run
+//!   at near-native speed and support repetition for statistical analysis.
 //! - __Regression__: Gungraun reports the difference between benchmark runs to make it easy to spot
 //!   detailed performance regressions and improvements.
-//! - __CPU and Cache Profiling__: Gungraun generates a Callgrind profile of your code while
-//!   benchmarking, so you can use Callgrind-compatible tools like [`callgrind_annotate`] or the
-//!   visualizer [kcachegrind] to analyze the results in detail.
+//! - __CPU and Cache Profiling__: Gungraun generates a Callgrind or Linux perf profile of your code
+//!   while benchmarking. You can use Callgrind-compatible tools like [`callgrind_annotate`] or the
+//!   visualizer [kcachegrind] to analyze Callgrind results in detail.
 //! - __Memory Profiling__: You can run other Valgrind tools like [DHAT: a dynamic heap analysis
 //!   tool][DHAT] and [Massif: a heap profiler][massif] with Gungraun. Their profiles are stored
 //!   next to the Callgrind profiles and are ready to be examined with analysis tools like
@@ -323,13 +326,13 @@
 //! of [`binary_benchmark_group!`] and [`Command`]. The [guide][Guide] of this crate includes
 //! a more thorough documentation with additional examples.
 //!
-//! ## Valgrind Tools
+//! ## Profiling Tools
 //!
-//! In addition to or instead of the default Callgrind tool, you can use the Gungraun framework
-//! to run other Valgrind profiling tools like [DHAT], [Massif], the experimental `BBV` and even
-//! `Cachegrind`. But, also [Memcheck], [Helgrind] and [DRD] if you need to check memory and
-//! thread safety of benchmarked code. See the [Valgrind User Manual] for details and command line
-//! arguments.
+//! In addition to or instead of the default Callgrind tool, you can use Gungraun to run [Linux
+//! perf] or other Valgrind profiling tools like [DHAT], [Massif], the experimental `BBV`, and
+//! `Cachegrind`. You can also use [Memcheck], [Helgrind], and [DRD] to check the memory and thread
+//! safety of benchmarked code. See the [guide][Guide] for details about perf and the
+//! [Valgrind User Manual] for Valgrind tool details and command-line arguments.
 //! The additional tools can be specified in [`LibraryBenchmarkConfig::tool`],
 //! [`BinaryBenchmarkConfig::tool`]. For example to run `DHAT` for all library benchmarks:
 //!
@@ -390,6 +393,7 @@
 //! [DRD]: https://valgrind.org/docs/manual/drd-manual.html
 //! [Guide]: https://gungraun.github.io/gungraun/latest/html/intro.html
 //! [Helgrind]: https://valgrind.org/docs/manual/hg-manual.html
+//! [Linux perf]: https://gungraun.github.io/gungraun/latest/html/perf.html
 //! [Memcheck]: https://valgrind.org/docs/manual/mc-manual.html
 //! [Valgrind User Manual]: https://valgrind.org/docs/manual/manual.html
 //! [`callgrind_annotate`]:

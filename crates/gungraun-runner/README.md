@@ -1,6 +1,6 @@
 <h1 align="center">Gungraun</h1>
 
-<div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
+<div align="center">High-precision, one-shot and consistent benchmarking framework for Rust</div>
 
 <div align="center">
     <a href="https://docs.rs/crate/gungraun/">Released API Docs</a>
@@ -23,8 +23,8 @@
     </a>
 </div>
 
-Gungraun is a benchmarking harness that uses Callgrind to perform extremely
-precise measurements of Rust code.
+Gungraun uses Valgrind's profiling tools and Linux perf to provide precise
+measurements of Rust code.
 
 This is the benchmark binary needed by the
 [Gungraun library](https://crates.io/crates/gungraun). Please see there for

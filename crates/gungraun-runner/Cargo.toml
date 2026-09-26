@@ -7,8 +7,8 @@ authors = [
 ]
 categories.workspace = true
 description = """
-Binary package needed by the Gungraun library. A high-precision, one-shot and \
-consistent benchmarking framework/harness for Rust.
+Binary package needed by the Gungraun library: A high-precision, one-shot and \
+consistent benchmarking framework for Rust.
 """
 edition.workspace = true
 homepage.workspace = true

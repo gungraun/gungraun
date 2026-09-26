@@ -3,7 +3,7 @@ authors = ["Joining7943 <joining@posteo.de>", "gamma0987 <gamma0987@posteo.de>"]
 categories.workspace = true
 description = """
 Proc macros for Gungraun: A high-precision, one-shot and consistent benchmarking \
-framework/harness for Rust.
+framework for Rust.
 """
 edition.workspace = true
 homepage.workspace = true

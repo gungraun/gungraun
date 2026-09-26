@@ -1,0 +1,881 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Perf - Gungraun Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Gungraun, a high-precision, one-shot and consistent benchmarking framework for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="css/my-43cab82a.css">
+        <link rel="stylesheet" href="css/dropdown-65a47de8.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-19d650c1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-2431fd85.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                        <div class="dropdown">
+                          <button onclick="versionDropdown()" class="icon-button version-dropdown-button" type="button">Version</button>
+                          <div id="version-dropdown" class="version-dropdown-content">
+                            <a href="../../latest/html/index.html">Latest</a>
+                            <hr class="sidbar-spacer">
+                            <script src="../../versions.js"></script>
+                          </div>
+                        </div>
+                    <h1 class="menu-title">Gungraun Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/gungraun/gungraun/blob/main/docs/src/perf.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <!-- markdownlint-disable MD041 MD033 -->
+<h1 id="perf"><a class="header" href="#perf">Perf</a></h1>
+<h2 id="intro-to-perf"><a class="header" href="#intro-to-perf">Intro to Perf</a></h2>
+<p>Perf is a profiler that ships with the Linux kernel. It drives the hardware
+performance counters and adds software events on top, so it can measure events
+like instructions, cycles, task-clock or page faults as they happen on the
+machine. If you are new to perf, Brendan Gregg’s <a href="https://www.brendangregg.com/perf.html">perf tutorial</a>
+and the <a href="https://perfwiki.github.io/main/">perf wiki</a> are good starting points.</p>
+<p>Gungraun integrates perf as a first-class tool alongside the Valgrind tools.
+Despite Gungraun’s Valgrind-centric, one-shot heritage, a perf benchmark gets
+the same treatment as any other tool: it runs under the same harness and its
+metrics flow into the same summaries and regression checks. Callgrind remains
+the default tool, so perf is something you opt into.</p>
+<h2 id="why-perf"><a class="header" href="#why-perf">Why Perf?</a></h2>
+<p>The Valgrind tools simulate a synthetic CPU and caches in software. That’s what
+makes their measurements deterministic and comparable across machines, but it’s
+still a model. Perf reads the counters of the actual CPU the code runs on and
+reports what the hardware did.</p>
+<p>The difference shows in the overhead. A Valgrind run replays every instruction
+through its simulation, which typically slows a program down by a factor of 10
+to 50. Perf collects its events with little overhead and the benchmark runs at
+near-native speed.</p>
+<p>Also, Perf comes with a lot of additional metrics. Optimizations for specific
+CPU features can be invisible to Valgrind because its simulated CPU doesn’t have
+them. Real hardware has them, and perf sees their effect on the events it
+counts.</p>
+<p>Perf is not a replacement for the Valgrind tools. For machine-independent
+instruction counts, Callgrind remains the tool of choice. For measurements that
+need the real CPU, perf is the one that can take them.</p>
+<h2 id="caveats"><a class="header" href="#caveats">Caveats</a></h2>
+<p>Benchmarking with perf behaves much closer to wall-clock benchmarking than to
+benchmarking with Valgrind. The counters are collected while code runs on a real
+machine, so they pick up the same noise as wall-clock measurements. Telling a
+real change from noise takes an idle machine, repetition and statistics, just
+like it does for wall-clock benchmarks.</p>
+<p>Perf results also depend on the host CPU, the counters it provides and the
+kernel’s security settings must permit the requested events.</p>
+<p>Gungraun requires Linux perf 5.9 or newer. Its measured-region control uses
+<code>perf stat --control=fd:...,ack</code>, which first became available in that release;
+otherwise, Gungraun is independent of the installed perf version.</p>
+<p>Virtualized environments generally do not expose hardware counters. For example,
+the native GitHub Actions runners are virtualized, so interesting events like
+instructions are not available there. Perf benchmarks belong on real hardware.</p>
+<h2 id="usage-on-the-command-line"><a class="header" href="#usage-on-the-command-line">Usage on the Command-Line</a></h2>
+<p>Running perf instead of or in addition to Callgrind is straightforward and no
+different from any <a href="./tools.html">other tool</a>:</p>
+<p>Use <a href="./cli_and_env/basics.html">command-line arguments or environment variables</a>:
+<code>--default-tool=perf</code> or <code>GUNGRAUN_DEFAULT_TOOL=perf</code> (replaces Callgrind as
+default tool) or <code>--tools=perf</code> or <code>GUNGRAUN_TOOLS=perf</code> (runs perf in addition
+to the default tool). Like any other tool perf can be enabled in the benchmark
+settings:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">use gungraun::prelude::*;
+</span><span class="boring">use gungraun::Perf;
+</span><span class="boring">#[library_benchmark] fn bench_library() -&gt; u64 { 2 }
+</span><span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_library);
+</span><span class="boring">fn main() {
+</span>main!(
+  config = LibraryBenchmarkConfig::default().tool(Perf::default()),
+  library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>Perf itself can be configured with the following command-line options, each with
+an environment variable and benchmark-level equivalent:</p>
+<ul>
+<li><code>--perf-args</code> (<code>GUNGRAUN_PERF_ARGS</code>): The command-line arguments to pass
+through to <code>perf stat</code>, for example <code>--perf-args='--all-cpus'</code>. By default, no
+arguments are passed. Not all perf arguments are allowed here; see below. To
+pass arguments to the <code>perf record</code> invocation, use <code>--perf-record-args</code>.</li>
+<li><code>--perf-bin</code> (<code>GUNGRAUN_PERF_BIN</code>): The path to the <code>perf</code> executable. By
+default, Gungraun searches for <code>perf</code> in the system PATH. When used with
+<code>--tool-runner</code>, this path is passed to the runner as the perf binary to
+invoke.</li>
+<li><code>--perf-events</code> (<code>GUNGRAUN_PERF_EVENTS</code>): Add an event set for perf (for the
+<code>-e</code>, <code>--event</code> perf argument). Each occurrence creates a separate event set,
+so comma-separated events within one occurrence are measured together and the
+same syntax as the perf <code>-e</code> event selector can be used, for example
+<code>--perf-events=instructions,cycles</code> or
+<code>--perf-events='{instructions,cycles},task-clock'</code>. By default, Gungraun
+measures the event set
+<code>instructions:u,cycles:u,task-clock,cpu-clock,faults,context-switches,branch-misses,cache-misses</code>.</li>
+<li><code>--perf-limits</code> (<code>GUNGRAUN_PERF_LIMITS</code>): Set perf regression limits as
+comma-separated <code>pattern=limit</code> pairs. By default, no limits are set. The full
+pattern and limit grammar, including wildcards, soft percentage limits, and
+hard limits with units, is described in
+<a href="./regressions.html#the-format-short-names-and-groups-in-full-detail">regressions.md</a>.</li>
+<li><code>--perf-record</code> (<code>GUNGRAUN_PERF_RECORD</code>): Run <code>perf record</code> in addition to the
+<code>perf stat</code> benchmark run. Disabled by default. This option does not enable
+running perf itself: without perf enabled, for example via <code>--tools=perf</code> or a
+benchmark configuration, it does nothing.</li>
+<li><code>--perf-record-args</code> (<code>GUNGRAUN_PERF_RECORD_ARGS</code>): The command-line arguments
+to pass to <code>perf record</code>, for example
+<code>--perf-record-args='--all-cpus --freq=400'</code>. These are independent of the
+<code>perf stat</code> arguments from <code>--perf-args</code>. By default, no arguments are passed.</li>
+<li><code>--perf-run-mode</code> (<code>GUNGRAUN_PERF_RUN_MODE</code>): Select how perf runs the
+benchmark. <code>direct</code> runs the benchmark once without calibration. <code>calibrate</code>
+samples the default calibration duration and <code>calibrate=&lt;duration&gt;</code> uses an
+explicit duration such as <code>250ms</code> or <code>2s</code>. Supported duration units are
+nanoseconds (<code>ns</code>, <code>nsec</code>), microseconds (<code>us</code>, <code>usec</code>), milliseconds (<code>ms</code>,
+<code>msec</code>), and seconds (<code>s</code>, <code>sec</code>, <code>secs</code>, <code>second</code>, <code>seconds</code>); a missing unit
+defaults to seconds.</li>
+<li><code>--perf-sampling</code> (<code>GUNGRAUN_PERF_SAMPLING</code>): Enable, disable, or configure
+the duration for perf sampling, a time limit for continuously repeated
+<code>perf stat</code> sampling that improves measurement stability. <code>yes</code> enables
+sampling with the default duration of 2 seconds, <code>no</code> disables it so that the
+benchmark is measured by a single <code>perf stat</code> run, and a duration such as
+<code>250ms</code> or <code>2s</code> enables sampling with that duration. The sampling duration
+uses the same units as <code>--perf-run-mode</code>, affects only the main <code>perf stat</code>
+measurement and not the optional <code>perf record</code> capture, and is independent
+from the calibration duration of <code>--perf-run-mode=calibrate=&lt;duration&gt;</code>.</li>
+</ul>
+<p>Not all perf arguments are allowed in <code>--perf-args</code> and <code>--perf-record-args</code>
+and, if encountered, produce a warning. This includes the event selection
+arguments (<code>-e</code>, <code>--event</code>, <code>--pfm-events</code>), since Gungraun manages events in
+event sets (<code>--perf-events</code>). Additionally, <code>perf stat</code> invocation does not
+accept the <code>record</code> or <code>report</code> subcommands; parsing stops at such an argument
+and everything after it is ignored.</p>
+<h2 id="usage-in-a-benchmark"><a class="header" href="#usage-in-a-benchmark">Usage in a Benchmark</a></h2>
+<p>Most of what the command-line section described can also be configured from
+within the benchmark itself. The <code>Perf</code> builder passed to
+<code>LibraryBenchmarkConfig::tool</code> (or <code>BinaryBenchmarkConfig::tool</code> in binary
+benchmarks) is the programmatic counterpart of the command-line options.
+Selecting perf for a library benchmark looks like this:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn fibonacci(_: u64) -&gt; u64 { 0 } }
+</span>use std::time::Duration;
+
+use gungraun::prelude::*;
+use gungraun::{Perf, Tool};
+
+#[library_benchmark]
+#[bench::fibonacci_25(25)]
+fn bench_library(n: u64) -&gt; u64 {
+    my_lib::fibonacci(n)
+}
+
+library_benchmark_group!(name = my_group, benchmarks = bench_library);
+
+<span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default().tool(Perf::default()),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>Although you should also configure <a href="#sampling-duration">sampling</a> and possibly
+the <a href="#run-modes">run mode</a>, we run this benchmark which runs perf once and
+produces output similar to this:</p>
+<pre><code class="hljs">lib_bench_perf::my_group::bench_library fibonacci_25:(25)
+  ======= CALLGRIND ===================================================================================
+  Instructions:                                    2438801|N/A                  (*********)
+  L1 Hits:                                         3484967|N/A                  (*********)
+  LL Hits:                                               2|N/A                  (*********)
+  RAM Hits:                                              1|N/A                  (*********)
+  Total read+write:                                3484970|N/A                  (*********)
+  Estimated Cycles:                                3485012|N/A                  (*********)
+  ======= PERF ========================================================================================
+  &gt;&gt; alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                         2439354|N/A                  (*********)
+  cpu_atom/cycles/u:                                746462|N/A                  (*********)
+  cpu_core/cycles/u:                                746462|N/A                  (*********)
+  task-clock/u [us]:                               201.900|N/A                  (*********)
+  cpu-clock/u [us]:                                198.938|N/A                  (*********)
+  faults/u:                                              0|N/A                  (*********)
+  context-switches/u:                                    0|N/A                  (*********)
+  cpu_core/branch-misses/u:                           1821|N/A                  (*********)
+  cpu_core/cache-misses/u:                             235|N/A                  (*********)
+
+Gungraun result: Ok. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 0.30242s</code></pre>
+
+<p>You can see that Callgrind cache metrics and cycles can differ from perf
+metrics. Instruction counts however, are quiet comparable. Since perf runs only
+once, the metrics contain all kind of noise and cold start effects. As you can
+see in the following sections these can be mitigated to get more meaningful
+metrics.</p>
+<h3 id="run-modes"><a class="header" href="#run-modes">Run Modes</a></h3>
+<p><code>Perf::run_mode</code> taking a <code>PerfRunMode</code> controls how the benchmark invocation is
+calibrated inside the perf measurement, mirroring <code>--perf-run-mode</code>.
+<code>PerfRunMode::Direct</code> is the default and measures a single, normal benchmark
+invocation. <code>PerfRunMode::DefaultCalibrate</code> first runs <code>perf</code> on the harness
+itself to measure the overhead introduced by perf and Gungraun, without running
+the actual benchmark. The calibration stops after a default duration of one
+second, the first sample is discarded to mitigate cold-start effects, and the
+mean calibration metrics are subtracted from the final benchmark metrics.
+<code>PerfRunMode::Calibrate</code> takes a <code>Duration</code> for a custom calibration sampling
+duration, trading total benchmark execution time for a more stable overhead
+estimate.</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn fibonacci(_: u64) -&gt; u64 { 0 } }
+</span><span class="boring">use gungraun::prelude::*;
+</span><span class="boring">use gungraun::{Perf, PerfRunMode, Tool};
+</span><span class="boring">use std::time::Duration;
+</span><span class="boring">
+</span><span class="boring">#[library_benchmark]
+</span><span class="boring">#[bench::fibonacci_25(25)]
+</span><span class="boring">fn bench_library(n: u64) -&gt; u64 {
+</span><span class="boring">    my_lib::fibonacci(n)
+</span><span class="boring">}
+</span><span class="boring">
+</span><span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_library);
+</span><span class="boring">
+</span><span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().run_mode(PerfRunMode::DefaultCalibrate)),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>Note Perf is now the default tool, to keep the examples a little bit more
+concise. Running the benchmark again producing metrics with calibration on the
+left side and without on the right side:</p>
+<pre><code class="hljs">lib_bench_perf::my_group::bench_library fibonacci_25:(25)
+  ======= PERF ========================================================================================
+  &gt;&gt; alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                         2437680|2439354              (-0.06862%) [-1.00069x]
+  cpu_atom/cycles/u:                                749435|746462               (+0.39828%) [+1.00398x]
+  cpu_core/cycles/u:                                751094|746462               (+0.62053%) [+1.00621x]
+  task-clock/u [us]:                               190.646|201.900              (-5.57383%) [-1.05903x]
+  cpu-clock/u [us]:                                189.120|198.938              (-4.93533%) [-1.05192x]
+  faults/u:                                              0|0                    (+0.00000%) [+1.00000x]
+  context-switches/u:                                    0|0                    (+0.00000%) [+1.00000x]
+  cpu_core/branch-misses/u:                           1255|1821                 (-31.0818%) [-1.45100x]
+  cpu_core/cache-misses/u:                              82|235                  (-65.1064%) [-2.86585x]
+
+Gungraun result: Ok. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 1.07354s</code></pre>
+
+<p>Most noticeable are the changes in the branch-misses and cache misses likely due
+to the mitigation of cold start effects and caches. Whether calibration is
+worthwhile depends on the benchmark: if the overhead is small relative to the
+main run, the default <code>Direct</code> is usually sufficient. For binary benchmarks, the
+calibration modes are effectively ignored and fall back to <code>Direct</code>, because the
+benchmark binary is invoked directly with its command arguments.</p>
+<h3 id="sampling-duration"><a class="header" href="#sampling-duration">Sampling Duration</a></h3>
+<p><code>sample_duration</code> sets the wall-clock limit for the continuously repeated
+<code>perf stat</code> sampling described with <code>--perf-sampling</code> in the command-line
+section:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn fibonacci(_: u64) -&gt; u64 { 0 } }
+</span><span class="boring">use gungraun::prelude::*;
+</span><span class="boring">use gungraun::{Perf, PerfRunMode, Tool};
+</span><span class="boring">use std::time::Duration;
+</span><span class="boring">#[library_benchmark]
+</span><span class="boring">fn bench_library() -&gt; u64 { 2 }
+</span><span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_library);
+</span><span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().sample_duration(Duration::from_secs(2))),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>Running the benchmark in comparison with sampling (left) to the original run
+without sampling (right) displays the metrics now with statistics (See below
+<a href="#a-small-example-analysis">example analysis</a> for a detailed explanation of
+them):</p>
+<pre><code class="hljs">lib_bench_perf::my_group::bench_library fibonacci_25:(25)
+  ======= PERF ========================================================================================
+  &gt;&gt; alpha: 0.05000, min_pcnt_running: 100.000
+  cpu_core/instructions/u:                         2328445|2439354              (-4.54665%) [-1.04763x]
+    rse% (sig.thr) [sig.fact]                      0.08565|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  cpu_atom/cycles/u:                                724977|746462               (-2.87824%) [-1.02964x]
+    rse% (sig.thr) [sig.fact]                      0.09748|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  cpu_core/cycles/u:                                721724|746462               (-3.31403%) [-1.03428x]
+    rse% (sig.thr) [sig.fact]                      0.10441|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  task-clock/u [us]:                               195.381|201.900              (-3.22858%) [-1.03336x]
+    rse% (sig.thr) [sig.fact]                      0.10998|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  cpu-clock/u [us]:                                194.187|198.938              (-2.38801%) [-1.02446x]
+    rse% (sig.thr) [sig.fact]                      0.11839|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  faults/u:                                              1|0                    (+++inf+++) [+++inf+++]
+    rse% (sig.thr) [sig.fact]                      2.29012|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  context-switches/u:                                    0|0                    (+0.00000%) [+1.00000x]
+    rse% (sig.thr) [sig.fact]                      0.00000|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  cpu_core/branch-misses/u:                           1077|1821                 (-40.8567%) [-1.69081x]
+    rse% (sig.thr) [sig.fact]                      0.12999|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+  cpu_core/cache-misses/u:                               5|235                  (-97.8723%) [-47.0000x]
+    rse% (sig.thr) [sig.fact]                      2.67131|N/A                  (*********)
+    samples                                           2083|N/A                  (*********)
+
+Gungraun result: Ok. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 2.07493s</code></pre>
+
+<p>The sampling duration is only applied once at least one sample has been
+recorded: a run is never stopped before its first sample, so every run produces
+at least one sample, but it may exceed the configured duration until the first
+sample is written. If the duration is long enough for multiple benchmark runs,
+the first run is discarded to mitigate cold-start effects, and at least one
+record is always kept. A sampling duration above one second typically works
+well. The duration affects only the main <code>perf stat</code> measurement, not the
+optional <code>perf record</code> capture, and is independent from the calibration duration
+of <code>PerfRunMode::Calibrate</code>. In binary benchmarks, setup and teardown run once
+before and after the sampling period; in library benchmarks they run per sample.</p>
+<h3 id="choosing-event-sets"><a class="header" href="#choosing-event-sets">Choosing Event Sets</a></h3>
+<p><code>event_set</code> adds a single event selector to the configuration and <code>event_sets</code>
+adds multiple selectors at once. Both append to the list of event sets; there is
+no replace variant, so build the complete list where the builder chain starts.
+Each event set is measured by a separate <code>perf stat</code> invocation and passed to
+perf with <code>--event</code> as-is, which means perf’s own selector syntax applies:
+comma-separated events are measured together, and the group syntax
+<code>{instructions,cycles}</code> works as well.</p>
+<p>Splitting event sets can become necessary because the CPU cannot record an
+endless amount of PMU hardware events in parallel and then falls back to
+<a href="#statistical-filters-and-significance">multiplexing</a> for these events.</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn fibonacci(_: u64) -&gt; u64 { 0 } }
+</span><span class="boring">use gungraun::prelude::*;
+</span><span class="boring">use gungraun::Perf;
+</span><span class="boring">
+</span><span class="boring">#[library_benchmark]
+</span><span class="boring">#[bench::fibonacci_25(20)]
+</span><span class="boring">fn bench_library(n: u64) -&gt; u64 {
+</span><span class="boring">    my_lib::fibonacci(n)
+</span><span class="boring">}
+</span><span class="boring">
+</span><span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_library);
+</span><span class="boring">
+</span><span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default().tool(
+        Perf::default()
+            .event_set("cycles,instructions")
+            .event_set("{branch-misses,cache-misses},task-clock")
+    ),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>This benchmark runs <code>perf stat</code> twice, once with <code>--event=cycles,instructions</code>
+and once with <code>--event={branch-misses,cache-misses},task-clock</code>. The same event
+sets also apply to the optional <code>perf record</code> capture described below. As long
+as no event set is configured, the default event set from the command-line
+section applies; configured sets are measured instead of it.</p>
+<h2 id="a-small-example-analysis"><a class="header" href="#a-small-example-analysis">A Small Example Analysis</a></h2>
+<p>We reuse the example with sampling from above and with Perf as default tool.</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn fibonacci(_: u64) -&gt; u64 { 0 } }
+</span>use std::time::Duration;
+
+use gungraun::prelude::*;
+use gungraun::{Perf, Tool};
+
+#[library_benchmark]
+#[bench::fibonacci_30(30)]
+fn bench_library(n: u64) -&gt; u64 {
+    my_lib::fibonacci(n)
+}
+
+library_benchmark_group!(name = my_group, benchmarks = bench_library);
+
+<span class="boring">fn main() {
+</span>main!(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(Tool::Perf)
+        .tool(Perf::default().sample_duration(Duration::from_secs(2))),
+    library_benchmark_groups = my_group
+);
+<span class="boring">}</span></code></pre>
+<p>The first invocation produces the following metrics. I am also establishing a
+<a href="./cli_and_env/baselines.html">baseline</a> with <code>--save-baseline=perf_example</code> for
+demonstration purposes so I can run the next example runs against this baseline:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_perf::my_group::bench_library</span> <span style="color:#0AA">fibonacci_30</span>:<b><span style="color:#00A">(30)</span></b>
+<span style="color:#555">  </span><span style="color:#555">=======</span> PERF <span style="color:#555">========================================================================================</span>
+<span style="color:#555">  </span><span style="color:#555">&gt;&gt; alpha: 0.05000, min_pcnt_running: 100.000</span>
+<span style="color:#555">  </span>Baselines:                                  <b>perf_example</b>|perf_example (old)
+<span style="color:#555">  </span>cpu_core/instructions/u:                        <b>26938998</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.01200</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>cpu_atom/cycles/u:                               <b>8333327</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.04080</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>cpu_core/cycles/u:                               <b>8329664</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.04111</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>task-clock/u [ms]:                               <b>2.10894</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.04798</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>cpu-clock/u [ms]:                                <b>2.10781</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.04823</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>faults/u:                                              <b>3</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">1.05398</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>context-switches/u:                                    <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.00000</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>cpu_core/branch-misses/u:                          <b>11635</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.02553</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>cpu_core/cache-misses/u:                              <b>23</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">7.35942</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">687</span></b>|<span style="color:#555">N/A                 </span> (<span style="color:#555">*********</span>)
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 2.06148s</code></pre>
+
+<p>The header repeats the statistical settings used for the comparison: <code>alpha</code> is
+the significance level, and <code>min_pcnt_running</code> is the minimum percentage of time
+that an event must have run to be included. Because this is the first run, there
+is no baseline yet, so the right-hand values are <code>N/A</code> and comparisons are shown
+as <code>*********</code>. On later runs, parentheses contain the percentage change and
+brackets contain the corresponding change factor.</p>
+<p>The indented rows describe the samples behind each metric. <code>rse%</code> is the
+<a href="https://simple.wikipedia.org/wiki/Standard_error#Relative_standard_error">relative standard error</a>.
+It describes the uncertainty of the estimated metric mean relative to that mean:
+more sample-to-sample fluctuation increases the RSE, while more samples
+generally reduce it. A lower RSE therefore means that the reported mean is more
+precise; it is not a direct measure of the sample spread alone. Its
+parenthesized value is the smallest relative change that would be statistically
+significant, and <code>sig.fact</code> (Significance factor) compares the observed change
+with that threshold. A significance factor below <code>1</code> is not significant; a
+factor above <code>1</code> is. The <code>samples</code> row is the number of observations collected
+for the metric.</p>
+<p>Running this benchmark a second time:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_perf::my_group::bench_library</span> <span style="color:#0AA">fibonacci_30</span>:<b><span style="color:#00A">(30)</span></b>
+<span style="color:#555">  </span><span style="color:#555">=======</span> PERF <span style="color:#555">========================================================================================</span>
+<span style="color:#555">  </span><span style="color:#555">&gt;&gt; alpha: 0.05000, min_pcnt_running: 100.000</span>
+<span style="color:#555">  </span>Baselines:                                              |perf_example
+<span style="color:#555">  </span>cpu_core/instructions/u:                        <b>26918731</b>|26938998             (<b><span style="color:#42c142">-0.07523%</span></b>) [<b><span style="color:#42c142">-1.00075x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.01338</span></b>|<span style="color:#555">0.01200             </span> (<span style="color:#555">&gt;0.03523%</span>) [<b><span style="color:#00A"> 2.13541x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>cpu_atom/cycles/u:                               <b>8322779</b>|8333327              (<b><span style="color:#42c142">-0.12658%</span></b>) [<b><span style="color:#42c142">-1.00127x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.02851</span></b>|<span style="color:#555">0.04080             </span> (<span style="color:#555">&gt;0.09762%</span>) [<b><span style="color:#00A"> 1.29667x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>cpu_core/cycles/u:                               <b>8318495</b>|8329664              (<b><span style="color:#42c142">-0.13409%</span></b>) [<b><span style="color:#42c142">-1.00134x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.02904</span></b>|<span style="color:#555">0.04111             </span> (<span style="color:#555">&gt;0.09871%</span>) [<b><span style="color:#00A"> 1.35845x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>task-clock/u [ms]:                               <b>2.10663</b>|2.10894              (<b><span style="color:#42c142">-0.10953%</span></b>) [<b><span style="color:#42c142">-1.00110x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.03733</span></b>|<span style="color:#555">0.04798             </span> (<span style="color:#555">&gt;0.11921%</span>) [<span style="color:#555"> 0.91883x</span>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>cpu-clock/u [ms]:                                <b>2.10536</b>|2.10781              (<b><span style="color:#42c142">-0.11631%</span></b>) [<b><span style="color:#42c142">-1.00116x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.03797</span></b>|<span style="color:#555">0.04823             </span> (<span style="color:#555">&gt;0.12036%</span>) [<span style="color:#555"> 0.96632x</span>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>faults/u:                                              <b>3</b>|3                    (<b><span style="color:#F55">+0.00000%</span></b>) [<b><span style="color:#F55">+1.00000x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">1.17094</span></b>|<span style="color:#555">1.05398             </span> (<span style="color:#555">&gt;3.06207%</span>) [<span style="color:#555"> 0.54652x</span>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>context-switches/u:                                    <b>0</b>|0                    (<b><span style="color:#F55">+0.00000%</span></b>) [<b><span style="color:#F55">+1.00000x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.00000</span></b>|<span style="color:#555">0.00000             </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>cpu_core/branch-misses/u:                          <b>11628</b>|11635                (<b><span style="color:#42c142">-0.06016%</span></b>) [<b><span style="color:#42c142">-1.00060x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.02443</span></b>|<span style="color:#555">0.02553             </span> (<span style="color:#555">&gt;0.06930%</span>) [<span style="color:#555"> 0.84528x</span>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+<span style="color:#555">  </span>cpu_core/cache-misses/u:                              <b>20</b>|23                   (<b><span style="color:#42c142">-13.0435%</span></b>) [<b><span style="color:#42c142">-1.15000x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">6.23706</span></b>|<span style="color:#555">7.35942             </span> (<span style="color:#555">&gt;18.1609%</span>) [<span style="color:#555"> 0.54867x</span>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                            <b><span style="color:#555">683</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">-0.58224%</span>) [<span style="color:#555">-1.00586x</span>]
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 2.06087s</code></pre>
+
+<p>This is the same code measured again, and the high-volume counters and clocks
+move by less than <code>0.5%</code>. Those small differences are normal run-to-run noise.
+The cache-miss count appears to increase by <code>13.0435%</code>, but the underlying
+change is only from <code>20</code> to <code>23</code> misses. Its significance threshold is
+<code>18.1609%</code>, while the significance factor is only <code>0.54867x</code>. Because that
+factor is below <code>1</code>, the observed increase is not statistically significant.</p>
+<p>Now, assume a change improves the fibonacci runtime:</p>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_perf::my_group::bench_library</span> <span style="color:#0AA">fibonacci_30</span>:<b><span style="color:#00A">(30)</span></b>
+<span style="color:#555">  </span><span style="color:#555">=======</span> PERF <span style="color:#555">========================================================================================</span>
+<span style="color:#555">  </span><span style="color:#555">&gt;&gt; alpha: 0.05000, min_pcnt_running: 100.000</span>
+<span style="color:#555">  </span>Baselines:                                              |perf_example
+<span style="color:#555">  </span>cpu_core/instructions/u:                        <b>10216912</b>|26938998             (<b><span style="color:#42c142">-62.0739%</span></b>) [<b><span style="color:#42c142">-2.63671x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.02611</span></b>|<span style="color:#555">0.01200             </span> (<span style="color:#555">&gt;0.03051%</span>) [<b><span style="color:#00A"> 2034.45x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>cpu_atom/cycles/u:                               <b>3166639</b>|8333327              (<b><span style="color:#42c142">-62.0003%</span></b>) [<b><span style="color:#42c142">-2.63160x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.03937</span></b>|<span style="color:#555">0.04080             </span> (<span style="color:#555">&gt;0.08530%</span>) [<b><span style="color:#00A"> 726.864x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>cpu_core/cycles/u:                               <b>3162611</b>|8329664              (<b><span style="color:#42c142">-62.0319%</span></b>) [<b><span style="color:#42c142">-2.63379x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.04069</span></b>|<span style="color:#555">0.04111             </span> (<span style="color:#555">&gt;0.08620%</span>) [<b><span style="color:#00A"> 719.637x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>task-clock/u [us]:                               <b>810.932</b>|2108.94              (<b><span style="color:#42c142">-61.5478%</span></b>) [<b><span style="color:#42c142">-2.60063x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.05055</span></b>|<span style="color:#555">0.04798             </span> (<span style="color:#555">&gt;0.10160%</span>) [<b><span style="color:#00A"> 605.812x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>cpu-clock/u [us]:                                <b>809.751</b>|2107.81              (<b><span style="color:#42c142">-61.5834%</span></b>) [<b><span style="color:#42c142">-2.60304x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.05188</span></b>|<span style="color:#555">0.04823             </span> (<span style="color:#555">&gt;0.10242%</span>) [<b><span style="color:#00A"> 601.293x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>faults/u:                                              <b>3</b>|3                    (<b><span style="color:#F55">+0.00000%</span></b>) [<b><span style="color:#F55">+1.00000x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.96381</span></b>|<span style="color:#555">1.05398             </span> (<span style="color:#555">&gt;2.75304%</span>) [<b><span style="color:#00A"> 1.39038x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>context-switches/u:                                    <b>0</b>|0                    (<b><span style="color:#F55">+0.00000%</span></b>) [<b><span style="color:#F55">+1.00000x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.00000</span></b>|<span style="color:#555">0.00000             </span> (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>cpu_core/branch-misses/u:                           <b>4475</b>|11635                (<b><span style="color:#42c142">-61.5385%</span></b>) [<b><span style="color:#42c142">-2.60000x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">0.04440</span></b>|<span style="color:#555">0.02553             </span> (<span style="color:#555">&gt;0.06026%</span>) [<b><span style="color:#00A"> 1021.10x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+<span style="color:#555">  </span>cpu_core/cache-misses/u:                               <b>8</b>|23                   (<b><span style="color:#42c142">-65.2174%</span></b>) [<b><span style="color:#42c142">-2.87500x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  rse% (sig.thr) [sig.fact]</span>                      <b><span style="color:#555">3.45528</span></b>|<span style="color:#555">7.35942             </span> (<span style="color:#555">&gt;14.6450%</span>) [<b><span style="color:#00A"> 4.42071x</span></b>]
+<span style="color:#555">  </span><span style="color:#555">  samples</span>                                           <b><span style="color:#555">1248</span></b>|<span style="color:#555">687                 </span> (<span style="color:#555">+81.6594%</span>) [<span style="color:#555">+1.81659x</span>]
+
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 0 filtered; 1 benchmarks finished in 2.06785s</code></pre>
+
+<p>This comparison is different: instructions fall by <code>62.0739%</code> but the other
+metrics also improve considerably. The bracketed factors on the metric rows show
+the scale of those improvements, while the significance factors on the <code>rse%</code>
+rows are far above <code>1</code>; These are statistically very clear improvements rather
+than sampling noise.</p>
+<h2 id="recording-a-perfdata-profile-with-perf-record"><a class="header" href="#recording-a-perfdata-profile-with-perf-record">Recording a perf.data Profile with perf record</a></h2>
+<p><code>record</code> enables a companion <code>perf record</code> run in addition to the <code>perf stat</code>
+measurement, mirroring <code>--perf-record</code>. The result is a sample-based profile
+that can be analyzed with <code>perf report</code>:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">extern crate gungraun;
+</span>use gungraun::Perf;
+
+let perf = Perf::default().record(true);
+<span class="boring">}</span></code></pre>
+<p>Arguments for the <code>perf record</code> invocation are added with <code>Perf::record_args</code>.</p>
+<h3 id="call-graphs"><a class="header" href="#call-graphs">Call Graphs</a></h3>
+<p>When <code>perf record</code> profiles a benchmark, call graphs attach a caller stack to
+each recorded sample. They are what makes per-function attribution in
+<code>perf report</code> — and flamegraphs as popularized by <a href="https://www.brendangregg.com/perf.html">brendan-gregg</a> — meaningful.
+The unwinding method is a trade-off:</p>
+<ul>
+<li>With <code>--call-graph fp</code>, perf unwinds via frame pointers. This is the cheapest
+method, but it only yields complete stacks when every frame on the stack was
+compiled with frame pointers, and release builds usually omit them. Missing
+frame pointers truncate the call graph.</li>
+<li>With <code>--call-graph dwarf</code>, perf unwinds via DWARF debug information instead.
+No frame pointers are required, at the price of noticeably higher recording
+overhead and a considerably larger <code>perf.data</code> file.</li>
+</ul>
+<p>The method is selected like any other <code>perf record</code> argument: on the
+command-line via <code>--perf-record-args='--call-graph dwarf'</code>, and in the benchmark
+config via <code>.record_args(["--call-graph", "dwarf"])</code>. Further methods, such as
+<code>lbr</code> on supported CPUs, are described in the <a href="https://perfwiki.github.io/main/">perf wiki</a>.</p>
+<h2 id="advanced-usage"><a class="header" href="#advanced-usage">Advanced Usage</a></h2>
+<h3 id="statistical-filters-and-significance"><a class="header" href="#statistical-filters-and-significance">Statistical Filters and Significance</a></h3>
+<p>Three builder methods tune which sampled records and metric changes are kept.
+<code>Perf::alpha</code> sets the p-value threshold that decides whether a metric change is
+statistically significant before soft limits are applied. The default of <code>0.05</code>
+balances sensitivity and false-positive rate. Lower values such as <code>0.01</code> or
+<code>0.001</code> make regression reports more conservative, which helps in a noisy CI; a
+higher value catches smaller changes at the cost of more false positives. The
+limits themselves are set with <code>soft_limits</code> and <code>hard_limits</code>, the builder
+counterparts of <code>--perf-limits</code> described in
+<a href="./regressions.html#the-format-short-names-and-groups-in-full-detail">regressions.md</a>.</p>
+<p><code>Perf::non_zero_metrics</code> sets patterns for metrics that must be nonzero. If a
+matching metric is exactly zero, the whole measurement record containing it is
+discarded, where each record holds all metrics selected by one event set. This
+mitigates a source of low-end skew: short-running benchmarks can occasionally
+produce zero values for metrics expected to be nonzero. The patterns default to
+<code>task-clock*</code>, <code>cpu-clock*</code> and <code>*instructions*</code>, and a call replaces the
+defaults. They use the same wildcard syntax as the limit patterns: <code>*</code>, <code>?</code>, <code>\</code>
+escapes and character classes such as <code>[...]</code>, <code>[!...]</code> and <code>[a-zA-Z]</code>.</p>
+<p><code>Perf::min_pcnt_running</code> sets the minimum percentage of time a hardware counter
+must have been running for a sampled record to be kept. When perf multiplexes
+more events than the CPU has physical counter slots, <code>pcnt_running</code> reports the
+fraction of the interval the counter was active, and records below the threshold
+are discarded. The default of <code>100.0</code> tolerates no multiplexing, and valid
+values range from <code>0.0</code> to <code>100.0</code>. Usually it is better to keep the default and
+split the events into multiple event sets instead, at the cost of running perf
+once per set.</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">extern crate gungraun;
+</span>use gungraun::Perf;
+
+let perf = Perf::default()
+    .alpha(0.01)
+    .non_zero_metrics(["task-clock*", "*instructions*"])
+    .min_pcnt_running(80.0);
+<span class="boring">}</span></code></pre>
+<h3 id="controlling-the-measured-region"><a class="header" href="#controlling-the-measured-region">Controlling the Measured Region</a></h3>
+<p>By default, perf measurement starts when the benchmark function is entered, like
+the default entry point of the Valgrind tools. With <code>disable_entry_point(true)</code>
+the automatic start is turned off and the measured region is bracketed manually
+with the <code>perf_enable!</code> and <code>perf_disable!</code> macros:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn fibonacci(_: u64) -&gt; u64 { 0 } }
+</span>use gungraun::prelude::*;
+use gungraun::Perf;
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Perf::default().disable_entry_point(true))
+)]
+#[bench::fibonacci_25(25)]
+fn bench_library(n: u64) -&gt; u64 {
+    // anything before perf_enable! is not measured
+    let token = gungraun::perf_enable!();
+    let result = my_lib::fibonacci(n);
+    gungraun::perf_disable!(token);
+    // anything after perf_disable! is not measured
+    result
+}
+
+library_benchmark_group!(name = my_group, benchmarks = bench_library);
+
+<span class="boring">fn main() {
+</span>main!(library_benchmark_groups = my_group);
+<span class="boring">}</span></code></pre>
+<p><code>perf_enable!</code> starts the measurement and returns an opaque token;
+<code>perf_disable!</code> stops it again and consumes exactly that token. The macros drive
+a single process-global control channel: they are not thread-safe, must not be
+nested, and every token must be passed to exactly one matching <code>perf_disable!</code>.
+Calling <code>disable_entry_point(false)</code> restores the default entry point.</p>
+<p>The macros can also be called from production code that the benchmark process
+executes. To use them outside benchmark code, the dependency on <code>gungraun</code> must
+enable the <code>stubs</code> feature, or <code>perf_stubs</code> if only the perf macros are needed.
+The macros compile to no-ops in production code if the feature is disabled
+similar to <a href="./client_requests.html">Valgrind client requests</a></p>
+<h3 id="logging-to-the-perf-side-channel"><a class="header" href="#logging-to-the-perf-side-channel">Logging to the Perf Side Channel</a></h3>
+<p><code>perf_log!</code> writes a message to the perf log side channel that the runner sets
+up for the benchmark process. It accepts format arguments like <code>format!</code> and
+writes one line per call, falling back to stderr if the log file is unavailable.
+Like the control macros, it compiles to a no-op on non-Linux platforms or with
+the feature disabled:</p>
+<pre class="playground"><code class="language-rust edition2024"><span class="boring">extern crate gungraun;
+</span><span class="boring">mod my_lib { pub fn fibonacci(_: u64) -&gt; u64 { 0 } }
+</span>use gungraun::prelude::*;
+
+fn setup(n: u64) -&gt; u64 {
+    gungraun::perf_log!("fibonacci({n}): preparing the measured region");
+    n
+}
+
+#[library_benchmark]
+#[bench::fibonacci_25(args = (25), setup = setup)]
+fn bench_library(n: u64) -&gt; u64 {
+    my_lib::fibonacci(n)
+}
+
+<span class="boring">library_benchmark_group!(name = my_group, benchmarks = bench_library);
+</span><span class="boring">
+</span><span class="boring">fn main() {
+</span><span class="boring">main!(library_benchmark_groups = my_group);
+</span><span class="boring">}</span></code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="dhat.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="tools.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="dhat.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="tools.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="js/dropdown-3c42ae60.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -10,7 +10,7 @@ requests you need to turn them on in the `Cargo.toml` with the `act` feature
 
 ```toml
 [dev-dependencies]
-gungraun = { version = "0.19.4", features = ["client_requests"] }
+gungraun = { version = "0.20.0", features = ["client_requests"] }
 ```
 
 ## The Cachegrind Feature
@@ -21,7 +21,7 @@ look like this:
 
 ```toml
 [dev-dependencies]
-gungraun = { version = "0.19.4", features = ["cachegrind"] }
+gungraun = { version = "0.20.0", features = ["cachegrind"] }
 ```
 
 The `cachegrind` feature automatically activates the `act` feature, and there's

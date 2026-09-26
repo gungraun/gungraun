@@ -37,6 +37,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-26
+
 This release is focused on [Linux perf][perf-wiki] and adds it as a first-class
 tool alongside the Valgrind tools. Existing Valgrind benchmarks work the same as
 before. Here the most important breaking changes in short. See the sections

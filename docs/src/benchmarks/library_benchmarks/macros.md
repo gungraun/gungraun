@@ -261,6 +261,6 @@ parameters accept an expression and are not overridden by the `setup` and
 `teardown` of the `library_benchmark_group`, `#[library_benchmark]`, `#[bench]`
 or `#[benches]` attribute.
 
-[api-docs]: https://docs.rs/gungraun/0.19.4/gungraun/
+[api-docs]: https://docs.rs/gungraun/0.20.0/gungraun/
 [`LibraryBenchmarkConfig`]:
-    https://docs.rs/gungraun/0.19.4/gungraun/struct.LibraryBenchmarkConfig.html
+    https://docs.rs/gungraun/0.20.0/gungraun/struct.LibraryBenchmarkConfig.html

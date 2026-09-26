@@ -16,7 +16,7 @@ default but can be activated with the `act` feature.
 
 ```toml
 [dev-dependencies]
-gungraun = { version = "0.19.4", features = ["client_requests"] }
+gungraun = { version = "0.20.0", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you don't want them to
@@ -26,12 +26,12 @@ dependencies and with the `act` feature to your `dev-dependencies`:
 
 ```toml
 [dependencies]
-gungraun = { version = "0.19.4", default-features = false, features = [
+gungraun = { version = "0.20.0", default-features = false, features = [
     "stubs"
 ] }
 
 [dev-dependencies]
-gungraun = { version = "0.19.4", features = ["act"] }
+gungraun = { version = "0.20.0", features = ["act"] }
 ```
 
 With just the `stubs` feature activated, the client requests compile down to
@@ -175,7 +175,7 @@ Please see the [`docs`][api-docs] for more details!
 [api-docs]: https://docs.rs/valgrind-requests/latest/valgrind_requests/
 [callgrind-arguments]:
     https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
-[EntryPoint]: https://docs.rs/gungraun/0.19.4/gungraun/enum.EntryPoint.html
+[EntryPoint]: https://docs.rs/gungraun/0.20.0/gungraun/enum.EntryPoint.html
 [valgrind-client-req]:
     https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq
 [valgrind-requests]: https://docs.rs/valgrind-requests/latest/valgrind_requests/

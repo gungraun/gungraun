@@ -14,7 +14,7 @@ Valgrind tools and Linux perf at your fingertips.
 [crates-io-badge]: https://img.shields.io/crates/v/gungraun
 [crates-io-url]: https://crates.io/crates/gungraun
 [docs-rs-badge]: https://img.shields.io/docsrs/gungraun/latest
-[docs-rs-url]: https://docs.rs/gungraun/0.19.4/gungraun/
+[docs-rs-url]: https://docs.rs/gungraun/0.20.0/gungraun/
 [github-action-badge]:
     https://github.com/gungraun/gungraun/actions/workflows/cicd.yml/badge.svg
 [github-action-url]:

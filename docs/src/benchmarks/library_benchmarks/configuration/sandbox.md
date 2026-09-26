@@ -218,4 +218,4 @@ main!(library_benchmark_groups = my_group);
 [^2]:
     https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
 
-[`Sandbox`]: https://docs.rs/gungraun/0.19.4/gungraun/struct.Sandbox.html
+[`Sandbox`]: https://docs.rs/gungraun/0.20.0/gungraun/struct.Sandbox.html

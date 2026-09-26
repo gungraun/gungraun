@@ -909,7 +909,7 @@ dependencies = [
 
 [[package]]
 name = "gungraun-summary"
-version = "6.0.0"
+version = "7.0.0"
 dependencies = [
  "either-or-both",
  "gungraun-runner",

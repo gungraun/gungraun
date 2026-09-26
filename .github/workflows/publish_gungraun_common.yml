@@ -1,0 +1,15 @@
+name: Deploy gungraun-common
+on:
+  push:
+    tags:
+      - "gungraun-common-v*"
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish gungraun-common
+        run: cargo publish -p gungraun-common --token ${{ secrets.CRATES_GITHUB_TOKEN }}

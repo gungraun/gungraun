@@ -113,6 +113,10 @@ name = "sort"
 path = "src/helper/sort.rs"
 
 [[bin]]
+name = "standalone-rust"
+path = "src/helper/standalone-rust.rs"
+
+[[bin]]
 name = "subprocess"
 path = "src/helper/subprocess.rs"
 

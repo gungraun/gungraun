@@ -23,10 +23,15 @@ installation guide.
 
 ## Installation of the Benchmark Runner
 
-To be able to run the benchmarks you'll also need the `gungraun-runner` binary
-installed somewhere in your `$PATH`. Otherwise, there is no need to interact
-with `gungraun-runner` as it is just an implementation detail. However,
-`gungraun-runner` understands the commands `--help`, `-h` and `--version`, `-V`.
+To run Rust/Cargo benchmarks you'll also need the `gungraun-runner` binary
+installed somewhere in your `$PATH`. The Rust harness invokes it automatically;
+`--help`, `-h`, `--version`, and `-V` are available directly.
+
+Development builds containing the [standalone binary benchmark frontend] also
+provide `run --config PATH` and `check --config PATH` for external executables
+without a consumer Rust project. Published `0.20.0` binaries do not contain that
+frontend. See its installation section for building from source or using a
+future pinned prebuilt release containing the feature.
 
 ### From Source
 
@@ -64,3 +69,5 @@ For CI installation, see [CI Installation](./ci.md).
 
 [binstall]: https://github.com/cargo-bins/cargo-binstall
 [pre-built]: https://github.com/gungraun/gungraun/releases/tag/v0.20.0
+[standalone binary benchmark frontend]:
+    ../benchmarks/binary_benchmarks/standalone.md

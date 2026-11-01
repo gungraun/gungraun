@@ -156,6 +156,7 @@ Ldmw
 libc
 libclang
 libtest
+libyaml
 linkcheck
 lldmissrate
 llhitrate

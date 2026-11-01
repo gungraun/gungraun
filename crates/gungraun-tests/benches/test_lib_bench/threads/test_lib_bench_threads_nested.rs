@@ -47,16 +47,17 @@ library_benchmark_group!(
 
 main!(
     config = LibraryBenchmarkConfig::default()
-        .output_format(OutputFormat::default()
-            .truncate_description(None)
-            .show_intermediate(true)
+        .output_format(
+            OutputFormat::default()
+                .truncate_description(None)
+                .show_intermediate(true)
         )
         // Helgrind is excluded since an assertion in helgrind itself fails and causes an error.
         // Looks like a bug in valgrind.
         .tool(Dhat::default())
         .tool(Memcheck::default())
         .tool(Drd::with_args([
-                "--suppressions=benches/test_lib_bench/threads/valgrind-suppressions.supp"
+            "--suppressions=benches/test_lib_bench/threads/valgrind-suppressions.supp"
         ]))
         .tool(Massif::default())
         .tool(Bbv::default()),

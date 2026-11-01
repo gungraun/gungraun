@@ -87,8 +87,8 @@ note: ...and refers to the function `__run_setup` which is defined here
      = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this function instead
      |
-1518 -                         $group::__run_setup,
-1518 +                         crate::test_when_library_benchmark_as_group::__run_setup,
+1517 -                         $group::__run_setup,
+1517 +                         crate::test_when_library_benchmark_as_group::__run_setup,
      |
 
 error[E0603]: function import `__run_teardown` is private
@@ -110,8 +110,8 @@ note: ...and refers to the function `__run_teardown` which is defined here
      = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this function instead
      |
-1519 -                         $group::__run_teardown,
-1519 +                         crate::test_when_library_benchmark_as_group::__run_teardown,
+1518 -                         $group::__run_teardown,
+1518 +                         crate::test_when_library_benchmark_as_group::__run_teardown,
      |
 
 error[E0603]: function import `__run` is private
@@ -133,8 +133,8 @@ note: ...and refers to the function `__run` which is defined here
      = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this function instead
      |
-1520 -                         $group::__run
-1520 +                         crate::test_when_library_benchmark_as_group::__run
+1519 -                         $group::__run
+1519 +                         crate::test_when_library_benchmark_as_group::__run
      |
 
 error[E0308]: mismatched types

@@ -224,14 +224,15 @@ main!(
             Callgrind::default()
                 .soft_limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
-        .tool(Dhat::default()
+        .tool(
+            Dhat::default()
                 // The default entry point of `Dhat`, similar to `Callgrind`, excludes setup costs.
                 // As a result, it does not account for memory reads and writes in the bubble sort
                 // function, since the arrays are allocated outside the benchmark function during
                 // its setup phase. To address this issue, we utilize a custom entry point.
                 // Fortunately, all our bubble sort benchmark functions contain the string
                 // `bench_bubble_sort`, making it easy to identify them.
-                .entry_point(EntryPoint::Custom("*bench_bubble_sort*".to_owned())
-        )),
+                .entry_point(EntryPoint::Custom("*bench_bubble_sort*".to_owned()))
+        ),
     library_benchmark_groups = [bubble_sort, fibonacci]
 );

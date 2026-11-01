@@ -121,9 +121,7 @@ binary_benchmark_group!(
                 .run_mode(PerfRunMode::Calibrate(Duration::from_secs(2)))
                 // This is the usual event set without faults because it produces flaky terminal
                 // output in the second comparison run
-                .event_set(
-                    "task-clock,cpu-clock,context-switches"
-                )
+                .event_set("task-clock,cpu-clock,context-switches")
         ),
     benchmarks = perf
 );

@@ -259,14 +259,13 @@ macro_rules! binary_benchmark_attribute {
 ///         // to it instead of creating a new one as we do below
 ///         .binary_benchmark(binary_benchmark_attribute!(bench_binary))
 ///         .binary_benchmark(
-///             BinaryBenchmark::new("did_not_work_with_attribute")
-///                 .bench(Bench::new("low_level")
-///                     .command(
-///                         gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
-///                             .arg("foo")
-///                             .build()
-///                     )
-///                 )
+///             BinaryBenchmark::new("did_not_work_with_attribute").bench(
+///                 Bench::new("low_level").command(
+///                     gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///                         .arg("foo")
+///                         .build(),
+///                 ),
+///             ),
 ///         );
 /// }
 ///

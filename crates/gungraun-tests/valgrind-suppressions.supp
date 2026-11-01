@@ -13,9 +13,9 @@
    drd:ConflictingAccess
    ...
    fun:delete_current_info
-   fun:*stack_overflow3imp12drop_handler*
-   fun:drop
-   fun:drop_in_place<std::sys::pal::unix::stack_overflow::Handler>
+   fun:*drop_handler*
+   fun:*drop*
+   ...
    fun:*Thread3new12thread_start*
    ...
 }

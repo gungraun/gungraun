@@ -6,7 +6,7 @@ const PIPE: &str = env!("CARGO_BIN_EXE_pipe");
 
 fn check_files(stdout: &str, stderr: &str) {
     assert_eq!(std::fs::read_to_string(stdout).unwrap(), "1 2\n");
-    assert!(std::fs::read_to_string(stderr).unwrap().is_empty());
+    assert_eq!(std::fs::read_to_string(stderr).unwrap().len(), 0);
 }
 
 fn create_files(stdout: &str, stderr: &str) {

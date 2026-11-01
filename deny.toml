@@ -73,6 +73,8 @@ feature-depth = 1
 ignore = [
   # warning that paste (transitive from polonius) is unmaintained
   "RUSTSEC-2024-0436",
+  # warning that unsafe_libyaml (transitive from serde_yaml) is unmaintained
+  "RUSTSEC-2024-0449",
   # https://rustsec.org/advisories/RUSTSEC-2024-0421
   #"RUSTSEC-0000-0000",
   #"a-crate-that-is-yanked@0.1.1", # you can also ignore yanked crate versions if you wish

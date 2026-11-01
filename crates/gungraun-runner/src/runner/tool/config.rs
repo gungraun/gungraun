@@ -352,7 +352,7 @@ impl ToolConfigBuilder {
     /// produce multiple configs (perf event-set splitting), how record configs are paired with stat
     /// configs, and the design decisions behind `has_analyzer` and `is_default` propagation.
     pub fn build(self) -> Result<Vec<ToolConfig>> {
-        assert!(!self.options.is_empty());
+        assert_ne!(self.options.len(), 0);
 
         let args = Self::build_tool_args(self.tool, &self.raw_tool_args)?;
 
@@ -1521,7 +1521,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::float_cmp)]
     fn test_build_record_config_changes_only_perf_run_mode_and_sampling() {
         let base = tool_config_f()
             .tool(Tool::Perf)
@@ -1797,7 +1796,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::float_cmp)]
     fn test_resolve_default_options_perf_override_changes_only_run_mode() {
         let base = resolve_default_options(Tool::Perf, None).unwrap();
         let overridden =
@@ -1853,10 +1851,7 @@ mod tests {
     #[case::hundred(Some(100.0), 100.0)]
     fn test_resolve_perf_min_pcnt_running(#[case] input: Option<f64>, #[case] expected: f64) {
         let actual = resolve_perf_min_pcnt_running(input).unwrap();
-        #[expect(clippy::float_cmp)]
-        {
-            assert_eq!(actual, expected);
-        }
+        assert_eq!(actual, expected);
     }
 
     #[rstest]

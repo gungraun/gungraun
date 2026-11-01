@@ -126,8 +126,6 @@ impl GroupsBuilder {
                         .add(Error::new(module_path, &format!("Duplicate id: '{id}'")));
                     return false;
                 }
-
-                true
             }
             crate::__internal::InternalCommandKind::Iter(commands) => {
                 for index in 0..commands.len() {
@@ -140,10 +138,10 @@ impl GroupsBuilder {
                         return false;
                     }
                 }
-
-                true
             }
         }
+
+        true
     }
 
     /// Adds a high-level api benchmark to the `group` parsing the `benches`.

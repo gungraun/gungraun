@@ -22,9 +22,10 @@ binary_benchmark_group!(
     benchmarks = |group: &mut BinaryBenchmarkGroup| {
         group
             // Using the same ids in a different group should be fine
-            .binary_benchmark(BinaryBenchmark::new("some_id")
-                .bench(Bench::new("bench_id")
-                    .command(Command::new(ECHO))));
+            .binary_benchmark(
+                BinaryBenchmark::new("some_id")
+                    .bench(Bench::new("bench_id").command(Command::new(ECHO))),
+            );
     }
 );
 

@@ -56,7 +56,7 @@ nix = { version = "0.31" }
 num_cpus = { version = "1" }
 once_cell = { version = "1" }
 os_str_bytes = { version = "7" }
-parking_lot = { version = "0.12" }
+parking_lot = { version = "0.13" }
 polonius-the-crab = { version = "0.5" }
 predicates = { version = "3" }
 pretty_assertions = "1.1"

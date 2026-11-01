@@ -113,7 +113,7 @@ fn test_json_parser_when_sanitize_yes() {
     let original_data = parse(&Fixtures::get_path_of(DHAT_FIXTURE)).unwrap();
     assert_eq!(output.header.pid, original_data.metadata.pid);
     assert_eq!(output.header.parent_pid, None);
-    assert!(output.details.is_empty());
+    assert_eq!(output.details.len(), 0);
     assert_eq!(output.metrics, expected_metrics());
 
     let sanitized = fs::read(&path).unwrap();

@@ -127,7 +127,7 @@ mod tests {
         let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
         let summary = MetricResults::new(EitherOrBoth::Left(new));
 
-        assert!(regression.check(&summary).is_empty());
+        assert_eq!(regression.check(&summary).len(), 0);
     }
 
     #[rstest]

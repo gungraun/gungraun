@@ -496,7 +496,7 @@ mod tests {
         let args = perf_stat_args(input).unwrap();
 
         assert!(args.perf_args.output_path.is_none());
-        assert!(args.perf_args.other.is_empty());
+        assert_eq!(args.perf_args.other.len(), 0);
     }
 
     #[rstest]

@@ -454,12 +454,12 @@ impl Assert<'_> {
                 "The benchmark directory '{}' was not expected to exist but found:\n{files}",
                 output_dir.display()
             );
-        } else {
-            print_info(format!(
-                "Verifying the benchmark directory '{}' not exists was successful",
-                output_dir.display()
-            ));
         }
+
+        print_info(format!(
+            "Verifying the benchmark directory '{}' not exists was successful",
+            output_dir.display()
+        ));
     }
 
     /// Assert the captured process status in [`CapturedOutput`] matches the configured expectation.

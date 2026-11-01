@@ -418,7 +418,7 @@ mod tests {
             StatisticalMetric::with_default_stats(2000, Unit::Bytes),
         );
 
-        assert!(config.check(&summary).is_empty());
+        assert_eq!(config.check(&summary).len(), 0);
     }
 
     #[test]

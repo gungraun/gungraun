@@ -65,10 +65,10 @@ fn main() {
                     error!("{error:?}");
                 }
                 std::process::exit(3)
-            } else {
-                error!("{error:?}");
-                std::process::exit(1)
             }
+
+            error!("{error:?}");
+            std::process::exit(1)
         }
     }
 }

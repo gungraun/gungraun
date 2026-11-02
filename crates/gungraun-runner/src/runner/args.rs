@@ -14,7 +14,7 @@ use anyhow::Result;
 use clap::builder::{
     BoolishValueParser, NonEmptyStringValueParser, PathBufValueParser, TypedValueParser,
 };
-use clap::{ArgAction, CommandFactory, Parser};
+use clap::{ArgAction, CommandFactory, FromArgMatches, Parser};
 use fundu::{CustomTimeUnit, SaturatingInto, TimeUnit};
 use indexmap::{IndexMap, IndexSet, indexset};
 use simplematch::{DoWild, Options};
@@ -122,7 +122,12 @@ pub enum TruncateDescription {
 Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
 instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
 `false`",
-    after_help = "  Exit codes:
+    after_help = "  Standalone binary benchmarks (no Cargo harness required):
+      gungraun-runner run --config perf-guard.toml
+      gungraun-runner check --config perf-guard.toml
+      gungraun-runner help check
+
+  Exit codes:
       0: Success
       1: All other errors
       2: Parsing command-line arguments failed
@@ -1758,6 +1763,19 @@ impl CommandLineArgs {
         Self::try_parse_validated_from(iter).unwrap_or_else(|error| error.exit())
     }
 
+    /// Reuses the runner defaults without accepting Cargo-harness environment overrides.
+    ///
+    /// The standalone front end supplies its supported settings explicitly. In particular, an
+    /// inherited filter, test mode, loaded baseline, or limit override must not change its guard.
+    pub(crate) fn standalone_defaults() -> clap::error::Result<Self> {
+        let matches = Self::command()
+            .mut_args(|arg| arg.env(None::<&str>))
+            .try_get_matches_from(["--bench"])?;
+        let args = Self::from_arg_matches(&matches)?;
+        args.validate()?;
+        Ok(args)
+    }
+
     /// Parses command-line arguments and validates relationships between parsed options.
     pub fn try_parse_validated_from<I, T>(iter: I) -> clap::error::Result<Self>
     where
@@ -2753,6 +2771,73 @@ mod tests {
         }
 
         assert_eq!(result.test, Some(true));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_standalone_defaults_ignore_harness_environment() {
+        let overrides = [
+            ("GUNGRAUN_BASELINE", "reference"),
+            ("GUNGRAUN_CALLGRIND_ARGS", "--collect-atstart=yes"),
+            ("GUNGRAUN_CALLGRIND_LIMITS", "Ir=1"),
+            ("GUNGRAUN_DEFAULT_TOOL", "cachegrind"),
+            ("GUNGRAUN_ENVS", "MANIFEST_TEST=overridden"),
+            ("GUNGRAUN_ENV_CLEAR", "no"),
+            ("GUNGRAUN_FILTER", "does-not-match"),
+            ("GUNGRAUN_LOAD_BASELINE", "historical"),
+            ("GUNGRAUN_TEST", "yes"),
+            ("GUNGRAUN_TOOLS", "cachegrind"),
+            ("GUNGRAUN_VALGRIND_ARGS", "--trace-children=no"),
+        ];
+        let previous: Vec<_> = overrides
+            .iter()
+            .map(|(key, _)| (*key, std::env::var_os(key)))
+            .collect();
+
+        // SAFETY: This test is run serially and restores each variable before asserting.
+        unsafe {
+            for (key, value) in overrides {
+                std::env::set_var(key, value);
+            }
+        }
+        let standalone = CommandLineArgs::standalone_defaults();
+        let harness = CommandLineArgs::try_parse_validated_from(["--bench"]);
+        for (key, value) in previous {
+            if let Some(value) = value {
+                // SAFETY: This test is serial and restores the original environment before
+                // assertions.
+                unsafe {
+                    std::env::set_var(key, value);
+                }
+            } else {
+                // SAFETY: This test is serial and restores the original environment before
+                // assertions.
+                unsafe {
+                    std::env::remove_var(key);
+                }
+            }
+        }
+
+        let standalone = standalone.unwrap();
+        assert!(standalone.bench);
+        assert_eq!(standalone.test, None);
+        assert!(standalone.filter.is_none());
+        assert!(standalone.baseline.is_none());
+        assert!(standalone.load_baseline.is_none());
+        assert!(standalone.default_tool.is_none());
+        assert_eq!(standalone.tools, []);
+        assert!(standalone.callgrind_args.is_none());
+        assert!(standalone.callgrind_limits.is_none());
+        assert!(standalone.valgrind_args.is_none());
+        assert!(standalone.env_clear.is_none());
+        assert_eq!(standalone.envs, Vec::<Vec<(OsString, OsString)>>::new());
+
+        let harness = harness.unwrap();
+        assert_eq!(harness.test, Some(true));
+        assert!(harness.filter.is_some());
+        assert!(harness.load_baseline.is_some());
+        assert!(harness.callgrind_limits.is_some());
+        assert_eq!(harness.default_tool, Some(Tool::Cachegrind));
     }
 
     #[rstest]

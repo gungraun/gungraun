@@ -57,6 +57,7 @@ runner = [
   "dep:statrs",
   "dep:strum",
   "dep:tempfile",
+  "dep:toml",
   "dep:version-compare",
   "dep:which",
   "either-or-both/indexmap",
@@ -113,6 +114,7 @@ simplematch = { workspace = true, optional = true }
 statrs = { workspace = true, optional = true }
 strum = { workspace = true, optional = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
 version-compare = { workspace = true, optional = true }
 which = { workspace = true, optional = true }
 

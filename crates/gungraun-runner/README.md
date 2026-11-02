@@ -29,3 +29,25 @@ measurements of Rust code.
 This is the benchmark binary needed by the
 [Gungraun library](https://crates.io/crates/gungraun). Please see there for
 further details.
+
+## Standalone binary benchmarks
+
+This development version also runs external executables directly from a
+versioned TOML manifest, without a consumer Rust harness or Cargo project:
+
+```shell
+gungraun-runner run --config perf-guard.toml
+gungraun-runner check --config perf-guard.toml
+```
+
+`run` captures measurements and identifies uncapped cases. `check` requires
+reviewed positive absolute instruction limits and valid current results for
+every declared case. Both commands use the existing binary benchmark engine,
+Callgrind parser, limit evaluation, profiles, and summaries.
+
+See the [standalone guide] and [C/CMake example]. The published `0.20.0` runner
+does not include these commands; use a build containing this feature. Existing
+Rust/Cargo benchmark invocation remains unchanged.
+
+[standalone guide]: ../../docs/src/benchmarks/binary_benchmarks/standalone.md
+[C/CMake example]: ../../examples/standalone

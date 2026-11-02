@@ -1,11 +1,31 @@
 # Basic Usage
 
+## Standalone executables
+
+For a compiled executable and TOML configuration, use the public standalone
+commands:
+
+```shell
+gungraun-runner run --config perf-guard.toml
+gungraun-runner check --config perf-guard.toml
+```
+
+`run` is capture mode; `check` requires complete reviewed absolute instruction
+caps and current measurements for every case. See
+[Standalone Binary Benchmarks](../benchmarks/binary_benchmarks/standalone.md)
+for their deliberately small CLI and schema. These commands do not accept the
+Rust harness's filters, test mode, baseline controls, or behavior-changing
+environment overrides. Use `gungraun-runner run --help` or `check --help` for
+their options.
+
+## Rust/Cargo benchmarks
+
 It's possible to pass arguments to Gungraun separated by `--`
 (`cargo bench -- ARGS`). If you're running into the error `Unrecognized Option`,
 see
 [Troubleshooting](../troubleshooting/running-cargo-bench-results-in-an-unrecognized-option-error.md).
-For a complete rundown of possible arguments, execute `gungraun-runner --help`.
-Almost all command-line arguments have a corresponding environment variable. The
+For a complete rundown of harness arguments, execute `gungraun-runner --help`.
+Almost all harness arguments have a corresponding environment variable. The
 environment variables which don't have a corresponding command-line argument
 are:
 
@@ -20,6 +40,11 @@ are:
 - **1**: All other errors
 - **2**: Parsing command-line arguments failed
 - **3**: One or more regressions occurred
+
+For standalone commands, exit `0` means a completed capture for `run` and an
+enforced guard pass for `check`; configuration or
+missing/zero-current-measurement errors exit with `1`. Only `check` reports an
+enforced guard pass.
 
 ## Test Mode
 

@@ -256,6 +256,83 @@ fn test_when_sanitize_bbv_has_multiple_threads_then_thread_modifier_is_added() {
 }
 
 #[test]
+fn test_when_sanitize_callgrind_has_distinct_parts_and_threads_then_all_are_kept() {
+    let temp_dir = tempdir().unwrap();
+    let files = [
+        ("callgrind.function.bench.out.#12345", 12345, 1, 1),
+        ("callgrind.function.bench.out.#12345.2", 12345, 2, 1),
+        ("callgrind.function.bench.out.#12345-2", 12345, 1, 2),
+        ("callgrind.function.bench.out.#54321", 54321, 1, 1),
+    ]
+    .map(|(name, pid, part, thread)| {
+        (
+            name,
+            format!(
+                "# callgrind format\nversion: 1\npid: {pid}\npart: {part}\nthread: \
+                 {thread}\nevents: Ir\n"
+            ),
+        )
+    });
+    let output_path = tool_output_path_f()
+        .target_dir(temp_dir.path())
+        .name("function.bench")
+        .tool(Callgrind)
+        .init(true)
+        .files(files.iter().map(|(name, header)| (*name, header.as_str())))
+        .fx();
+
+    output_path.sanitize().unwrap();
+
+    let mut paths = std::fs::read_dir(&output_path.dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+    paths.sort();
+    assert_eq!(
+        paths,
+        [
+            "callgrind.function.bench.12345.t1.p1.out",
+            "callgrind.function.bench.12345.t1.p2.out",
+            "callgrind.function.bench.12345.t2.p1.out",
+            "callgrind.function.bench.54321.out",
+        ]
+    );
+}
+
+#[rstest]
+#[case::explicit_part("part: 1\nthread: 1\n")]
+#[case::missing_part("thread: 1\n")]
+fn test_when_sanitize_callgrind_has_duplicate_headers_then_originals_are_retained(
+    #[case] identity: &str,
+) {
+    let temp_dir = tempdir().unwrap();
+    let header = format!("# callgrind format\nversion: 1\npid: 12345\n{identity}events: Ir\n");
+    let files = [
+        "callgrind.function.bench.out.#12345.1",
+        "callgrind.function.bench.out.#12345.2",
+    ];
+    let output_path = tool_output_path_f()
+        .target_dir(temp_dir.path())
+        .name("function.bench")
+        .tool(Callgrind)
+        .init(true)
+        .files(files.map(|file| (file, header.as_str())))
+        .fx();
+
+    let error = output_path.sanitize().unwrap_err().to_string();
+
+    assert!(error.contains("Duplicate Callgrind profile"), "{error}");
+    for file in files {
+        assert!(error.contains(file), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(output_path.dir.join(file)).unwrap(),
+            header
+        );
+    }
+    assert_eq!(std::fs::read_dir(output_path.dir).unwrap().count(), 2);
+}
+
+#[test]
 fn test_when_sanitize_callgrind_has_multiple_log_pids_then_pid_is_kept() {
     let temp_dir = tempdir().unwrap();
     let output_path = tool_output_path_f()

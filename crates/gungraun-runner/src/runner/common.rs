@@ -797,9 +797,12 @@ impl BenchmarkDataProcessor for BaselineDataProcessor {
         self.create_benchmark_directory()
             .and_then(|()| self.remove_summary())
             .and_then(|()| self.shift())
-            .and_then(|()| self.sanitize())
             .and_then(|()| {
-                let parse_result = self.parse(benchmark_summary, config, header, None);
+                // Malformed output may fail during sanitization, before parsing. Retain the
+                // native files in that case too, so the failing profiler's evidence is not lost.
+                let parse_result = self
+                    .sanitize()
+                    .and_then(|()| self.parse(benchmark_summary, config, header, None));
                 let copy_result = self.copy_temp();
 
                 parse_result.and(copy_result)

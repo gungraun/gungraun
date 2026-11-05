@@ -977,13 +977,13 @@ checksum = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
 
 [[package]]
 name = "higher-kinded-types"
-version = "0.2.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e690f8474c6c5d8ff99656fcbc195a215acc3949481a8b0b3351c838972dc776"
+checksum = "2819357fa545b44e7afbbdc1b998c8da52be2196cc51b55ebd9f28cef4b2ef6f"
 dependencies = [
  "macro_rules_attribute",
  "never-say-never",
- "paste",
+ "pastey",
 ]
 
 [[package]]
@@ -1580,9 +1580,9 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
 name = "polonius-the-crab"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec242d7eccbb2fd8b3b5b6e3cf89f94a91a800f469005b44d154359609f8af72"
+checksum = "276ed5a9e7bc814fc1867a575af50857bb142077f1b37ccf81639fd2a694d29c"
 dependencies = [
  "higher-kinded-types",
  "never-say-never",

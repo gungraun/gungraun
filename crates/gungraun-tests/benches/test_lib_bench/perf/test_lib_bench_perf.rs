@@ -59,7 +59,7 @@ where
             // 1. that just adding `record_args` without enabling record doesn't do anything.
             // 2. sadly, these arguments don't have any side-effects we can verify but at least we
             //    can test that we don't provoke an error or panic when record is `true` or `false`
-            .record_args(["--call-graph=dwarf", "-F", "99"])
+            .record_args(["--call-graph=dwarf", "--user-callchains", "-F", "99"])
         )
 )]
 #[bench::ten_sets(

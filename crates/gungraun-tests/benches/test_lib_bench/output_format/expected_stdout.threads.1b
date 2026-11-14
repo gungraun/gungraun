@@ -24,7 +24,7 @@ Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
 |======== CALLGRIND ===================================================================================
 |-## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-| Command: <__COMMAND__>
+| Command:<__COMMAND__>
 | Instructions:                                           |                     (Tolerance)
 | L1 Hits:                                                |                     (         )
 | LL Hits:                                                |                     (         )
@@ -32,7 +32,7 @@ Number of primes found in the range 0 to 20000: 2262
 | Total read+write:                                       |                     (Tolerance)
 | Estimated Cycles:                                       |                     (         )
 |-## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
-| Command: <__COMMAND__>
+| Command:<__COMMAND__>
 | Instructions:                                           |                     (Tolerance)
 | L1 Hits:                                                |                     (         )
 | LL Hits:                                                |                     (         )
@@ -40,7 +40,7 @@ Number of primes found in the range 0 to 20000: 2262
 | Total read+write:                                       |                     (Tolerance)
 | Estimated Cycles:                                       |                     (         )
 |-## pid: <__PID__> thread: 3 part: 1                     |pid: <__PID__> thread: 3 part: 1
-| Command: <__COMMAND__>
+| Command:<__COMMAND__>
 | Instructions:                                           |                     (Tolerance)
 | L1 Hits:                                                |                     (         )
 | LL Hits:                                                |                     (         )

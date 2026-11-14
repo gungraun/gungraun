@@ -16,9 +16,9 @@ test_lib_bench_tools::bench_group::bench_bubble_sort_allocate
   Reads bytes:                                            |                     (No change)
   Writes bytes:                                           |                     (No change)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |                     (No change)
@@ -38,7 +38,7 @@ test_lib_bench_tools::bench_group::bench_bubble_sort_allocate
 test_lib_bench_tools::bench_group::bench_subprocess trace_children
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |                     (No change)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
@@ -62,7 +62,7 @@ test_lib_bench_tools::bench_group::bench_subprocess trace_children
   Estimated Cycles:                                       |                     (         )
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |                     (No change)
   Total blocks:                                           |                     (No change)
   At t-gmax bytes:                                        |                     (         )
@@ -92,19 +92,19 @@ test_lib_bench_tools::bench_group::bench_subprocess trace_children
   Writes bytes:                                           |                     (No change)
   ======= MASSIF ======================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/sort
   ======= EXP-BBV =====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/sort
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (No change)
   Contexts:                                               |                     (No change)
   Suppressed Errors:                                      |                     (         )
@@ -122,7 +122,7 @@ test_lib_bench_tools::bench_group::bench_subprocess trace_children
   Suppressed Contexts:                                    |                     (         )
   ======= DRD =========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (No change)
   Contexts:                                               |                     (No change)
   Suppressed Errors:                                      |                     (         )
@@ -140,7 +140,7 @@ test_lib_bench_tools::bench_group::bench_subprocess trace_children
   Suppressed Contexts:                                    |                     (         )
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (No change)
   Contexts:                                               |                     (No change)
   Suppressed Errors:                                      |                     (         )
@@ -174,9 +174,9 @@ test_lib_bench_tools::bench_group::bench_subprocess no_trace_children
   Reads bytes:                                            |                     (No change)
   Writes bytes:                                           |                     (No change)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |                     (No change)
@@ -202,9 +202,9 @@ test_lib_bench_tools::bench_group::bench_bubble_sort empty:(vec! [])
   Total read+write:                                       |                     (No change)
   Estimated Cycles:                                       |                     (         )
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |                     (No change)
@@ -239,9 +239,9 @@ test_lib_bench_tools::bench_group::bench_bubble_sort worst_case_4000:(setup_wors
   Reads bytes:                                            |                     (No change)
   Writes bytes:                                           |                     (No change)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |                     (No change)
@@ -281,6 +281,6 @@ test_lib_bench_tools::bench_group::bad_memory
   Suppressed Errors:                                      |                     (         )
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
 
 Gungraun result: Ok. 6 without regressions; 0 regressed; 0 filtered; 6 benchmarks finished in <__SECONDS__>s

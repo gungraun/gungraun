@@ -3,13 +3,12 @@ authors = ["Joining7943 <joining@posteo.de>"]
 categories.workspace = true
 description = "Tests for gungraun valgrind-requests"
 edition.workspace = true
-homepage.workspace = true
+repository.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "valgrind-requests-tests"
 publish = false
 readme = "../README.md"
-repository.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
 
@@ -29,7 +28,6 @@ valgrind-requests = { path = "../valgrind-requests", default-features = false, f
   "stubs",
   "std",
 ] }
-which = { workspace = true }
 
 [dev-dependencies]
 assert_cmd = { workspace = true }

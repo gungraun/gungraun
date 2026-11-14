@@ -3,7 +3,7 @@ Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|foo (old)
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -12,7 +12,7 @@ Number of primes found in the range 0 to 10000: 1229
   Total read+write:                                       |                     (Tolerance)
   Estimated Cycles:                                       |                     (         )
   ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
@@ -46,16 +46,16 @@ Number of primes found in the range 0 to 10000: 1229
   Suppressed Errors:                                      |                     (         )
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:(2)
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|foo (old)
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -64,7 +64,7 @@ Number of primes found in the range 0 to 20000: 2262
   Total read+write:                                       |                     (Tolerance)
   Estimated Cycles:                                       |                     (         )
   ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
@@ -72,7 +72,7 @@ Number of primes found in the range 0 to 20000: 2262
   Total read+write:                                       |                     (Tolerance)
   Estimated Cycles:                                       |                     (         )
   ## pid: <__PID__> thread: 3 part: 1                     |pid: <__PID__> thread: 3 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
@@ -106,16 +106,16 @@ Number of primes found in the range 0 to 20000: 2262
   Suppressed Errors:                                      |                     (         )
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
 Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|foo (old)
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -148,7 +148,7 @@ Number of primes found in the range 0 to 10000: 1229
   Estimated Cycles:                                       |                     (         )
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |                     (Tolerance)
   Total blocks:                                           |                     (Tolerance)
   At t-gmax bytes:                                        |                     (         )
@@ -178,7 +178,7 @@ Number of primes found in the range 0 to 10000: 1229
   Writes bytes:                                           |                     (Tolerance)
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -196,7 +196,7 @@ Number of primes found in the range 0 to 10000: 1229
   Suppressed Contexts:                                    |                     (         )
   ======= DRD =========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -214,12 +214,12 @@ Number of primes found in the range 0 to 10000: 1229
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 1
   ======= EXP-BBV =====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 1
@@ -256,7 +256,7 @@ Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|foo (old)
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -297,7 +297,7 @@ Number of primes found in the range 0 to 20000: 2262
   Estimated Cycles:                                       |                     (         )
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |                     (Tolerance)
   Total blocks:                                           |                     (Tolerance)
   At t-gmax bytes:                                        |                     (         )
@@ -327,7 +327,7 @@ Number of primes found in the range 0 to 20000: 2262
   Writes bytes:                                           |                     (Tolerance)
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -345,7 +345,7 @@ Number of primes found in the range 0 to 20000: 2262
   Suppressed Contexts:                                    |                     (         )
   ======= DRD =========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -363,12 +363,12 @@ Number of primes found in the range 0 to 20000: 2262
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 2
   ======= EXP-BBV =====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 2

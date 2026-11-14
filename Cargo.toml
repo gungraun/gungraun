@@ -15,7 +15,6 @@ resolver = "3"
 [workspace.package]
 categories = ["development-tools::profiling", "development-tools::testing"]
 edition = "2024"
-homepage = "https://github.com/gungraun/gungraun"
 keywords = ["performance", "benchmark", "profiling", "valgrind", "callgrind"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/gungraun/gungraun"
@@ -74,7 +73,6 @@ serde_test = { version = "1.0.177" }
 serde_yaml = { version = "0.9" }
 serial_test = { version = "3" }
 shlex = { version = "2.0" }
-signal-hook = { version = "0.4" }
 simplematch = "0.3"
 statrs = { version = "0.18" }
 strum = { version = "0.28" }

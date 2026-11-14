@@ -33,8 +33,10 @@ static ABSOLUTE_PATH_RE: LazyLock<Regex> =
 
 // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
 static COMMAND_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
-        .expect("Regex should compile")
+    Regex::new(
+        r"^(\S*)(\s*target/release/.*/test_(lib|bin)_bench_.+-(?:[a-z0-9]+|<__FILTER__>)\s*.*)$",
+    )
+    .expect("Regex should compile")
 });
 
 static DETAILS_RE: LazyLock<Regex> =
@@ -374,7 +376,16 @@ impl CapturedOutput {
                 // do nothing
             }
 
-            if let Some(caps) = NUMBERS_RE.captures(line) {
+            let line = if COMMAND_RE.is_match(line) {
+                // Filter the benchmark command of benchmarks because it has a random
+                // hash in it's name
+                COMMAND_RE.replace(line, "$1<__COMMAND__>")
+            } else {
+                // Replace absolute paths
+                ABSOLUTE_PATH_RE.replace_all(line, "$1<__ABS_PATH__>$2")
+            };
+
+            if let Some(caps) = NUMBERS_RE.captures(&line) {
                 let mut string = String::new();
                 let desc = filter_unit(caps.name("desc").unwrap().as_str());
                 let comp1 = {
@@ -482,15 +493,6 @@ impl CapturedOutput {
                 }
                 writeln!(result, "{indent}{string}").unwrap();
             } else {
-                let line = if COMMAND_RE.is_match(line) {
-                    // Filter the benchmark command of library benchmarks because it has a random
-                    // hash in it's name
-                    COMMAND_RE.replace(line, "$1 <__COMMAND__>")
-                } else {
-                    // Replace absolute paths
-                    ABSOLUTE_PATH_RE.replace_all(line, "$1<__ABS_PATH__>$2")
-                };
-
                 // Filter the pids and parent pids
                 let line = PID_RE.replace_all(&line, |caps: &Captures| {
                     format!("{}<__PID__>{}", &caps[1], caps.get(3).map_or("", |_| " "))
@@ -556,6 +558,14 @@ mod tests {
     use super::*;
 
     #[rstest]
+    #[case::generic(
+        "%/doesnotexist/target/release/build/gungraun-tests/e1f2/out/\
+         test_lib_bench_valgrind_runner-a1b2c3d4%"
+    )]
+    #[case::generic_with_filter(
+        "%/doesnotexist/target/release/build/gungraun-tests/e1f2/out/\
+         test_lib_bench_valgrind_runner-<__FILTER__>%"
+    )]
     #[case::lib_bench("Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9")]
     #[case::bin_bench("Command: target/release/deps/test_bin_bench_threads-c2a88f916ff580f9")]
     fn test_command_re(#[case] haystack: &str) {

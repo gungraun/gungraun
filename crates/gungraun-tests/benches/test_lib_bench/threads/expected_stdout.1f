@@ -1,7 +1,7 @@
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread one:(1)
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|default
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -10,7 +10,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread one:(1)
   Total read+write:                                       |                     (Tolerance)
   Estimated Cycles:                                       |                     (         )
   ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
@@ -44,14 +44,14 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread one:(1)
   Suppressed Errors:                                      |                     (         )
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:(2)
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|default
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -60,7 +60,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:(2)
   Total read+write:                                       |                     (Tolerance)
   Estimated Cycles:                                       |                     (         )
   ## pid: <__PID__> thread: 2 part: 1                     |pid: <__PID__> thread: 2 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
@@ -68,7 +68,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:(2)
   Total read+write:                                       |                     (Tolerance)
   Estimated Cycles:                                       |                     (         )
   ## pid: <__PID__> thread: 3 part: 1                     |pid: <__PID__> thread: 3 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
   LL Hits:                                                |                     (         )
@@ -102,14 +102,14 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:(2)
   Suppressed Errors:                                      |                     (         )
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|default
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -142,7 +142,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
   Estimated Cycles:                                       |                     (         )
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |                     (Tolerance)
   Total blocks:                                           |                     (Tolerance)
   At t-gmax bytes:                                        |                     (         )
@@ -172,7 +172,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
   Writes bytes:                                           |                     (Tolerance)
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -190,7 +190,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
   Suppressed Contexts:                                    |                     (         )
   ======= DRD =========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -208,12 +208,12 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 1
   ======= EXP-BBV =====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 1
@@ -248,7 +248,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess one:(1)
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |pid: <__PID__> thread: 1 part: 1
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Baselines:                                           foo|default
   Instructions:                                           |                     (Tolerance)
   L1 Hits:                                                |                     (         )
@@ -289,7 +289,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
   Estimated Cycles:                                       |                     (         )
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |                     (Tolerance)
   Total blocks:                                           |                     (Tolerance)
   At t-gmax bytes:                                        |                     (         )
@@ -319,7 +319,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
   Writes bytes:                                           |                     (Tolerance)
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -337,7 +337,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
   Suppressed Contexts:                                    |                     (         )
   ======= DRD =========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |                     (Tolerance)
   Contexts:                                               |                     (Tolerance)
   Suppressed Errors:                                      |                     (         )
@@ -355,12 +355,12 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:(2)
   Suppressed Contexts:                                    |                     (         )
   ======= MASSIF ======================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 2
   ======= EXP-BBV =====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ## pid: <__PID__> ppid: <__PID__>                       |pid: <__PID__> ppid: <__PID__>
   Command: target/release/thread 2

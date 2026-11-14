@@ -43,14 +43,14 @@ test_lib_bench_default_tool::my_group::default_tool drd
   Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool massif
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
 test_lib_bench_default_tool::my_group::default_tool bbv
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
   ## pid: <__PID__> thread: 1 part: 1                     |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |N/A                  (*********)
   ## pid: <__PID__> thread: 1 part: 1                     |N/A
   Command: target/release/echo Print something with 'echo'
@@ -60,7 +60,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
 test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
   ======= CACHEGRIND ==================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: target/release/echo Print something with 'echo'
@@ -70,7 +70,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
 test_lib_bench_default_tool::my_group::default_tool_with_config dhat
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -101,7 +101,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config dhat
 test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -120,7 +120,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
 test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -139,7 +139,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
 test_lib_bench_default_tool::my_group::default_tool_with_config drd
   ======= DRD =========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -158,13 +158,13 @@ test_lib_bench_default_tool::my_group::default_tool_with_config drd
 test_lib_bench_default_tool::my_group::default_tool_with_config massif
   ======= MASSIF ======================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: target/release/echo Print\ something\ with\ 'echo'
 test_lib_bench_default_tool::my_group::default_tool_with_config bbv
   ======= EXP-BBV =====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: target/release/echo Print\ something\ with\ 'echo'
@@ -253,15 +253,15 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool drd_and_he
   Suppressed Contexts:                                    |N/A                  (*********)
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool massif_and_bbv
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_default_tool::my_group::default_tool_with_another_tool bbv_and_massif
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
 
 Gungraun result: Ok. 24 without regressions; 0 regressed; 0 filtered; 24 benchmarks finished in <__SECONDS__>s

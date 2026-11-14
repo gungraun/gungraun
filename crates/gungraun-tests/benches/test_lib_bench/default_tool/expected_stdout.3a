@@ -161,7 +161,7 @@ test_lib_bench_default_tool::my_group::default_tool bbv
 test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -179,7 +179,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -209,7 +209,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -228,7 +228,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
 test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -246,7 +246,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -276,7 +276,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -295,7 +295,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
 test_lib_bench_default_tool::my_group::default_tool_with_config dhat
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -313,7 +313,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config dhat
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -343,7 +343,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config dhat
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -362,7 +362,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config dhat
 test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -380,7 +380,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -410,7 +410,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -429,7 +429,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
 test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -447,7 +447,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -477,7 +477,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -496,7 +496,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
 test_lib_bench_default_tool::my_group::default_tool_with_config drd
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -514,7 +514,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config drd
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -544,7 +544,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config drd
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -563,7 +563,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config drd
 test_lib_bench_default_tool::my_group::default_tool_with_config massif
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -581,7 +581,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config massif
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -611,7 +611,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config massif
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -630,7 +630,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config massif
 test_lib_bench_default_tool::my_group::default_tool_with_config bbv
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -648,7 +648,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config bbv
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -678,7 +678,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config bbv
   Writes bytes:                                           |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)

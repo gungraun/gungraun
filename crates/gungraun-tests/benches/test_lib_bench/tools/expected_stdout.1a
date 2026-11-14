@@ -17,9 +17,9 @@ test_lib_bench_tools::bench_group::bench_bubble_sort_allocate
   Reads bytes:                                            |N/A                  (*********)
   Writes bytes:                                           |N/A                  (*********)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |N/A                  (*********)
@@ -41,7 +41,7 @@ Do something before calling subprocess
 - end of stdout/stderr
   ======= CALLGRIND ===================================================================================
   ## pid: <__PID__> thread: 1 part: 1                     |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Instructions:                                           |N/A                  (*********)
   L1 Hits:                                                |N/A                  (*********)
   LL Hits:                                                |N/A                  (*********)
@@ -65,7 +65,7 @@ Do something before calling subprocess
   Estimated Cycles:                                       |N/A                  (*********)
   ======= DHAT ========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Total bytes:                                            |N/A                  (*********)
   Total blocks:                                           |N/A                  (*********)
   At t-gmax bytes:                                        |N/A                  (*********)
@@ -95,19 +95,19 @@ Do something before calling subprocess
   Writes bytes:                                           |N/A                  (*********)
   ======= MASSIF ======================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: target/release/sort
   ======= EXP-BBV =====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
   Command: target/release/sort
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -125,7 +125,7 @@ Do something before calling subprocess
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= DRD =========================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -143,7 +143,7 @@ Do something before calling subprocess
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= HELGRIND ====================================================================================
   ## pid: <__PID__> ppid: <__PID__>                       |N/A
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Errors:                                                 |N/A                  (*********)
   Contexts:                                               |N/A                  (*********)
   Suppressed Errors:                                      |N/A                  (*********)
@@ -179,9 +179,9 @@ Do something before calling subprocess
   Reads bytes:                                            |N/A                  (*********)
   Writes bytes:                                           |N/A                  (*********)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |N/A                  (*********)
@@ -208,9 +208,9 @@ test_lib_bench_tools::bench_group::bench_bubble_sort empty:(vec! [])
   Total read+write:                                       |N/A                  (*********)
   Estimated Cycles:                                       |N/A                  (*********)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |N/A                  (*********)
@@ -246,9 +246,9 @@ test_lib_bench_tools::bench_group::bench_bubble_sort worst_case_4000:(setup_wors
   Reads bytes:                                            |N/A                  (*********)
   Writes bytes:                                           |N/A                  (*********)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   ======= EXP-BBV =====================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
   Details: <__DETAILS__>
   ======= MEMCHECK ====================================================================================
   Errors:                                                 |N/A                  (*********)
@@ -289,6 +289,6 @@ test_lib_bench_tools::bench_group::bad_memory
   Suppressed Errors:                                      |N/A                  (*********)
   Suppressed Contexts:                                    |N/A                  (*********)
   ======= MASSIF ======================================================================================
-  Command: <__COMMAND__>
+  Command:<__COMMAND__>
 
 Gungraun result: Ok. 6 without regressions; 0 regressed; 0 filtered; 6 benchmarks finished in <__SECONDS__>s

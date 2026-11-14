@@ -18,7 +18,7 @@ test_lib_bench_output_format_threads::my_group::bench_without_format for_compari
 test_lib_bench_output_format_threads::my_group::bench_with_format for_comparison:("Another very long string to see if the truncation is disabled with the formatting option")
 |======== CALLGRIND ===================================================================================
 |-## pid: <__PID__> thread: 1 part: 1                     |N/A
-| Command: <__COMMAND__>
+| Command:<__COMMAND__>
 | Instructions:                                           |N/A                  (*********)
 | L1 Hits:                                                |N/A                  (*********)
 | LL Hits:                                                |N/A                  (*********)
@@ -26,7 +26,7 @@ test_lib_bench_output_format_threads::my_group::bench_with_format for_comparison
 | Total read+write:                                       |N/A                  (*********)
 | Estimated Cycles:                                       |N/A                  (*********)
 |-## pid: <__PID__> thread: 2 part: 1                     |N/A
-| Command: <__COMMAND__>
+| Command:<__COMMAND__>
 | Instructions:                                           |N/A                  (*********)
 | L1 Hits:                                                |N/A                  (*********)
 | LL Hits:                                                |N/A                  (*********)
@@ -34,7 +34,7 @@ test_lib_bench_output_format_threads::my_group::bench_with_format for_comparison
 | Total read+write:                                       |N/A                  (*********)
 | Estimated Cycles:                                       |N/A                  (*********)
 |-## pid: <__PID__> thread: 3 part: 1                     |N/A
-| Command: <__COMMAND__>
+| Command:<__COMMAND__>
 | Instructions:                                           |N/A                  (*********)
 | L1 Hits:                                                |N/A                  (*********)
 | LL Hits:                                                |N/A                  (*********)

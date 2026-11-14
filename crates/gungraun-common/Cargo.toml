@@ -7,7 +7,6 @@ benchmarking framework for Rust. All Valgrind tools and Linux perf at your \
 fingertips.
 """
 edition.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "gungraun-common"

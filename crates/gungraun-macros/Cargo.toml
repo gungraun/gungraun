@@ -6,7 +6,6 @@ Proc macros for Gungraun: A high-precision, one-shot and consistent benchmarking
 framework for Rust.
 """
 edition.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "gungraun-macros"

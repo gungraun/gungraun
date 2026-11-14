@@ -6,7 +6,6 @@ autobenches = false
 categories.workspace = true
 description = "Tests for gungraun"
 edition.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "gungraun-tests"
@@ -37,7 +36,6 @@ rustc_version = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
-signal-hook = { workspace = true }
 simplematch = { workspace = true }
 tempfile = { workspace = true }
 tera = { workspace = true }

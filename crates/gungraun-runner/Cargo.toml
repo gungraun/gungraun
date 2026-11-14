@@ -11,7 +11,6 @@ Binary package needed by the Gungraun library: A high-precision, one-shot and \
 consistent benchmarking framework for Rust.
 """
 edition.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "gungraun-runner"

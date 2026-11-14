@@ -220,7 +220,7 @@ impl RegressionConfig<PerfMetric, StatisticalMetric<PerfStats>> for PerfRegressi
                 regressions.push(RegressionMetrics::Hard(
                     metric.clone(),
                     Some(display),
-                    result_unit.clone(),
+                    result_unit,
                     new_cost.value,
                     new_cost.value - *limit,
                     *limit,

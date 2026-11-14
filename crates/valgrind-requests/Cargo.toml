@@ -11,7 +11,6 @@ Idiomatic Rust bindings for Valgrind client requests, with zero-indirection \
 execution and zero-cost fallback
 """
 edition.workspace = true
-homepage.workspace = true
 keywords = ["valgrind", "bindings", "client-requests", "no_std", "callgrind"]
 license.workspace = true
 name = "valgrind-requests"

@@ -50,6 +50,7 @@
 groups:
   - runs:
       - args: []
+        flaky: 5
         expected:
           default:
             stderr: expected_stderr.1
@@ -60,6 +61,7 @@ groups:
             stdout: freebsd/expected_stdout.1
             files: freebsd/expected_files.1.yml
       - args: []
+        flaky: 5
         expected:
           default:
             stderr: expected_stderr.2

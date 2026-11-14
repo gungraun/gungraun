@@ -33,7 +33,7 @@ static ABSOLUTE_PATH_RE: LazyLock<Regex> =
 
 // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
 static COMMAND_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
+    Regex::new(r"^(Command:)(\s*target/release/.*/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
         .expect("Regex should compile")
 });
 

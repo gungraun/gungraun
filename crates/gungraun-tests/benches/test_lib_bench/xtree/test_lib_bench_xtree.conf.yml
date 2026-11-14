@@ -40,53 +40,53 @@ groups:
     runs:
       - args: []
         expected:
-          files: expected_files.1a.>=1.89.yml
+          files: expected_files.1a.1.89.yml
       - args: []
         expected:
-          files: expected_files.1b.>=1.89.yml
+          files: expected_files.1b.1.89.yml
       - args: []
         expected:
-          files: expected_files.1b.>=1.89.yml
+          files: expected_files.1b.1.89.yml
       - args: ["--save-baseline"]
         expected:
-          files: expected_files.1c.>=1.89.yml
+          files: expected_files.1c.1.89.yml
       - args: []
         expected:
-          files: expected_files.1c.>=1.89.yml
+          files: expected_files.1c.1.89.yml
   - rust_version: ">=1.89"
     runs:
       - args: ["--save-baseline"]
         expected:
-          files: expected_files.2a.>=1.89.yml
+          files: expected_files.2a.1.89.yml
       - args: ["--save-baseline"]
         expected:
-          files: expected_files.2a.>=1.89.yml
+          files: expected_files.2a.1.89.yml
       - args: ["--load-baseline", "--baseline"]
         expected:
-          files: expected_files.2a.>=1.89.yml
+          files: expected_files.2a.1.89.yml
       - args: ["--save-baseline=other"]
         expected:
-          files: expected_files.2d.>=1.89.yml
+          files: expected_files.2d.1.89.yml
       - args: ["--save-baseline=other"]
         expected:
-          files: expected_files.2d.>=1.89.yml
+          files: expected_files.2d.1.89.yml
   - rust_version: ">=1.89"
     runs:
       - args: ["--save-baseline=foo"]
         expected:
-          files: expected_files.3a.>=1.89.yml
+          files: expected_files.3a.1.89.yml
       - args: ["--save-baseline=bar"]
         expected:
-          files: expected_files.3b.>=1.89.yml
+          files: expected_files.3b.1.89.yml
       - args: ["--save-baseline=foo", "--baseline=bar"]
         expected:
-          files: expected_files.3b.>=1.89.yml
+          files: expected_files.3b.1.89.yml
       - args: ["--save-baseline=foo", "--baseline=bar"]
         expected:
-          files: expected_files.3b.>=1.89.yml
+          files: expected_files.3b.1.89.yml
       - args: ["--save-baseline=bar", "--baseline=foo"]
         expected:
-          files: expected_files.3b.>=1.89.yml
+          files: expected_files.3b.1.89.yml
   - rust_version: "<1.89"
     runs:
       - args: []

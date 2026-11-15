@@ -59,18 +59,19 @@ basics needed to start working on this project with:
 just install-workspace
 ```
 
-This command will install git hooks, the necessary components for the `stable`,
-`nightly` toolchain and the current MSRV toolchain, run some checks for tools
-which need to be installed, ...
+This command will install git hooks, the necessary components for the `stable`
+toolchain, a pinned `nightly` toolchain (see `nightly_toolchain` in the
+`Justfile`) and the current MSRV toolchain, run some checks for tools which need
+to be installed, ...
 
 To get an overview over all possible `just` rules run `just -l` or directly
 inspect the `Justfile` in the root of this project.
 
-You should also set up your editor to use nightly rustfmt and clippy from the
-rust `stable` toolchain for example with `rust-analyzer` server overrides. An
-alternative to server overrides is to use tasks which are executed on save and
-use `just fmt` to format the project with nightly `rustfmt` and `just lint` to
-lint with stable clippy.
+You should also set up your editor to use rustfmt from the pinned `nightly`
+toolchain and clippy from the rust `stable` toolchain, for example with
+`rust-analyzer` server overrides. An alternative to server overrides is to use
+tasks which are executed on save and use `just fmt` to format the project with
+nightly `rustfmt` and `just lint` to lint with stable clippy.
 
 Some examples for `rust-analyzer` server overrides:
 
@@ -93,7 +94,7 @@ file:
         ],
         "rust-analyzer.rustfmt.overrideCommand": [
             "rustfmt",
-            "+nightly",
+            "+nightly-2026-11-01",
             "--emit",
             "stdout"
         ]
@@ -124,13 +125,16 @@ same:
     rustfmt = {
         overrideCommand = {
             "rustfmt",
-            "+nightly",
+            "+nightly-2026-11-01",
             "--emit",
             "stdout",
         },
     },
 }
 ```
+
+The pinned nightly version in these examples must match the `nightly_toolchain`
+variable in the `Justfile`.
 
 ## Working on the guide
 

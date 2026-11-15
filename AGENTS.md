@@ -94,7 +94,7 @@ gungraun/
 ## Commands
 
 ```bash
-just fmt                          # Rust formatting; nightly toolchain
+just fmt                          # Rust formatting; pinned nightly toolchain
 just fmt-prettier                 # JSON, YAML, and Markdown formatting
 just check-fmt-all                # All formatting checks
 just lint                         # Stable Clippy
@@ -114,5 +114,8 @@ just build-hack-valgrind-requests # Feature-power-set request builds
 - `stubs` is the minimum `valgrind-requests` API feature. `act` implies `stubs`;
   `alloc` only enables allocation-backed conveniences.
 - Run `just fmt-prettier` after editing any `AGENTS.md` file.
+- The default toolchain is pinned to `stable` via `rust-toolchain.toml`;
+  `just fmt` and the coverage recipes run on the nightly pinned via
+  `nightly_toolchain` in the `Justfile`.
 - Schema generation, benchmark expectation overwrite, cross-target request
   tests, mdBook, and release recipes are documented in `Justfile`.

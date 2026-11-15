@@ -49,6 +49,7 @@ use crate::summary::model::BenchmarkKind;
 #[derive(Debug)]
 enum Cli {
     Runner(RunnerArgs),
+    Standalone(super::standalone::Cli),
     ShortHelp,
     LongHelp,
     Version,
@@ -87,6 +88,7 @@ impl Cli {
 
         let next = args.next().map(|s| s.to_string_lossy().into_owned());
         match next.as_deref() {
+            Some("run" | "check" | "help") => Ok(Self::Standalone(super::standalone::Cli::parse())),
             Some("-h") => Ok(Self::ShortHelp),
             Some("--help") | None => Ok(Self::LongHelp),
             Some("--version" | "-V") => Ok(Self::Version),
@@ -255,6 +257,7 @@ pub fn run() -> Result<()> {
 
     let runner_args = match (Cli::parse()?, term_width) {
         (Cli::Runner(runner_args), _) => runner_args,
+        (Cli::Standalone(cli), _) => return cli.run(),
         (Cli::ShortHelp, Some(width)) => {
             return CommandLineArgs::command()
                 .term_width(width)

@@ -37,6 +37,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Standalone `gungraun-runner run --config PATH` and `check --config PATH`
+  commands for versioned TOML binary benchmarks without a consumer Rust/Cargo
+  harness. They reuse the existing Callgrind runner, profiles, summaries, and
+  absolute instruction limits. Strict checks require a positive `Ir` cap and a
+  nonzero current measurement for every declared case; capture mode identifies
+  uncapped cases explicitly.
+
+### Fixed
+
+- Preserve native profiler output when sanitization fails, so malformed output
+  remains available to diagnose the failed run.
+- Reject duplicate Callgrind process/part/thread output before renaming can
+  overwrite a measurement.
+
 ## [0.20.0] - 2026-09-26
 
 This release is focused on [Linux perf][perf-wiki] and adds it as a first-class

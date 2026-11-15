@@ -1,0 +1,25 @@
+schema_version = 1
+
+[defaults]
+program = "build/workload"
+cwd = "."
+expected_exit = 0
+
+[defaults.env]
+LC_ALL = "C"
+
+[defaults.callgrind]
+entry_point = "gungraun_example_region"
+
+# Demonstration caps only. Review measured counts for your own binary/toolchain.
+[[cases]]
+id = "Sum.32"
+args = ["32"]
+[cases.callgrind.hard_limits]
+Ir = 100_000
+
+[[cases]]
+id = "Sum.1000"
+args = ["1000"]
+[cases.callgrind.hard_limits]
+Ir = 100_000

@@ -39,6 +39,7 @@ const DEFAULT_SHOW_GRID: bool = false;
 const DEFAULT_SHOW_INTERMEDIATE: bool = false;
 const DEFAULT_SHOW_ONLY_COMPARISON: bool = false;
 const DEFAULT_TRUNCATE_DESCRIPTION: Option<usize> = Some(50);
+
 /// The width in bytes of the difference (and factor)
 pub const DIFF_WIDTH: usize = 9;
 /// The width in bytes of the FIELD as in `  FIELD: METRIC | METRIC (DIFF_PCT) [FACTOR]`
@@ -1795,6 +1796,35 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                     limit.bright_black(),
                 );
             }
+        }
+    }
+}
+
+/// Identify capture versus strict enforcement without contaminating native JSON on stdout.
+pub(crate) fn print_standalone_status(
+    strict: bool,
+    complete: bool,
+    cases: usize,
+    uncapped: &[String],
+) {
+    match (strict, complete) {
+        (true, false) => {
+            eprintln!("Checking all {cases} declared cases against reviewed absolute Ir limits");
+        }
+        (true, true) => eprintln!(
+            "Guard passed: all {cases} cases have valid current measurements within their Ir \
+             limits"
+        ),
+        (false, false) => {
+            eprintln!("Capture mode: measurements only; this is not an enforced guard");
+            if !uncapped.is_empty() {
+                eprintln!("Uncapped cases: {}", uncapped.join(", "));
+            }
+        }
+        (false, true) => {
+            eprintln!(
+                "Capture complete: {cases} cases measured; run 'check' for an enforced guard"
+            );
         }
     }
 }

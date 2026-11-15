@@ -447,6 +447,7 @@ impl ToolCommand {
             .spawn()
             .and_then(|c| {
                 if let Some(p) = perf_data.as_mut() {
+                    p.close_ack_write();
                     p.log_file.finalize_header(c.id(), config.part)?;
                 }
 

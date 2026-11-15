@@ -1536,6 +1536,10 @@ macro_rules! main {
                         .expect("The benchmark run mode should be valid")
                 );
 
+                if $crate::__internal::InternalBenchRunMode::is_perf(&current) {
+                    $crate::__internal::perf::init();
+                }
+
                 current = std::hint::black_box(
                     args_iter.next().expect("Expecting a function type")
                 );

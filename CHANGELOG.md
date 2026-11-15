@@ -45,6 +45,9 @@ and this project adheres to
   nested measurement sections panic instead of causing undefined behavior. The
   `PERF_CONTROL` static is no longer exported, and `PerfControl` now names the
   opaque token, not the underlying control state.
+- Fully consume and validate perf control acknowledgement frames. Previously,
+  only one byte was read and read errors were ignored, breaking synchronization
+  from the second measurement section onward.
 
 [#778]: https://github.com/gungraun/gungraun/issues/778
 [#802]: https://github.com/gungraun/gungraun/pull/802

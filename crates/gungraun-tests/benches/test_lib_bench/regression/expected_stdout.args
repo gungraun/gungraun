@@ -78,7 +78,7 @@ test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_perf:(se
     rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
     samples                                               |                     (        %) [        x]
   faults/u:                                               |                     (        %) [        x]
-    rse% (sig.thr) [sig.fact]                             |                     (        %) [        x]
+    rse% (sig.thr) [sig.fact]                             |                     (*********)
     samples                                               |                     (        %) [        x]
   context-switches/u:                                     |                     (        %) [        x]
     rse% (sig.thr) [sig.fact]                             |                     (*********)

@@ -675,9 +675,10 @@ a single process-global control channel and are safe to call from any thread,
 but only one measurement section may be active per process. `perf_enable!`
 panics if a section is already active (including a nested or overlapping call)
 or if a previous panic poisoned the control state. Both macros panic if writing
-to the control channel fails. Pass every token to exactly one matching
-`perf_disable!`: dropping it does not stop measurement. Calling
-`disable_entry_point(false)` restores the default entry point.
+to the control channel fails or if the acknowledgement frame from perf is
+missing or malformed. Pass every token to exactly one matching `perf_disable!`:
+dropping it does not stop measurement. Calling `disable_entry_point(false)`
+restores the default entry point.
 
 The macros can also be called from production code that the benchmark process
 executes. To use them outside benchmark code, the dependency on `gungraun` must

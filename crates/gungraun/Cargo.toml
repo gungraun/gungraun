@@ -30,7 +30,7 @@ benchmark = [
 ]
 cachegrind = ["gungraun-macros/cachegrind", "act"]
 default = ["benchmark"]
-perf = ["perf_stubs"]
+perf = ["perf_stubs", "dep:nix"]
 perf_stubs = ["gungraun-runner/api"]
 stubs = ["valgrind-requests/stubs", "dep:cty", "perf_stubs"]
 
@@ -52,6 +52,9 @@ gungraun-runner = { path = "../gungraun-runner", version = "=0.20.0", default-fe
   "api",
 ], optional = true }
 valgrind-requests = { path = "../valgrind-requests", version = "1", optional = true, default-features = false }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { workspace = true, features = ["process", "signal"], optional = true }
 
 [dev-dependencies]
 fs_extra = { workspace = true }

@@ -39,19 +39,28 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - nightly-2026-05-01
+          - nightly-pin
     steps:
       - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@just
+      - name: Resolve pinned nightly
+        id: resolve
+        run: |
+          if [ "${{ matrix.toolchain }}" = "nightly-pin" ]; then
+            resolved_toolchain="$(just --evaluate nightly_toolchain)"
+          else
+            resolved_toolchain="${{ matrix.toolchain }}"
+          fi
+          echo "resolved_toolchain=${resolved_toolchain}" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: ${{ env.resolved_toolchain }}
       - uses: Swatinem/rust-cache@v2
         with:
           cache-bin: false
-          key: ${{ matrix.toolchain }}
+          key: ${{ env.resolved_toolchain }}
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@cargo-minimal-versions
-      - uses: taiki-e/install-action@just
       - name: Check build with minimal versions
         run: just minimal-versions
 
@@ -60,12 +69,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-bin: false
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@taplo
       - run: just check-fmt-all

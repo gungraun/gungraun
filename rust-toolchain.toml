@@ -1,0 +1,8 @@
+# Toolchain for all commands without an explicit `+<toolchain>` argument or a
+# `RUSTUP_TOOLCHAIN` environment override. Rust formatting does not run on this
+# toolchain; it runs on the nightly pinned via `nightly_toolchain` in the
+# `Justfile` (see `just fmt`).
+[toolchain]
+channel = "stable"
+components = ["clippy"]
+profile = "minimal"

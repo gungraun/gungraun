@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCS_RS: "1"
+      RUSTUP_TOOLCHAIN: nightly
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly

@@ -19,6 +19,7 @@ this_dir := `realpath .`
 book_build_dir := this_dir + "/docs/book"
 msrv := '1.88.0'
 mdbook_version := '0.5.2'
+nightly_toolchain := 'nightly-2026-11-01'
 required_tools := 'valgrind|the essential tool
 clang|to be able to build Gungraun with the client-requests feature'
 cargo_tools := 'cargo-hack
@@ -31,10 +32,11 @@ npx|to be able to run some recipes in this Justfile
 taplo|formatting of *.toml files
 prettier|formatting of json, yml, md, ... files'
 ide_recommends := 'Depending on your IDE you can use rust-analyzer overrides to
-adjust clippy execution to `cargo +stable clippy` and rustfmt execution to
-`cargo +nightly rustfmt`. If possible, it is recommended to run the respective
-`just` rules to run these tools with the set of options as they are used in the
-CI (which might change in the future, so you stay updated).'
+adjust clippy execution to `cargo +stable clippy` and rustfmt execution to the
+`nightly` toolchain pinned in this `Justfile` (see `nightly_toolchain`). If
+possible, it is recommended to run the respective `just` rules to run these tools
+with the set of options as they are used in the CI (which might change in the
+future, so you stay updated).'
 valgrind_request_comments := 'If you want to start working on the valgrind requests interface you
 need the following tools installed:
 
@@ -61,10 +63,15 @@ this project are formatted with `prettier`. The pre-push hook runs
 `just schema-gen-diff` to check if there are changes. Run `just schema-gen-move`
 to replace the old schema file with the new one.'
 
-# Check and fix format of rust files (Uses: 'cargo +nightly')
+# Install the nightly toolchain pinned for formatting (Uses: 'rustup')
 [group('formatting')]
-fmt:
-    cargo +nightly fmt --all
+install-fmt-toolchain:
+    rustup toolchain install {{ nightly_toolchain }} --profile minimal --component rustfmt
+
+# Check and fix format of rust files (Uses: 'cargo +{{ nightly_toolchain }}')
+[group('formatting')]
+fmt: install-fmt-toolchain
+    cargo +{{ nightly_toolchain }} fmt --all
 
 # Check and fix format of toml files (Uses: 'taplo')
 [group('formatting')]
@@ -80,10 +87,10 @@ fmt-prettier:
 [group('formatting')]
 fmt-all: fmt fmt-toml fmt-prettier
 
-# Check format of rust files (Uses: 'cargo +nightly')
+# Check format of rust files (Uses: 'cargo +{{ nightly_toolchain }}')
 [group('formatting')]
-check-fmt:
-    cargo +nightly fmt --all --check
+check-fmt: install-fmt-toolchain
+    cargo +{{ nightly_toolchain }} fmt --all --check
 
 # Check format of toml files with `taplo` (Uses: 'taplo')
 [group('formatting')]
@@ -133,7 +140,7 @@ install-hooks:
 [group('init workspace')]
 install-toolchains:
     rustup toolchain install stable --component clippy --component llvm-tools
-    rustup toolchain install nightly --component rustfmt --component llvm-tools
+    rustup toolchain install {{ nightly_toolchain }} --component rustfmt --component llvm-tools
     rustup toolchain install {{ msrv }} --profile default --component rust-src --component llvm-tools
 
 # Show some introductory words and recommendations
@@ -268,18 +275,18 @@ schema-gen-move: schema-gen
 test package *args:
     cargo test --package {{ package }} {{ args }}
 
-# Run all tests in a package with coverage. (Uses: 'cargo +nightly')
+# Run all tests in a package with coverage. (Uses: 'cargo +{{ nightly_toolchain }}')
 [group('test')]
 test-cov package *args:
-    cargo +nightly llvm-cov clean --workspace
-    cargo +nightly llvm-cov test --package {{ package }} --all-features --no-fail-fast \
+    cargo +{{ nightly_toolchain }} llvm-cov clean --workspace
+    cargo +{{ nightly_toolchain }} llvm-cov test --package {{ package }} --all-features --no-fail-fast \
         --lcov --output-path lcov.info {{ args }}
 
-# Run all tests in a package with coverage. (Uses: 'cargo +nightly')
+# Run all tests in a package with coverage. (Uses: 'cargo +{{ nightly_toolchain }}')
 [group('test')]
 test-cov-runner *args:
-    cargo +nightly llvm-cov clean --workspace
-    cargo +nightly llvm-cov nextest --package gungraun-runner --package gungraun-tests --branch \
+    cargo +{{ nightly_toolchain }} llvm-cov clean --workspace
+    cargo +{{ nightly_toolchain }} llvm-cov nextest --package gungraun-runner --package gungraun-tests --branch \
         --all-features --no-fail-fast --lcov --output-path lcov.info {{ args }}
 
 [group('test')]

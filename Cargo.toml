@@ -51,7 +51,7 @@ inferno = { version = "0.12", default-features = false, features = [
 itertools = { version = "0.15" }
 jiff = { version = "0.2" }
 log = { version = "0.4.21" }
-nix = { version = "0.31" }
+nix = { version = "0.32" }
 num_cpus = { version = "1" }
 once_cell = { version = "1" }
 os_str_bytes = { version = "7" }

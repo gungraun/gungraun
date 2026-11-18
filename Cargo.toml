@@ -49,7 +49,7 @@ inferno = { version = "0.12", default-features = false, features = [
   'multithreaded',
 ] }
 itertools = { version = "0.15" }
-jiff = { version = "0.2" }
+jiff = { version = "1.0" }
 log = { version = "0.4.21" }
 nix = { version = "0.32" }
 num_cpus = { version = "1" }

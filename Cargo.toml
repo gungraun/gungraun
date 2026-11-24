@@ -74,7 +74,7 @@ serde_yaml = { version = "0.9" }
 serial_test = { version = "3" }
 shlex = { version = "2.0" }
 simplematch = "0.3"
-statrs = { version = "0.18" }
+statrs = { version = "0.19" }
 strum = { version = "0.28" }
 syn = { version = "3", features = ["full", "extra-traits"] }
 tempfile = { version = "3.10.0" }

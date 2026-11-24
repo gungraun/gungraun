@@ -15,6 +15,7 @@
     "**/.git/",
     "**/.gitignore",
     ".git",
+    ".serena",
     "**/tests/fixtures/",
     "**/Cargo.lock",
     "*.stderr",

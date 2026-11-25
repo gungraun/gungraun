@@ -2,8 +2,9 @@
 //!
 //! When the `perf` feature is enabled on Linux, the [`perf_enable!`], [`perf_disable!`] and
 //! [`perf_log!`] macros allow benchmarks to communicate with the runner's `perf` measurement
-//! infrastructure. The macros control a single process-global perf control channel and are not
-//! thread-safe.
+//! infrastructure. The macros are safe to call from any thread, but only one measurement section
+//! may be active per process. Nested or overlapping sections panic instead of causing undefined
+//! behavior.
 //!
 //! On non-Linux platforms or when the feature is disabled, the macros compile to no-ops.
 //!
@@ -11,96 +12,66 @@
 //! [`perf_disable!`]: crate::perf_disable
 //! [`perf_log!`]: crate::perf_log
 
+#![expect(clippy::inline_always)]
+
 #[cfg(all(target_os = "linux", feature = "perf"))]
 mod imp {
     /// Disables the active process-global perf measurement started by
     /// [`perf_enable!`](crate::perf_enable!).
     ///
-    /// The token must come from the matching `perf_enable!` call. This macro is not thread-safe
-    /// and panics if called without an active perf section.
+    /// The token must come from the matching `perf_enable!` call. Only one measurement section may
+    /// be active per process; nested or overlapping sections panic instead of causing undefined
+    /// behavior.
+    ///
+    /// # Panics
+    ///
+    /// - When writing to the control file fails.
     #[macro_export]
     macro_rules! perf_disable {
         ($control_token:expr) => {{
-            let __gungraun_control = $control_token;
-
-            // SAFETY: The token comes from `perf_enable!`, which returns a raw pointer to the
-            // process-global `PerfControl`.
-            unsafe {
-                if let Err(error) =
-                    std::io::Write::write_all(&mut (*__gungraun_control).control, b"disable\n")
-                {
-                    panic!("gungraun: failed writing to control file: {error}");
-                }
-
-                let _ = std::io::Read::read_exact(&mut (*__gungraun_control).ack, &mut [0_u8; 1]);
-                assert!(
-                    (*__gungraun_control).enabled,
-                    "gungraun: perf_disable! called without a matching perf_enable!"
-                );
-                (*__gungraun_control).enabled = false;
+            let mut token = $control_token;
+            if let ::core::result::Result::Err(error) = ::std::io::Write::write_all(
+                &mut $crate::perf::PerfControl::control_file(&token),
+                b"disable\n",
+            ) {
+                $crate::perf::PerfControl::control_write_failed(&error);
             }
+            $crate::perf::PerfControl::read_ack(&mut token);
+            $crate::perf::PerfControl::finish(token);
         }};
     }
 
     /// Enables process-global perf measurement and returns an opaque token for
     /// [`perf_disable!`](crate::perf_disable!).
     ///
-    /// This macro controls a single process-global perf control channel. It is not thread-safe,
-    /// must not be nested, and must be paired with exactly one matching `perf_disable!` call.
+    /// This macro controls a single process-global perf control channel and is safe to call from
+    /// any thread. Only one measurement section may be active per process; nested or overlapping
+    /// sections panic instead of causing undefined behavior. The returned opaque, `#[must_use]`
+    /// token must be passed to exactly one matching `perf_disable!` call.
     ///
     /// # Panics
     ///
-    /// When multiple `perf_enable!` calls are nested
+    /// - When another perf section is active in any thread (nested or overlapping sections are
+    ///   unsupported).
+    /// - When the perf control state was poisoned by a previous panic.
+    /// - When writing to the control file fails.
     #[macro_export]
     macro_rules! perf_enable {
-        () => {{
-            // SAFETY: Benchmarks have to use a single process-global perf control channel. This
-            // block initializes the shared control state once, converts the stored mutable
-            // reference into a raw pointer token for pairing with `perf_disable!`, and performs
-            // process-global nested-section validation before sending the control command.
-            unsafe {
-                let __gungraun_control_slot = &raw mut $crate::perf::PERF_CONTROL;
-
-                if (*__gungraun_control_slot).is_none() {
-                    // SAFETY: `PERF_CONTROL` is initialized at most once, so each raw fd is
-                    // converted into a `File` exactly once and therefore has a single owner.
-                    let __gungraun_control = <std::fs::File as std::os::fd::FromRawFd>::from_raw_fd(
-                        $crate::__internal::PERF_CTL_FD_WRITE,
-                    );
-                    // SAFETY: See comment above for the control fd.
-                    let __gungraun_ack = <std::fs::File as std::os::fd::FromRawFd>::from_raw_fd(
-                        $crate::__internal::PERF_ACK_FD_READ,
-                    );
-
-                    *__gungraun_control_slot = Some($crate::perf::PerfControl {
-                        ack: __gungraun_ack,
-                        control: __gungraun_control,
-                        enabled: false,
-                    });
-                }
-
-                let Some(__gungraun_control) = (*__gungraun_control_slot).as_mut() else {
-                    unreachable!("gungraun: perf control initialized above");
-                };
-                let __gungraun_control =
-                    std::ptr::from_mut::<$crate::perf::PerfControl>(__gungraun_control);
-
-                assert!(
-                    !(*__gungraun_control).enabled,
-                    "gungraun: nested perf sections are unsupported"
-                );
-
-                if let Err(error) =
-                    std::io::Write::write_all(&mut (*__gungraun_control).control, b"enable\n")
-                {
-                    panic!("gungraun: failed writing to control file: {error}");
-                }
-
-                let _ = std::io::Read::read_exact(&mut (*__gungraun_control).ack, &mut [0_u8; 1]);
-                (*__gungraun_control).enabled = true;
-
-                __gungraun_control
+        () => {
+            $crate::perf_enable!($crate::perf::acquire_control())
+        };
+        // The unit tests use the same sequence with an independently acquired guard.
+        ($control_token:expr) => {{
+            let mut token = $control_token;
+            if let ::core::result::Result::Err(error) = ::std::io::Write::write_all(
+                &mut $crate::perf::PerfControl::control_file(&token),
+                b"enable\n",
+            ) {
+                $crate::perf::PerfControl::control_write_failed(&error);
             }
+            $crate::perf::PerfControl::read_ack(&mut token);
+            $crate::perf::PerfControl::mark_enabled(&mut token);
+            token
         }};
     }
 
@@ -115,26 +86,89 @@ mod imp {
         }};
     }
 
+    use std::fmt::{self, Debug};
     use std::fs::File;
-    use std::io::Write;
+    use std::io::{Read, Write};
     use std::os::fd::FromRawFd;
-    use std::sync::{Mutex, OnceLock};
+    use std::sync::{Mutex, MutexGuard, OnceLock, TryLockError};
 
-    use crate::__internal::PERF_LOG_FD;
+    use crate::__internal::{PERF_ACK_FD_READ, PERF_CTL_FD_WRITE, PERF_LOG_FD};
 
     /// Lazily initialized process-global perf control state.
-    pub static mut PERF_CONTROL: Option<PerfControl> = None;
+    static PERF_CONTROL: OnceLock<Mutex<PerfControlState>> = OnceLock::new();
     /// Synchronizes writes to the inherited perf log file descriptor.
     static PERF_LOG_LOCK: OnceLock<Mutex<Option<File>>> = OnceLock::new();
 
+    /// Holds exclusive access to the active perf section until consumed by `perf_disable!`.
+    #[must_use = "the perf section stays enabled until perf_disable! consumes this token"]
+    pub struct PerfControl<'a>(MutexGuard<'a, PerfControlState>);
+
     /// Process-global perf control state for the inherited control and acknowledgement fds.
-    pub struct PerfControl {
+    pub(super) struct PerfControlState {
         /// File descriptor used to receive acknowledgement bytes from perf.
-        pub ack: File,
+        ack: File,
         /// File descriptor used to send enable and disable commands to perf.
-        pub control: File,
+        control: File,
         /// Tracks whether a perf section is currently active for this process.
-        pub enabled: bool,
+        enabled: bool,
+    }
+
+    impl PerfControl<'_> {
+        #[doc(hidden)]
+        #[inline(always)]
+        pub fn control_file(&self) -> &File {
+            &self.0.control
+        }
+
+        #[doc(hidden)]
+        #[cold]
+        pub fn control_write_failed(error: &std::io::Error) -> ! {
+            panic!("gungraun: failed writing to control file: {error}");
+        }
+
+        #[doc(hidden)]
+        #[inline]
+        pub fn finish(mut self) {
+            assert!(
+                self.0.enabled,
+                "gungraun: perf_disable! called without a matching perf_enable!"
+            );
+            self.0.enabled = false;
+        }
+
+        #[doc(hidden)]
+        #[inline(always)]
+        pub fn mark_enabled(&mut self) {
+            self.0.enabled = true;
+        }
+
+        #[doc(hidden)]
+        #[inline(always)]
+        pub fn read_ack(&mut self) {
+            let _ = self.0.ack.read_exact(&mut [0_u8; 1]);
+        }
+    }
+
+    impl Debug for PerfControl<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("PerfControl").finish_non_exhaustive()
+        }
+    }
+
+    impl PerfControlState {
+        pub(super) fn new(control: File, ack: File) -> Self {
+            Self {
+                ack,
+                control,
+                enabled: false,
+            }
+        }
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    pub fn acquire_control() -> PerfControl<'static> {
+        try_acquire(PERF_CONTROL.get_or_init(open_control))
     }
 
     /// Writes a single message line to the perf log file.
@@ -161,11 +195,37 @@ mod imp {
         }
     }
 
+    fn open_control() -> Mutex<PerfControlState> {
+        // SAFETY: The ack fd is provided by the runner and converted into a `File` exactly
+        // once when the control state is initialized, giving this process unique ownership.
+        let ack = unsafe { File::from_raw_fd(PERF_ACK_FD_READ) };
+        // SAFETY: The same unique ownership guarantee applies to the control fd.
+        let control = unsafe { File::from_raw_fd(PERF_CTL_FD_WRITE) };
+        Mutex::new(PerfControlState::new(control, ack))
+    }
+
     fn open_log() -> Mutex<Option<File>> {
         // SAFETY: The perf log fd is provided by the runner and converted into a `File` exactly
         // once when the log lock is first initialized, giving this process unique ownership.
         let log_file = unsafe { File::from_raw_fd(PERF_LOG_FD) };
         Mutex::new(Some(log_file))
+    }
+
+    pub(super) fn try_acquire(mutex: &Mutex<PerfControlState>) -> PerfControl<'_> {
+        let guard = match mutex.try_lock() {
+            Ok(guard) => guard,
+            Err(TryLockError::WouldBlock) => {
+                panic!("gungraun: nested or overlapping perf sections are unsupported");
+            }
+            Err(TryLockError::Poisoned(_)) => {
+                panic!("gungraun: perf control state poisoned by a previous panic");
+            }
+        };
+        assert!(
+            !guard.enabled,
+            "gungraun: nested or overlapping perf sections are unsupported"
+        );
+        PerfControl(guard)
     }
 }
 
@@ -182,108 +242,228 @@ mod imp {
     #[macro_export]
     macro_rules! perf_enable {
         () => {
-            std::ptr::null_mut::<$crate::perf::PerfControl>()
+            $crate::perf::PerfControl::stub()
         };
     }
 
     /// No-op disable macro when perf feature is disabled.
     #[macro_export]
     macro_rules! perf_disable {
-        ($control_token:expr) => {{
-            let _lock = $control_token;
-        }};
+        ($control_token:expr) => {{ $crate::perf::PerfControl::finish($control_token) }};
     }
 
-    /// Lazily initialized process-global perf control state.
-    pub static mut PERF_CONTROL: Option<PerfControl> = None;
+    use std::fmt::{self, Debug};
 
-    /// Synchronizes writes to the inherited perf log file descriptor.
-    pub struct PerfControl;
+    /// No-op token when perf is disabled.
+    #[must_use = "the perf section stays enabled until perf_disable! consumes this token"]
+    pub struct PerfControl(());
+
+    impl Debug for PerfControl {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("PerfControl").finish_non_exhaustive()
+        }
+    }
+
+    impl PerfControl {
+        #[doc(hidden)]
+        #[inline]
+        pub fn finish(self) {}
+
+        #[doc(hidden)]
+        #[inline]
+        pub fn stub() -> Self {
+            Self(())
+        }
+    }
 
     /// Writes a single message line to the perf log file.
     #[inline(always)]
     pub fn log(_message: &str) {}
 }
 
-pub use imp::log;
 #[doc(hidden)]
-pub use imp::{PERF_CONTROL, PerfControl};
+pub use imp::PerfControl;
+#[cfg(all(target_os = "linux", feature = "perf"))]
+#[doc(hidden)]
+pub use imp::acquire_control;
+pub use imp::log;
 
 #[cfg(all(target_os = "linux", feature = "perf"))]
 #[cfg(test)]
 mod tests {
+    use std::any::Any;
     use std::fs::File;
-    use std::io::Write as _;
-    use std::os::fd::{FromRawFd, IntoRawFd};
+    use std::io::{BufRead as _, BufReader, Write as _};
+    use std::os::fd::OwnedFd;
     use std::os::unix::net::UnixStream;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+    use std::sync::{Mutex, mpsc};
+    use std::thread::{self, JoinHandle};
 
-    use serial_test::serial;
+    use super::PerfControl;
+    use super::imp::{PerfControlState, try_acquire};
 
-    use super::PERF_CONTROL;
-    use super::imp::PerfControl;
-
-    struct PerfControlPeers {
-        _control_reader: UnixStream,
-        ack_writer: UnixStream,
+    struct MockControl {
+        state: Option<Mutex<PerfControlState>>,
+        worker: Option<JoinHandle<Vec<Vec<u8>>>>,
     }
 
-    struct ResetPerfControl;
-
-    impl Drop for ResetPerfControl {
-        fn drop(&mut self) {
-            // SAFETY: These tests run serially when mutating `PERF_CONTROL`, and the guard exists
-            // solely to restore the global to its empty state during unwinding.
-            unsafe {
-                PERF_CONTROL = None;
+    impl MockControl {
+        fn new() -> Self {
+            let (control, reader) = UnixStream::pair().unwrap();
+            let (ack, mut writer) = UnixStream::pair().unwrap();
+            let state = Mutex::new(PerfControlState::new(
+                File::from(OwnedFd::from(control)),
+                File::from(OwnedFd::from(ack)),
+            ));
+            let worker = thread::spawn(move || {
+                let mut reader = BufReader::new(reader);
+                let mut commands = Vec::new();
+                let mut command = Vec::new();
+                while reader.read_until(b'\n', &mut command).unwrap() != 0 {
+                    assert!(command == b"enable\n" || command == b"disable\n");
+                    // FIX: This should be a full `ack\n` (and maybe even a \0 suffix byte) but the
+                    // current implementation only reads a single byte
+                    writer.write_all(b"a").unwrap();
+                    commands.push(std::mem::take(&mut command));
+                }
+                commands
+            });
+            Self {
+                state: Some(state),
+                worker: Some(worker),
             }
         }
-    }
 
-    fn perf_control(enabled: bool) -> (PerfControl, PerfControlPeers) {
-        let (ack_reader, ack_writer) = UnixStream::pair().unwrap();
-        let (control_reader, control_writer) = UnixStream::pair().unwrap();
-
-        // SAFETY: Each raw fd is consumed exactly once here to give the test sole ownership of the
-        // backing stream endpoints as `File`s.
-        let ack = unsafe { File::from_raw_fd(ack_reader.into_raw_fd()) };
-        // SAFETY: Each raw fd is consumed exactly once here to give the test sole ownership of the
-        // backing stream endpoints as `File`s.
-        let control = unsafe { File::from_raw_fd(control_writer.into_raw_fd()) };
-
-        (
-            PerfControl {
-                ack,
-                control,
-                enabled,
-            },
-            PerfControlPeers {
-                _control_reader: control_reader,
-                ack_writer,
-            },
-        )
-    }
-
-    #[test]
-    #[serial]
-    #[should_panic(expected = "nested perf sections are unsupported")]
-    fn perf_enable_when_nested_then_panics() {
-        let _reset = ResetPerfControl;
-
-        // SAFETY: This test runs serially and temporarily installs a fresh process-global control
-        // object to exercise the nested-enable panic path.
-        unsafe {
-            PERF_CONTROL = Some(perf_control(true).0);
+        fn enable(&self) -> PerfControl<'_> {
+            crate::perf_enable!(try_acquire(self.state.as_ref().unwrap()))
         }
 
-        let _ = crate::perf_enable!();
+        fn finish(mut self) -> Vec<Vec<u8>> {
+            self.join().unwrap()
+        }
+
+        fn join(&mut self) -> Option<Vec<Vec<u8>>> {
+            // Close the control endpoint so the worker sees EOF before joining it.
+            drop(self.state.take());
+            self.worker.take().map(|worker| worker.join().unwrap())
+        }
+    }
+
+    impl Drop for MockControl {
+        fn drop(&mut self) {
+            self.join();
+        }
+    }
+
+    fn assert_panic_message(panic: &(dyn Any + Send), expected: &str) {
+        let message = match panic.downcast_ref::<&str>() {
+            Some(message) => *message,
+            None => panic.downcast_ref::<String>().unwrap().as_str(),
+        };
+        assert!(message.contains(expected), "unexpected panic: {message}");
+    }
+
+    // An unmatched disable cannot be triggered through the public API: enable creates the
+    // opaque token only after setting enabled, and disable consumes that token exactly once.
+    // Testing the retained unmatched-disable assertion would require fabricating internal state.
+
+    #[test]
+    fn perf_enable_when_nested_then_panics() {
+        let mock = MockControl::new();
+        let token = mock.enable();
+
+        let panic = catch_unwind(AssertUnwindSafe(|| mock.enable())).unwrap_err();
+
+        crate::perf_disable!(token);
+        drop(mock);
+        assert_panic_message(
+            panic.as_ref(),
+            "gungraun: nested or overlapping perf sections are unsupported",
+        );
     }
 
     #[test]
-    #[should_panic(expected = "perf_disable! called without a matching perf_enable!")]
-    fn perf_disable_when_no_matching_enable_then_panics() {
-        let (mut control, mut peers) = perf_control(false);
-        peers.ack_writer.write_all(&[0_u8]).unwrap();
-        let token = std::ptr::from_mut::<PerfControl>(&mut control);
-        crate::perf_disable!(token);
+    fn perf_enable_when_overlapping_threads_then_panics() {
+        // Regression for #778: the second thread must fail while the first owns its section.
+        let mock = MockControl::new();
+        let panic = thread::scope(|scope| {
+            let (ready_tx, ready_rx) = mpsc::channel();
+            let (release_tx, release_rx) = mpsc::channel();
+            let mock = &mock;
+            let holder = scope.spawn(move || {
+                let token = mock.enable();
+                ready_tx.send(()).unwrap();
+                release_rx.recv().unwrap();
+                crate::perf_disable!(token);
+            });
+            ready_rx.recv().unwrap();
+
+            let result = catch_unwind(AssertUnwindSafe(|| mock.enable()));
+            release_tx.send(()).unwrap();
+            holder.join().unwrap();
+            result.unwrap_err()
+        });
+
+        drop(mock);
+        assert_panic_message(
+            panic.as_ref(),
+            "gungraun: nested or overlapping perf sections are unsupported",
+        );
+    }
+
+    #[test]
+    fn perf_enable_when_poisoned_then_panics() {
+        let mock = MockControl::new();
+        let holder_panic = thread::scope(|scope| {
+            let holder = scope.spawn(|| {
+                let _token = mock.enable();
+                panic!("test: panic while holding perf token");
+            });
+            holder.join().unwrap_err()
+        });
+        assert_panic_message(
+            holder_panic.as_ref(),
+            "test: panic while holding perf token",
+        );
+
+        let panic = catch_unwind(AssertUnwindSafe(|| mock.enable())).unwrap_err();
+
+        drop(mock);
+        assert_panic_message(
+            panic.as_ref(),
+            "gungraun: perf control state poisoned by a previous panic",
+        );
+    }
+
+    #[test]
+    fn perf_enable_when_token_dropped_then_panics() {
+        let mock = MockControl::new();
+        drop(mock.enable());
+
+        let panic = catch_unwind(AssertUnwindSafe(|| mock.enable())).unwrap_err();
+
+        drop(mock);
+        assert_panic_message(
+            panic.as_ref(),
+            "gungraun: nested or overlapping perf sections are unsupported",
+        );
+    }
+
+    #[test]
+    fn perf_sections_send_enable_and_disable_in_order() {
+        let mock = MockControl::new();
+        for _ in 0..2 {
+            crate::perf_disable!(mock.enable());
+        }
+        assert_eq!(
+            mock.finish(),
+            [
+                b"enable\n".as_slice(),
+                b"disable\n",
+                b"enable\n",
+                b"disable\n"
+            ]
+        );
     }
 }

@@ -2533,9 +2533,11 @@ impl Perf {
     /// macros are needed without Valgrind client-request stubs). The Gungraun [guide] contains more
     /// examples.
     ///
-    /// The perf client-request macros operate on a single process-global control channel. They are
-    /// not thread-safe, must not be nested, and every token returned by [`perf_enable!()`] must be
-    /// passed to exactly one matching [`perf_disable!()`].
+    /// The perf client-request macros operate on a single process-global control channel and are
+    /// safe to call from any thread. Only one measurement section may be active per process;
+    /// nested or overlapping sections panic instead of causing undefined behavior. Every opaque
+    /// token returned by [`perf_enable!()`] must be passed to exactly one matching
+    /// [`perf_disable!()`].
     ///
     /// When set to `false`, the default entry point is restored to [`EntryPoint::Default`].
     ///

@@ -1,6 +1,6 @@
 <!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes -->
 <!-- spell-checker:ignore ryanpeach hashbrown tgross35 gaetschwartz cfgs -->
-<!-- spell-checker:ignore riscv nihohit bytemuck hargut sandersaares -->
+<!-- spell-checker:ignore riscv nihohit bytemuck hargut sandersaares unforgeable -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -36,6 +36,18 @@ and this project adheres to
 [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Fixed
+
+- ([#778],[#802]): Fix a soundness issue where concurrent calls to the perf
+  control macros from safe Rust could cause a data race (). The token returned
+  by `perf_enable!` is now an opaque, unforgeable type, and overlapping or
+  nested measurement sections panic instead of causing undefined behavior. The
+  `PERF_CONTROL` static is no longer exported, and `PerfControl` now names the
+  opaque token, not the underlying control state.
+
+[#778]: https://github.com/gungraun/gungraun/issues/778
+[#802]: https://github.com/gungraun/gungraun/pull/802
 
 ## [0.20.0] - 2026-09-26
 

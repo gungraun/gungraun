@@ -671,9 +671,13 @@ main!(library_benchmark_groups = my_group);
 
 `perf_enable!` starts the measurement and returns an opaque token;
 `perf_disable!` stops it again and consumes exactly that token. The macros drive
-a single process-global control channel: they are not thread-safe, must not be
-nested, and every token must be passed to exactly one matching `perf_disable!`.
-Calling `disable_entry_point(false)` restores the default entry point.
+a single process-global control channel and are safe to call from any thread,
+but only one measurement section may be active per process. `perf_enable!`
+panics if a section is already active (including a nested or overlapping call)
+or if a previous panic poisoned the control state. Both macros panic if writing
+to the control channel fails. Pass every token to exactly one matching
+`perf_disable!`: dropping it does not stop measurement. Calling
+`disable_entry_point(false)` restores the default entry point.
 
 The macros can also be called from production code that the benchmark process
 executes. To use them outside benchmark code, the dependency on `gungraun` must

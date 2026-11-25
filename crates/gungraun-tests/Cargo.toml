@@ -28,7 +28,7 @@ glob = { workspace = true }
 gungraun = { path = "../gungraun", features = ["act"] }
 gungraun-runner = { path = "../gungraun-runner", features = ["__fixtures"] }
 indexmap = { workspace = true }
-nix = { workspace = true }
+nix = { workspace = true, features = ["process", "signal"] }
 once_cell = { workspace = true }
 pretty_assertions = { workspace = true }
 regex = { workspace = true }
@@ -97,6 +97,10 @@ path = "src/helper/leak-memory.rs"
 [[bin]]
 name = "perf-bench"
 path = "src/helper/perf-bench.rs"
+
+[[bin]]
+name = "perf-parent-fixture"
+path = "src/helper/perf-parent-fixture.rs"
 
 [[bin]]
 name = "pipe"

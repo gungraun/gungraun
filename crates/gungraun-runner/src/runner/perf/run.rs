@@ -39,6 +39,8 @@
 //! [`parse_perf_log`]: crate::runner::perf::logfile_parser::parse_perf_log
 //! [`PerfLogData`]: super::logfile_parser::PerfLogData
 
+// cspell:words NONBLOCK SETFL
+
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::fs::File;
@@ -95,8 +97,8 @@ pub struct PerfCalibration<'a> {
 /// this struct alive ensures the underlying [`OwnedFd`]s and [`File`] remain open until after the
 /// benchmark process has been spawned.
 ///
-/// Once the run is finished, dropping this struct closes the original descriptors in the parent
-/// process.
+/// The runner closes its acknowledgement writer immediately after spawn so it does not prevent
+/// EOF when the inherited writers close. Dropping this struct closes the remaining descriptors.
 #[derive(Debug)]
 #[expect(
     dead_code,
@@ -105,7 +107,7 @@ pub struct PerfCalibration<'a> {
 )]
 pub struct PerfData {
     ack_fd_read: OwnedFd,
-    ack_fd_write: OwnedFd,
+    ack_fd_write: Option<OwnedFd>,
     ctl_fd_read: OwnedFd,
     ctl_fd_write: OwnedFd,
     pub(crate) log_file: PerfLogFile,
@@ -173,6 +175,7 @@ impl<'a> PerfCalibration<'a> {
             })
             .map(ProcessChild)?;
 
+        perf_data.close_ack_write();
         perf_data
             .log_file
             .finalize_header(child.id(), self.config.part)?;
@@ -195,6 +198,13 @@ impl<'a> PerfCalibration<'a> {
         )
         .with_context(|| "Failed calibration run")
         .map(|_| ())
+    }
+}
+
+impl PerfData {
+    /// Close the runner's acknowledgement writer after the child inherits it.
+    pub(crate) fn close_ack_write(&mut self) {
+        drop(self.ack_fd_write.take());
     }
 }
 
@@ -330,6 +340,7 @@ where
         .command
         .spawn()
         .and_then(|child| {
+            perf_data.close_ack_write();
             perf_data
                 .log_file
                 .finalize_header(child.id(), config.part)
@@ -427,7 +438,7 @@ pub fn prepare_perf_command(
 
     let perf_data = PerfData {
         ack_fd_read,
-        ack_fd_write,
+        ack_fd_write: Some(ack_fd_write),
         ctl_fd_read,
         ctl_fd_write,
         log_file: log_file.into(),
@@ -464,4 +475,80 @@ pub fn prepare_perf_command(
     tool_args.use_sampling(use_sampling);
 
     Ok((perf_data, tool_args.to_vec(), log_output_path))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{Read, pipe as cloexec_pipe};
+    use std::os::unix::net::UnixStream;
+    use std::process::Child;
+    use std::time::Instant;
+
+    use nix::fcntl::{FcntlArg, OFlag, fcntl};
+
+    use super::*;
+
+    #[test]
+    fn perf_data_closes_ack_write_after_spawn() {
+        struct Fixture(Child);
+
+        impl Drop for Fixture {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+
+        let timeout = Duration::from_secs(5);
+        let (ack_fd_read, ack_fd_write) = cloexec_pipe().unwrap();
+        let (ctl_fd_read, ctl_fd_write) = cloexec_pipe().unwrap();
+        fcntl(&ack_fd_read, FcntlArg::F_SETFL(OFlag::O_NONBLOCK)).unwrap();
+        let mut perf_data = PerfData {
+            ack_fd_read: ack_fd_read.into(),
+            ack_fd_write: Some(ack_fd_write.into()),
+            ctl_fd_read: ctl_fd_read.into(),
+            ctl_fd_write: ctl_fd_write.into(),
+            log_file: tempfile::tempfile().unwrap().into(),
+        };
+        let (mut gate, fixture_gate) = UnixStream::pair().unwrap();
+        gate.set_read_timeout(Some(timeout)).unwrap();
+        let mut fixture = Fixture(
+            Command::new("sh")
+                .args(["-ec", r"printf r; read -r go; printf 'ack\n\000' >&2"])
+                .stdin(OwnedFd::from(fixture_gate.try_clone().unwrap()))
+                .stdout(OwnedFd::from(fixture_gate))
+                .stderr(
+                    perf_data
+                        .ack_fd_write
+                        .as_ref()
+                        .unwrap()
+                        .try_clone()
+                        .unwrap(),
+                )
+                .spawn()
+                .unwrap(),
+        );
+
+        let mut ready = [0];
+        gate.read_exact(&mut ready).expect("fixture readiness");
+        assert_eq!(ready, *b"r");
+        perf_data.close_ack_write();
+        gate.write_all(b"go\n").unwrap();
+
+        let deadline = Instant::now() + timeout;
+        let status = loop {
+            if let Some(status) = fixture.0.try_wait().unwrap() {
+                break status;
+            }
+            assert!(Instant::now() < deadline, "fixture did not exit");
+            thread::sleep(Duration::from_millis(10));
+        };
+        assert!(status.success(), "{status}");
+
+        let mut reader = File::from(perf_data.ack_fd_read);
+        let mut ack = [0; 5];
+        reader.read_exact(&mut ack).unwrap();
+        assert_eq!(&ack, b"ack\n\0");
+        assert_eq!(reader.read(&mut [0]).expect("expected EOF after ACK"), 0);
+    }
 }

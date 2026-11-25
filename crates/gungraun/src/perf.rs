@@ -26,6 +26,7 @@ mod imp {
     /// # Panics
     ///
     /// - When writing to the control file fails.
+    /// - When the acknowledgement frame from perf is missing or malformed.
     #[macro_export]
     macro_rules! perf_disable {
         ($control_token:expr) => {{
@@ -55,6 +56,7 @@ mod imp {
     ///   unsupported).
     /// - When the perf control state was poisoned by a previous panic.
     /// - When writing to the control file fails.
+    /// - When the acknowledgement frame from perf is missing or malformed.
     #[macro_export]
     macro_rules! perf_enable {
         () => {
@@ -145,7 +147,7 @@ mod imp {
         #[doc(hidden)]
         #[inline(always)]
         pub fn read_ack(&mut self) {
-            let _ = self.0.ack.read_exact(&mut [0_u8; 1]);
+            read_ack(&mut self.0.ack);
         }
     }
 
@@ -209,6 +211,51 @@ mod imp {
         // once when the log lock is first initialized, giving this process unique ownership.
         let log_file = unsafe { File::from_raw_fd(PERF_LOG_FD) };
         Mutex::new(Some(log_file))
+    }
+
+    /// Reads and validates one perf control acknowledgement frame.
+    ///
+    /// The Linux `perf` control protocol documents acknowledgements as the line `ack\n`. In
+    /// practice, the kernel implementation in `tools/perf/util/evlist.c` writes the acknowledgement
+    /// using `sizeof("ack\n")`, which includes the C string literal's null terminator. This means
+    /// the wire format is actually `ack\n\0` (five bytes).
+    ///
+    /// This reader skips any leading NUL padding, collects bytes until the line terminator, and
+    /// validates that the frame is exactly `ack`. Accepting zero or more leading NULs keeps the
+    /// reader aligned whether `perf` emits the trailing NUL, fixes the bug, or adds other padding.
+    #[doc(hidden)]
+    pub fn read_ack(ack: &mut File) {
+        const PREFIX: &str = "gungraun: invalid acknowledgement from perf control channel";
+
+        let mut frame = [0_u8; 8];
+        let mut len = 0;
+        loop {
+            let mut byte = [0_u8; 1];
+            if let Err(error) = ack.read_exact(&mut byte) {
+                panic!("{PREFIX}: {error}");
+            }
+            let [byte] = byte;
+            if byte == 0 && len == 0 {
+                continue;
+            }
+            if byte == b'\n' {
+                assert!(
+                    &frame[..len] == b"ack",
+                    "{PREFIX}: expected acknowledgement frame `ack\\n`"
+                );
+                return;
+            }
+            assert!(
+                len < frame.len(),
+                "{PREFIX}: frame exceeded 8 bytes; first 8 bytes are '{frame:02x?}'"
+            );
+            assert!(
+                b"ack".get(len) == Some(&byte),
+                "{PREFIX}: unexpected byte {byte:#04x} at offset {len}"
+            );
+            frame[len] = byte;
+            len += 1;
+        }
     }
 
     pub(super) fn try_acquire(mutex: &Mutex<PerfControlState>) -> PerfControl<'_> {
@@ -287,21 +334,26 @@ pub use imp::PerfControl;
 #[doc(hidden)]
 pub use imp::acquire_control;
 pub use imp::log;
+#[cfg(all(target_os = "linux", feature = "perf"))]
+#[doc(hidden)]
+pub use imp::read_ack;
 
 #[cfg(all(target_os = "linux", feature = "perf"))]
 #[cfg(test)]
 mod tests {
     use std::any::Any;
     use std::fs::File;
-    use std::io::{BufRead as _, BufReader, Write as _};
+    use std::io::{BufRead as _, BufReader, Read as _, Write as _};
     use std::os::fd::OwnedFd;
     use std::os::unix::net::UnixStream;
     use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::sync::{Mutex, mpsc};
     use std::thread::{self, JoinHandle};
 
+    use serial_test::serial;
+
     use super::PerfControl;
-    use super::imp::{PerfControlState, try_acquire};
+    use super::imp::{PerfControlState, read_ack, try_acquire};
 
     struct MockControl {
         state: Option<Mutex<PerfControlState>>,
@@ -322,9 +374,8 @@ mod tests {
                 let mut command = Vec::new();
                 while reader.read_until(b'\n', &mut command).unwrap() != 0 {
                     assert!(command == b"enable\n" || command == b"disable\n");
-                    // FIX: This should be a full `ack\n` (and maybe even a \0 suffix byte) but the
-                    // current implementation only reads a single byte
-                    writer.write_all(b"a").unwrap();
+                    // The kernel writes `sizeof("ack\n")` bytes, including the NUL terminator.
+                    writer.write_all(b"ack\n\0").unwrap();
                     commands.push(std::mem::take(&mut command));
                 }
                 commands
@@ -364,9 +415,12 @@ mod tests {
         assert!(message.contains(expected), "unexpected panic: {message}");
     }
 
-    // An unmatched disable cannot be triggered through the public API: enable creates the
-    // opaque token only after setting enabled, and disable consumes that token exactly once.
-    // Testing the retained unmatched-disable assertion would require fabricating internal state.
+    #[test]
+    #[should_panic(expected = "perf_disable! called without a matching perf_enable!")]
+    fn perf_disable_when_no_matching_enable_then_panics() {
+        let mock = MockControl::new();
+        crate::perf_disable!(try_acquire(mock.state.as_ref().unwrap()));
+    }
 
     #[test]
     fn perf_enable_when_nested_then_panics() {
@@ -465,5 +519,58 @@ mod tests {
                 b"disable\n"
             ]
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "gungraun: invalid acknowledgement from perf control channel")]
+    fn read_ack_when_eof_then_panics() {
+        let (peer, ack) = UnixStream::pair().unwrap();
+        drop(peer);
+        read_ack(&mut File::from(OwnedFd::from(ack)));
+    }
+
+    #[test]
+    #[should_panic(expected = "gungraun: invalid acknowledgement from perf control channel")]
+    fn read_ack_when_malformed_then_panics() {
+        let (mut peer, ack) = UnixStream::pair().unwrap();
+        peer.write_all(b"bad\n").unwrap();
+        drop(peer);
+        read_ack(&mut File::from(OwnedFd::from(ack)));
+    }
+
+    #[test]
+    fn read_ack_when_nul_padding_then_accepts_next_frame() {
+        let (mut peer, ack) = UnixStream::pair().unwrap();
+        peer.write_all(b"ack\n\0\0ack\n").unwrap();
+        drop(peer);
+        let mut ack = File::from(OwnedFd::from(ack));
+        read_ack(&mut ack);
+        read_ack(&mut ack);
+        assert_eq!(ack.read(&mut [0_u8; 1]).unwrap(), 0);
+    }
+
+    #[test]
+    fn read_ack_when_valid_then_consumes_complete_frame() {
+        let (mut peer, ack) = UnixStream::pair().unwrap();
+        peer.write_all(b"ack\n\0").unwrap();
+        drop(peer);
+        let mut ack = File::from(OwnedFd::from(ack));
+        read_ack(&mut ack);
+        let mut residue = [0_u8; 1];
+        ack.read_exact(&mut residue).unwrap();
+        assert_eq!(&residue, b"\0");
+    }
+
+    #[test]
+    #[serial]
+    fn perf_enable_disable_repeated_then_succeeds() {
+        let mock = MockControl::new();
+        for _ in 0..8 {
+            crate::perf_disable!(mock.enable());
+        }
+        let expected: Vec<Vec<u8>> = (0..8)
+            .flat_map(|_| [b"enable\n".to_vec(), b"disable\n".to_vec()])
+            .collect();
+        assert_eq!(mock.finish(), expected);
     }
 }

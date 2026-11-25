@@ -781,6 +781,7 @@ dependencies = [
  "gungraun-common",
  "gungraun-macros",
  "gungraun-runner",
+ "nix",
  "rstest",
  "serde",
  "serde_json",

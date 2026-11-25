@@ -8,7 +8,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use derive_more::Deref;
 use log::{debug, log_enabled};
 use regex::{Captures, Regex};
@@ -308,7 +308,8 @@ impl<'a> PathSanitizer<'a> {
                 (pid, None, None)
             };
 
-            groups
+            let is_profile = output_type == ".out";
+            let parts = groups
                 .entry(CallgrindTypeKey {
                     output_type,
                     baseline: base,
@@ -317,11 +318,21 @@ impl<'a> PathSanitizer<'a> {
                 .entry(pid)
                 .or_default()
                 .entry(thread)
-                .or_default()
-                .push(OriginalCallgrindFile {
-                    path: entry.path(),
-                    part,
-                });
+                .or_default();
+            // Detect colliding headers before renaming any files. Otherwise the second rename
+            // overwrites the first profile, hiding the duplicate from parsers and summaries.
+            if is_profile && let Some(previous) = parts.iter().find(|file| file.part == part) {
+                bail!(
+                    "Duplicate Callgrind profile for pid {pid:?}, part {part:?}, thread \
+                     {thread:?}: '{}' and '{}'",
+                    previous.path.display(),
+                    entry.path().display()
+                );
+            }
+            parts.push(OriginalCallgrindFile {
+                path: entry.path(),
+                part,
+            });
             Ok(())
         })?;
 

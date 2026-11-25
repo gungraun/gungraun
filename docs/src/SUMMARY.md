@@ -33,6 +33,7 @@
 - [Binary Benchmarks](./benchmarks/binary_benchmarks.md)
     - [Important Default Behaviour](./benchmarks/binary_benchmarks/important.md)
     - [Quickstart](./benchmarks/binary_benchmarks/quickstart.md)
+    - [Standalone Binary Benchmarks](./benchmarks/binary_benchmarks/standalone.md)
     - [Differences to Library Benchmarks](./benchmarks/binary_benchmarks/differences.md)
     - [The Command's Stdin and Simulating Piped Input](./benchmarks/binary_benchmarks/stdin_and_pipe.md)
     - [Configuration](./benchmarks/binary_benchmarks/configuration.md)

@@ -31,6 +31,7 @@ pub mod lib_bench;
 pub mod meta;
 pub mod perf;
 pub mod run;
+pub(crate) mod standalone;
 pub mod tasks;
 pub mod tool;
 

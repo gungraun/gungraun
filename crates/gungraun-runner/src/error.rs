@@ -48,6 +48,10 @@ pub enum Error {
     ///
     /// `LaunchError(executable_path, message)`
     LaunchError(PathBuf, String),
+    /// An invalid standalone manifest or incomplete current benchmark measurement.
+    ///
+    /// `ManifestError(manifest_path, message)`
+    ManifestError(PathBuf, String),
     /// The generic error when parsing of a tools log- or output file fails
     ///
     /// `ParseError(file_path, message)`
@@ -175,6 +179,13 @@ impl Display for Error {
             }
             Self::ParseError(path, message) => {
                 write!(f, "Error parsing file '{}': {message}", path.display())
+            }
+            Self::ManifestError(path, message) => {
+                write!(
+                    f,
+                    "Invalid standalone benchmark '{}': {message}",
+                    path.display()
+                )
             }
             Self::RegressionError(is_fatal) => {
                 if *is_fatal {

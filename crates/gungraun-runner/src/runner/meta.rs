@@ -294,6 +294,34 @@ impl Metadata {
         })
     }
 
+    /// Creates metadata for a native standalone Callgrind run without consulting Cargo.
+    ///
+    /// Both directories are supplied by the manifest front end. Cargo's environment variables do
+    /// not alter their location or append a package name, and the run always collects metrics.
+    pub(crate) fn standalone(
+        args: CommandLineArgs,
+        project_root: PathBuf,
+        target_dir: PathBuf,
+    ) -> Self {
+        let arch = std::env::consts::ARCH.to_owned();
+        let aslr_wrapper = detect_aslr_wrapper(&args, &arch);
+
+        Self {
+            arch,
+            args,
+            aslr_wrapper,
+            perf_exec_mode: Arc::new(OnceLock::new()),
+            project_root,
+            supported_tools: SupportedTools {
+                perf: false,
+                valgrind: true,
+            },
+            target_dir,
+            test_mode: false,
+            valgrind_exec_mode: Arc::new(OnceLock::new()),
+        }
+    }
+
     /// Return whether the benchmarks run in test mode.
     ///
     /// Test mode runs each benchmark once without starting Valgrind or perf, collecting metrics, or
@@ -904,6 +932,60 @@ mod tests {
         raw.extend(args.iter().map(|a| (*a).to_owned()));
 
         Metadata::new(&raw, "x86_64-unknown-linux-gnu", supported_tools)
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_standalone_metadata_uses_explicit_directories_without_cargo() {
+        let root = tempfile::tempdir().unwrap();
+        let output = root.path().join("profiles");
+        let overrides = [
+            ("CARGO", "/does-not-exist/cargo"),
+            (envs::CARGO_PKG_NAME, "unrelated-package"),
+            (envs::CARGO_TARGET_DIR, "/unrelated-target"),
+            ("GUNGRAUN_HOME", "/unrelated-home"),
+        ];
+        let previous: Vec<_> = overrides
+            .iter()
+            .map(|(key, _)| (*key, std::env::var_os(key)))
+            .collect();
+
+        // SAFETY: This test is run serially and restores each variable before asserting.
+        unsafe {
+            for (key, value) in overrides {
+                std::env::set_var(key, value);
+            }
+        }
+        let metadata = CommandLineArgs::standalone_defaults().map(|mut args| {
+            args.allow_aslr = Some(true);
+            Metadata::standalone(args, root.path().to_path_buf(), output.clone())
+        });
+        for (key, value) in previous {
+            if let Some(value) = value {
+                // SAFETY: This test is serial and restores the original environment before
+                // assertions.
+                unsafe {
+                    std::env::set_var(key, value);
+                }
+            } else {
+                // SAFETY: This test is serial and restores the original environment before
+                // assertions.
+                unsafe {
+                    std::env::remove_var(key);
+                }
+            }
+        }
+
+        let metadata = metadata.unwrap();
+        assert_eq!(metadata.project_root, root.path());
+        assert_eq!(metadata.target_dir, output);
+        assert!(!metadata.is_test_mode());
+        assert!(metadata.supported_tools.valgrind);
+        assert!(!metadata.supported_tools.perf);
+        assert!(metadata.aslr_wrapper.is_none());
+        assert!(metadata.valgrind_exec_mode.get().is_none());
+        assert!(metadata.perf_exec_mode.get().is_none());
+        assert!(!root.path().join("Cargo.toml").exists());
     }
 
     #[rstest]

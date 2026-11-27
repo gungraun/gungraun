@@ -4,21 +4,21 @@ commit = true
 message = "Bump gungraun-common version v{current_version} -> v{new_version}"
 
 [[tool.bumpversion.files]]
-filename = "crates/gungraun-common/Cargo.toml"
+filename = "{repo_root}/crates/gungraun-common/Cargo.toml"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "crates/gungraun/Cargo.toml"
+filename = "{repo_root}/crates/gungraun/Cargo.toml"
 search = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={current_version}\""
 replace = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "crates/gungraun-runner/Cargo.toml"
+filename = "{repo_root}/crates/gungraun-runner/Cargo.toml"
 search = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={current_version}\""
 replace = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "crates/valgrind-requests/Cargo.toml"
+filename = "{repo_root}/crates/valgrind-requests/Cargo.toml"
 search = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={current_version}\""
 replace = "gungraun-common = {{ path = \"../gungraun-common\", version = \"={new_version}\""

@@ -4,27 +4,27 @@ current_version = "1.88.0"
 message = "Bump MSRV v{current_version} -> v{new_version}"
 
 [[tool.bumpversion.files]]
-filename = "Cargo.toml"
+filename = "{repo_root}/Cargo.toml"
 search = "rust-version = \"{current_version}\""
 replace = "rust-version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "Justfile"
+filename = "{repo_root}/Justfile"
 search = "msrv := '{current_version}'"
 replace = "msrv := '{new_version}'"
 
 [[tool.bumpversion.files]]
-glob = ".github/workflows/*.yml"
+glob = "{repo_root}/.github/workflows/*.yml"
 ignore_missing_version = true
 
 [[tool.bumpversion.files]]
-glob = "**/README.md"
+glob = "{repo_root}/**/README.md"
 ignore_missing_version = true
 
 [[tool.bumpversion.files]]
-filename = ".clippy.toml"
+filename = "{repo_root}/.clippy.toml"
 
 [[tool.bumpversion.files]]
-filename = "CONTRIBUTING.md"
+filename = "{repo_root}/CONTRIBUTING.md"
 search = "Rust `{current_version}`"
 replace = "Rust `{new_version}`"

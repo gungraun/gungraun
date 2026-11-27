@@ -7,19 +7,19 @@ message = "Bump version v{current_version} -> v{new_version}"
 # `just bump`
 
 [[tool.bumpversion.files]]
-filename = "Cargo.toml"
+filename = "{repo_root}/Cargo.toml"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "crates/gungraun/Cargo.toml"
+filename = "{repo_root}/crates/gungraun/Cargo.toml"
 search = 'path = "../gungraun-runner", version = "={current_version}"'
 replace = 'path = "../gungraun-runner", version = "={new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "crates/gungraun/src/__internal/mod.rs"
+filename = "{repo_root}/crates/gungraun/src/__internal/mod.rs"
 search = "const LIBRARY_VERSION: &str = \"{current_version}\""
 replace = "const LIBRARY_VERSION: &str = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "README.md"
+filename = "{repo_root}/README.md"

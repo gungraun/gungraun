@@ -5,11 +5,11 @@ parse = "(?P<major>\\d+)"
 serialize = ["{major}"]
 
 [[tool.bumpversion.files]]
-filename = "crates/gungraun-runner/src/summary/model.rs"
+filename = "{repo_root}/crates/gungraun-runner/src/summary/model.rs"
 search = "const SCHEMA_VERSION: &str = \"{current_version}\";"
 replace = "const SCHEMA_VERSION: &str = \"{new_version}\";"
 
 [[tool.bumpversion.files]]
-filename = "crates/gungraun-tests/src/bench.rs"
+filename = "{repo_root}/crates/gungraun-tests/src/bench/expected_files.rs"
 search = "const SCHEMA_VERSION: &str = \"{current_version}\";"
 replace = "const SCHEMA_VERSION: &str = \"{new_version}\";"

@@ -68,5 +68,5 @@ executed.
 Please see the library documentation for all possible [`DelayKind`]s and more
 details on the [`Delay`].
 
-[`DelayKind`]: https://docs.rs/gungraun/0.20.0/gungraun/enum.DelayKind.html
-[`Delay`]: https://docs.rs/gungraun/0.20.0/gungraun/struct.Delay.html
+[`DelayKind`]: https://docs.rs/gungraun/0.20.1/gungraun/enum.DelayKind.html
+[`Delay`]: https://docs.rs/gungraun/0.20.1/gungraun/struct.Delay.html

@@ -772,7 +772,7 @@ checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 
 [[package]]
 name = "gungraun"
-version = "0.20.0"
+version = "0.20.1"
 dependencies = [
  "bincode-next",
  "cty",
@@ -816,7 +816,7 @@ dependencies = [
 
 [[package]]
 name = "gungraun-runner"
-version = "0.20.0"
+version = "0.20.1"
 dependencies = [
  "anyhow",
  "approx",

@@ -203,7 +203,7 @@ impl Parse for Args {
 impl ToTokens for Args {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if let Some((span, exprs)) = self.0.as_ref() {
-            let this_tokens = quote_spanned! { *span => #(std::hint::black_box(#exprs)),* };
+            let this_tokens = quote_spanned! { *span => #(::std::hint::black_box(#exprs)),* };
             tokens.append_all(this_tokens);
         }
     }

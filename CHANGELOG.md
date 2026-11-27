@@ -48,8 +48,12 @@ and this project adheres to
 - Fully consume and validate perf control acknowledgement frames. Previously,
   only one byte was read and read errors were ignored, breaking synchronization
   from the second measurement section onward.
+- ([#784]): Fix spurious `unused_qualifications` and `clippy::shadow_reuse`
+  diagnostics from `#[library_benchmark]` without changing where benchmark
+  errors point.
 
 [#778]: https://github.com/gungraun/gungraun/issues/778
+[#784]: https://github.com/gungraun/gungraun/issues/784
 [#802]: https://github.com/gungraun/gungraun/pull/802
 
 ## [0.20.0] - 2026-09-26

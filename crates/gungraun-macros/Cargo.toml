@@ -12,7 +12,7 @@ name = "gungraun-macros"
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
-version = "0.10.0"
+version = "0.10.1"
 
 [features]
 cachegrind = []

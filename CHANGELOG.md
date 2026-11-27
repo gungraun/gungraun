@@ -37,24 +37,35 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-27
+
+### Changed
+
+- Update dependencies
+
 ### Fixed
 
-- ([#778],[#802]): Fix a soundness issue where concurrent calls to the perf
-  control macros from safe Rust could cause a data race (). The token returned
-  by `perf_enable!` is now an opaque, unforgeable type, and overlapping or
-  nested measurement sections panic instead of causing undefined behavior. The
+- ([#756],[#789]): Gungraun repository cannot be checked out on windows.
+- ([#778],[#803]): Fix a soundness issue where concurrent calls to the perf
+  control macros from safe Rust could cause a data race. The token returned by
+  `perf_enable!` is now an opaque, unforgeable type, and overlapping or nested
+  measurement sections panic instead of causing undefined behavior. The
   `PERF_CONTROL` static is no longer exported, and `PerfControl` now names the
   opaque token, not the underlying control state.
-- Fully consume and validate perf control acknowledgement frames. Previously,
-  only one byte was read and read errors were ignored, breaking synchronization
-  from the second measurement section onward.
-- ([#784]): Fix spurious `unused_qualifications` and `clippy::shadow_reuse`
+- ([#804]): Fully consume and validate perf control acknowledgement frames.
+  Previously, only one byte was read and read errors were ignored, breaking
+  synchronization from the second measurement section onward.
+- ([#784], [#805]): Fix `unused_qualifications` and `clippy::shadow_reuse`
   diagnostics from `#[library_benchmark]` without changing where benchmark
   errors point.
 
+[#756]: https://github.com/gungraun/gungraun/issues/756
 [#778]: https://github.com/gungraun/gungraun/issues/778
 [#784]: https://github.com/gungraun/gungraun/issues/784
-[#802]: https://github.com/gungraun/gungraun/pull/802
+[#789]: https://github.com/gungraun/gungraun/pull/789
+[#803]: https://github.com/gungraun/gungraun/pull/803
+[#804]: https://github.com/gungraun/gungraun/pull/804
+[#805]: https://github.com/gungraun/gungraun/pull/805
 
 ## [0.20.0] - 2026-09-26
 

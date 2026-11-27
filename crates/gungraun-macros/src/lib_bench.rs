@@ -297,14 +297,14 @@ impl Bench {
                     iter.render_as_code(&self.setup, &elem_ident, single_input_type.as_ref());
 
                 let call_bench_func = quote_spanned! { callee_ident.span() =>
-                    std::hint::black_box(
+                    ::std::hint::black_box(
                         #bench_wrapper_mod::#bench_func_call(#(#pats),*)
                     )
                 };
 
                 let shim_call = perf_renderer.render_shim_call(&quote!(#elem_ident));
                 let call_shim_func = self.teardown.render_as_code(quote_spanned! {
-                    bench_id.span() => std::hint::black_box(#shim_call)
+                    bench_id.span() => ::std::hint::black_box(#shim_call)
                 });
 
                 let run_perf_dynamic = perf_renderer.render_iter_batch(iter, None);
@@ -383,9 +383,9 @@ impl Bench {
                         self.teardown.render_as_code(quote_spanned! {
                             bench_id.span() => {
                                 #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
-                                let __setup: #input_type = #inner_without_black_box;
-                                let __setup = std::hint::black_box(__setup);
-                                std::hint::black_box(#shim_call)
+                                let __setup_input: #input_type = #inner_without_black_box;
+                                let __setup = ::std::hint::black_box(__setup_input);
+                                ::std::hint::black_box(#shim_call)
                             }
                         })
                     } else {
@@ -393,7 +393,7 @@ impl Bench {
                             bench_id.span() => {
                                 #[allow(clippy::let_unit_value)]
                                 let __setup = #inner;
-                                std::hint::black_box(#shim_call)
+                                ::std::hint::black_box(#shim_call)
                             }
                         })
                     }
@@ -409,18 +409,18 @@ impl Bench {
                             #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                             let (#(#arg_idents),*,): #tuple_ty = (#inner,);
 
-                            std::hint::black_box(#shim_call)
+                            ::std::hint::black_box(#shim_call)
                         }})
                 } else {
                     let shim_call = perf_renderer.render_shim_call(&quote!(#inner));
                     self.teardown
                         .render_as_code(quote_spanned! { bench_id.span() =>
-                            std::hint::black_box(#shim_call)
+                            ::std::hint::black_box(#shim_call)
                         })
                 };
 
                 let call_bench_func = quote_spanned! { callee_ident.span() =>
-                        std::hint::black_box(
+                        ::std::hint::black_box(
                             #bench_wrapper_mod::#bench_func_call(#(#pats),*)
                         )
                 };
@@ -882,12 +882,12 @@ impl LibraryBenchmark {
             // If possible add the input type for better error messages
             if let Some(input_type) = single_input_type.as_ref() {
                 let shim_call =
-                    perf_renderer.render_shim_call(&quote!(std::hint::black_box(__setup)));
+                    perf_renderer.render_shim_call(&quote!(::std::hint::black_box(__setup)));
                 self.teardown.render_as_code(quote_spanned! {
                     self.setup.expr().span() => {
                         #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                         let __setup: #input_type = #inner_without_black_box;
-                        std::hint::black_box(
+                        ::std::hint::black_box(
                             #shim_call
                         )
                     }
@@ -898,7 +898,7 @@ impl LibraryBenchmark {
                     self.setup.expr().span() => {
                         #[allow(clippy::let_unit_value)]
                         let __setup = #inner;
-                        std::hint::black_box(#shim_call)
+                        ::std::hint::black_box(#shim_call)
                     }
                 })
             }
@@ -906,13 +906,13 @@ impl LibraryBenchmark {
             let shim_call = perf_renderer.render_shim_call(&inner);
             self.teardown.render_as_code(quote_spanned! {
                 inner.span() =>
-                    std::hint::black_box(#shim_call)
+                ::std::hint::black_box(#shim_call)
             })
         };
 
         let (shim_func, pats) = callee.to_caller_signature(&elem_ident, &wrapper_ident);
         let call_bench_func = quote_spanned! { callee_ident.span() =>
-                std::hint::black_box(
+                ::std::hint::black_box(
                     #bench_wrapper_mod::#callee_ident(#(#pats),*)
                 )
         };
@@ -1195,7 +1195,7 @@ impl PerfRenderer<'_> {
                 quote_spanned! { self.setup.expr().span() => {
                     #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type = #inner_without_black_box;
-                    (std::hint::black_box(__setup),)
+                    (::std::hint::black_box(__setup),)
                 }}
             } else {
                 quote_spanned! { self.setup.expr().span() => (#inner,) }
@@ -1205,21 +1205,24 @@ impl PerfRenderer<'_> {
 
             (
                 setup_stmt,
-                quote! { |(__input,)| std::hint::black_box(#shim_call) },
+                quote! { |(__input,)| ::std::hint::black_box(#shim_call) },
             )
         } else {
             match args.len() {
                 0 => {
                     let shim_call = self.render_shim_call(&TokenStream::new());
 
-                    (quote! {}, quote! { |()| std::hint::black_box(#shim_call) })
+                    (
+                        quote! {},
+                        quote! { |()| ::std::hint::black_box(#shim_call) },
+                    )
                 }
                 1 => {
                     let shim_call = self.render_shim_call(&quote!(__input));
 
                     (
                         quote_spanned! { args.span() => (#inner,) },
-                        quote! { |(__input,)| std::hint::black_box(#shim_call) },
+                        quote! { |(__input,)| ::std::hint::black_box(#shim_call) },
                     )
                 }
                 len => {
@@ -1233,7 +1236,7 @@ impl PerfRenderer<'_> {
                         quote! {
                             |__input| {
                                 let (#(#input_idents),*) = __input;
-                                std::hint::black_box(#shim_call)
+                                ::std::hint::black_box(#shim_call)
                             }
                         },
                     )
@@ -1259,8 +1262,8 @@ impl PerfRenderer<'_> {
     ///
     /// ```rust,ignore
     /// // Setup present with one input: type-check setup early, then pass its value to the shim.
-    /// let __setup: Input = setup_expression;
-    /// let __setup = std::hint::black_box(__setup);
+    /// let __setup_input: Input = setup_expression;
+    /// let __setup = std::hint::black_box(__setup_input);
     /// let __work = std::hint::black_box(shim(__setup));
     ///
     /// // No setup, zero arguments: call the shim without an input.
@@ -1286,8 +1289,8 @@ impl PerfRenderer<'_> {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() =>
                     #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
-                    let __setup: #input_type  = #inner_without_black_box;
-                    let __setup = std::hint::black_box(__setup);
+                    let __setup_input: #input_type = #inner_without_black_box;
+                    let __setup = ::std::hint::black_box(__setup_input);
                 }
             } else {
                 quote_spanned! { self.setup.expr().span() =>
@@ -1297,13 +1300,13 @@ impl PerfRenderer<'_> {
             };
 
             let shim_call = self.render_shim_call(&quote!(__setup));
-            (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+            (setup_stmt, quote! { ::std::hint::black_box(#shim_call) })
         } else {
             match args.len() {
                 0 => {
                     let shim_call = self.render_shim_call(&TokenStream::new());
 
-                    (quote! {}, quote! { std::hint::black_box(#shim_call) })
+                    (quote! {}, quote! { ::std::hint::black_box(#shim_call) })
                 }
                 1 => {
                     let setup_stmt = if let Some(input_type) = self.single_input_type {
@@ -1319,7 +1322,7 @@ impl PerfRenderer<'_> {
                     };
 
                     let shim_call = self.render_shim_call(&quote!(__arg));
-                    (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+                    (setup_stmt, quote! { ::std::hint::black_box(#shim_call) })
                 }
                 len => {
                     let input_idents = (0..len)
@@ -1340,7 +1343,7 @@ impl PerfRenderer<'_> {
                     };
                     let shim_call = self.render_shim_call(&quote!(#(#input_idents),*));
 
-                    (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+                    (setup_stmt, quote! { ::std::hint::black_box(#shim_call) })
                 }
             }
         };
@@ -1395,7 +1398,7 @@ impl PerfRenderer<'_> {
                 quote_spanned! { self.setup.expr().span() => {
                     #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                     let __setup: #input_type = #inner_without_black_box;
-                    (std::hint::black_box(__setup),)
+                    (::std::hint::black_box(__setup),)
                 }}
             } else {
                 quote_spanned! { self.setup.expr().span() => (#inner,) }
@@ -1404,19 +1407,19 @@ impl PerfRenderer<'_> {
             (
                 setup_stmt,
                 quote! {
-                    |(__input,)| { let _ = std::hint::black_box(__input); }
+                    |(__input,)| { let _ = ::std::hint::black_box(__input); }
                 },
             )
         } else {
             match args.len() {
                 0 => (
                     quote! {},
-                    quote! { |()| { let _ = std::hint::black_box(42); } },
+                    quote! { |()| { let _ = ::std::hint::black_box(42); } },
                 ),
                 1 => (
                     quote_spanned! { args.span() => (#inner,) },
                     quote! {
-                        |(__input,)| { let _ = std::hint::black_box(__input); }
+                        |(__input,)| { let _ = ::std::hint::black_box(__input); }
                     },
                 ),
                 len => {
@@ -1429,7 +1432,7 @@ impl PerfRenderer<'_> {
                         quote! {
                             |__input| {
                                 let (#(#input_idents),*) = __input;
-                                let _ = std::hint::black_box((#(#input_idents),*));
+                                let _ = ::std::hint::black_box((#(#input_idents),*));
                             }
                         },
                     )
@@ -1465,14 +1468,14 @@ impl PerfRenderer<'_> {
             quote_spanned! { setup_span => {
                 #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                 let __setup: #input_type = #setup_expr;
-                (std::hint::black_box(__setup),)
+                (::std::hint::black_box(__setup),)
             }}
         } else {
             quote_spanned! { setup_span => (#setup_expr,) }
         };
 
         let shim_call = self.render_shim_call(&quote!(__input));
-        let work = quote! { |(__input,)| std::hint::black_box(#shim_call) };
+        let work = quote! { |(__input,)| ::std::hint::black_box(#shim_call) };
 
         self.render_batch(&setup, setup_output, &work, count_ident)
     }
@@ -1501,11 +1504,11 @@ impl PerfRenderer<'_> {
             quote_spanned! { setup_span => {
                 #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                 let __setup: #input_type = #setup_expr;
-                std::hint::black_box(__setup)
+                ::std::hint::black_box(__setup)
             }}
         } else {
             quote_spanned! { setup_span =>
-                std::hint::black_box(#setup_expr)
+                ::std::hint::black_box(#setup_expr)
             }
         };
 
@@ -1514,7 +1517,7 @@ impl PerfRenderer<'_> {
             let __setup = #setup;
         };
         let shim_call = self.render_shim_call(&quote!(__setup));
-        let work = quote! { std::hint::black_box(#shim_call) };
+        let work = quote! { ::std::hint::black_box(#shim_call) };
 
         self.render_once(&setup, &work)
     }
@@ -1545,14 +1548,14 @@ impl PerfRenderer<'_> {
             quote_spanned! { setup_span => {
                 #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
                 let __setup: #input_type = #setup_expr;
-                (std::hint::black_box(__setup),)
+                (::std::hint::black_box(__setup),)
             }}
         } else {
             quote_spanned! { setup_span => (#setup_expr,) }
         };
 
         let work = quote! {
-            |(__input,)| { let _ = std::hint::black_box(__input); }
+            |(__input,)| { let _ = ::std::hint::black_box(__input); }
         };
 
         Self::render_overhead_batch(&setup, setup_output, &work, repetitions_ident)
@@ -1594,8 +1597,8 @@ impl PerfRenderer<'_> {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() => {
                     #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
-                    let __setup: #input_type = #inner_without_black_box;
-                    let __setup = (std::hint::black_box(__setup),);
+                    let __setup_input: #input_type = #inner_without_black_box;
+                    let __setup = (::std::hint::black_box(__setup_input),);
                     __setup
                 }}
             } else {
@@ -1606,12 +1609,15 @@ impl PerfRenderer<'_> {
 
             (
                 setup_stmt,
-                quote! { |(__input,)| std::hint::black_box(#shim_call) },
+                quote! { |(__input,)| ::std::hint::black_box(#shim_call) },
             )
         } else {
             let shim_call = self.render_shim_call(&TokenStream::new());
 
-            (quote! {}, quote! { |()| std::hint::black_box(#shim_call) })
+            (
+                quote! {},
+                quote! { |()| ::std::hint::black_box(#shim_call) },
+            )
         };
 
         self.render_batch(&setup, setup_output, &work, count_ident)
@@ -1622,8 +1628,8 @@ impl PerfRenderer<'_> {
     /// Schematic generated code:
     ///
     /// ```rust,ignore
-    /// let __setup: Input = standalone_setup();
-    /// let __setup = std::hint::black_box(__setup);
+    /// let __setup_input: Input = standalone_setup();
+    /// let __setup = std::hint::black_box(__setup_input);
     /// let __work = std::hint::black_box(shim(__setup));
     /// ```
     ///
@@ -1637,8 +1643,8 @@ impl PerfRenderer<'_> {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() =>
                     #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
-                    let __setup: #input_type = #inner_without_black_box;
-                    let __setup = std::hint::black_box(__setup);
+                    let __setup_input: #input_type = #inner_without_black_box;
+                    let __setup = ::std::hint::black_box(__setup_input);
                 }
             } else {
                 quote_spanned! { self.setup.expr().span() =>
@@ -1649,11 +1655,11 @@ impl PerfRenderer<'_> {
 
             let shim_call = self.render_shim_call(&quote!(__setup));
 
-            (setup_stmt, quote! { std::hint::black_box(#shim_call) })
+            (setup_stmt, quote! { ::std::hint::black_box(#shim_call) })
         } else {
             let shim_call = self.render_shim_call(&TokenStream::new());
 
-            (quote! {}, quote! { std::hint::black_box(#shim_call) })
+            (quote! {}, quote! { ::std::hint::black_box(#shim_call) })
         };
 
         self.render_once(&setup_stmt, &work_call)
@@ -1682,8 +1688,8 @@ impl PerfRenderer<'_> {
             let setup_stmt = if let Some(input_type) = self.single_input_type {
                 quote_spanned! { self.setup.expr().span() => {
                     #[allow(clippy::redundant_type_annotations, clippy::let_unit_value)]
-                    let __setup: #input_type = #inner_without_black_box;
-                    let __setup = (std::hint::black_box(__setup),);
+                    let __setup_input: #input_type = #inner_without_black_box;
+                    let __setup = (::std::hint::black_box(__setup_input),);
                     __setup
                 }}
             } else {
@@ -1693,13 +1699,13 @@ impl PerfRenderer<'_> {
             (
                 setup_stmt,
                 quote! {
-                    |(__input,)| { let _ = std::hint::black_box(__input); }
+                    |(__input,)| { let _ = ::std::hint::black_box(__input); }
                 },
             )
         } else {
             (
                 quote! {},
-                quote! { |()| { let _ = std::hint::black_box(42); } },
+                quote! { |()| { let _ = ::std::hint::black_box(42); } },
             )
         };
 
@@ -1804,7 +1810,7 @@ impl PerfRenderer<'_> {
                 };
 
                 quote_spanned! { teardown.span() => |__result #type_annotation| {
-                        let _ = std::hint::black_box(#teardown(__result));
+                        let _ = ::std::hint::black_box(#teardown(__result));
                     }
                 }
             } else {
@@ -1918,7 +1924,7 @@ impl PerfRenderer<'_> {
     fn render_once(&self, setup: &TokenStream, work: &TokenStream) -> TokenStream {
         let after_perf = if let Some(teardown) = self.teardown.0.0.as_ref() {
             quote_spanned! { teardown.span() =>
-                let _ = std::hint::black_box(#teardown(__result));
+                let _ = ::std::hint::black_box(#teardown(__result));
             }
         } else {
             quote! { let _ = __result; }
@@ -1953,7 +1959,7 @@ impl Setup {
 
     fn render_as_code(&self, args: &Args) -> TokenStream {
         if let Some(setup) = &self.deref().0 {
-            quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
+            quote_spanned! { setup.span() => ::std::hint::black_box(#setup(#args)) }
         } else {
             quote_spanned! { args.span() => #args }
         }
@@ -1973,7 +1979,7 @@ impl Teardown {
         if let Some(teardown) = &self.deref().0 {
             quote_spanned! { teardown.span() => {
                     let __result = #tokens;
-                    std::hint::black_box(#teardown(__result))
+                    ::std::hint::black_box(#teardown(__result))
                 }
             }
         } else {

@@ -7,6 +7,9 @@
 
 cd "$(dirname "$0")" && cd .. || exit 1
 
+# Resolve the pinned nightly toolchain (overridable for local experimentation).
+nightly_toolchain="${NIGHTLY_TOOLCHAIN:-$(just --evaluate nightly_toolchain)}"
+
 just_clean=0
 if [[ "$1" == "--clean" ]]; then
   just_clean=1
@@ -36,15 +39,15 @@ if [[ $just_clean == 1 ]]; then
   exit 0
 fi
 
-cargo +nightly build --all-features --profile coverage --all-targets
+cargo +"${nightly_toolchain}" build --all-features --profile coverage --all-targets
 
 GUNGRAUN_RUNNER=$(realpath -e target/coverage/gungraun-runner)
 GUNGRAUN_LOG=debug
 
 export GUNGRAUN_RUNNER GUNGRAUN_LOG
 
-cargo +nightly test --all-features --profile coverage --no-fail-fast
-cargo +nightly bench --all-features --profile coverage --no-fail-fast
+cargo +"${nightly_toolchain}" test --all-features --profile coverage --no-fail-fast
+cargo +"${nightly_toolchain}" bench --all-features --profile coverage --no-fail-fast
 
 grcov . \
   --branch \

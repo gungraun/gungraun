@@ -123,6 +123,44 @@ generics. See
 [Specifying Multiple Benches at Once](./multiple_benches.md#the-consts-parameter)
 for more details.
 
+The type of an argument can itself depend on a const generic parameter. In that
+case, construct the `args` values for the same const value as specified in
+`consts`:
+
+```rust
+# extern crate gungraun;
+# mod my_lib {
+#     pub struct FixedBuffer<const SIZE: usize>([u64; SIZE]);
+#     impl<const SIZE: usize> FixedBuffer<SIZE> {
+#         pub fn new(value: u64) -> Self {
+#             FixedBuffer([value; SIZE])
+#         }
+#         pub fn sum(&self) -> u64 {
+#             self.0.iter().sum()
+#         }
+#     }
+# }
+use std::hint::black_box;
+
+use gungraun::prelude::*;
+use my_lib::FixedBuffer;
+
+#[library_benchmark]
+#[bench::small(consts = (4), args = (FixedBuffer::<4>::new(1)))]
+#[benches::multiple(consts = [8, 16], args = [FixedBuffer::<8>::new(1), FixedBuffer::<16>::new(2)])]
+fn bench_fixed_buffer<const SIZE: usize>(buffer: FixedBuffer<SIZE>) -> u64 {
+    black_box(buffer.sum())
+}
+
+library_benchmark_group!(
+    name = my_group,
+    benchmarks = [bench_fixed_buffer]
+);
+# fn main() {
+#     main!(library_benchmark_groups = my_group);
+# }
+```
+
 `const` parameters can be combined freely in any order with lifetime and type
 parameters in the benchmark function signature:
 

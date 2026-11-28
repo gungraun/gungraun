@@ -13,6 +13,8 @@
 #     multiple bench cases
 #   - Const parameters: single and multiple const parameters with literal values
 #     and const expressions (e.g., `{ 1 + 20 }`)
+#   - Const-dependent argument types: `&[u8; N]` with matching array lengths in
+#     `#[bench]` and `#[benches]` (issue #807)
 #   - Mixed ordering of generic parameters: const then type, type then const,
 #     lifetimes with const, ...
 #   - Setup/teardown functions with generic type and const parameters
@@ -27,6 +29,8 @@
 #     and benchmark arguments in parentheses.
 #   - The stdout contains the correct output of the benchmark, setup and
 #     teardown functions.
+#   - The const-sized benchmark prints `[1]`, `[2, 3]`, and `[4, 5, 6]` for
+#     lengths 1, 2, and 3, respectively.
 #   - const arguments are applied in the correct order with and without type and
 #     lifetimes parameters
 #   - Const expressions are evaluated and displayed correctly (e.g., `{ 1 + 1 }`)

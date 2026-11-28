@@ -310,6 +310,13 @@ fn with_teardown_when_type_and_const_parameter(arg: u64) -> usize {
     black_box(black_box(arg) as usize)
 }
 
+#[library_benchmark]
+#[bench::single(args = (&[1]), consts = (1))]
+#[benches::multiple(args = [&[2, 3], &[4, 5, 6]], consts = [2, 3])]
+fn const_sized_arg<const N: usize>(input: &[u8; N]) -> usize {
+    black_box(print_debug(black_box(input)))
+}
+
 library_benchmark_group!(
     name = type_parameter_group,
     benchmarks = [single_param, single_param_in_where_clause]
@@ -326,7 +333,8 @@ library_benchmark_group!(
         lifetimes_then_const,
         const_then_lifetimes,
         mixed_const_and_lifetimes,
-        mixed_type_parameters_lifetime_and_consts
+        mixed_type_parameters_lifetime_and_consts,
+        const_sized_arg
     ]
 );
 

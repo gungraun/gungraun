@@ -8,8 +8,8 @@ use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    Attribute, Expr, ExprPath, FnArg, Generics, Ident, ItemFn, MetaNameValue, Pat, PatType,
-    Signature, Token, Type, parse_quote, parse_quote_spanned, parse2,
+    Attribute, Expr, ExprPath, FnArg, GenericParam, Generics, Ident, ItemFn, MetaNameValue, Pat,
+    PatType, Signature, Token, Type, parse_quote, parse_quote_spanned, parse2,
 };
 
 use crate::common::{
@@ -269,9 +269,10 @@ impl Bench {
 
         let input_types = callee.input_types();
         let single_input_type = callee.single_input_type();
+
         let (bench_func_call, shim_func_call) =
             self.consts
-                .to_function_calls(&self.generics, callee_ident, Some(bench_id));
+                .to_function_calls(&self.generics, callee_ident, bench_id);
 
         let perf_renderer = PerfRenderer {
             has_generics: !self.generics.params.is_empty(),
@@ -658,6 +659,55 @@ impl Callee<'_> {
         let mut input_types = self.input_types().into_iter();
         let first = input_types.next()?;
         input_types.next().is_none().then_some(first)
+    }
+}
+
+impl Consts {
+    /// Returns the benchmark and shim call targets, in that order.
+    ///
+    /// Each target contains the function name and any generic arguments, but no call arguments.
+    /// With no `consts` values, both targets are bare identifiers so Rust can infer the generics.
+    ///
+    /// With `consts = (8)` and generics `'a, const N: usize, T`, the targets look like
+    /// `bench::<{ N }, T>` and `shim::<8, _>`. Both omit lifetime arguments, and braces
+    /// disambiguate `N` from a type.
+    ///
+    /// Library benchmarks call the benchmark function through a generic shim. In
+    /// [#807](https://github.com/gungraun/gungraun/issues/807), applying `consts` inside the shim
+    /// caused `E0308`: the shim still held an `&[T; N]`, but `bench::<8, _>` expected an
+    /// `&[T; 8]`. The shim therefore forwards its own generics, and the shared helper applies
+    /// the const expressions only at the shim call site.
+    ///
+    /// If a nonempty `consts` list is missing a value for a const parameter, expansion aborts.
+    fn to_function_calls(
+        &self,
+        generics: &Generics,
+        callee_ident: &Ident,
+        shim_ident: &Ident,
+    ) -> (TokenStream, TokenStream) {
+        let bench_func_call = if self.is_empty() {
+            quote! { #callee_ident }
+        } else {
+            let generic_args = generics
+                .params
+                .iter()
+                .filter_map(|param| match param {
+                    GenericParam::Lifetime(_) => None,
+                    GenericParam::Type(type_param) => Some(type_param.ident.to_token_stream()),
+                    GenericParam::Const(const_param) => {
+                        let ident = &const_param.ident;
+                        Some(quote! { { #ident } })
+                    }
+                })
+                .collect::<Vec<TokenStream>>();
+
+            quote_spanned! { callee_ident.span() =>
+                #callee_ident::<#(#generic_args),*>
+            }
+        };
+
+        let (shim_func_call, _) = self.0.to_function_calls(generics, shim_ident, None);
+        (bench_func_call, shim_func_call)
     }
 }
 

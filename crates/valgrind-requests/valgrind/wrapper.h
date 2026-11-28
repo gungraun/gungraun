@@ -192,6 +192,11 @@ typedef enum {
 #else
   VR_CLO_CHANGE = 28,
 #endif
+#ifdef VALGRIND_RUNNING_VERSION
+  VR_VALGRIND_RUNNING_VERSION = VG_USERREQ__VALGRIND_RUNNING_VERSION,
+#else
+  VR_VALGRIND_RUNNING_VERSION = 29,
+#endif
 } VR_ValgrindClientRequest;
 
 /*

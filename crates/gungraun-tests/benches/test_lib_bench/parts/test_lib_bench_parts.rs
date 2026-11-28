@@ -8,7 +8,7 @@ use gungraun_tests::{find_primes, find_primes_multi_thread_with_instrumentation}
 #[library_benchmark]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::with_args(["--dump-every-bb=90000"]))
+        .tool(Callgrind::with_args(["--dump-every-bb=100000"]))
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()
@@ -56,7 +56,7 @@ fn bench_multiple_threads() -> Vec<u64> {
 )]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::with_args(["--dump-every-bb=90000"]))
+        .tool(Callgrind::with_args(["--dump-every-bb=100000"]))
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()

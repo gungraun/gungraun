@@ -30,11 +30,8 @@ groups:
         flaky: 5
         expected:
           zero_metrics: true
-          # FIX: Temporarily disable these verifications until
-          # * Bug 519574 - valgrind 3.27 "--fair-sched=yes" does not work
-          # is fixed
-          # files: expected_files.yml
-          # stdout: expected_stdout
+          files: expected_files.yml
+          stdout: expected_stdout
 
   # The scheduler on freebsd is causing random results and neither the files
   # created by callgrind nor the stdout can be verified with a static

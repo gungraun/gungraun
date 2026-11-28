@@ -18,6 +18,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `valgrind::running_version()` reports the runtime Valgrind version using the
+  client request introduced in Valgrind 3.28.0.
+
 ## [1.2.0] - 2026-09-26
 
 ### Added

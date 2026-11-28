@@ -6,7 +6,7 @@
 
 set -o pipefail
 
-valgrind_version="${1:-3.26.0}"
+valgrind_version="${1:-3.28.0}"
 ubuntu_version="ubuntu-$(lsb_release -r | awk '{print $2}')"
 archive_name="valgrind-${valgrind_version}-x86_64-${ubuntu_version}.tar.gz"
 

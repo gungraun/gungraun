@@ -37,7 +37,7 @@ jobs:
           {
             echo 'cargo_term_color=always'
             echo 'rust_backtrace=1'
-            echo 'valgrind_version=3.27.1'
+            echo 'valgrind_version=3.28.0'
           } >> "$GITHUB_OUTPUT"
 
   basic:

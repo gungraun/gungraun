@@ -1,6 +1,6 @@
 [target.s390x-unknown-linux-gnu]
 runner = "qemu-user"
-image = "ghcr.io/gungraun/s390x-unknown-linux-gnu:3.27.1-alpha.0"
+image = "ghcr.io/gungraun/s390x-unknown-linux-gnu:3.28.0-1"
 pre-build = ["""curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
   sh -s -- --profile minimal -y
   """, '''

@@ -196,7 +196,7 @@ jobs:
               developer/omnios-build-tools \
               ooce/developer/clang-21
 
-            valgrind_version="${VALGRIND_VERSION:-3.27.1}"
+            valgrind_version="${VALGRIND_VERSION:-3.28.0}"
             curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSLO "https://sourceware.org/pub/valgrind/valgrind-${valgrind_version}.tar.bz2"
             tar xjf "valgrind-${valgrind_version}.tar.bz2"
 

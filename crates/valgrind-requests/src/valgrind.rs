@@ -101,6 +101,32 @@ pub fn running_on_valgrind() -> usize {
     )
 }
 
+/// Returns the running Valgrind version as `Mmm` (e.g., `328` for 3.28.0).
+///
+/// Returns the Valgrind version that this code is running under. Returns 0 if not running on
+/// Valgrind. The version number is expressed as a decimal number: Mmm where M is the major and mm
+/// the minor version of Valgrind e.g. 328 for version 3.28.
+///
+/// Unlike [`crate::VALGRIND_VERSION`], this reports the runtime version.
+///
+/// # Panics
+///
+/// Panics, even when running natively, if the headers used to build this crate do not define
+/// `VALGRIND_RUNNING_VERSION` (introduced in Valgrind 3.28.0).
+#[inline(always)]
+pub fn running_version() -> usize {
+    do_client_request!(
+        "valgrind::running_version",
+        0,
+        bindings::VR_ValgrindClientRequest::VR_VALGRIND_RUNNING_VERSION,
+        0,
+        0,
+        0,
+        0,
+        0
+    )
+}
+
 /// Discard translation of code in the range [addr ... addr + len - 1].
 ///
 /// Useful if you are debugging a `JITter` or some such, since it provides a way to make sure

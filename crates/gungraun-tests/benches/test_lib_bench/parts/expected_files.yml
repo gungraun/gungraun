@@ -1,35 +1,5 @@
 data:
   - group: my_group
-    function: bench_no_thread
-    id: dump_after
-    expected:
-      files:
-        - callgrind.bench_no_thread.dump_after.log
-        - callgrind.bench_no_thread.dump_after.t1.p1.out
-        - callgrind.bench_no_thread.dump_after.t1.p2.out
-        - summary.json
-  - group: my_group
-    function: bench_no_thread
-    id: dump_before
-    expected:
-      files:
-        - callgrind.bench_no_thread.dump_before.log
-        - callgrind.bench_no_thread.dump_before.t1.p1.out
-        - callgrind.bench_no_thread.dump_before.t1.p2.out
-        - summary.json
-  - group: my_group
-    function: bench_no_thread
-    id: dump_every_bb
-    expected:
-      files:
-        - callgrind.bench_no_thread.dump_every_bb.log
-        - callgrind.bench_no_thread.dump_every_bb.t1.p1.out
-        - callgrind.bench_no_thread.dump_every_bb.t1.p2.out
-        - callgrind.bench_no_thread.dump_every_bb.t1.p3.out
-        - callgrind.bench_no_thread.dump_every_bb.t1.p4.out
-        - callgrind.bench_no_thread.dump_every_bb.t1.p5.out
-        - summary.json
-  - group: my_group
     function: bench_multiple_threads
     id: dump_after
     expected:
@@ -57,6 +27,8 @@ data:
     function: bench_multiple_threads_in_subprocess
     id: dump_after
     expected:
+      files:
+        - summary.json
       globs:
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_after.*.log
           count: 2
@@ -70,12 +42,12 @@ data:
           count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_after.*.t3.p2.out
           count: 1
-      files:
-        - summary.json
   - group: my_group
     function: bench_multiple_threads_in_subprocess
     id: dump_before
     expected:
+      files:
+        - summary.json
       globs:
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_before.*.log
           count: 2
@@ -89,12 +61,12 @@ data:
           count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_before.*.t3.p2.out
           count: 1
-      files:
-        - summary.json
   - group: my_group
     function: bench_multiple_threads_in_subprocess
     id: dump_every_bb
     expected:
+      files:
+        - summary.json
       globs:
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.log
           count: 2
@@ -112,5 +84,32 @@ data:
           count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t3.p2.out
           count: 1
+  - group: my_group
+    function: bench_no_thread
+    id: dump_after
+    expected:
       files:
+        - callgrind.bench_no_thread.dump_after.log
+        - callgrind.bench_no_thread.dump_after.t1.p1.out
+        - callgrind.bench_no_thread.dump_after.t1.p2.out
+        - summary.json
+  - group: my_group
+    function: bench_no_thread
+    id: dump_before
+    expected:
+      files:
+        - callgrind.bench_no_thread.dump_before.log
+        - callgrind.bench_no_thread.dump_before.t1.p1.out
+        - callgrind.bench_no_thread.dump_before.t1.p2.out
+        - summary.json
+  - group: my_group
+    function: bench_no_thread
+    id: dump_every_bb
+    expected:
+      files:
+        - callgrind.bench_no_thread.dump_every_bb.log
+        - callgrind.bench_no_thread.dump_every_bb.t1.p1.out
+        - callgrind.bench_no_thread.dump_every_bb.t1.p2.out
+        - callgrind.bench_no_thread.dump_every_bb.t1.p3.out
+        - callgrind.bench_no_thread.dump_every_bb.t1.p4.out
         - summary.json

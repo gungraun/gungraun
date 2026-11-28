@@ -19,13 +19,12 @@ rust-version.workspace = true
 version = "1.2.0"
 
 [features]
-act = ["stubs"]
+act = ["stubs", "dep:cc"]
 alloc = []
 default = ["act", "std"]
 std = ["alloc"]
 stubs = [
   "dep:bindgen",
-  "dep:cc",
   "dep:cfg-if",
   "dep:cty",
   "dep:gungraun-common",

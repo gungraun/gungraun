@@ -21,16 +21,19 @@ version.workspace = true
 [features]
 __ui_tests = ["perf"]
 act = ["stubs", "valgrind-requests/act", "perf"]
-benchmark = [
-  "perf",
+# TODO: Redundant feature. Remove in the next minor release and move `perf` to
+# `default`
+benchmark = ["perf"]
+cachegrind = ["gungraun-macros?/cachegrind", "act"]
+default = [
+  "benchmark",
   "dep:bincode-next",
-  "dep:gungraun-macros",
   "dep:derive_more",
   "dep:gungraun-common",
+  "dep:gungraun-macros",
+  "dep:nix",
 ]
-cachegrind = ["gungraun-macros/cachegrind", "act"]
-default = ["benchmark"]
-perf = ["perf_stubs", "dep:nix"]
+perf = ["perf_stubs"]
 perf_stubs = ["gungraun-runner/api"]
 stubs = ["valgrind-requests/stubs", "dep:cty", "perf_stubs"]
 

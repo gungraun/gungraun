@@ -43,7 +43,6 @@ suppressed: <__FILTER__> bytes in <__FILTER__> blocks
 Reachable blocks (those to which a pointer was found) are not shown.
 To see them, rerun with: --leak-check=full --show-leak-kinds=all
 
-REDIR: <__FILTER__>
 
 HEAP SUMMARY:
 in use at exit: <__NUMBER__> bytes in <__NUMBER__> blocks

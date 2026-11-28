@@ -37,7 +37,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.20.1] - 2026-11-27
+## [0.20.1] - 2026-11-28
 
 ### Changed
 

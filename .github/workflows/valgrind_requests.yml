@@ -29,7 +29,7 @@ jobs:
           - toolchain: nightly
             os: ubuntu-latest
           - toolchain: stable
-            os: macos-14
+            os: macos-26
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -45,7 +45,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: ./scripts/install_valgrind.sh "$VALGRIND_VERSION"
       - name: Install valgrind
-        if: matrix.os == 'macos-14'
+        if: matrix.os == 'macos-26'
         run: |
           brew tap LouisBrunner/valgrind
           brew install --HEAD LouisBrunner/valgrind/valgrind
@@ -153,7 +153,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-14
+          - macos-26
           - macos-15-intel
     steps:
       - uses: actions/checkout@v7

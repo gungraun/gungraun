@@ -5,7 +5,6 @@ Address <__FILTER__> is <__NUMBER__> bytes inside a block of size <__NUMBER__> f
 Block was alloc'd at
 <__BACKTRACE__>
 
-REDIR: <__FILTER__>
 
 HEAP SUMMARY:
 in use at exit: <__NUMBER__> bytes in <__NUMBER__> blocks

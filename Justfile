@@ -433,8 +433,12 @@ book-tests: book-check-version
     RUSTUP_TOOLCHAIN=stable just build gungraun-summary --all-features --lib --profile=mdbook
     # The exact values for the environment variables don't matter, we just need
     # them to be present.
+    # Since cargo v1.100, rlibs are not collected in a `target/mdbook/deps`
+    # directory anymore. Each crate now lives in its own
+    # `target/mdbook/build/<crate>/<hash>/out` directory (not a stable layout).
     CARGO_MANIFEST_DIR=$(realpath .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L \
-        target/mdbook/deps docs/
+        "target/mdbook,$(find target/mdbook/build -type d -name out | paste -sd,)" \
+        docs/
 
 # Build the book. (Uses: 'mdbook')
 [group('guide')]

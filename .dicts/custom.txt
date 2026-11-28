@@ -433,3 +433,4 @@ nickbabcock
 callchains
 evlist
 Stringlet
+rlibs

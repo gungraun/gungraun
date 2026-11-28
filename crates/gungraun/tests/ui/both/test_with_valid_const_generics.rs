@@ -139,8 +139,8 @@ mod test_consts_without_args {
 
     #[binary_benchmark]
     #[benches::id(consts = [(123, 456), (456, 789)])]
-    fn when_binary_benches_multiple_consts_parameter<const NUM: usize, const OTHER: usize>(
-    ) -> Command {
+    fn when_binary_benches_multiple_consts_parameter<const NUM: usize, const OTHER: usize>()
+    -> Command {
         Command::new("some")
             .args([NUM.to_string(), OTHER.to_string()])
             .build()

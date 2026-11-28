@@ -432,3 +432,4 @@ reemitted
 nickbabcock
 callchains
 evlist
+Stringlet

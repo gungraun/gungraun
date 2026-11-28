@@ -58,6 +58,12 @@ and this project adheres to
 - ([#784], [#805]): Fix `unused_qualifications` and `clippy::shadow_reuse`
   diagnostics from `#[library_benchmark]` without changing where benchmark
   errors point.
+- ([#807], [#808]): Fix `E0308` compile errors when the argument types of a
+  `#[library_benchmark]` function depend on a const generic parameter (for
+  example `fn foo<const SIZE: usize>(buffer: [u8; SIZE])`). The generated
+  wrapper now forwards its generic parameters to the benchmark function, so only
+  the `args` values need to match the const value specified in `consts`. Binary
+  benchmarks were unaffected.
 
 [#756]: https://github.com/gungraun/gungraun/issues/756
 [#778]: https://github.com/gungraun/gungraun/issues/778
@@ -66,6 +72,8 @@ and this project adheres to
 [#803]: https://github.com/gungraun/gungraun/pull/803
 [#804]: https://github.com/gungraun/gungraun/pull/804
 [#805]: https://github.com/gungraun/gungraun/pull/805
+[#807]: https://github.com/gungraun/gungraun/issues/807
+[#808]: https://github.com/gungraun/gungraun/pull/808
 
 ## [0.20.0] - 2026-09-26
 
